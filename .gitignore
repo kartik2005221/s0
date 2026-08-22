@@ -1,0 +1,25 @@
+# --- PRIVATE SIGNING KEYS NEVER ENTER THIS REPO ---
+# Policy: core/keys/README.md. The issuing authority's private key is generated
+# out-of-band and stays out-of-band. Only public keys are committed.
+**/*private*.pem
+**/*private*.key
+**/*private*.der
+core/keys/demo_issuer.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Wipe test artifacts (disk images can be large)
+*.img
+*.raw
+linux/cli/tests/tmp/
+demo-out/
+
+# OS
+.DS_Store
