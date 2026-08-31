@@ -80,7 +80,9 @@ trustwipe/
      * Images: JPEG (`FF D8 FF` -> `FF D9`), PNG (`89 50 4E 47` -> `49 45 4E 44`), GIF, BMP.
      * Documents: PDF (`%PDF-` -> `%%EOF`), Office Open XML / ZIP (`50 4B 03 04`).
      * Executables & Archives: ELF, TAR, GZIP.
-  2. **Structure-Based ext4 Recovery:** Direct parsing of ext4 superblocks, block group descriptors, inode tables, and extent trees to locate deleted inode extents and orphan directory entries.
+  2. **Structure-Based ext4 and NTFS Recovery:**
+     * **ext4:** Direct parsing of ext4 superblocks, block group descriptors, inode tables, and extent trees.
+     * **NTFS:** Master File Table ($MFT) parsing with resident attributes and single-run non-resident data streams.
   3. **Bounded Fragmented Reconstruction:** Reassembles fragmented data blocks within a bounded search window using format structural validation (e.g. JPEG SOS scan segment validation).
   4. **Forensic Confidence Scoring:** Computes objective confidence scores (0–100%) based on:
      * Valid magic header (30%)
@@ -107,7 +109,7 @@ trustwipe/
 | **Phase 1** | Foundation & Bug Fixes | Fix `linux/cli` probe bugs, auto-venv in `build_all.sh` | 100% pytest green across `core` and `linux/cli`. |
 | **Phase 2** | Drive Eraser (Module 1) | Fixed ATA/NVMe/Overwrite drive wiper, e2e forensic demo | `demo_e2e.sh` passes with 0 marker hits and Ed25519 verification. |
 | **Phase 3** | File & Folder Eraser (Module 2) | `file_eraser.py`, extents overwrite, metadata cleansing, batch API | `test_file_eraser.py`: files overwritten, metadata wiped, batch signed cert verified. |
-| **Phase 4** | Advanced File Carver (Module 3) | `signatures.py`, `engine.py`, `ext4_carver.py`, `scoring.py` | `test_carver.py`: extracts planted JPEGs, PDFs, PNGs from formatted disk image with confidence scores > 85%. |
+| **Phase 4** | Advanced File Carver (Module 3) | `signatures.py`, `engine.py`, `ext4_carver.py`, `ntfs_carver.py`, `scoring.py` | `test_carver.py`, `test_ntfs_carver.py`: extracts planted JPEGs, PDFs, PNGs from ext4 & NTFS media with confidence scores > 85%. |
 | **Phase 5** | Blockchain Audit Ledger | `audit/db.py`, `audit/verify.py`, hash chain verification | `test_audit.py`: logs operations, verifies chain, detects simulated row tamper. |
 | **Phase 6** | Unified Web Dashboard | Extended GUI with Drive Erase, File Wipe, Carving, and Audit tabs | GUI tests pass; all 4 modules accessible in single web console. |
 | **Phase 7** | NTRO Documentation & Packaging | Updated docs targeting NTRO & SIH26149, master build script | `scripts/build_all.sh` runs all suites cleanly and outputs green report. |

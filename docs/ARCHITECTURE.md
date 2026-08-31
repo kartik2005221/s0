@@ -67,7 +67,8 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 
 ### 3.3 Module 3: Advanced File Carving & Recovery (`trustwipe_cli/carver/`)
 - **Signature Engine (`signatures.py`):** High-fidelity header/footer scanning for JPEG, PNG, PDF, ZIP/DOCX/XLSX, GIF, GZIP.
-- **Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and inode extent tree parser for recovering deleted files with intact structure.
+- **ext4 Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and inode extent tree parser for recovering deleted files with intact structure.
+- **NTFS Structure Engine (`ntfs_carver.py`):** Direct Master File Table ($MFT) parser extracting resident attributes and single-run non-resident data streams for deleted NTFS records.
 - **Confidence Scoring (`scoring.py`):** Multi-factor scoring (header match 30%, footer match 30%, size plausibility 20%, Shannon entropy analysis 20%).
 
 ### 3.4 Module 4: Blockchain Audit Management Ledger (`trustwipe_cli/audit/`)

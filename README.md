@@ -36,7 +36,7 @@ It integrates two critical security capabilities into a single environment:
 │    (Module 2)                    │ directory entry scrambling & batch  │
 ├──────────────────────────────────┼─────────────────────────────────────┤
 │ 3. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
-│    (Module 3)                    │ structure parser & entropy scoring  │
+│    (Module 3)                    │ & NTFS MFT parser & entropy scoring │
 ├──────────────────────────────────┼─────────────────────────────────────┤
 │ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
 │    (Module 4)                    │ SHA-256 block hash chaining         │
