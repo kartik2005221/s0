@@ -13,7 +13,7 @@ project has ever issued, so it is treated as unacceptable rather than unlikely.
 ## Real deployment
 
 - `trustwipe-keygen` runs **once, out-of-band**, on the issuing authority's own machine
-  (JNARDDC or an accredited recycler).
+  (NTRO or an accredited forensic authority).
 - The private key stays on that machine, offline where possible, backed up under the
   organization's key-management policy. Losing it means re-keying; leaking it means
   distrusting every prior certificate.

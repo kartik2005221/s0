@@ -16,7 +16,7 @@
       "required": ["organization", "operator_id"],
       "additionalProperties": false,
       "properties": {
-        "organization": { "type": "string", "minLength": 1, "description": "Issuing authority, e.g. accredited recycler / JNARDDC lab. Free text." },
+        "organization": { "type": "string", "minLength": 1, "description": "Issuing authority, e.g. NTRO Digital Forensics & Data Sanitization Lab. Free text." },
         "operator_id": { "type": "string", "minLength": 1, "description": "Operator identity as known to the issuer. Free text; no PII guarantees are made." }
       }
     },

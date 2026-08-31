@@ -1,5 +1,5 @@
 {
-  "comment": "Pinned issuer public keys for TrustWipe certificate verification. In production, verifiers pin accredited keys (e.g. JNARDDC, authorized e-waste recyclers).",
+  "comment": "Pinned issuer public keys for TrustWipe certificate verification. In production, verifiers pin accredited keys (e.g. NTRO, forensic labs, certified audit authorities).",
   "trusted_keys": [
     {
       "issuer": "TrustWipe Demo Lab (unaccredited development key)",

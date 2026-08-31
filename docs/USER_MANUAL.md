@@ -9,7 +9,7 @@
 
 ```bash
 # Clone and enter directory
-cd sih25070
+cd sih26149
 
 # Run master build orchestrator (automatically sets up .venv and installs dependencies)
 bash scripts/build_all.sh

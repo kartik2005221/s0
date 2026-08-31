@@ -15,7 +15,7 @@ carries the same caveat in table form.
 |---|---|---|
 | **Clear** | Logical techniques applied to all user-addressable storage, protecting against simple non-invasive recovery (e.g. overwrite of the raw address space). | Every sector the OS can address is overwritten. Does **not** reach reallocated or overprovisioned areas. |
 | **Purge** | Physical or logical techniques rendering data unrecoverable even against advanced laboratory attacks — includes firmware-level erase and **cryptographic erase (destruction of encryption keys)**. | The drive's own firmware performs the erasure (ATA Security Erase, NVMe Sanitize/Format), or the encryption keys protecting the data are destroyed (FBE reset on Android, SED key destruction). |
-| **Destroy** | Physical destruction to the point rendering the medium unusable (shredding, disintegration, incineration). | Out of software scope by definition. TrustWipe never claims Destroy; recyclers perform this as a physical process. |
+| **Destroy** | Physical destruction to the point rendering the medium unusable (shredding, disintegration, incineration). | Out of software scope by definition. TrustWipe never claims Destroy; certified destruction facilities perform this as a physical process. |
 
 The key distinction for honesty in this project: **Clear protects against software recovery;
 Purge protects against hardware/laboratory recovery.** Overwriting can never be Purge, because
