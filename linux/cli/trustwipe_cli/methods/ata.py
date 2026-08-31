@@ -199,26 +199,38 @@ def hpa_dco_report(target: Target) -> dict:
     """
     report = {"hpa_present": None, "dco_present": None, "native_max": None,
               "visible_max": None, "restore_command": None, "note": None}
-    if not shutil.which("hdparm") or target.kind != "block":
+    if target.kind != "block":
         report["note"] = "HPA/DCO detection requires a real ATA block device"
         return report
 
     code, out, _ = _run(["hdparm", "-N", target.path], timeout=20)
-    if code == 0:
+    if code == 0 and out:
         m = re.search(r"max sectors\s*=\s*(\d+)/(\d+)", out)
         if m:
             visible, native = int(m.group(1)), int(m.group(2))
             report.update(visible_max=visible, native_max=native,
-                          hpa_present=native > visible)
+                          hpa_present=(native > visible))
             if native > visible:
                 report["restore_command"] = f"hdparm -N p{native} {target.path}"
+        elif "HPA is disabled" in out:
+            report["hpa_present"] = False
+        elif "HPA is enabled" in out:
+            report["hpa_present"] = True
+        else:
+            report["hpa_present"] = False
 
     code, out, _ = _run(["hdparm", "--dco-identify", target.path], timeout=20)
-    if code == 0:
+    if code == 0 and out:
         m = re.search(r"real max sectors\s*=\s*(\d+)", out)
         if m and report["visible_max"] is not None:
             real = int(m.group(1))
-            report["dco_present"] = real > report["visible_max"]
+            report["dco_present"] = (real > report["visible_max"])
             if real > report["visible_max"]:
                 report.setdefault("restore_command", f"hdparm --dco-restore {target.path}")
+        else:
+            report["dco_present"] = False
+
+    if report["hpa_present"] is None and report["dco_present"] is None and code != 0:
+        report["note"] = "HPA/DCO detection requires a real ATA block device with hdparm"
+
     return report

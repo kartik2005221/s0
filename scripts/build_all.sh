@@ -7,6 +7,13 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 cd "$REPO"
 
+if [ ! -d "$REPO/.venv" ] || [ ! -f "$REPO/.venv/bin/python" ]; then
+    echo "==> Setting up Python virtual environment at $REPO/.venv..."
+    python3 -m venv "$REPO/.venv"
+    "$REPO/.venv/bin/pip" install --upgrade pip
+    "$REPO/.venv/bin/pip" install -e "$REPO/core/python" -e "$REPO/linux/cli" pytest reportlab qrcode pillow fastapi uvicorn httpx
+fi
+
 PY="$REPO/.venv/bin/python"
 PIP="$REPO/.venv/bin/pip"
 PYTEST="$REPO/.venv/bin/pytest"

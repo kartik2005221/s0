@@ -96,7 +96,7 @@ def select_method(
         return fallback, alternatives
 
     # ---- ATA (SATA SSD/HDD) -------------------------------------------------
-    if prefer_firmware and shutil.which("hdparm"):
+    if prefer_firmware and (ata_probe is not None or shutil.which("hdparm") or shutil.which("/usr/sbin/hdparm") or shutil.which("/sbin/hdparm")):
         info = probe_ata(target)
         if info.get("frozen"):
             alternatives.append(Candidate(None, "ATA Security Erase unavailable: drive "
