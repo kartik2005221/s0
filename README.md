@@ -1,139 +1,100 @@
 # TrustWipe 🛡️
 
-> **Secure Data Sanitization & Cryptographic Certification Suite**  
-> *Smart India Hackathon (SIH 2026) • Ministry of Mines / JNARDDC*
+> **Integrated Secure Data Erasure and Advanced File Recovery Platform**  
+> *Smart India Hackathon (SIH 2026) • Problem Statement ID: 26149*  
+> *National Technical Research Organisation (NTRO) • Theme: Blockchain & Cybersecurity*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NIST SP 800-88](https://img.shields.io/badge/Compliance-NIST%20SP%20800--88%20Rev.1-success.svg)](docs/COMPLIANCE.md)
 [![Ed25519 Verified](https://img.shields.io/badge/Signatures-Ed25519%20RFC%208032-blueviolet.svg)](core/CANONICAL_JSON.md)
-[![Tests: 105 Passed](https://img.shields.io/badge/Tests-105%20Passed-brightgreen.svg)](docs/TEST_PLAN.md)
+[![Tests: 120 Passed](https://img.shields.io/badge/Tests-120%20Passed-brightgreen.svg)](docs/TEST_PLAN.md)
+[![Blockchain Ledger](https://img.shields.io/badge/Audit-SHA256%20Blockchain%20Ledger-orange.svg)](docs/ARCHITECTURE.md)
 
 ---
 
-## 📌 Executive Summary
+## 📌 Executive Overview
 
-**TrustWipe** is an open-source, mathematically verifiable, and standards-compliant data wiping suite engineered to eliminate data residue on retired IT assets (HDDs, SSDs, NVMe, and mobile devices) while issuing **unforgeable, cryptographically signed sanitization certificates**.
+**TrustWipe** is a unified digital forensic and data sanitization platform developed for the **National Technical Research Organisation (NTRO)** under **SIH26149**.
 
-Built for **JNARDDC (Jawaharlal Nehru Aluminium Research Development and Design Centre / Ministry of Mines)** and certified e-waste recyclers, TrustWipe solves the critical flaw in legacy sanitization tools: **unverifiable compliance and PDF certificate forgery**.
+It integrates two critical security capabilities into a single environment:
+1. **Defensive Sanitization:** Irreversible drive, file, and folder data destruction adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**.
+2. **Offensive Digital Forensics:** Advanced signature-based, structure-based (ext4), and Shannon entropy-scored file carving to extract and reconstruct deleted or fragmented evidence from formatted media.
+3. **Blockchain Cryptographic Audit Trail:** An append-only local SQLite ledger with continuous **SHA-256 block hash chaining** guaranteeing unbroken chain of custody for all forensic operations.
 
 ---
 
-## 🌟 Core Innovations
+## 🌟 Four Core Modules
 
-1. **Deterministic Cryptographic Certification:**
-   - Every certificate payload is serialized into **TrustWipe Canonical JSON v1** (strict code-point key ordering, minimal escaping, and integer-only rule) and signed using **Ed25519 (RFC 8032)**.
-   - Any single-byte modification to certificate data (serial numbers, capacity, wipe status) mathematically breaks verification.
-
-2. **NIST SP 800-88 Rev. 1 & IEEE 2883-2022 Enforcement:**
-   - Real firmware-level **Purge** (`NVME_SANITIZE`, `ATA_SECURE_ERASE`) that reaches overprovisioned/retired flash blocks.
-   - 1-pass zero overwrite for **Clear** (eliminating slow, drive-wearing legacy multi-pass myths).
-   - Cryptographic key destruction on modern **Android File-Based Encryption (FBE)** and Self-Encrypting Drives (**Purge**).
-
-3. **Zero-Trust Verification Portal:**
-   - Pure client-side static web application (`verification-portal/index.html`) using a vendored pure JS Ed25519 and SHA-256 cryptographic bundle.
-   - Zero backend server, zero database, zero telemetry: *"Trust the math, not our server."*
-
-4. **Forensic Readback Assurance:**
-   - Dual-stage automated audit: 64-block uniform sampled readback plus full disk byte-level scanning for planted confidential markers (**0 hits guaranteed**).
-
-5. **Universal Deployment Modalities:**
-   - **Linux CLI:** Production block device and unprivileged sparse image wiping.
-   - **Local Web GUI:** Modern FastAPI single-page kiosk interface with live progress streaming.
-   - **Bootable Live ISO:** Air-gapped Debian live kiosk for bare-metal decommissioning.
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        TRUSTWIPE CORE MODULES                          │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
+│    (Module 1)                    │ 1-pass Clear + 64-block verification│
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 2. Secure File & Folder Eraser   │ Extents overwrite, timestamp reset, │
+│    (Module 2)                    │ directory entry scrambling & batch  │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 3. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
+│    (Module 3)                    │ structure parser & entropy scoring  │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
+│    (Module 4)                    │ SHA-256 block hash chaining         │
+└──────────────────────────────────┴─────────────────────────────────────┘
+```
 
 ---
 
 ## ⚡ Quickstart
 
-### 1. Run Automated Test Suites (105+ Tests)
+### 1. Run Master Build & Verification (120 Tests)
 ```bash
-source .venv/bin/activate
-.venv/bin/pytest core/tests linux/cli/tests linux/gui/tests verification-portal/tests
+bash scripts/build_all.sh
 ```
 
-### 2. Run the Live End-to-End Forensic Demonstration
+### 2. Drive Sanitization & Forensic Grep Demo
 ```bash
 TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 ```
-*Executes disk creation -> marker planting -> wipe -> forensic grep -> signed certificate -> tamper rejection.*
 
-### 3. Launch the Local Web GUI
+### 3. Secure File & Folder Erasure
+```bash
+.venv/bin/trustwipe-wipe erase-files --targets /path/to/classified_file.txt --passes 1
+```
+
+### 4. Advanced File Carving
+```bash
+.venv/bin/trustwipe-wipe carve --target /evidence/disk_image.raw --out-dir ./recovered_evidence
+```
+
+### 5. Blockchain Audit Chain Verification
+```bash
+.venv/bin/trustwipe-wipe audit verify
+```
+
+### 6. Launch Unified Web Dashboard
 ```bash
 bash linux/gui/run.sh
 # Open http://127.0.0.1:8000
-```
-
-### 4. Launch the Verification Portal
-```bash
-bash scripts/run_portal.sh 8080
-# Open http://127.0.0.1:8080
-```
-
----
-
-## 📂 Repository Structure
-
-```
-trustwipe/
-├── core/                           # Cryptographic Foundation & Standards
-│   ├── CANONICAL_JSON.md           # Canonical JSON v1 specification
-│   ├── cert_schema.json            # Certificate JSON schema v1.0.0
-│   ├── standards/                  # NIST 800-88 mapping registry
-│   ├── keys/                       # Public issuer keys & policy docs
-│   ├── python/trustwipe_core/      # Reference Python crypto & canonical library
-│   └── tests/                      # Pytest suite & golden vectors
-├── linux/                          # Linux Sanitization Suite
-│   ├── cli/                        # CLI wiping engine (methods, devices, wipe)
-│   ├── gui/                        # FastAPI local web UI
-│   └── iso/                        # Bootable live ISO build configuration
-├── verification-portal/            # Pure Client-Side Verification Portal
-│   ├── index.html                  # Responsive auditor web interface
-│   ├── verify.js                   # JavaScript verifier engine
-│   ├── vendor/crypto-bundle.js     # TweetNaCl & SHA-256 engine (zero dependencies)
-│   ├── keys.json                   # Pinned issuer public keys
-│   └── tests/                      # In-browser test runner & cross-tests
-├── docs/                           # Complete Technical Documentation
-│   ├── ARCHITECTURE.md             # System architecture & threat model
-│   ├── USER_MANUAL.md              # Operator and auditor manual
-│   ├── COMPLIANCE.md               # Standards & regulatory compliance
-│   ├── TEST_PLAN.md                # QA strategy & test matrix
-│   ├── LIMITATIONS.md              # Hardware & platform constraints
-│   ├── HANDOVER.md                 # Developer & evaluator handover
-│   └── PITCH_OUTLINE.md            # SIH 2026 presentation pitch deck
-├── scripts/                        # Orchestration Scripts
-│   ├── build_all.sh                # Master build & test orchestrator
-│   ├── make_loop_target.sh         # Helper to create loop block devices
-│   └── run_portal.sh               # Local portal launcher
-└── PLAN.md                         # Master Engineering Plan & Contract
 ```
 
 ---
 
 ## 📖 Documentation Index
 
-| Document | Description |
+| Document | Focus Area |
 |---|---|
-| [System Architecture](docs/ARCHITECTURE.md) | Component architecture, threat model, cryptographic protocols, data flow |
-| [User & Operator Manual](docs/USER_MANUAL.md) | Comprehensive CLI, GUI, ISO, and Portal step-by-step walkthrough |
-| [Standards Compliance](docs/COMPLIANCE.md) | NIST SP 800-88 Rev. 1, IEEE 2883, DPDPA 2023, E-Waste Rules 2022 |
-| [Test Plan & QA](docs/TEST_PLAN.md) | Unit testing, tamper matrix, forensic readback, cross-language tests |
-| [Technical Limitations](docs/LIMITATIONS.md) | Honest disclosure of SSD wear leveling, ATA freeze lock, Android FBE |
-| [Evaluator Handover](docs/HANDOVER.md) | Quickstart, test execution, key ceremony, ISO build instructions |
+| [System Architecture](docs/ARCHITECTURE.md) | Subsystem architecture, threat model, cryptographic flow, ext4 structure |
+| [User & Operator Manual](docs/USER_MANUAL.md) | CLI manual for all 4 modules, web dashboard guide, batch operations |
+| [Standards & Compliance](docs/COMPLIANCE.md) | NIST SP 800-88 Rev. 1, IEEE 2883-2022, ISO/IEC 27037 forensic standards |
+| [Test Plan & QA](docs/TEST_PLAN.md) | Testing pyramid, tamper matrix protocol, entropy tests, 120 test suites |
+| [Technical Limitations](docs/LIMITATIONS.md) | Honest disclosure of SSD FTL, journaling filesystem remnants, ext4 parsing |
+| [Evaluator Handover](docs/HANDOVER.md) | Quickstart, automated build script, module execution, key ceremony |
 | [SIH Pitch Deck](docs/PITCH_OUTLINE.md) | Problem crisis, technical differentiators, live demo script, roadmap |
-
----
-
-## 🛠️ Master Build & Packaging
-
-Execute the master orchestrator to validate all components and test suites in one command:
-
-```bash
-bash scripts/build_all.sh
-```
 
 ---
 
 ## 📄 License & Attribution
 
-Developed for **Smart India Hackathon (SIH 2026)** in collaboration with **JNARDDC / Ministry of Mines**.  
+Developed for **Smart India Hackathon (SIH 2026)** • **National Technical Research Organisation (NTRO)**.  
 Licensed under the [MIT License](LICENSE).

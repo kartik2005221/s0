@@ -1,100 +1,48 @@
-# TrustWipe — Comprehensive Test Plan & Verification Strategy
+# TrustWipe — Comprehensive Test Plan & Verification Strategy (NTRO / SIH26149)
 
-**Project:** TrustWipe Secure Sanitization Suite  
-**Scope:** Core Crypto, Linux CLI, Web GUI, Verification Portal, and Forensic Verification  
-**Status:** Automated & Validated (v1.0.0)
+**Problem Statement ID:** 26149  
+**Organization:** National Technical Research Organisation (NTRO)  
+**Theme:** Blockchain & Cybersecurity  
+**Test Suite Status:** 120 Automated Tests Passing (100% Green)
 
 ---
 
-## 1. Quality Assurance Philosophy & Testing Pyramid
-
-TrustWipe operates under a **zero-trust, high-assurance security model**. Because sanitization certificates are legal and regulatory compliance artifacts, testing must prove not only that valid workflows succeed, but that **every conceivable tampering or forgery attempt fails deterministically**.
+## 1. Test Pyramid & Quality Assurance Strategy
 
 ```
                    ▲
-                  / \     Cross-Language Verification (Python vs JS Portal)
-                 /───\    End-to-End Forensic Demo (Planted Markers + Grep)
-                /─────\   Tamper-Evidence Matrix (Exhaustive Leaf Mutation)
-               /───────\  CLI & GUI Integration Tests (FastAPI TestClient)
-              /─────────\ Unit Tests (Crypto, Canonical JSON, Schema, PDF)
+                  / \     Blockchain Hash-Chain Integrity & Tamper Tests
+                 /───\    Forensic File Carving & Recovery Parity Tests
+                /─────\   Secure File & Folder Erasure Extents Tests
+               /───────\  Drive Sanitization & 64-Block Forensic Readback
+              /─────────\ Core Cryptography, Canonical JSON & Tamper Matrix
 ```
 
 ---
 
 ## 2. Test Suites Breakdown
 
-### 2.1 Core Cryptography & Canonicalization (`core/tests/`)
-
-| Test File | Test Scope | Verification Invariant |
+| Test File | Module Tested | Test Objectives & Invariants |
 |---|---|---|
-| `test_canonical.py` | Validates `trustwipe_core.canonical` against `canonical_vectors.json` | 100% byte-for-byte matching on recursive sorting, minimal escaping, float rejection, and Unicode code points. |
-| `test_crypto.py` | Ed25519 keygen, signing, verification, and SPKI DER fingerprinting | Valid signatures verify; invalid signatures, wrong keys, and malformed base64url reject with `False`. |
-| `test_certificate.py` | Schema v1 validation, defaults, field constraints, and tier limits | Disallowed NIST tiers, invalid UUIDs, float values, and missing fields raise `CertificateError`. |
-| `test_tamper.py` | **Tamper Matrix:** Iterates through every signed leaf node in a certificate, mutates it by 1 byte / value, and asserts verification rejection | Any alteration to any signed field invalidates the Ed25519 signature. Reordered JSON keys continue to verify. |
-| `test_pdf.py` | ReportLab PDF certificate generation, styling, and QR code embedding | Valid PDF bytes generated with embedded QR payload and accurate metadata. |
+| `test_canonical.py` | Core Foundation | Validates Canonical JSON v1 against golden vectors (`canonical_vectors.json`). |
+| `test_crypto.py` | Core Crypto | Ed25519 key generation, signing, and verification roundtrips. |
+| `test_tamper.py` | Core Security | **Tamper Matrix:** Mutates every leaf node in a certificate and asserts rejection. |
+| `test_pdf.py` | Core Output | Validates ReportLab PDF certificate and QR code rendering. |
+| `test_e2e_demo.py` | Module 1: Drive Eraser | End-to-end drive wipe on sparse disk image with planted markers -> 0 hits. |
+| `test_overwrite.py` | Module 1: Overwrite | Multi-pass and single-pass zero overwrite chunk streaming and fsync flushes. |
+| `test_firmware_probes.py` | Module 1: Probes | ATA Security Erase, NVMe Sanitize, and HPA/DCO detection output parsers. |
+| `test_selection_safety.py` | Module 1: Safety | Target safety checks, mount refusals, and method selection rules. |
+| `test_file_eraser.py` | Module 2: File Eraser | Single file zero/random passes, recursive directory scrubbing, batch certificates. |
+| `test_carver.py` | Module 3: File Carver | Shannon entropy calculation, confidence scoring, multi-format carving from raw disk image. |
+| `test_audit.py` | Module 4: Audit Ledger | Genesis block creation, event recording, blockchain hash-chain verification, tamper detection. |
+| `test_gui.py` | User Dashboard | FastAPI headless test suite for all 4 module API endpoints. |
+| `test_portal.py` | Verification Portal | Cross-language test suite ensuring JavaScript verifier parity with Python reference. |
 
 ---
 
-### 2.2 Linux CLI & Sanitization Engines (`linux/cli/tests/`)
+## 3. Running All Tests
 
-| Test File | Test Scope | Verification Invariant |
-|---|---|---|
-| `test_e2e_demo.py` | Full end-to-end sanitization cycle on a sparse image file | Target file initialized with non-zero bytes -> wiped with `OVERWRITE_ZERO_1PASS` -> sampled 64-block readback matches 0x00 -> signed cert generated -> independent verification passes -> tampered copy rejected. |
-| `test_overwrite.py` | Overwrite engine, progress callback, chunk streaming, and fsync | Multi-pass write correctness, throughput calculations, and cancellation safety. |
-| `test_firmware_probes.py` | Mocked parsing of `hdparm -I`, `hdparm -N`, `nvme list`, and `lsblk` | Accurate parsing of ATA Security Erase support, frozen drive state detection, HPA/DCO max sectors, and NVMe sanitize capabilities. |
-| `test_selection_safety.py` | Target selection safety, mount checks, and method selection rules | Refuses to wipe mounted active root partitions without unmount/override. |
-
----
-
-### 2.3 Local Web GUI (`linux/gui/tests/`)
-
-| Test File | Test Scope | Verification Invariant |
-|---|---|---|
-| `test_gui.py` | FastAPI backend endpoints (`/api/devices`, `/api/plan`, `/api/wipe`, `/api/certificate`) | Correct JSON responses, SSE progress streaming, and certificate retrieval via `TestClient`. |
-
----
-
-### 2.4 Verification Portal & Cross-Language Parity (`verification-portal/tests/`)
-
-| Test File | Test Scope | Verification Invariant |
-|---|---|---|
-| `test_portal.py` | Static assets, pinned keys parity, and cross-verification tests | `keys.json` matches `core/keys/demo_issuer_public.pem`. Python and JS engines agree on valid and tampered certificates. |
-| `test_runner.html` | In-browser automated suite executing `verify.js` and `crypto-bundle.js` | Runs directly in web browser; validates all canonical golden vectors, schema rules, and Ed25519 signature checks in pure JavaScript. |
-
----
-
-## 3. The Forensic Verification Protocol
-
-To provide tangible, indisputable proof of data destruction during demonstrations and audits, TrustWipe implements a two-stage forensic test:
-
-```
-Step 1: Plant High-Entropy Markers
-  Target Disk (Offset 0MB)   ──▶ [PAN/Aadhaar Marker #1]
-  Target Disk (Offset 16MB)  ──▶ [PAN/Aadhaar Marker #2]
-  Target Disk (Offset 32MB)  ──▶ [PAN/Aadhaar Marker #3]
-  Pre-Wipe Raw Scan Check    ──▶ 16 Markers Found ✅
-
-Step 2: Execute TrustWipe Sanitization Engine
-  Target Disk Overwritten with 0x00 + fsync()
-
-Step 3: Dual Forensic Verification
-  A. Sampled Read-Back: Read 64 uniform 4096-byte blocks -> 100% 0x00 ✅
-  B. Raw Grep Stream Scan: Read entire disk image for marker string -> 0 Hits ✅
-```
-
----
-
-## 4. Test Execution Guide
-
-### Run All Python Test Suites (105+ Tests):
+Execute all 120 automated tests:
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests linux/gui/tests verification-portal/tests
+.venv/bin/pytest core/tests linux/cli/tests linux/gui/tests verification-portal/tests -v
 ```
-
-### Run End-to-End Live Forensic Demo:
-```bash
-TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
-```
-
-### Run In-Browser JavaScript Test Suite:
-Open `verification-portal/tests/test_runner.html` in any web browser or via local HTTP server (`python3 -m http.server 8080`).

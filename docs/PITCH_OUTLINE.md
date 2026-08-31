@@ -1,100 +1,59 @@
-# TrustWipe — SIH 2026 Pitch Deck & Live Demo Script
+# TrustWipe — SIH26149 Pitch Deck & Live Interactive Demonstration
 
-**Problem Statement:** Secure Data Wiping & Verifiable Certification for E-Waste Management  
-**Organization:** Ministry of Mines / JNARDDC (Jawaharlal Nehru Aluminium Research Development and Design Centre)  
-**Team / Project:** TrustWipe  
-**Format:** 5-Minute Pitch + 3-Minute Live Interactive Demonstration
-
----
-
-## 1. The Crisis: Why Current E-Waste Sanitization is Broken
-
-### The Context
-India generates over **1.71 million metric tonnes of e-waste annually** (CPCB 2023). Under the *E-Waste (Management) Rules 2022* and *Digital Personal Data Protection Act (DPDPA 2023)*, government ministries, mining PSUs (e.g., NALCO, HCL, MECL), defense establishments, and corporate enterprises are legally obligated to sanitize retired IT storage devices prior to recycling or disposal.
-
-### The Fatal Flaw in Existing Solutions:
-1. **The PDF Forgery Epidemic:** Traditional wiping tools (and uncertified recyclers) issue standard PDF or printed certificates. Anyone can open these PDFs in Acrobat or Photoshop, change the drive serial number, alter "Failed" to "Passed", and fraudulently certify stolen or improperly erased drives.
-2. **Proprietary Vendor Lock-in:** Commercial solutions (Blancco, BitRaser) charge high per-wipe licensing fees and store certificates on centralized vendor servers—creating single points of failure, privacy leakage, and recurring costs for government bodies.
-3. **Misleading Compliance Claims:** Many tools advertise "DoD 7-pass wipe" on modern NVMe/SSDs—a legacy 1990s method that destroys hardware lifespan while failing to erase overprovisioned flash memory.
+**Problem Statement ID:** 26149  
+**Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
+**Organization / Department:** National Technical Research Organisation (NTRO)  
+**Theme:** Blockchain & Cybersecurity  
+**Format:** 5-Minute Technical Pitch + 3-Minute Live Interactive Demonstration
 
 ---
 
-## 2. The Innovation: What TrustWipe Delivers
+## 1. The Challenge Faced by NTRO & Defense Agencies
 
-**TrustWipe** is an open-source, mathematically unforgeable, standards-compliant data sanitization and certification suite.
+Digital forensics and data security operations face two fundamental, conflicting challenges:
+1. **The Sanitization Challenge (Defensive):** Intelligence agencies and defense establishments need to irreversibly sanitize decommissioned storage media and classified files so that foreign adversaries cannot extract confidential intelligence.
+2. **The Recovery Challenge (Offensive):** Cyber forensic investigators need to extract, carve, and reconstruct deleted or concealed digital evidence from seized, formatted, or corrupted storage devices.
+3. **The Fragmentation Problem:** Currently, investigators must juggle multiple disjoint, proprietary, and costly tools (e.g. Blancco for drive wiping, BCWipe for file deletion, Autopsy/FTK for carving). This introduces operational friction, high licensing costs, and broken audit trails.
+
+---
+
+## 2. The Solution: TrustWipe Unified Forensic Suite
+
+TrustWipe integrates data sanitization, forensic file carving, and blockchain audit logging into a single high-performance platform:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        THE TRUSTWIPE ADVANTAGE                         │
+│                        TRUSTWIPE CORE MODULES                          │
 ├──────────────────────────────────┬─────────────────────────────────────┤
-│ 1. NIST SP 800-88 & IEEE 2883   │ Real firmware-level Purge (NVMe,    │
-│    Compliant Sanitization        │ ATA) & 1-pass Clear + FBE Destroy   │
+│ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
+│    (Module 1)                    │ 1-pass Clear + Forensic Verification│
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 2. Unforgeable Cryptography      │ Ed25519 digital signatures over     │
-│                                  │ strict TrustWipe Canonical JSON v1  │
+│ 2. Secure File & Folder Eraser   │ Extents overwrite, metadata zeroing,│
+│    (Module 2)                    │ directory entry scrambling & batch  │
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 3. Zero-Trust Verification       │ Pure client-side static web portal  │
-│    Portal (Zero Server / Cloud)  │ (offline, math-only verification)   │
+│ 3. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
+│    (Module 3)                    │ structure parser & entropy scoring  │
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 4. Forensic Readback Assurance   │ Multi-point sampled readback + raw  │
-│                                  │ grep scanning for planted markers   │
-├──────────────────────────────────┼─────────────────────────────────────┤
-│ 5. Universal Deployment Formats  │ CLI, Local Web GUI, & Bootable Live │
-│                                  │ ISO for air-gapped field operations │
+│ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
+│    (Module 4)                    │ SHA-256 block hash chaining         │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Competitive Feature Matrix
+## 3. Live 3-Minute Demonstration Script
 
-| Feature | TrustWipe | Blancco / BitRaser | DBAN (Legacy) | Basic Overwrite Scripts |
-|---|---|---|---|---|
-| **Cryptographic Tamper-Evidence** | ✅ **Ed25519 Signed JSON** | ⚠️ Proprietary PDF/Server | ❌ None | ❌ None |
-| **Verification Architecture** | ✅ **Zero-Trust Client-Side** | ❌ Centralized Cloud | ❌ None | ❌ None |
-| **Forensic Sampling Readback** | ✅ **Automated 64-Block Scan** | ⚠️ Optional / Slow | ❌ None | ❌ None |
-| **NIST 800-88 Method Enforcement** | ✅ **Schema-Level Constraints** | ⚠️ Marketing Claims | ❌ Outdated DoD | ❌ None |
-| **Bootable Air-Gapped Kiosk** | ✅ **Debian Live ISO** | ✅ Proprietary ISO | ⚠️ CD/BIOS Only | ❌ Manual |
-| **Licensing & Recurring Cost** | ✅ **100% Free / Open Source** | ❌ Expensive Per-Seat | ❌ Abandonware | ✅ Free |
-| **Cross-Platform Architecture** | ✅ **Linux, Win, Android, Web** | ⚠️ OS Dependent | ❌ x86 Only | ❌ OS Specific |
+### Minute 1: Module 1 & 2 (Drive & File Sanitization)
+- **Presenter:** *"Judges, let us demonstrate irreversible sanitization on sensitive files and storage media."*
+- **Action:** Run `trustwipe-wipe erase-files --targets classified_intel.pdf` and `demo_e2e.sh`.
+- **Result:** File clusters overwritten, metadata zeroed, 64-block forensic scan shows 0 hits, Ed25519 signed certificate generated.
 
----
+### Minute 2: Module 3 (Advanced File Carving & Recovery)
+- **Presenter:** *"Now let us switch to our offensive forensic capability: carving deleted evidence from a formatted raw disk image."*
+- **Action:** Run `trustwipe-wipe carve --target /evidence/suspect_drive.raw --out-dir ./recovered`.
+- **Result:** Carver scans disk, identifies magic headers/footers, calculates Shannon entropy confidence scores (>85%), extracts recovered files, and outputs a signed forensic recovery manifest.
 
-## 4. Live 3-Minute Demonstration Script
-
-### Minute 1: The Wipe & Forensic Proof
-- **Presenter:** *"Judges, let us wipe a storage target containing simulated confidential mining telemetry and Aadhaar records."*
-- **Action:** Execute `demo_e2e.sh`.
-- **Display:**
-  * Terminal displays 16 planted confidential markers.
-  * TrustWipe CLI performs 1-pass zero wipe at high throughput with real-time throughput display.
-  * Automated forensic audit runs: **0 marker hits remaining** across the entire drive.
-
-### Minute 2: The Cryptographic Certificate & The Attack
-- **Presenter:** *"The tool produces a signed JSON certificate and a formatted PDF with embedded QR code. Now, let us play the role of a malicious recycler who modifies the capacity or serial number on the certificate."*
-- **Action:** Show the single-byte modification in `certificate.tampered.json`.
-- **Result:** `trustwipe-verify` instantly outputs:
-  ```text
-  FAIL: signature does NOT match payload — the certificate content has been modified after signing
-  ```
-- **Presenter:** *"The mathematics of Ed25519 make tampering physically and cryptographically impossible."*
-
-### Minute 3: The Zero-Trust Verification Portal
-- **Presenter:** *"How does an auditor or ministry inspector verify this in the field without trusting our servers?"*
-- **Action:** Open `verification-portal/index.html` in browser (offline).
-  * Drag & drop authentic certificate -> **Shield turns GREEN: "AUTHENTIC & VERIFIED"**.
-  * Drag & drop tampered certificate -> **Shield turns RED: "TAMPER DETECTED"**.
-- **Presenter:** *"Trust the math, not our server."*
-
----
-
-## 5. National Impact & JNARDDC Deployment Roadmap
-
-```
-Phase 1: SIH Prototype ──▶ Phase 2: Pilot Testing ──▶ Phase 3: National Standard
-(Completed Core & ISO)    (JNARDDC ITAD Center)       (CPCB / Ministry Accreditation)
-```
-
-1. **Immediate Adoption for JNARDDC:** Deploy TrustWipe Live ISO across JNARDDC e-waste recycling pilot plants in Nagpur.
-2. **Standardization for Ministry of Mines PSUs:** Mandate TrustWipe cryptographic certificates for all decommissioned IT assets across NALCO, HCL, and MECL.
-3. **Ecosystem Enablement:** Provide the Verification Portal as a public service for banks, government departments, and citizens to verify recycled electronics authenticity.
+### Minute 3: Module 4 (Blockchain Audit Ledger)
+- **Presenter:** *"How do we guarantee unbroken chain-of-custody for NTRO audits?"*
+- **Action:** Open GUI or run `trustwipe-wipe audit verify`.
+- **Result:** Displays the SHA-256 hash-chained block ledger. Simulate a tampering attempt in SQLite and show the auditor detecting the exact broken block index immediately.

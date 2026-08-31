@@ -1,144 +1,84 @@
-# TrustWipe — System Architecture
+# TrustWipe — System Architecture & Forensic Engineering
 
-**Project:** Secure Data Sanitization & Cryptographic Certification Suite  
-**Context:** Smart India Hackathon (SIH 2026) • Ministry of Mines / JNARDDC  
-**Status:** Monorepo Architecture Specification (v1.0.0)
-
----
-
-## 1. Executive Overview
-
-TrustWipe is an open-source, mathematically verifiable, and standards-compliant data sanitization suite engineered to eliminate data residue on retired IT storage media (HDDs, SSDs, NVMe drives, removable flash, and mobile devices) while providing unforgeable, cryptographically signed sanitization certificates.
-
-Developed to address critical e-waste and supply chain integrity challenges for **JNARDDC (Jawaharlal Nehru Aluminium Association / Ministry of Mines)** and national e-waste recyclers, TrustWipe solves the fundamental problem of **unverifiable compliance**: existing commercial tools produce printable or PDF certificates that are trivial to forge or tamper with. TrustWipe anchors every wipe in an **Ed25519 digital signature over a deterministically canonicalized JSON payload**, paired with a **pure client-side, zero-trust verification portal**.
+**Problem Statement ID:** 26149  
+**Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
+**Organization / Department:** National Technical Research Organisation (NTRO)  
+**Theme:** Blockchain & Cybersecurity  
+**Version:** 2.0.0 (SIH26149 Production Architecture)
 
 ---
 
-## 2. Threat Model & Security Objectives
+## 1. Executive Mission & System Overview
 
-TrustWipe protects against adversarial actions across the e-waste lifecycle:
+TrustWipe is an integrated, dual-capability software suite engineered specifically for intelligence, defense, and digital forensics operations at the **National Technical Research Organisation (NTRO)**. 
+
+TrustWipe bridges the gap between two traditionally disjoint domains:
+1. **Defensive Anti-Forensics & Data Sanitization:** Irreversible destruction of sensitive intelligence data, files, and physical drives in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, anchored by **Ed25519 digital signatures**.
+2. **Offensive Digital Forensics & Evidence Recovery:** Advanced signature-based, structure-based (ext4), and entropy-scored carving to extract and reconstruct deleted or fragmented files from formatted or corrupted storage media.
+3. **Blockchain-Themed Cryptographic Audit Trail:** An append-only local SQLite ledger where every wipe, file erasure, and forensic carving operation forms a cryptographic block chained by **SHA-256 block hashing**, ensuring complete non-repudiation and forensic chain of custody.
+
+---
+
+## 2. Threat Model & Forensic Objectives
 
 ```
-[Target Storage Device] ──▶ [TrustWipe Wiping Engine] ──▶ [Forensic Readback]
-                                     │
-                             (Private Key Sign)
-                                     ▼
-                            [Signed JSON / PDF]
-                                     │
-                        (Independent Auditor / Portal)
-                                     ▼
-                       [Ed25519 Math Verification]
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │                       TRUSTWIPE ARCHITECTURE                           │
+   ├───────────────────────────────────┬────────────────────────────────────┤
+   │     SANITIZATION SUBSYSTEM        │        FORENSIC SUBSYSTEM          │
+   ├───────────────────────────────────┼────────────────────────────────────┤
+   │ • Module 1: Drive Eraser          │ • Module 3: Advanced File Carver   │
+   │   (NVMe, ATA, Discard, Overwrite) │   (Signature, Ext4, Entropy Score) │
+   │ • Module 2: File/Folder Eraser    │ • Evidence Reconstruction Engine   │
+   │   (Extents, Metadata Cleansing)   │   (Bounded Fragment Reassembly)    │
+   ├───────────────────────────────────┴────────────────────────────────────┤
+   │                  CRYPTOGRAPHIC CORE & INTEGRITY LAYER                  │
+   ├────────────────────────────────────────────────────────────────────────┤
+   │ • Ed25519 Digital Signatures (RFC 8032) & TrustWipe Canonical JSON v1  │
+   │ • Module 4: Blockchain Hash-Chained Audit Ledger (SQLite + SHA-256)    │
+   └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Threat Vectors Addressed:
-1. **Certificate Forgery & Post-Hoc Alteration:**
-   - *Threat:* An attacker modifies disk serial numbers, capacity, operator IDs, or wipe status on a PDF/JSON certificate to falsely claim compliance.
-   - *Mitigation:* The entire certificate content (excluding the signature object itself) is canonicalized and signed using Ed25519. Changing a single bit in any field immediately breaks mathematical signature verification.
-
-2. **Incompetent / Partial Wiping Falsely Marked as Complete:**
-   - *Threat:* A wiping script encounters I/O errors or early termination but still issues a success certificate.
-   - *Mitigation:* The wiper runs an automated forensic sampling verification step (e.g., 64 sampled blocks across the drive and raw pattern scanning for planted markers). If any non-zero block or marker persists, the status is marked `failure` or `partial`.
-
-3. **Vendor Lock-in & "Trust Our Cloud Server" Vulnerabilities:**
-   - *Threat:* Proprietary wipe vendors validate certificates via their proprietary cloud database, creating single points of failure, privacy leaks, and reliance on server trust.
-   - *Mitigation:* Pure client-side Ed25519 verification. Verifiers pin the public keys of accredited authorities (e.g., JNARDDC); the verification portal contains zero backend and no database.
-
-4. **Hidden Storage Areas (HPA / DCO):**
-   - *Threat:* Data remains hidden in ATA Host Protected Areas (HPA) or Device Configuration Overlays (DCO).
-   - *Mitigation:* Linux CLI actively queries ATA max sectors vs native max sectors (`hdparm -N`, `hdparm --dco-identify`) and flags hidden capacity prior to sanitization.
-
-5. **Private Key Leaks in Application Bundles:**
-   - *Threat:* Shipping signing keys inside the CLI, GUI, or ISO allows rogue operators to mint fraudulent certificates.
-   - *Mitigation:* Strict key separation. Private keys are generated out-of-band on air-gapped authority machines and are strictly blocked from code repositories, installer bundles, and live ISOs.
+### Forensic Threats & Integrity Guarantees:
+1. **Evidence Tampering & Chain-of-Custody Break:**
+   - *Threat:* Defense attorneys or adversaries claim digital evidence was planted or modified post-extraction.
+   - *Mitigation:* Every carved file generates a cryptographic SHA-256 hash. The session manifest is Ed25519-signed and recorded into the hash-chained blockchain audit ledger.
+2. **Incomplete Sanitization & Data Residue:**
+   - *Threat:* File deletion leaves directory entry names, timestamps, or allocated cluster remnants reachable by forensic tools.
+   - *Mitigation:* Module 2 executes physical cluster overwriting, resets inode timestamps to epoch 0, and scrambles directory entry filenames before unlinking.
+3. **Audit Record Alteration:**
+   - *Threat:* An insider alters database records to hide unauthorized data destruction or evidence tampering.
+   - *Mitigation:* Modifying any row in the SQLite ledger breaks the SHA-256 block hash continuity (`prev_hash != block_hash`), detected instantly by `trustwipe-wipe audit verify`.
 
 ---
 
-## 3. High-Level System Architecture
+## 3. Subsystem Architecture
 
-```
-trustwipe/
-├── core/                       # Shared Cryptographic & Schema Foundation
-│   ├── cert_schema.json        # Machine-readable JSON Schema v1.0.0
-│   ├── CANONICAL_JSON.md       # TrustWipe Canonical JSON v1 Specification
-│   ├── standards/              # NIST SP 800-88 Rev. 1 Mapping Registry
-│   └── python/trustwipe_core/  # Reference Python Crypto & Canonicalization Engine
-├── linux/                      # Linux Sanitization Suite
-│   ├── cli/                    # Python CLI (methods: NVMe, ATA, BLKDISCARD, Overwrite)
-│   ├── gui/                    # Local Web GUI (FastAPI + Modern HTML5 Interface)
-│   └── iso/                    # Debian Live-Build Bootable ISO Configuration
-├── verification-portal/        # Zero-Trust Static Web Verification Portal
-│   ├── index.html              # Responsive Client-Side Auditor UI
-│   ├── verify.js               # Standalone JavaScript Verifier
-│   └── vendor/crypto-bundle.js # Pure JS TweetNaCl & SHA-256 Engine
-└── docs/                       # Comprehensive System Documentation
-```
+### 3.1 Module 1: Secure Drive Eraser (`trustwipe_cli/methods/`)
+- Sanitizes physical HDDs, SSDs, NVMe drives, USB media, and raw image files.
+- Communicates via controller-level commands (`NVME_SANITIZE`, `ATA_SECURE_ERASE`, `BLKDISCARD`) and host-level multi-pass overwrite engines.
+- Conducts automated 64-block sampled readback verification and raw grep scanning for planted forensic markers.
 
----
+### 3.2 Module 2: Secure File & Folder Eraser (`trustwipe_cli/file_eraser.py`)
+- Selective sanitization of targeted files and directories.
+- In-place cluster overwriting with fsync flushes.
+- Metadata cleansing (timestamp zeroing, file truncation, directory entry renaming before unlinking).
+- Issues consolidated batch certificates signed with Ed25519.
 
-## 4. Subsystem Deep-Dives
+### 3.3 Module 3: Advanced File Carving & Recovery (`trustwipe_cli/carver/`)
+- **Signature Engine (`signatures.py`):** High-fidelity header/footer scanning for JPEG, PNG, PDF, ZIP/DOCX/XLSX, GIF, GZIP.
+- **Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and inode extent tree parser for recovering deleted files with intact structure.
+- **Confidence Scoring (`scoring.py`):** Multi-factor scoring (header match 30%, footer match 30%, size plausibility 20%, Shannon entropy analysis 20%).
 
-### 4.1. Core Cryptographic & Serialization Engine (`core/`)
+### 3.4 Module 4: Blockchain Audit Management Ledger (`trustwipe_cli/audit/`)
+- Append-only local SQLite ledger (`trustwipe_audit.db`).
+- Every sanitization and forensic carving event forms a block:
+  $$	ext{block\_hash} = 	ext{SHA256}(	ext{index} \parallel 	ext{timestamp} \parallel 	ext{op\_type} \parallel 	ext{target\_id} \parallel 	ext{operator\_id} \parallel 	ext{cert\_uuid} \parallel 	ext{payload\_hash} \parallel 	ext{signature} \parallel 	ext{prev\_hash})$$
+- Verification engine iterates from Genesis to tip, proving unbroken mathematical continuity.
 
-- **TrustWipe Canonical JSON v1 (`CANONICAL_JSON.md`):**
-  - Problem: JSON serializers in Python, JavaScript, C#, and Kotlin differ in whitespace, key ordering, string escaping, and floating-point number rendering.
-  - Solution: A strict canonicalization standard:
-    1. Recursive Unicode code-point key sorting.
-    2. Zero insignificant whitespace (separators `,` and `:`).
-    3. Minimal escaping (`"`, `\`, control chars U+0000–U+001F).
-    4. **Integer-Only Rule:** Schema v1 strictly forbids floating-point numbers anywhere in certificates (sizes in bytes, timestamps in integer seconds). Floats raise immediate errors rather than risking serialization divergence.
-
-- **Ed25519 Digital Signatures (RFC 8032):**
-  - High-performance, constant-time Edwards-curve digital signature algorithm.
-  - Public keys distributed in standard SubjectPublicKeyInfo (SPKI) PEM/DER format.
-  - Key fingerprint calculated as `"sha256:" + hex(sha256(der_spki))`.
-  - Signatures encoded in unpadded base64url.
-
-- **Certificate Schema (`cert_schema.json`):**
-  - Strongly-typed JSON schema encompassing 100% of audit metadata: schema version, UUID, timestamp, issuer org & operator, tool platform & kernel, device hardware info (ID, model, serial, capacity, sector size), wipe method & NIST category (Clear/Purge/Destroy), execution times, verification samples, and signature block.
-
-### 4.2. Linux Sanitization Engine (`linux/`)
-
-- **Device Discovery & Probing (`devices.py`):**
-  - Gathers typed hardware inventory using `lsblk -J`, `/sys/block`, and `udev`.
-  - Flags mounted partitions to prevent accidental operating system destruction.
-  - Supports both physical block devices (`/dev/sdX`, `/dev/nvmeXnY`) and unprivileged sparse image files for testing and simulation.
-
-- **Sanitization Method Backends (`methods/`):**
-  1. `NVME_SANITIZE_CRYPTO_ERASE` / `NVME_SANITIZE_BLOCK_ERASE` / `NVME_FORMAT`: Communicates via `nvme-cli` to execute controller-level purge covering overprovisioned flash.
-  2. `ATA_SECURE_ERASE` / `ATA_SECURE_ERASE_ENHANCED`: Issues ATA security erase commands via `hdparm`, handling BIOS frozen states and temporary password workflows.
-  3. `BLKDISCARD`: Linux kernel ioctl `BLKDISCARD` for fast SSD trim/discard; records DRAT/RZAT deterministic read behavior.
-  4. `OVERWRITE_ZERO_1PASS` / `SHRED_RANDOM_NPASS`: Direct logical block overwrite engine with periodic progress streaming and fsync flushes.
-
-- **Forensic Verification & Planted Marker Engine (`methods/overwrite.py`):**
-  - Plants high-entropy test markers (e.g., confidential data simulations) at known offsets prior to wiping.
-  - Post-wipe: conducts dual verification:
-    * Sampled read-back across 64 uniform offsets.
-    * Raw stream scanning across the target to prove 0 marker hits remain.
-
-### 4.3. User Interfaces
-
-- **Command-Line Interface (`linux/cli/trustwipe_cli`):**
-  - Commands: `list` (device discovery), `plan` (safe dry-run preview), `wipe` (execution + cert generation), `trustwipe-keygen`, `trustwipe-sign`, `trustwipe-verify`.
-- **Local Web GUI (`linux/gui`):**
-  - FastAPI backend serving a single-page interface for visual device selection, dry-run inspection, real-time wiping progress bars, and instant PDF/JSON certificate downloads.
-- **Bootable Live ISO (`linux/iso`):**
-  - Debian-based live kiosk environment configured via `live-build` to boot directly into the TrustWipe GUI without installing software on the target machine.
-
-### 4.4. Verification Portal (`verification-portal/`)
-
-- Pure client-side static web application.
-- Embeds a vendored pure JavaScript cryptographic engine (TweetNaCl + SHA-256).
-- Zero external build step (no npm/Webpack needed).
-- Provides drag-and-drop JSON certificate verification, QR code decoding, and cryptographic breakdown directly in the browser.
-
----
-
-## 5. Security & Cryptographic Invariants
-
-| Invariant | Implementation Mechanism | Validation / Test |
-|---|---|---|
-| **Deterministic Canonicalization** | Unicode code point sorting, minimal escaping, float rejection | Golden vectors (`canonical_vectors.json`) tested in Python & JS |
-| **Tamper Evidence** | Ed25519 signature over canonical payload (minus signature block) | Exhaustive leaf mutation matrix (`test_tamper.py`) |
-| **Tier Integrity** | Strict `METHOD_TIERS` registry in schema & code | Schema validator rejects Clear methods claiming Purge |
-| **Forensic Assurance** | 64-point sampled read-back + raw grep pattern scanning | `test_e2e_demo.py` & `demo_e2e.sh` |
-| **Zero-Server Dependency** | Pinned public keys in client-side static verifier | `verification-portal/index.html` runs offline via `file://` |
+### 3.5 Unified Web Dashboard (`linux/gui/`)
+- Multi-tab forensic operator console (FastAPI backend + responsive frontend):
+  1. Drive Eraser Tab
+  2. File & Folder Eraser Tab
+  3. Forensic File Carver Tab
+  4. Blockchain Audit Ledger Tab
