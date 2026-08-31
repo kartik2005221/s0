@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrustWipe — Certificate Verification Portal</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --primary: #238636;
+      --primary-hover: #2ea043;
+      --danger: #da3633;
+      --danger-bg: rgba(218, 54, 51, 0.15);
+      --warning: #d29922;
+      --warning-bg: rgba(210, 153, 34, 0.15);
+      --success: #238636;
+      --success-bg: rgba(35, 134, 54, 0.15);
+      --accent: #58a6ff;
+      --code-bg: #090d13;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .brand-title .shield {
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-top: 6px;
+    }
+
+    .trust-tagline {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 12px;
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+
+    @media (min-width: 860px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--card-border);
+      border-radius: 8px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(88, 166, 255, 0.05);
+    }
+
+    .dropzone p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 8px;
+    }
+
+    .dropzone input[type="file"] {
+      display: none;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    button, .btn {
+      background: #21262d;
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    button:hover, .btn:hover {
+      background: #30363d;
+      border-color: #8b949e;
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: rgba(240, 246, 252, 0.1);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    button.danger-outline {
+      border-color: rgba(218, 54, 51, 0.5);
+      color: #f85149;
+    }
+
+    button.danger-outline:hover {
+      background: var(--danger-bg);
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 10px;
+      resize: vertical;
+      margin-top: 12px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Results section */
+    .result-banner {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border: 1px solid transparent;
+    }
+
+    .result-banner.authentic {
+      background: var(--success-bg);
+      border-color: var(--success);
+      color: #7ee787;
+    }
+
+    .result-banner.tampered {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+      color: #f85149;
+    }
+
+    .result-banner.untrusted {
+      background: var(--warning-bg);
+      border-color: var(--warning);
+      color: #f2cc60;
+    }
+
+    .result-banner.invalid {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+      color: #f85149;
+    }
+
+    .banner-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .banner-text h3 {
+      font-size: 1.25rem;
+      margin-bottom: 4px;
+    }
+
+    .banner-text p {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .prop-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin-top: 10px;
+    }
+
+    .prop-table th, .prop-table td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .prop-table th {
+      color: var(--text-muted);
+      width: 35%;
+      font-weight: 500;
+    }
+
+    .prop-table td {
+      color: var(--text);
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-clear { background: rgba(88, 166, 255, 0.2); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); }
+    .badge-purge { background: rgba(35, 134, 54, 0.2); color: #7ee787; border: 1px solid rgba(35, 134, 54, 0.4); }
+    .badge-destroy { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid rgba(218, 54, 51, 0.4); }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--card-border);
+      margin-top: 16px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    pre code {
+      display: block;
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #c9d1d9;
+      overflow-x: auto;
+      max-height: 250px;
+    }
+
+    footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--card-border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="brand-title">
+      <span class="shield">🛡️</span> TrustWipe Verification Portal
+    </div>
+    <div class="subtitle">
+      Cryptographic Certificate Audit & Verification Engine — Pure Client-Side Ed25519
+    </div>
+    <div class="trust-tagline">
+      Smart India Hackathon • Ministry of Mines / JNARDDC • Zero-Trust Offline Architecture
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left Column: Input & Actions -->
+    <div>
+      <div class="card">
+        <h2>📂 Input Certificate</h2>
+        <div class="dropzone" id="dropzone">
+          <span style="font-size: 2.2rem;">📄</span>
+          <p><strong>Drag & Drop</strong> certificate JSON here, or <strong>Click to Browse</strong></p>
+          <input type="file" id="fileInput" accept=".json,application/json">
+        </div>
+
+        <div style="margin-top: 16px;">
+          <label style="font-size: 0.85rem; color: var(--text-muted);">Or paste raw certificate JSON:</label>
+          <textarea id="jsonInput" placeholder="{
+  "schema_version": "1.0.0",
+  "cert_uuid": "...",
+  ...
+}"></textarea>
+        </div>
+
+        <div class="btn-group">
+          <button class="primary" id="btnVerify">Verify Signature</button>
+          <button id="btnClear">Clear</button>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--card-border);">
+          <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">⚡ Live Demonstration Scenarios:</label>
+          <div class="btn-group" style="margin-top: 8px;">
+            <button id="btnLoadValid">Load Authentic Certificate</button>
+            <button class="danger-outline" id="btnLoadTampered">Load Tampered Certificate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h2>🔑 Pinned Issuer Keys</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
+          TrustWipe operates on a zero-trust model. Certificates are verified exclusively against pinned public keys.
+        </p>
+        <div id="pinnedKeysList" style="font-size: 0.8rem; font-family: var(--font-mono); background: var(--code-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);">
+          Loading pinned keys...
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Verification Results -->
+    <div>
+      <div class="card" id="resultsCard">
+        <h2>🔍 Verification Audit Result</h2>
+        <div id="emptyState" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+          <span style="font-size: 3rem; opacity: 0.4;">🔒</span>
+          <p style="margin-top: 12px;">No certificate loaded yet.<br>Upload a certificate JSON or click a scenario button to verify.</p>
+        </div>
+
+        <div id="resultContainer" style="display: none;">
+          <div id="resultBanner" class="result-banner">
+            <div class="banner-icon" id="bannerIcon">✓</div>
+            <div class="banner-text">
+              <h3 id="bannerTitle">Status</h3>
+              <p id="bannerDesc">Description</p>
+            </div>
+          </div>
+
+          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">📜 Certificate Overview</h3>
+          <table class="prop-table">
+            <tbody>
+              <tr><th>Certificate UUID</th><td id="resUuid">-</td></tr>
+              <tr><th>Issued At</th><td id="resIssuedAt">-</td></tr>
+              <tr><th>Issuing Org</th><td id="resIssuer">-</td></tr>
+              <tr><th>Operator ID</th><td id="resOperator">-</td></tr>
+              <tr><th>Tool Platform</th><td id="resTool">-</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">💾 Device & Wipe Method</h3>
+          <table class="prop-table">
+            <tbody>
+              <tr><th>Device ID / Serial</th><td id="resDevice">-</td></tr>
+              <tr><th>Storage Type / Size</th><td id="resStorage">-</td></tr>
+              <tr><th>Wipe Method</th><td id="resMethod">-</td></tr>
+              <tr><th>NIST 800-88 Tier</th><td id="resNistTier">-</td></tr>
+              <tr><th>Forensic Verification</th><td id="resForensic">-</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">🔐 Cryptographic Evidence</h3>
+          <table class="prop-table">
+            <tbody>
+              <tr><th>Algorithm</th><td>Ed25519 (RFC 8032)</td></tr>
+              <tr><th>Key Fingerprint</th><td id="resFingerprint">-</td></tr>
+              <tr><th>Payload SHA-256</th><td id="resPayloadHash">-</td></tr>
+            </tbody>
+          </table>
+
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('canonical')">Canonical Payload</button>
+            <button class="tab-btn" onclick="switchTab('raw')">Raw Certificate JSON</button>
+          </div>
+
+          <div id="tab-canonical" class="tab-content active">
+            <pre><code id="codeCanonical">-</code></pre>
+          </div>
+          <div id="tab-raw" class="tab-content">
+            <pre><code id="codeRaw">-</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>TrustWipe Secure Data Wiping Suite • Pure Client-Side Zero-Trust Verification Portal</p>
+    <p style="font-size: 0.78rem; margin-top: 4px; color: #57606a;">
+      No server communication required. Math and cryptographic signatures guarantee tamper evidence.
+    </p>
+  </footer>
+</div>
+
+<!-- Load pure client-side crypto & verifier -->
+<script src="vendor/crypto-bundle.js"></script>
+<script src="verify.js"></script>
+<script>
+  var PINNED_KEYS = [
+    {
+      issuer: "TrustWipe Demo Lab (unaccredited development key)",
+      fingerprint: "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
+      public_key_spki_pem: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA4viQlkj0bHna+uhXpU+r4LjzhKG5nq3tGMih9VoR7K0=\n-----END PUBLIC KEY-----",
+      public_key_raw_hex: "e2f8909648f46c79dafae857a54fabe0b8f384a1b99eaded18c8a1f55a11ecad"
+    }
+  ];
+
+  // Try loading keys.json dynamically if accessible
+  fetch("keys.json")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.trusted_keys && data.trusted_keys.length) {
+        PINNED_KEYS = data.trusted_keys;
+      }
+      renderPinnedKeys();
+    })
+    .catch(function() {
+      renderPinnedKeys();
+    });
+
+  function renderPinnedKeys() {
+    var el = document.getElementById("pinnedKeysList");
+    if (!el) return;
+    var html = "";
+    PINNED_KEYS.forEach(function(k) {
+      html += "<div><strong>" + (k.issuer || "Pinned Key") + "</strong><br>" +
+              "<span style='color: #58a6ff;'>" + k.fingerprint + "</span></div>";
+    });
+    el.innerHTML = html;
+  }
+
+  // Drag & drop handlers
+  var dropzone = document.getElementById("dropzone");
+  var fileInput = document.getElementById("fileInput");
+  var jsonInput = document.getElementById("jsonInput");
+
+  dropzone.addEventListener("click", function() { fileInput.click(); });
+  dropzone.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+  dropzone.addEventListener("dragleave", function() {
+    dropzone.classList.remove("dragover");
+  });
+  dropzone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", function(e) {
+    if (e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      jsonInput.value = evt.target.result;
+      runVerification();
+    };
+    reader.readAsText(file);
+  }
+
+  document.getElementById("btnVerify").addEventListener("click", runVerification);
+  document.getElementById("btnClear").addEventListener("click", function() {
+    jsonInput.value = "";
+    document.getElementById("emptyState").style.display = "block";
+    document.getElementById("resultContainer").style.display = "none";
+  });
+
+  // Scenario loading
+  document.getElementById("btnLoadValid").addEventListener("click", function() {
+    fetch("tests/sample_valid_cert.json")
+      .then(function(r) { return r.json(); })
+      .then(function(cert) {
+        jsonInput.value = JSON.stringify(cert, null, 2);
+        runVerification();
+      })
+      .catch(function(e) {
+        alert("Could not load sample valid cert: " + e);
+      });
+  });
+
+  document.getElementById("btnLoadTampered").addEventListener("click", function() {
+    fetch("tests/sample_tampered_cert.json")
+      .then(function(r) { return r.json(); })
+      .then(function(cert) {
+        jsonInput.value = JSON.stringify(cert, null, 2);
+        runVerification();
+      })
+      .catch(function(e) {
+        alert("Could not load sample tampered cert: " + e);
+      });
+  });
+
+  function runVerification() {
+    var rawText = jsonInput.value.trim();
+    if (!rawText) {
+      alert("Please paste or upload a certificate JSON first.");
+      return;
+    }
+
+    var certObj;
+    try {
+      certObj = JSON.parse(rawText);
+    } catch (e) {
+      showResult({
+        ok: false,
+        status: "JSON_PARSE_ERROR",
+        reason: "Invalid JSON format: " + e.message
+      }, null);
+      return;
+    }
+
+    var result = TrustWipeVerifier.verifyCertificate(certObj, PINNED_KEYS);
+    showResult(result, certObj);
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes && bytes !== 0) return "-";
+    if (bytes < 1024) return bytes + " B";
+    var units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i] + " (" + bytes.toLocaleString() + " B)";
+  }
+
+  function showResult(res, cert) {
+    document.getElementById("emptyState").style.display = "none";
+    var container = document.getElementById("resultContainer");
+    container.style.display = "block";
+
+    var banner = document.getElementById("resultBanner");
+    var icon = document.getElementById("bannerIcon");
+    var title = document.getElementById("bannerTitle");
+    var desc = document.getElementById("bannerDesc");
+
+    banner.className = "result-banner";
+
+    if (res.ok) {
+      banner.classList.add("authentic");
+      icon.textContent = "🛡️";
+      title.textContent = "AUTHENTIC & VERIFIED";
+      desc.textContent = res.reason;
+    } else if (res.status === "TAMPERED_OR_CORRUPT") {
+      banner.classList.add("tampered");
+      icon.textContent = "⚠️";
+      title.textContent = "TAMPER DETECTED / INVALID SIGNATURE";
+      desc.textContent = res.reason;
+    } else if (res.status === "UNTRUSTED_ISSUER") {
+      banner.classList.add("untrusted");
+      icon.textContent = "❓";
+      title.textContent = "UNTRUSTED ISSUER KEY";
+      desc.textContent = res.reason;
+    } else {
+      banner.classList.add("invalid");
+      icon.textContent = "❌";
+      title.textContent = "VALIDATION FAILED (" + res.status + ")";
+      desc.textContent = res.reason;
+    }
+
+    if (cert) {
+      document.getElementById("resUuid").textContent = cert.cert_uuid || "-";
+      document.getElementById("resIssuedAt").textContent = cert.issued_at || "-";
+      document.getElementById("resIssuer").textContent = (cert.issuer && cert.issuer.organization) || "-";
+      document.getElementById("resOperator").textContent = (cert.issuer && cert.issuer.operator_id) || "-";
+      document.getElementById("resTool").textContent = cert.tool ? (cert.tool.name + " v" + cert.tool.version + " (" + cert.tool.platform + ")") : "-";
+
+      var dev = cert.device || {};
+      document.getElementById("resDevice").textContent = (dev.model ? dev.model + " • " : "") + (dev.serial_number || dev.device_id || "-");
+      document.getElementById("resStorage").textContent = (dev.storage_type || "-") + " • " + formatBytes(dev.capacity_bytes);
+
+      var wipe = cert.wipe || {};
+      document.getElementById("resMethod").textContent = (wipe.method || "-") + (wipe.passes ? " (" + wipe.passes + " pass)" : "");
+
+      var tier = wipe.nist_category || "Unknown";
+      var tierClass = "badge-" + tier.toLowerCase();
+      document.getElementById("resNistTier").innerHTML = "<span class='badge " + tierClass + "'>" + tier + "</span>";
+
+      var verif = (cert.result && cert.result.verification) || {};
+      var verifText = verif.samples_checked ? (verif.samples_checked + " samples checked (all match wipe pattern)") : "Standard verification";
+      if (verif.planted_pattern_hits_after !== undefined) {
+        verifText += " • Planted marker hits: " + verif.planted_pattern_hits_after;
+      }
+      document.getElementById("resForensic").textContent = verifText;
+
+      document.getElementById("resFingerprint").textContent = (cert.signature && cert.signature.public_key_fingerprint) || "-";
+      document.getElementById("resPayloadHash").textContent = res.computedPayloadHash || (cert.signature && cert.signature.signed_payload_hash) || "-";
+
+      document.getElementById("codeRaw").textContent = JSON.stringify(cert, null, 2);
+      document.getElementById("codeCanonical").textContent = res.canonicalPayload || "-";
+    }
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+    document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.remove("active"); });
+    if (tabId === "canonical") {
+      document.querySelectorAll(".tab-btn")[0].classList.add("active");
+      document.getElementById("tab-canonical").classList.add("active");
+    } else {
+      document.querySelectorAll(".tab-btn")[1].classList.add("active");
+      document.getElementById("tab-raw").classList.add("active");
+    }
+  }
+</script>
+</body>
+</html>

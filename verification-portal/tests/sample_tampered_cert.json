@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "cert_uuid": "6da82f40-ba63-4f06-a2bd-fb7bee6e715a",
+  "issued_at": "2026-08-31T01:59:10Z",
+  "issuer": {
+    "organization": "TrustWipe Demo Lab",
+    "operator_id": "op-demo-42"
+  },
+  "tool": {
+    "name": "trustwipe-cli",
+    "version": "0.1.0",
+    "platform": "linux"
+  },
+  "device": {
+    "device_id": "test-drive-001",
+    "device_type": "image_file",
+    "storage_type": "IMAGE_FILE",
+    "capacity_bytes": 1049600,
+    "model": "Virtual Test Drive",
+    "serial_number": "SN-12345678"
+  },
+  "wipe": {
+    "method": "OVERWRITE_ZERO_1PASS",
+    "nist_category": "Clear",
+    "start_time": "2026-08-31T07:00:00Z",
+    "end_time": "2026-08-31T07:01:00Z",
+    "bytes_processed": 1048576
+  },
+  "result": {
+    "status": "success",
+    "verification": {
+      "method": "sampled_readback",
+      "samples_checked": 64,
+      "sample_bytes_each": 4096,
+      "all_samples_match_wipe_pattern": true,
+      "planted_pattern_hits_after": 0
+    }
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "public_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
+    "signature_base64url": "XdOW58bAcLG9uRjSi1L8KNaDJv9Yf20RmY-wjlNCVGblAIaQ6sWPBlWllEsqkpUq1bADZJMGNWcOT7hGAgSQDw",
+    "signed_payload_hash": "sha256:06adba4797d005940c7ef562c2da64967e479e35aea23a284f965c4b7cf4c815"
+  }
+}

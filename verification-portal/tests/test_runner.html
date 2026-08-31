@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TrustWipe JavaScript Verification Suite</title>
+  <style>
+    body { font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+    h1 { color: #58a6ff; }
+    .test { margin: 8px 0; padding: 6px 12px; border-radius: 4px; }
+    .pass { background: #23863622; color: #7ee787; border-left: 4px solid #238636; }
+    .fail { background: #da363322; color: #f85149; border-left: 4px solid #da3633; }
+    #summary { font-size: 1.2rem; font-weight: bold; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 TrustWipe JS In-Browser Test Suite</h1>
+  <div id="results">Running tests...</div>
+  <div id="summary"></div>
+
+  <script src="../vendor/crypto-bundle.js"></script>
+  <script src="../verify.js"></script>
+  <script>
+    var resultsDiv = document.getElementById("results");
+    var summaryDiv = document.getElementById("summary");
+    var passed = 0;
+    var failed = 0;
+
+    function assert(cond, name, details) {
+      var d = document.createElement("div");
+      if (cond) {
+        passed++;
+        d.className = "test pass";
+        d.textContent = "✓ PASS: " + name;
+      } else {
+        failed++;
+        d.className = "test fail";
+        d.textContent = "✗ FAIL: " + name + (details ? " (" + details + ")" : "");
+      }
+      resultsDiv.appendChild(d);
+    }
+
+    async function runAll() {
+      resultsDiv.innerHTML = "";
+
+      // 1. Golden vectors
+      var vResp = await fetch("../../core/tests/data/canonical_vectors.json");
+      var vData = await vResp.json();
+      vData.vectors.forEach(function(v) {
+        try {
+          var out = TrustWipeVerifier.canonicalizeStr(v.input);
+          assert(out === v.canonical, "Golden vector: " + v.name, "expected: " + v.canonical + ", got: " + out);
+        } catch (e) {
+          assert(false, "Golden vector: " + v.name, e.message);
+        }
+      });
+
+      // 2. Float rejection
+      try {
+        TrustWipeVerifier.canonicalizeStr({ a: 12.34 });
+        assert(false, "Rejection of float values in canonicalizeStr");
+      } catch (e) {
+        assert(true, "Rejection of float values in canonicalizeStr");
+      }
+
+      // 3. Key loading
+      var kResp = await fetch("../keys.json");
+      var kData = await kResp.json();
+      assert(kData && kData.trusted_keys && kData.trusted_keys.length > 0, "Loaded pinned keys from keys.json");
+
+      // 4. Sample valid cert verification
+      var cResp = await fetch("sample_valid_cert.json");
+      var validCert = await cResp.json();
+      var vResult = TrustWipeVerifier.verifyCertificate(validCert, kData.trusted_keys);
+      assert(vResult.ok === true && vResult.status === "AUTHENTIC", "Sample valid cert verifies correctly", vResult.reason);
+
+      // 5. Sample tampered cert rejection
+      var tResp = await fetch("sample_tampered_cert.json");
+      var tamperedCert = await tResp.json();
+      var tResult = TrustWipeVerifier.verifyCertificate(tamperedCert, kData.trusted_keys);
+      assert(tResult.ok === false && tResult.status === "TAMPERED_OR_CORRUPT", "Tampered capacity_bytes rejected", tResult.reason);
+
+      // 6. Key reorder invariance
+      var reordered = JSON.parse(JSON.stringify(validCert));
+      var reorderedKeys = {
+        wipe: reordered.wipe,
+        device: reordered.device,
+        schema_version: reordered.schema_version,
+        result: reordered.result,
+        cert_uuid: reordered.cert_uuid,
+        tool: reordered.tool,
+        issued_at: reordered.issued_at,
+        issuer: reordered.issuer,
+        signature: reordered.signature
+      };
+      var rResult = TrustWipeVerifier.verifyCertificate(reorderedKeys, kData.trusted_keys);
+      assert(rResult.ok === true, "Key reordering does not affect verification validity");
+
+      // 7. Untrusted key rejection
+      var untrustedCert = JSON.parse(JSON.stringify(validCert));
+      untrustedCert.signature.public_key_fingerprint = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+      var uResult = TrustWipeVerifier.verifyCertificate(untrustedCert, kData.trusted_keys);
+      assert(uResult.ok === false && uResult.status === "UNTRUSTED_ISSUER", "Untrusted key fingerprint rejected");
+
+      summaryDiv.innerHTML = "Total tests: " + (passed + failed) + " | Passed: " + passed + " | Failed: " + failed;
+      summaryDiv.style.color = failed === 0 ? "#7ee787" : "#f85149";
+    }
+
+    runAll();
+  </script>
+</body>
+</html>
