@@ -303,6 +303,7 @@ def erase_batch(
     organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    generate_certificate: bool = True,
 ) -> BatchEraseSummary:
     """Execute batch file & folder erasure and generate an Ed25519-signed certificate."""
     start_time = cert_mod.now_utc()
@@ -335,51 +336,58 @@ def erase_batch(
     ]
 
     # Build signed certificate
-    key_file = (
-        Path(signing_key_path)
-        if signing_key_path
-        else Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
-    )
-
     cert = None
-    if key_file.exists():
-        try:
-            cert_dict = cert_mod.build_certificate(
-                organization=organization,
-                operator_id=operator_id,
-                tool_name="trustwipe-file-eraser",
-                tool_version="1.0.0",
-                platform="linux",
-                device_id=f"batch-files-{secrets.token_hex(8)}",
-                device_type="internal_disk",
-                storage_type="UNKNOWN",
-                method="OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS",
-                nist_category="Clear",
-                start_time=start_time,
-                end_time=end_time,
-                bytes_processed=total_bytes,
-                capacity_bytes=total_bytes,
-                passes=passes,
-                pattern=pattern,
-                status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
-                errors=[r.error for r in all_results if r.error] or None,
-                verification={
-                    "method": "file_non_existence_and_cluster_overwrite",
-                    "samples_checked": total_files,
-                    "all_samples_match_wipe_pattern": (failures == 0),
-                    "planted_pattern_hits_after": 0,
-                },
-                notes=[
-                    f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
-                    "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
-                ]
-                + warnings,
+    if not generate_certificate:
+        warnings.append("Compliance certification omitted per operator request (--no-certificate).")
+    else:
+        key_file = (
+            Path(signing_key_path)
+            if signing_key_path
+            else Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
+        )
+        if key_file.exists():
+            try:
+                cert_dict = cert_mod.build_certificate(
+                    organization=organization,
+                    operator_id=operator_id,
+                    tool_name="trustwipe-file-eraser",
+                    tool_version="1.0.0",
+                    platform="linux",
+                    device_id=f"batch-files-{secrets.token_hex(8)}",
+                    device_type="internal_disk",
+                    storage_type="UNKNOWN",
+                    method="OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS",
+                    nist_category="Clear",
+                    start_time=start_time,
+                    end_time=end_time,
+                    bytes_processed=total_bytes,
+                    capacity_bytes=total_bytes,
+                    passes=passes,
+                    pattern=pattern,
+                    status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
+                    errors=[r.error for r in all_results if r.error] or None,
+                    verification={
+                        "method": "file_non_existence_and_cluster_overwrite",
+                        "samples_checked": total_files,
+                        "all_samples_match_wipe_pattern": (failures == 0),
+                        "planted_pattern_hits_after": 0,
+                    },
+                    notes=[
+                        f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
+                        "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
+                    ]
+                    + warnings,
+                )
+                priv = core_crypto.load_private_pem(key_file)
+                cert = cert_mod.sign_certificate(cert_dict, priv)
+            except Exception as e:
+                warnings.append(f"Certificate generation/signing failed: {e}")
+                cert = None
+        else:
+            warnings.append(
+                f"WARNING: Signing key not found at '{key_file}'. "
+                "No compliance certificate or cryptographic audit record was generated."
             )
-            priv = core_crypto.load_private_pem(key_file)
-            cert = cert_mod.sign_certificate(cert_dict, priv)
-        except Exception as e:
-            warnings.append(f"Certificate generation/signing failed: {e}")
-            cert = None
 
     return BatchEraseSummary(
         total_files=total_files,

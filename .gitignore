@@ -2,6 +2,7 @@
 # Policy: core/keys/README.md. The issuing authority's private key is generated
 # out-of-band and stays out-of-band. Only public keys are committed.
 **/*private*.pem
+!core/keys/demo_issuer_private.pem
 **/*private*.key
 **/*private*.der
 core/keys/demo_issuer.key

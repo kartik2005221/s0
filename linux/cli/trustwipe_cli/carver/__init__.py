@@ -2,6 +2,12 @@
 
 from .engine import CarvedFile, CarvingSessionSummary, carve_image, detect_filesystem
 from .ext4_carver import parse_ext4_superblock, scan_ext4_deleted_inodes
+from .fat_carver import (
+    Fat32BootSector,
+    FatRecoveredFile,
+    parse_fat32_boot_sector,
+    scan_fat32_deleted_files,
+)
 from .ntfs_carver import (
     NtfsBootSector,
     NtfsRecoveredFile,
@@ -24,6 +30,10 @@ __all__ = [
     "get_signature_by_ext",
     "parse_ext4_superblock",
     "scan_ext4_deleted_inodes",
+    "Fat32BootSector",
+    "FatRecoveredFile",
+    "parse_fat32_boot_sector",
+    "scan_fat32_deleted_files",
     "NtfsBootSector",
     "NtfsRecoveredFile",
     "parse_ntfs_boot_sector",

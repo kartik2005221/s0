@@ -226,7 +226,8 @@ def take_pre_samples(target: T, *, samples: int = 64, sample_bytes: int = 4096):
 
 def default_issuer_key(explicit: str | None) -> Path | None:
     if explicit:
-        return Path(explicit)
+        p = Path(explicit)
+        return p if p.exists() else None
     env = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
     if env.exists():
         return env

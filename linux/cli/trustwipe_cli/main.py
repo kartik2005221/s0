@@ -315,6 +315,20 @@ def cmd_wipe(args) -> int:
 
 def cmd_erase_files(args) -> int:
     print(f"==> TrustWipe Module 2: Secure File & Folder Eraser (NTRO)")
+
+    key_path = default_issuer_key(args.key)
+    if key_path is None and not getattr(args, "no_certificate", False):
+        print(
+            "error: no issuer signing key found.\n"
+            "TrustWipe requires a valid Ed25519 signing key to issue compliance certificates and audit records.\n"
+            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if getattr(args, "no_certificate", False):
+        print("WARNING: --no-certificate specified. No compliance certificate or audit log will be generated.", file=sys.stderr)
+
     targets = [Path(t) for t in args.targets]
     print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}")
 
@@ -324,7 +338,8 @@ def cmd_erase_files(args) -> int:
         pattern=args.pattern,
         operator_id=args.operator,
         organization=args.organization,
-        signing_key_path=args.key,
+        signing_key_path=key_path,
+        generate_certificate=not getattr(args, "no_certificate", False),
     )
 
     print(f"\nFiles Processed: {summary.total_files}")
@@ -343,6 +358,8 @@ def cmd_erase_files(args) -> int:
         cert_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
         cert_p.write_text(json.dumps(summary.certificate, indent=2) + "\n")
         print(f"Certificate    : {cert_p}")
+    elif not getattr(args, "no_certificate", False):
+        print("WARNING: Sanitization completed, but certificate generation failed (see warnings).", file=sys.stderr)
 
     return 0 if summary.failed_files == 0 else 1
 
@@ -354,6 +371,20 @@ def cmd_erase_files(args) -> int:
 
 def cmd_carve(args) -> int:
     print(f"==> TrustWipe Module 3: Advanced File Carving & Recovery (NTRO)")
+
+    key_path = default_issuer_key(args.key)
+    if key_path is None and not getattr(args, "no_certificate", False):
+        print(
+            "error: no issuer signing key found.\n"
+            "TrustWipe requires a valid Ed25519 signing key to issue forensic manifest certificates.\n"
+            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if getattr(args, "no_certificate", False):
+        print("WARNING: --no-certificate specified. No forensic recovery manifest will be issued.", file=sys.stderr)
+
     print(f"Target Media: {args.target}")
     print(f"Output Dir  : {args.out_dir}")
 
@@ -366,7 +397,8 @@ def cmd_carve(args) -> int:
         min_confidence=args.min_confidence,
         operator_id=args.operator,
         organization=args.organization,
-        signing_key_path=args.key,
+        signing_key_path=key_path,
+        generate_certificate=not getattr(args, "no_certificate", False),
     )
 
     print(f"\nBytes Scanned  : {summary.total_bytes_scanned}")
@@ -511,6 +543,11 @@ def build_parser() -> argparse.ArgumentParser:
     fe.add_argument("--operator", default="op-ntro-forensic")
     fe.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab")
     fe.add_argument("--key", help="signing key path")
+    fe.add_argument(
+        "--no-certificate",
+        action="store_true",
+        help="explicitly run without generating an Ed25519 compliance certificate",
+    )
     fe.set_defaults(func=cmd_erase_files)
 
     # 3. File Carving & Recovery Subcommand
@@ -522,6 +559,11 @@ def build_parser() -> argparse.ArgumentParser:
     crv.add_argument("--operator", default="op-ntro-forensic")
     crv.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab")
     crv.add_argument("--key", help="signing key path")
+    crv.add_argument(
+        "--no-certificate",
+        action="store_true",
+        help="explicitly run without generating an Ed25519 forensic manifest certificate",
+    )
     crv.set_defaults(func=cmd_carve)
 
     # 4. Blockchain Audit Ledger Subcommand

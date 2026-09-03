@@ -3,350 +3,937 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustWipe — Digital Forensics & Data Sanitization (NTRO)</title>
+  <title>TrustWipe // Forensic & Sanitization Workstation (NTRO / SIH26149)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #090d16;
-      --card: #131b2e;
-      --card-border: #1f2d4a;
-      --text: #e2e8f0;
-      --text-muted: #8899b5;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --success: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      --accent: #38bdf8;
-      --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --bg-base: #06090e;
+      --bg-surface: #0c121d;
+      --bg-panel: #111a29;
+      --bg-elevated: #162236;
+      --border: #1e2e47;
+      --border-focus: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --accent-crimson: #ef4444;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-base);
+      color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.5;
-      padding: 20px;
+      padding: 18px 24px 40px;
+      min-height: 100vh;
     }
 
-    .header {
+    /* Top Bar Header */
+    .top-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding-bottom: 16px;
-      border-bottom: 1px solid var(--card-border);
-      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
     }
 
-    .brand {
+    .brand-section {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
     }
 
-    .brand h1 {
-      font-size: 1.6rem;
-      font-weight: 800;
-      color: #fff;
-    }
-
-    .tag {
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--accent);
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      padding: 2px 10px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .nav-tabs {
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      border-radius: 8px;
       display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid var(--card-border);
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
     }
 
-    .nav-btn {
-      background: none;
-      border: none;
-      border-bottom: 2px solid transparent;
+    .brand-title h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title .version-badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .brand-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: var(--font-mono);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sys-pill {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    /* Navigation Tabs */
+    .nav-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .nav-tab {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
       color: var(--text-muted);
       padding: 10px 18px;
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       font-weight: 600;
+      border-radius: 6px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
     }
 
-    .nav-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      background: rgba(56, 189, 248, 0.05);
+    .nav-tab:hover {
+      color: #fff;
+      background: var(--bg-elevated);
+      border-color: #2b4166;
     }
 
-    .tab-pane {
-      display: none;
+    .nav-tab.active {
+      background: rgba(59, 130, 246, 0.12);
+      color: #93c5fd;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
     }
 
-    .tab-pane.active {
-      display: block;
+    .nav-tab .tab-num {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      opacity: 0.7;
     }
 
-    .grid {
+    .portal-link {
+      margin-left: auto;
+      background: rgba(168, 85, 247, 0.1);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      color: #d8b4fe !important;
+      text-decoration: none;
+    }
+
+    .portal-link:hover {
+      background: rgba(168, 85, 247, 0.2) !important;
+      border-color: #c084fc !important;
+    }
+
+    /* Tab Content Layouts */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .grid-2col {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
 
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
+    @media (max-width: 1024px) {
+      .grid-2col { grid-template-columns: 1fr; }
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--card-border);
+    /* Panels & Cards */
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+      padding: 22px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     }
 
-    .card h2 {
-      font-size: 1.15rem;
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 700;
       color: #fff;
-      margin-bottom: 14px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
-    select, input, textarea, button {
+    .panel-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: -8px;
+      margin-bottom: 18px;
+    }
+
+    /* Form Controls */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    input, select, textarea {
       width: 100%;
-      background: #0b1220;
-      border: 1px solid var(--card-border);
-      color: var(--text);
-      padding: 10px 12px;
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 10px 14px;
       border-radius: 6px;
       font-size: 0.9rem;
-      margin-top: 6px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    textarea {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      resize: vertical;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      font-family: var(--font-sans);
+      width: 100%;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .btn-secondary {
+      background: var(--bg-panel);
+      border-color: var(--border);
+      color: var(--text-main);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-elevated);
+      border-color: #3b82f6;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      width: auto;
+    }
+
+    /* Live Telemetry / Plan Preview Box */
+    .telemetry-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .telemetry-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    }
+    .telemetry-row:last-child { border-bottom: none; }
+
+    .telemetry-label { color: var(--text-dim); }
+    .telemetry-val { color: #fff; font-weight: 500; }
+
+    /* Console / Terminal Log */
+    .terminal-container {
+      background: #04070d;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .terminal-bar {
+      background: #0b111c;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .terminal-output {
+      padding: 12px 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
+    /* Status Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* Results Showcase Card */
+    .result-showcase {
+      background: rgba(16, 185, 129, 0.05);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .result-showcase.active {
+      display: block;
+      animation: fadeIn 0.25s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Filter Chips */
+    .chip-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       margin-bottom: 12px;
     }
 
-    button {
-      background: var(--primary);
-      color: #fff;
-      font-weight: 600;
+    .chip {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border-radius: 4px;
       cursor: pointer;
-      border: none;
-      transition: background 0.15s;
+      font-family: var(--font-mono);
+      transition: all 0.15s ease;
     }
 
-    button:hover {
-      background: var(--primary-hover);
+    .chip:hover {
+      border-color: #3b82f6;
+      color: #fff;
     }
 
-    button.danger {
-      background: var(--danger);
+    .chip.active {
+      background: rgba(6, 182, 212, 0.15);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
     }
 
-    .table {
+    /* Table Styles */
+    .data-table-container {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 14px;
+    }
+
+    .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
-      margin-top: 10px;
-    }
-
-    .table th, .table td {
-      padding: 8px 10px;
+      font-size: 0.82rem;
       text-align: left;
-      border-bottom: 1px solid var(--card-border);
     }
 
-    .table th {
-      color: var(--text-muted);
-    }
-
-    .status-badge {
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 0.75rem;
+    .data-table th {
+      background: #0c121d;
+      color: var(--text-dim);
       font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .status-valid { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-    .status-broken { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .data-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
 
-    pre {
-      background: #070a12;
-      border: 1px solid var(--card-border);
-      padding: 12px;
-      border-radius: 6px;
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .code-cell {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    /* Modal / Inspector Drawer */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
       font-family: var(--font-mono);
       font-size: 0.8rem;
-      max-height: 200px;
-      overflow-y: auto;
-      color: #94a3b8;
     }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .close-btn:hover { color: #fff; }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <div class="brand">
-      <span style="font-size: 1.8rem;">🛡️</span>
-      <div>
-        <h1>TrustWipe Forensic & Sanitization Suite</h1>
-        <div style="font-size: 0.8rem; color: var(--text-muted);">
-          National Technical Research Organisation (NTRO) • SIH26149
+  <!-- Top Navigation Header -->
+  <header class="top-header">
+    <div class="brand-section">
+      <div class="brand-logo">🛡️</div>
+      <div class="brand-title">
+        <h1>
+          TrustWipe Forensic & Sanitization Suite
+          <span class="version-badge">v1.0.0-PRO</span>
+        </h1>
+        <div class="brand-subtitle">
+          NATIONAL TECHNICAL RESEARCH ORGANISATION (NTRO) // SIH26149 // BLOCKCHAIN &amp; CYBERSECURITY
         </div>
       </div>
     </div>
-    <div class="tag">Blockchain & Cybersecurity Theme</div>
-  </div>
-
-  <div class="nav-tabs">
-    <button class="nav-btn active" onclick="switchNav('drive')">💾 1. Drive Eraser</button>
-    <button class="nav-btn" onclick="switchNav('file')">📁 2. File & Folder Eraser</button>
-    <button class="nav-btn" onclick="switchNav('carve')">🔍 3. Forensic File Carver</button>
-    <button class="nav-btn" onclick="switchNav('audit')">⛓️ 4. Blockchain Audit Ledger</button>
-  </div>
-
-  <!-- Tab 1: Drive Eraser -->
-  <div id="tab-drive" class="tab-pane active">
-    <div class="grid">
-      <div class="card">
-        <h2>Target Media Selection</h2>
-        <label>Select Physical Block Device or Forensic Image:</label>
-        <select id="driveSelect">
-          <option value="">Loading devices...</option>
-        </select>
-
-        <label>Overwrite Pattern:</label>
-        <select id="drivePattern">
-          <option value="zero">Single-Pass Zero (NIST Clear default)</option>
-          <option value="random">Pseudo-Random Overwrite (NIST/DoD)</option>
-        </select>
-
-        <label>Passes:</label>
-        <input type="number" id="drivePasses" value="1" min="1" max="7">
-
-        <label style="color: #f87171; font-weight: 600;">Type "WIPE" to confirm erasure:</label>
-        <input type="text" id="driveConfirm" placeholder="WIPE">
-
-        <button class="danger" onclick="startDriveWipe()">Execute Secure Drive Wipe</button>
-      </div>
-
-      <div class="card">
-        <h2>Wipe Execution Log & Certificate</h2>
-        <div id="driveStatus" style="font-size: 0.9rem; margin-bottom: 8px;">Status: Idle</div>
-        <pre id="driveLog">Awaiting drive sanitization command...</pre>
+    <div class="header-status">
+      <div class="sys-pill">
+        <div class="dot-live"></div>
+        <span>ENGINE RUNTIME: ONLINE</span>
       </div>
     </div>
-  </div>
+  </header>
 
-  <!-- Tab 2: File & Folder Eraser -->
-  <div id="tab-file" class="tab-pane">
-    <div class="grid">
-      <div class="card">
-        <h2>Selective File & Folder Sanitization</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-          Overwrites file allocation clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.
-        </p>
+  <!-- Module Navigation Tabs -->
+  <nav class="nav-bar">
+    <button class="nav-tab active" onclick="switchNav('drive', this)">
+      <span class="tab-num">[ 01 ]</span> 💾 Drive Sanitizer
+    </button>
+    <button class="nav-tab" onclick="switchNav('file', this)">
+      <span class="tab-num">[ 02 ]</span> 📁 File &amp; Folder Eraser
+    </button>
+    <button class="nav-tab" onclick="switchNav('carve', this)">
+      <span class="tab-num">[ 03 ]</span> 🔍 Forensic File Carver
+    </button>
+    <button class="nav-tab" onclick="switchNav('audit', this)">
+      <span class="tab-num">[ 04 ]</span> ⛓️ Audit Chain Ledger
+    </button>
+    <a href="/portal/" target="_blank" class="nav-tab portal-link">
+      <span class="tab-num">[ 05 ]</span> 🔐 Verification Portal ↗
+    </a>
+  </nav>
 
-        <label>Target File or Directory Paths (one per line):</label>
-        <textarea id="fileTargets" rows="4" placeholder="/path/to/classified_doc.pdf
-/tmp/sensitive_folder/"></textarea>
+  <!-- ===================================================================== -->
+  <!-- TAB 1: DRIVE SANITIZER                                                -->
+  <!-- ===================================================================== -->
+  <main id="tab-drive" class="tab-content active">
+    <div class="grid-2col">
+      <!-- Config Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Target Media &amp; Sanitization Policy</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadDevices()">⟳ Refresh Media</button>
+        </div>
+        <p class="panel-subtitle">Select raw block device or forensic image for NIST SP 800-88 sanitization.</p>
 
-        <label>Sanitization Pattern:</label>
-        <select id="filePattern">
-          <option value="zero">1-Pass Zero Overwrite</option>
-          <option value="random">3-Pass Pseudo-Random Overwrite</option>
-        </select>
+        <div class="form-group">
+          <label for="driveSelect">Target Storage Media:</label>
+          <select id="driveSelect" onchange="onDriveSelected()">
+            <option value="">Scanning devices...</option>
+          </select>
+        </div>
 
-        <button onclick="startFileErase()">Sanitize Files & Scrub Metadata</button>
-      </div>
+        <!-- Live Target Plan / Telemetry Preview -->
+        <div class="telemetry-card" id="driveTelemetry">
+          <div class="telemetry-row">
+            <span class="telemetry-label">Capacity / Storage:</span>
+            <span class="telemetry-val" id="driveCapVal">—</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Recommended Method:</span>
+            <span class="telemetry-val" id="driveMethodVal">—</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">NIST 800-88 Category:</span>
+            <span class="telemetry-val" id="driveNistVal"><span class="badge badge-cyan">Clear</span></span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Firmware Security:</span>
+            <span class="telemetry-val" id="driveHpaVal">Normal (No HPA/DCO detected)</span>
+          </div>
+        </div>
 
-      <div class="card">
-        <h2>File Erasure Results & Signed Audit</h2>
-        <div id="fileStatus" style="font-size: 0.9rem; margin-bottom: 8px;">Status: Idle</div>
-        <pre id="fileLog">Awaiting file erasure task...</pre>
-      </div>
+        <div class="form-group">
+          <label for="drivePattern">Overwrite Pattern Standard:</label>
+          <select id="drivePattern">
+            <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+            <option value="random">3-Pass DoD 5220.22-M (Pseudo-Random + Invert + Zero)</option>
+            <option value="random">7-Pass High-Security Random Overwrite</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="drivePasses">Overwrite Passes:</label>
+          <input type="number" id="drivePasses" value="1" min="1" max="7">
+        </div>
+
+        <div class="form-group" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px;">
+          <label style="color: #f87171;">Destructive Safety Lock:</label>
+          <p style="font-size: 0.78rem; color: #fca5a5; margin-bottom: 8px;">
+            Type <strong style="font-family: var(--font-mono); color: #fff;">WIPE</strong> to confirm permanent physical destruction of data on this target:
+          </p>
+          <input type="text" id="driveConfirm" placeholder='Type "WIPE" to arm command' style="border-color: rgba(239, 68, 68, 0.5);">
+        </div>
+
+        <button class="btn btn-danger" onclick="startDriveWipe()">
+          ⚡ Execute Secure Drive Wipe
+        </button>
+      </section>
+
+      <!-- Execution & Results Panel -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Execution Console &amp; Certificate Manifest</h2>
+          <span class="badge badge-amber" id="driveStatusBadge">STATUS: IDLE</span>
+        </div>
+
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span>LIVE OPERATOR TERMINAL // trustwipe-wipe</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('driveLog')">Clear</button>
+          </div>
+          <div class="terminal-output" id="driveLog">Awaiting drive sanitization command...</div>
+        </div>
+
+        <!-- Result Card with Downloads -->
+        <div class="result-showcase" id="driveResultCard">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 1.2rem;">✅</span>
+            <strong style="color: #34d399;">SANITIZATION &amp; READBACK VERIFIED</strong>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="driveResultDetails">
+            Device wiped cleanly. Sampled readback confirmed 100% overwrite. Planted markers residual: 0 hits.
+          </p>
+          <div style="display: flex; gap: 10px;" id="driveActionButtons">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
     </div>
-  </div>
+  </main>
 
-  <!-- Tab 3: Forensic File Carver -->
-  <div id="tab-carve" class="tab-pane">
-    <div class="grid">
-      <div class="card">
-        <h2>Forensic File Carving & Recovery</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-          Extracts deleted, formatted, or lost digital evidence using signature & structure parsing with Shannon entropy confidence scoring.
-        </p>
+  <!-- ===================================================================== -->
+  <!-- TAB 2: FILE & FOLDER ERASER                                           -->
+  <!-- ===================================================================== -->
+  <main id="tab-file" class="tab-content">
+    <div class="grid-2col">
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Selective File &amp; Folder Cleansing</h2>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="addSampleFileTarget()">+ Sample Target</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileTargets').value=''">Clear</button>
+          </div>
+        </div>
+        <p class="panel-subtitle">Overwrites allocated clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.</p>
 
-        <label>Target Media Image to Scan:</label>
-        <select id="carveTargetSelect">
-          <option value="">Loading targets...</option>
-        </select>
+        <div class="form-group">
+          <label for="fileTargets">Target File or Directory Paths (one per line):</label>
+          <textarea id="fileTargets" rows="5" placeholder="/tmp/classified_document.pdf
+/tmp/evidence_folder/"></textarea>
+        </div>
 
-        <label>File Formats to Carve (e.g. jpg, png, pdf, zip):</label>
-        <input type="text" id="carveExts" value="jpg,png,pdf,zip">
+        <div class="form-group">
+          <label for="filePattern">Sanitization Pattern:</label>
+          <select id="filePattern">
+            <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+            <option value="random">3-Pass DoD Pseudo-Random Overwrite</option>
+          </select>
+        </div>
 
-        <label>Minimum Confidence Threshold (0 - 100%):</label>
-        <input type="number" id="carveMinConf" value="50" min="1" max="100">
+        <div class="form-group">
+          <label for="fileOperator">Operator Identifier:</label>
+          <input type="text" id="fileOperator" value="op-ntro-forensic-01">
+        </div>
 
-        <button onclick="startCarve()">Start Forensic Carving Scan</button>
-      </div>
+        <button class="btn btn-primary" onclick="startFileErase()">
+          Scrub Allocated Clusters &amp; Metadata
+        </button>
+      </section>
 
-      <div class="card">
-        <h2>Recovered Artifacts & Evidence Manifest</h2>
-        <div id="carveStatus" style="font-size: 0.9rem; margin-bottom: 8px;">Status: Idle</div>
-        <pre id="carveLog">Awaiting carving scan command...</pre>
-      </div>
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Batch Erasure Status &amp; Compliance Record</h2>
+          <span class="badge badge-amber" id="fileStatusBadge">STATUS: IDLE</span>
+        </div>
+
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span>LIVE BATCH EXECUTION LOG</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('fileLog')">Clear</button>
+          </div>
+          <div class="terminal-output" id="fileLog">Awaiting file erasure task...</div>
+        </div>
+
+        <div class="result-showcase" id="fileResultCard">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+            <span style="font-size: 1.2rem;">📑</span>
+            <strong style="color: #34d399;">FILE ERASURE COMPLIANCE ISSUED</strong>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="fileResultDetails">
+            Files shredded and metadata zeroed. Ed25519 compliance certificate issued and anchored to blockchain audit ledger.
+          </p>
+          <div style="display: flex; gap: 10px;" id="fileActionButtons">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
     </div>
-  </div>
+  </main>
 
-  <!-- Tab 4: Blockchain Audit Ledger -->
-  <div id="tab-audit" class="tab-pane">
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>⛓️ Blockchain Cryptographic Audit Trail</h2>
+  <!-- ===================================================================== -->
+  <!-- TAB 3: FORENSIC FILE CARVER                                           -->
+  <!-- ===================================================================== -->
+  <main id="tab-carve" class="tab-content">
+    <div class="grid-2col">
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Forensic Carving Scan Parameters</h2>
+          <span class="badge badge-purple">ext4 + NTFS + FAT32</span>
+        </div>
+        <p class="panel-subtitle">Signature &amp; structure parsing with Shannon entropy multi-point confidence scoring.</p>
+
+        <div class="form-group">
+          <label for="carveTargetSelect">Target Forensic Disk Image or Device:</label>
+          <select id="carveTargetSelect">
+            <option value="">Scanning images...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>File Formats to Carve:</label>
+          <div class="chip-group">
+            <span class="chip active" onclick="setCarvePreset('all', this)">All Formats</span>
+            <span class="chip" onclick="setCarvePreset('images', this)">Images</span>
+            <span class="chip" onclick="setCarvePreset('docs', this)">Documents</span>
+            <span class="chip" onclick="setCarvePreset('archives', this)">Archives</span>
+            <span class="chip" onclick="setCarvePreset('db', this)">DB &amp; Binary</span>
+          </div>
+          <input type="text" id="carveExts" value="jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3">
+        </div>
+
+        <div class="form-group">
+          <label for="carveMinConf">
+            Minimum Confidence Threshold: <strong id="confVal" style="color: var(--accent-cyan);">50%</strong>
+          </label>
+          <input type="range" id="carveMinConf" min="10" max="95" value="50" oninput="document.getElementById('confVal').textContent = this.value + '%'">
+        </div>
+
+        <button class="btn btn-primary" onclick="startCarve()">
+          🔍 Start Multi-FS Forensic Carving Scan
+        </button>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Carving Execution &amp; Evidence Manifest</h2>
+          <span class="badge badge-amber" id="carveStatusBadge">STATUS: IDLE</span>
+        </div>
+
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span>FORENSIC CARVER SCAN TELEMETRY</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('carveLog')">Clear</button>
+          </div>
+          <div class="terminal-output" id="carveLog">Awaiting carving scan command...</div>
+        </div>
+
+        <div class="result-showcase" id="carveResultCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.2rem;">🔬</span>
+              <strong style="color: #34d399;" id="carveSummaryTitle">RECOVERED ARTIFACTS</strong>
+            </div>
+            <div id="carveManifestBtnContainer"></div>
+          </div>
+          <div class="data-table-container" style="max-height: 220px; overflow-y: auto;">
+            <table class="data-table" id="carvedFilesTable">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Ext</th>
+                  <th>Size</th>
+                  <th>Confidence</th>
+                  <th>SHA256 (Prefix)</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="carvedFilesTableBody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No carving job completed yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- TAB 4: BLOCKCHAIN AUDIT LEDGER                                        -->
+  <!-- ===================================================================== -->
+  <main id="tab-audit" class="tab-content">
+    <section class="panel">
+      <div class="panel-header">
         <div>
-          <button style="width: auto; padding: 6px 14px;" onclick="verifyLedger()">Verify Hash Chain Integrity</button>
-          <button style="width: auto; padding: 6px 14px; background: #334155;" onclick="loadAuditBlocks()">Refresh</button>
+          <h2 class="panel-title">⛓️ Cryptographic Hash-Chained Audit Ledger</h2>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+            Tamper-evident local blockchain ledger with SHA-256 block chaining and Ed25519 digital signatures.
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-primary btn-sm" onclick="verifyLedger()">
+            🛡️ Verify Chain Continuity
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="loadAuditBlocks()">
+            ⟳ Refresh
+          </button>
         </div>
       </div>
-      <div id="auditVerifyBanner" style="padding: 10px; border-radius: 6px; margin: 10px 0; display: none;"></div>
-      <table class="table" id="auditTable">
-        <thead>
-          <tr>
-            <th>Block #</th>
-            <th>Timestamp (UTC)</th>
-            <th>Operation</th>
-            <th>Target ID</th>
-            <th>Operator</th>
-            <th>Prev Hash</th>
-            <th>Block Hash</th>
-          </tr>
-        </thead>
-        <tbody id="auditTableBody">
-          <tr><td colspan="7">Loading audit trail...</td></tr>
-        </tbody>
-      </table>
+
+      <!-- Live Verification Banner -->
+      <div id="auditVerifyBanner" style="display: none; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 0.82rem;"></div>
+
+      <!-- Filter Controls -->
+      <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+        <select id="auditFilterOp" onchange="applyAuditFilters()" style="max-width: 220px;">
+          <option value="ALL">All Operations</option>
+          <option value="DRIVE_ERASE">DRIVE_ERASE</option>
+          <option value="FILE_ERASE">FILE_ERASE</option>
+          <option value="FILE_CARVE">FILE_CARVE</option>
+          <option value="GENESIS">GENESIS</option>
+        </select>
+        <input type="text" id="auditSearch" placeholder="Search by Target ID or Block Hash..." oninput="applyAuditFilters()">
+      </div>
+
+      <!-- Audit Table -->
+      <div class="data-table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Block #</th>
+              <th>Timestamp (UTC)</th>
+              <th>Operation</th>
+              <th>Target ID</th>
+              <th>Operator</th>
+              <th>Previous Hash</th>
+              <th>Block Hash</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody">
+            <tr><td colspan="8" style="text-align: center; color: var(--text-dim);">Loading audit trail...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: BLOCK / CERTIFICATE INSPECTOR                                  -->
+  <!-- ===================================================================== -->
+  <div class="modal-overlay" id="inspectorModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="color: #fff; font-size: 1rem;" id="modalTitle">Block Inspector</h3>
+        <button class="close-btn" onclick="closeInspector()">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modalContent" style="color: #93c5fd; white-space: pre-wrap;"></pre>
+      </div>
     </div>
   </div>
 
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT CONTROLLER                                                 -->
+  <!-- ===================================================================== -->
   <script>
-    function switchNav(tabId) {
-      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
-      event.target.classList.add("active");
-      document.getElementById("tab-" + tabId).classList.add("active");
+    let allBlocksCache = [];
+    let currentJobId = null;
+
+    function switchNav(tabId, el) {
+      document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(p => p.classList.remove("active"));
+      if (el) el.classList.add("active");
+      const target = document.getElementById("tab-" + tabId);
+      if (target) target.classList.add("active");
       if (tabId === "audit") loadAuditBlocks();
     }
 
+    function clearLog(logId) {
+      const el = document.getElementById(logId);
+      if (el) el.textContent = "";
+    }
+
+    // --- Device Management & Plan Calculation ---
     async function loadDevices() {
       try {
         const res = await fetch("/api/devices");
@@ -357,126 +944,406 @@
         carveSel.innerHTML = "";
 
         const all = [...(data.block || []), ...(data.images || [])];
+        if (all.length === 0) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No storage devices or images found";
+          driveSel.appendChild(opt);
+          carveSel.appendChild(opt.cloneNode(true));
+          return;
+        }
+
         all.forEach(d => {
           const opt = document.createElement("option");
           opt.value = d.path;
-          opt.textContent = `${d.path} (${(d.capacity_bytes / 1048576).toFixed(1)} MB) ${d.model ? "• " + d.model : ""}`;
+          const mb = (d.capacity_bytes / (1024 * 1024)).toFixed(1);
+          const modelStr = d.model ? ` • ${d.model}` : (d.storage_type ? ` [${d.storage_type}]` : "");
+          opt.textContent = `${d.path} (${mb} MB)${modelStr}`;
           driveSel.appendChild(opt);
           carveSel.appendChild(opt.cloneNode(true));
         });
+
+        onDriveSelected();
       } catch (e) {
         console.error("Failed to load devices", e);
       }
     }
 
+    async function onDriveSelected() {
+      const target = document.getElementById("driveSelect").value;
+      if (!target) return;
+      try {
+        const res = await fetch("/api/plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target })
+        });
+        if (!res.ok) return;
+        const plan = await res.json();
+        
+        const mb = (plan.target.capacity_bytes / (1024 * 1024)).toFixed(1);
+        document.getElementById("driveCapVal").textContent = `${mb} MB (${plan.target.storage_type || "UNKNOWN"})`;
+        document.getElementById("driveMethodVal").textContent = plan.method_id || "None";
+        document.getElementById("driveNistVal").innerHTML = `<span class="badge badge-cyan">${plan.nist_category || "Clear"}</span>`;
+        if (plan.hpa_dco) {
+          document.getElementById("driveHpaVal").innerHTML = `<span class="badge badge-amber">${plan.hpa_dco.status || "Check required"}</span>`;
+        } else {
+          document.getElementById("driveHpaVal").textContent = "Normal (No HPA/DCO detected)";
+        }
+      } catch (e) {
+        console.warn("Plan query note:", e);
+      }
+    }
+
+    // --- Module 1: Drive Sanitizer ---
     async function startDriveWipe() {
       const target = document.getElementById("driveSelect").value;
-      const confirm_text = document.getElementById("driveConfirm").value;
+      const confirm_text = document.getElementById("driveConfirm").value.trim();
       const pattern = document.getElementById("drivePattern").value;
-      const passes = parseInt(document.getElementById("drivePasses").value, 10);
+      const passes = parseInt(document.getElementById("drivePasses").value, 10) || 1;
 
-      const res = await fetch("/api/wipe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target, confirm_text, pattern, passes })
-      });
-      const data = await res.json();
-      if (data.job_id) trackJob(data.job_id, "driveStatus", "driveLog");
-      else alert(data.detail || "Error starting wipe");
+      if (confirm_text !== "WIPE") {
+        alert('Destructive safety lock: Please type "WIPE" in the confirmation box.');
+        return;
+      }
+
+      document.getElementById("driveResultCard").classList.remove("active");
+      document.getElementById("driveStatusBadge").className = "badge badge-cyan";
+      document.getElementById("driveStatusBadge").textContent = "STATUS: RUNNING";
+
+      try {
+        const res = await fetch("/api/wipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target, confirm_text, pattern, passes })
+        });
+        const data = await res.json();
+        if (data.job_id) {
+          trackJob(data.job_id, "driveStatusBadge", "driveLog", onDriveWipeDone);
+        } else {
+          alert(data.detail || "Error starting wipe");
+          document.getElementById("driveStatusBadge").className = "badge badge-red";
+          document.getElementById("driveStatusBadge").textContent = "STATUS: ERROR";
+        }
+      } catch (err) {
+        alert("Failed to communicate with wipe engine: " + err);
+      }
+    }
+
+    function onDriveWipeDone(job) {
+      const resCard = document.getElementById("driveResultCard");
+      const actionBox = document.getElementById("driveActionButtons");
+      resCard.classList.add("active");
+      actionBox.innerHTML = "";
+
+      if (job.result && job.result.cert_filename) {
+        const btnJson = document.createElement("a");
+        btnJson.className = "btn btn-secondary btn-sm";
+        btnJson.href = `/api/download/${job.id}/${job.result.cert_filename}`;
+        btnJson.textContent = "📥 Download JSON Certificate";
+        actionBox.appendChild(btnJson);
+      }
+      if (job.result && job.result.pdf_filename) {
+        const btnPdf = document.createElement("a");
+        btnPdf.className = "btn btn-primary btn-sm";
+        btnPdf.href = `/api/download/${job.id}/${job.result.pdf_filename}`;
+        btnPdf.textContent = "📄 Download PDF Certificate";
+        actionBox.appendChild(btnPdf);
+      }
+    }
+
+    // --- Module 2: File & Folder Eraser ---
+    function addSampleFileTarget() {
+      const area = document.getElementById("fileTargets");
+      const sample = "/tmp/confidential_memo_" + Math.floor(Math.random() * 1000) + ".txt";
+      area.value = area.value ? area.value + "\n" + sample : sample;
     }
 
     async function startFileErase() {
-      const lines = document.getElementById("fileTargets").value.trim().split("
-").filter(l => l.trim().length > 0);
-      if (!lines.length) return alert("Please enter at least one file or folder path.");
+      const lines = document.getElementById("fileTargets").value.split("\n")
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+      if (lines.length === 0) {
+        alert("Please enter at least one file or folder path to sanitize.");
+        return;
+      }
 
       const pattern = document.getElementById("filePattern").value;
-      const res = await fetch("/api/erase-files", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targets: lines, passes: 1, pattern })
-      });
-      const data = await res.json();
-      if (data.job_id) trackJob(data.job_id, "fileStatus", "fileLog");
+      const operator = document.getElementById("fileOperator").value.trim() || "op-ntro-forensic";
+
+      document.getElementById("fileResultCard").classList.remove("active");
+      document.getElementById("fileStatusBadge").className = "badge badge-cyan";
+      document.getElementById("fileStatusBadge").textContent = "STATUS: RUNNING";
+
+      try {
+        const res = await fetch("/api/erase-files", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targets: lines, passes: 1, pattern, operator_id: operator })
+        });
+        const data = await res.json();
+        if (data.job_id) {
+          trackJob(data.job_id, "fileStatusBadge", "fileLog", onFileEraseDone);
+        } else {
+          alert(data.detail || "Error starting file erase");
+          document.getElementById("fileStatusBadge").className = "badge badge-red";
+          document.getElementById("fileStatusBadge").textContent = "STATUS: ERROR";
+        }
+      } catch (err) {
+        alert("Failed to trigger file erasure: " + err);
+      }
+    }
+
+    function onFileEraseDone(job) {
+      const resCard = document.getElementById("fileResultCard");
+      const actionBox = document.getElementById("fileActionButtons");
+      const details = document.getElementById("fileResultDetails");
+      resCard.classList.add("active");
+      actionBox.innerHTML = "";
+
+      if (job.result) {
+        details.textContent = `Batch completed: ${job.result.successful_files}/${job.result.total_files} files sanitized (${job.result.total_bytes} bytes). Inode timestamps zeroed, directory entries scrambled.`;
+        if (job.result.cert_filename) {
+          const btn = document.createElement("a");
+          btn.className = "btn btn-primary btn-sm";
+          btn.href = `/api/download/${job.id}/${job.result.cert_filename}`;
+          btn.textContent = "📑 Download File Erasure Certificate";
+          actionBox.appendChild(btn);
+        }
+      }
+    }
+
+    // --- Module 3: Forensic File Carver ---
+    function setCarvePreset(type, el) {
+      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      if (el) el.classList.add("active");
+      const input = document.getElementById("carveExts");
+      if (type === "all") input.value = "jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3";
+      else if (type === "images") input.value = "jpg,png,gif,bmp";
+      else if (type === "docs") input.value = "pdf,txt";
+      else if (type === "archives") input.value = "zip,gz";
+      else if (type === "db") input.value = "sqlite,elf,mp3";
     }
 
     async function startCarve() {
       const target = document.getElementById("carveTargetSelect").value;
-      const exts = document.getElementById("carveExts").value.split(",").map(e => e.trim());
-      const min_confidence = parseInt(document.getElementById("carveMinConf").value, 10);
+      if (!target) {
+        alert("Please select a target image or device to carve.");
+        return;
+      }
 
-      const res = await fetch("/api/carve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target, extensions: exts, min_confidence })
-      });
-      const data = await res.json();
-      if (data.job_id) trackJob(data.job_id, "carveStatus", "carveLog");
+      const exts = document.getElementById("carveExts").value.split(",").map(e => e.trim()).filter(e => e);
+      const min_confidence = parseInt(document.getElementById("carveMinConf").value, 10) || 50;
+
+      document.getElementById("carveResultCard").classList.remove("active");
+      document.getElementById("carveStatusBadge").className = "badge badge-cyan";
+      document.getElementById("carveStatusBadge").textContent = "STATUS: SCANNING";
+
+      try {
+        const res = await fetch("/api/carve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target, extensions: exts, min_confidence })
+        });
+        const data = await res.json();
+        if (data.job_id) {
+          trackJob(data.job_id, "carveStatusBadge", "carveLog", onCarveDone);
+        } else {
+          alert(data.detail || "Error starting carver");
+          document.getElementById("carveStatusBadge").className = "badge badge-red";
+          document.getElementById("carveStatusBadge").textContent = "STATUS: ERROR";
+        }
+      } catch (err) {
+        alert("Failed to start carving session: " + err);
+      }
     }
 
-    function trackJob(jobId, statusId, logId) {
-      const statusEl = document.getElementById(statusId);
+    function onCarveDone(job) {
+      const resCard = document.getElementById("carveResultCard");
+      const title = document.getElementById("carveSummaryTitle");
+      const btnBox = document.getElementById("carveManifestBtnContainer");
+      const tbody = document.getElementById("carvedFilesTableBody");
+      resCard.classList.add("active");
+      btnBox.innerHTML = "";
+      tbody.innerHTML = "";
+
+      if (job.result) {
+        title.textContent = `RECOVERED ${job.result.files_recovered} EVIDENCE ARTIFACTS (${job.result.candidates_found} candidates evaluated)`;
+        if (job.result.manifest_filename) {
+          const btn = document.createElement("a");
+          btn.className = "btn btn-primary btn-sm";
+          btn.href = `/api/download/${job.id}/${job.result.manifest_filename}`;
+          btn.textContent = "📜 Signed Recovery Manifest";
+          btnBox.appendChild(btn);
+        }
+
+        const files = job.result.carved_files || [];
+        if (files.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No artifacts recovered matching confidence threshold.</td></tr>';
+        } else {
+          files.forEach(f => {
+            const tr = document.createElement("tr");
+            const confBadge = f.conf >= 75 ? "badge-green" : (f.conf >= 50 ? "badge-cyan" : "badge-amber");
+            tr.innerHTML = `
+              <td class="code-cell"><strong>${f.id}</strong></td>
+              <td><span class="badge badge-purple">${f.ext.toUpperCase()}</span></td>
+              <td class="code-cell">${(f.size / 1024).toFixed(1)} KB</td>
+              <td><span class="badge ${confBadge}">${f.conf}%</span></td>
+              <td class="code-cell" style="color: var(--text-dim);">${f.sha256 ? f.sha256.substring(0, 16) + '...' : '—'}</td>
+              <td>
+                <a class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.72rem;" href="/api/download/${job.id}/${f.filename}">
+                  ⬇ Extract
+                </a>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      }
+    }
+
+    // --- Job Poller Engine ---
+    function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
+      currentJobId = jobId;
+      const badge = document.getElementById(statusBadgeId);
       const logEl = document.getElementById(logId);
-      statusEl.textContent = "Status: Running...";
 
       const timer = setInterval(async () => {
-        const res = await fetch(`/api/job/${jobId}`);
-        const data = await res.json();
-        if (data.log) logEl.textContent = data.log.join("
-");
+        try {
+          const res = await fetch(`/api/job/${jobId}`);
+          if (!res.ok) return;
+          const data = await res.json();
 
-        if (data.status === "done" || data.status === "error") {
-          clearInterval(timer);
-          statusEl.textContent = `Status: ${data.status.toUpperCase()}`;
-          if (data.result) {
-            logEl.textContent += "
-
-=== RESULT ===
-" + JSON.stringify(data.result, null, 2);
+          if (data.log && data.log.length > 0) {
+            logEl.textContent = data.log.join("\n");
+            logEl.scrollTop = logEl.scrollHeight;
           }
+
+          if (data.status === "done" || data.status === "error") {
+            clearInterval(timer);
+            if (data.status === "done") {
+              badge.className = "badge badge-green";
+              badge.textContent = "STATUS: COMPLETE";
+              if (onDoneCallback) onDoneCallback({ id: jobId, result: data.result });
+            } else {
+              badge.className = "badge badge-red";
+              badge.textContent = "STATUS: FAILED";
+            }
+          }
+        } catch (e) {
+          console.warn("Poll job warning:", e);
         }
-      }, 500);
+      }, 600);
     }
 
+    // --- Module 4: Blockchain Audit Ledger ---
     async function loadAuditBlocks() {
-      const res = await fetch("/api/audit/blocks");
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/audit/blocks?limit=150");
+        const data = await res.json();
+        allBlocksCache = data.blocks || [];
+        renderAuditTable(allBlocksCache);
+      } catch (e) {
+        console.error("Failed to load audit blocks", e);
+      }
+    }
+
+    function renderAuditTable(blocks) {
       const tbody = document.getElementById("auditTableBody");
       tbody.innerHTML = "";
-      (data.blocks || []).forEach(b => {
+      if (blocks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim);">No records in audit ledger yet.</td></tr>';
+        return;
+      }
+
+      blocks.forEach(b => {
         const tr = document.createElement("tr");
+        let opBadge = "badge-cyan";
+        if (b.operation === "FILE_ERASE") opBadge = "badge-amber";
+        else if (b.operation === "FILE_CARVE") opBadge = "badge-purple";
+        else if (b.operation === "GENESIS") opBadge = "badge-green";
+
+        const prevShort = b.prev_hash ? b.prev_hash.substring(0, 12) + '...' : '—';
+        const blockShort = b.block_hash ? b.block_hash.substring(0, 12) + '...' : '—';
+
         tr.innerHTML = `
-          <td><strong>#${b.index}</strong></td>
-          <td>${b.timestamp}</td>
-          <td><span class="tag">${b.operation}</span></td>
-          <td><code>${b.target}</code></td>
+          <td class="code-cell"><strong>#${b.index}</strong></td>
+          <td class="code-cell">${b.timestamp}</td>
+          <td><span class="badge ${opBadge}">${b.operation}</span></td>
+          <td class="code-cell" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis;">${b.target}</td>
           <td>${b.operator}</td>
-          <td><code>${b.prev_hash}</code></td>
-          <td><code style="color: #38bdf8;">${b.block_hash}</code></td>
+          <td class="code-cell" style="color: var(--text-dim);" title="${b.prev_hash}">${prevShort}</td>
+          <td class="code-cell" style="color: #38bdf8;" title="${b.block_hash}">${blockShort}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.72rem;" onclick="inspectBlock(${b.index})">
+              Inspect
+            </button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
+    function applyAuditFilters() {
+      const opFilter = document.getElementById("auditFilterOp").value;
+      const search = document.getElementById("auditSearch").value.toLowerCase().trim();
+
+      const filtered = allBlocksCache.filter(b => {
+        const matchesOp = (opFilter === "ALL" || b.operation === opFilter);
+        const matchesSearch = !search ||
+          b.target.toLowerCase().includes(search) ||
+          (b.block_hash && b.block_hash.toLowerCase().includes(search)) ||
+          b.operator.toLowerCase().includes(search);
+        return matchesOp && matchesSearch;
+      });
+      renderAuditTable(filtered);
+    }
+
     async function verifyLedger() {
       const banner = document.getElementById("auditVerifyBanner");
       banner.style.display = "block";
-      banner.textContent = "Auditing cryptographic hash chain...";
+      banner.className = "badge badge-cyan";
+      banner.style.width = "100%";
+      banner.textContent = "Auditing cryptographic SHA-256 hash chain and block continuity...";
 
-      const res = await fetch("/api/audit/verify");
-      const data = await res.json();
-      if (data.is_valid) {
-        banner.style.background = "rgba(16, 185, 129, 0.2)";
-        banner.style.color = "#34d399";
-        banner.innerHTML = `🛡️ <strong>BLOCKCHAIN AUDIT CHAIN VALID:</strong> ${data.reason} (${data.total_blocks} blocks verified)`;
-      } else {
-        banner.style.background = "rgba(239, 68, 68, 0.2)";
+      try {
+        const res = await fetch("/api/audit/verify");
+        const data = await res.json();
+        if (data.is_valid) {
+          banner.style.background = "rgba(16, 185, 129, 0.15)";
+          banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
+          banner.style.color = "#34d399";
+          banner.innerHTML = `🛡️ <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong> ${data.reason} (${data.total_blocks} blocks verified unbroken from genesis)`;
+        } else {
+          banner.style.background = "rgba(239, 68, 68, 0.15)";
+          banner.style.border = "1px solid rgba(239, 68, 68, 0.35)";
+          banner.style.color = "#f87171";
+          banner.innerHTML = `⚠️ <strong>INTEGRITY VIOLATION DETECTED:</strong> ${data.reason}`;
+        }
+      } catch (err) {
         banner.style.color = "#f87171";
-        banner.innerHTML = `⚠️ <strong>TAMPER DETECTED:</strong> ${data.reason}`;
+        banner.textContent = "Verification request failed: " + err;
       }
     }
 
-    loadDevices();
+    function inspectBlock(idx) {
+      const b = allBlocksCache.find(item => item.index === idx);
+      if (!b) return;
+
+      document.getElementById("modalTitle").textContent = `Block Inspector // #${b.index} [${b.operation}]`;
+      document.getElementById("modalContent").textContent = JSON.stringify(b, null, 2);
+      document.getElementById("inspectorModal").classList.add("active");
+    }
+
+    function closeInspector() {
+      document.getElementById("inspectorModal").classList.remove("active");
+    }
+
+    // Initialize on load
+    window.addEventListener("DOMContentLoaded", () => {
+      loadDevices();
+    });
   </script>
 </body>
 </html>

@@ -27,6 +27,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from starlette.staticfiles import StaticFiles
 
 REPO = Path(__file__).resolve().parents[2]
 VENV_BIN = REPO / ".venv" / "bin"
@@ -40,6 +41,10 @@ IMAGE_DIRS = [
 ]
 
 app = FastAPI(title="TrustWipe Forensic & Sanitization Dashboard (NTRO)", docs_url=None, redoc_url=None)
+
+PORTAL_DIR = REPO / "verification-portal"
+if PORTAL_DIR.is_dir():
+    app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 
@@ -103,10 +108,15 @@ def devices() -> JSONResponse:
             "mounted_hint": None,
         })
     images = []
+    seen = set()
     for d in IMAGE_DIRS:
         if d and d.is_dir():
-            for img in sorted(d.glob("*.img")) + sorted(d.glob("*.raw")):
-                images.append({"path": str(img), "capacity_bytes": img.stat().st_size})
+            candidates = list(d.glob("*.img")) + list(d.glob("*.raw")) + list(d.glob("*/*.img")) + list(d.glob("*/*.raw"))
+            for img in sorted(candidates):
+                resolved = str(img.resolve())
+                if resolved not in seen and img.is_file():
+                    seen.add(resolved)
+                    images.append({"path": str(img), "capacity_bytes": img.stat().st_size})
     return JSONResponse({"block": block, "images": images})
 
 
@@ -183,7 +193,12 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
             result: dict = {"returncode": proc.returncode}
             if proc.returncode == 0:
                 if out.strip():
-                    result.update(json.loads(out.strip()))
+                    parsed = json.loads(out.strip())
+                    result.update(parsed)
+                    if "certificate_path" in parsed and parsed["certificate_path"]:
+                        result["cert_filename"] = Path(parsed["certificate_path"]).name
+                    if "pdf_path" in parsed and parsed["pdf_path"]:
+                        result["pdf_filename"] = Path(parsed["pdf_path"]).name
             else:
                 result["stdout_tail"] = out.strip()[-2000:]
             with _lock:
@@ -223,7 +238,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 organization="NTRO Digital Forensics & Data Sanitization Lab",
                 progress_callback=file_progress,
             )
-            cert_p = None
+            cert_filename = None
             if summary.certificate:
                 try:
                     record_audit_event(summary.certificate, operation_type="FILE_ERASE")
@@ -231,7 +246,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                     pass
                 cert_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
                 cert_file.write_text(json.dumps(summary.certificate, indent=2))
-                cert_p = str(cert_file)
+                cert_filename = cert_file.name
 
             with _lock:
                 _jobs[job_id].update(
@@ -242,7 +257,8 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         "successful_files": summary.successful_files,
                         "failed_files": summary.failed_files,
                         "total_bytes": summary.total_bytes_processed,
-                        "certificate": cert_p,
+                        "cert_filename": cert_filename,
+                        "warnings": summary.warnings,
                     },
                 )
         except Exception as exc:
@@ -284,6 +300,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 operator_id=req.operator_id,
                 progress_callback=carve_progress,
             )
+            manifest_filename = None
             if summary.manifest_certificate:
                 try:
                     record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE")
@@ -291,6 +308,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                     pass
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
                 m_file.write_text(json.dumps(summary.manifest_certificate, indent=2))
+                manifest_filename = m_file.name
 
             with _lock:
                 _jobs[job_id].update(
@@ -300,14 +318,18 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                         "bytes_scanned": summary.total_bytes_scanned,
                         "candidates_found": summary.total_candidates_found,
                         "files_recovered": summary.files_recovered,
+                        "manifest_filename": manifest_filename,
                         "carved_files": [
                             {
                                 "id": c.file_id,
                                 "filename": c.filename,
                                 "ext": c.extension,
+                                "category": c.category,
                                 "size": c.size_bytes,
                                 "conf": c.confidence_score,
-                                "sha256": c.sha256[:16] + "...",
+                                "sha256": c.sha256,
+                                "heuristics": c.heuristics,
+                                "recovery_method": c.recovery_method,
                             }
                             for c in summary.carved_files
                         ],
@@ -332,8 +354,13 @@ def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
                 "operation": b.operation_type,
                 "target": b.target_id,
                 "operator": b.operator_id,
-                "prev_hash": b.prev_hash[:16] + "...",
-                "block_hash": b.block_hash[:16] + "...",
+                "organization": b.organization,
+                "cert_uuid": b.cert_uuid,
+                "prev_hash": b.prev_hash,
+                "block_hash": b.block_hash,
+                "payload_hash": b.payload_hash,
+                "signature": b.signature,
+                "certificate_json": b.certificate_json,
             }
             for b in blocks
         ]

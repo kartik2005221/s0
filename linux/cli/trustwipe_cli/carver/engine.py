@@ -14,6 +14,7 @@ from trustwipe_core import certificate as cert_mod
 from trustwipe_core import crypto as core_crypto
 
 from .ext4_carver import parse_ext4_superblock, scan_ext4_deleted_inodes
+from .fat_carver import parse_fat32_boot_sector, scan_fat32_deleted_files
 from .ntfs_carver import parse_ntfs_boot_sector, scan_ntfs_deleted_files
 from .scoring import calculate_shannon_entropy, score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, get_signature_by_ext
@@ -53,11 +54,15 @@ def detect_filesystem(target_path: str | Path) -> str:
             header = f.read(2048)
             if len(header) >= 512 and header[3:11] == b"NTFS    ":
                 return "ntfs"
-            if len(header) >= 1082:
+            if len(header) >= 512:
                 import struct
-                magic = struct.unpack_from("<H", header, 1024 + 56)[0]
-                if magic == 0xEF53:
-                    return "ext4"
+                if len(header) >= 1082:
+                    magic_ext4 = struct.unpack_from("<H", header, 1024 + 56)[0]
+                    if magic_ext4 == 0xEF53:
+                        return "ext4"
+                magic_boot = struct.unpack_from("<H", header, 510)[0]
+                if magic_boot == 0xAA55 and (header[82:87] == b"FAT32" or header[54:57] == b"FAT"):
+                    return "fat32"
     except Exception:
         pass
     return "raw"
@@ -75,6 +80,7 @@ def carve_image(
     organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     progress_callback: Optional[Callable[[int, int, int], None]] = None,
+    generate_certificate: bool = True,
 ) -> CarvingSessionSummary:
     """Scan raw disk image or block device with structure (NTFS/ext4) and signature carving."""
     target_p = Path(target_path).resolve()
@@ -192,7 +198,53 @@ def carve_image(
         except Exception as e:
             warnings.append(f"ext4 structure carving warning: {e}")
 
-    # 3. Raw Stream Signature-based Carving
+    # 3. Structure-based recovery if FAT32 is detected
+    elif fs_type == "fat32":
+        try:
+            fat_files = scan_fat32_deleted_files(target_p)
+            for ff in fat_files:
+                if ff.data and len(ff.data) > 0:
+                    ext = Path(ff.filename).suffix.lower().lstrip(".") or "bin"
+                    if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
+                        continue
+
+                    candidate_count += 1
+                    sig = get_signature_by_ext(ext)
+                    if sig:
+                        score, heuristics = score_carved_candidate(
+                            sig, ff.data, has_valid_footer=(sig.footer is not None and sig.footer in ff.data)
+                        )
+                    else:
+                        score = 75
+                        heuristics = ["FAT32 directory entry structure verified (+75%)"]
+
+                    if score >= min_confidence:
+                        f_hash = hashlib.sha256(ff.data).hexdigest()
+                        file_id = f"carved_{len(carved_files)+1:05d}"
+                        rec_filename = f"{file_id}_fat32_clus{ff.first_cluster}_{score}pct_{ff.filename}"
+                        rec_path = out_p / rec_filename
+                        rec_path.write_bytes(ff.data)
+
+                        carved_files.append(
+                            CarvedFile(
+                                file_id=file_id,
+                                filename=rec_filename,
+                                extension=ext,
+                                category=sig.category if sig else "document",
+                                offset=ff.first_cluster * 4096,
+                                size_bytes=len(ff.data),
+                                sha256=f_hash,
+                                confidence_score=score,
+                                heuristics=heuristics + [f"Recovered via FAT32 cluster #{ff.first_cluster}"],
+                                recovered_path=str(rec_path),
+                                recovery_method="fat32_directory",
+                            )
+                        )
+                        recovered_hashes.add(f_hash)
+        except Exception as e:
+            warnings.append(f"FAT32 structure carving warning: {e}")
+
+    # 4. Raw Stream Signature-based Carving
     active_signatures = SIGNATURES
     if extensions:
         norm_exts = [e.lower().lstrip(".") for e in extensions]
@@ -290,51 +342,59 @@ def carve_image(
 
     # 3. Generate Ed25519 signed recovery manifest certificate
     manifest_cert = None
-    key_file = (
-        Path(signing_key_path)
-        if signing_key_path
-        else Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_private.pem"
-    )
+    if not generate_certificate:
+        warnings.append("Forensic recovery manifest certificate omitted per operator request (--no-certificate).")
+    else:
+        key_file = (
+            Path(signing_key_path)
+            if signing_key_path
+            else Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_private.pem"
+        )
 
-    if key_file.exists():
-        try:
-            total_rec_bytes = sum(c.size_bytes for c in carved_files)
-            now_iso = cert_mod.now_utc()
-            cert_dict = cert_mod.build_certificate(
-                organization=organization,
-                operator_id=operator_id,
-                tool_name="trustwipe-carver",
-                tool_version="1.0.0",
-                platform="linux",
-                device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",
-                device_type="image_file",
-                storage_type="IMAGE_FILE",
-                method="FORENSIC_CARVING",
-                nist_category="N/A",
-                pattern="carving",
-                start_time=now_iso,
-                end_time=now_iso,
-                bytes_processed=scanned_bytes,
-                capacity_bytes=total_size or scanned_bytes,
-                status="success",
-                verification={
-                    "method": "forensic_signature_and_structure_carving",
-                    "samples_checked": len(carved_files),
-                    "all_samples_match_wipe_pattern": True,
-                    "planted_pattern_hits_after": 0,
-                },
-                notes=[
-                    f"Forensic Carving Session: Scanned {scanned_bytes} bytes on {target_p.name}.",
-                    f"Source Filesystem: {fs_type.upper()}.",
-                    f"Recovered {len(carved_files)} files ({total_rec_bytes} bytes total).",
-                    f"Candidate matches evaluated: {candidate_count}.",
-                ],
+        if key_file.exists():
+            try:
+                total_rec_bytes = sum(c.size_bytes for c in carved_files)
+                now_iso = cert_mod.now_utc()
+                cert_dict = cert_mod.build_certificate(
+                    organization=organization,
+                    operator_id=operator_id,
+                    tool_name="trustwipe-carver",
+                    tool_version="1.0.0",
+                    platform="linux",
+                    device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",
+                    device_type="image_file",
+                    storage_type="IMAGE_FILE",
+                    method="FORENSIC_CARVING",
+                    nist_category="N/A",
+                    pattern="carving",
+                    start_time=now_iso,
+                    end_time=now_iso,
+                    bytes_processed=scanned_bytes,
+                    capacity_bytes=total_size or scanned_bytes,
+                    status="success",
+                    verification={
+                        "method": "forensic_signature_and_structure_carving",
+                        "samples_checked": len(carved_files),
+                        "all_samples_match_wipe_pattern": True,
+                        "planted_pattern_hits_after": 0,
+                    },
+                    notes=[
+                        f"Forensic Carving Session: Scanned {scanned_bytes} bytes on {target_p.name}.",
+                        f"Source Filesystem: {fs_type.upper()}.",
+                        f"Recovered {len(carved_files)} files ({total_rec_bytes} bytes total).",
+                        f"Candidate matches evaluated: {candidate_count}.",
+                    ],
+                )
+                priv = core_crypto.load_private_pem(key_file)
+                manifest_cert = cert_mod.sign_certificate(cert_dict, priv)
+            except Exception as e:
+                warnings.append(f"Manifest signing failed: {e}")
+                manifest_cert = None
+        else:
+            warnings.append(
+                f"WARNING: Signing key not found at '{key_file}'. "
+                "No forensic recovery manifest certificate was generated."
             )
-            priv = core_crypto.load_private_pem(key_file)
-            manifest_cert = cert_mod.sign_certificate(cert_dict, priv)
-        except Exception as e:
-            warnings.append(f"Manifest signing failed: {e}")
-            manifest_cert = None
 
     # Write recovery_index.json for forensic logging and audit indexing
     index_data = {

@@ -9,10 +9,12 @@
 
 | Module | Development Status | Real Hardware Behavior & Requirements |
 |---|---|---|
-| **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). |
-| **Module 2: File/Folder Eraser** | ✅ **Fully Real & Validated** | Overwrites allocated clusters, zeros inode timestamps, renames directory entries. Journaling filesystems (ext4/NTFS journals) may retain metadata. |
-| **Module 3: File Carver (ext4 + NTFS)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT structure-based recovery (resident & single-run non-resident data). |
-| **Module 4: Blockchain Audit** | ✅ **Fully Real & Validated** | SQLite append-only ledger with SHA-256 block hash chaining and unbroken continuity verification. |
+| Module | Development Status | Real Hardware Behavior & Requirements |
+|---|---|---|
+| **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). Bootable Live ISO (`linux/iso/`) for unmounted drive sanitization. |
+| **Module 2: File/Folder Eraser** | ✅ **Fully Real & Validated** | Overwrites allocated clusters, zeros inode timestamps, renames directory entries. Journaling filesystems (ext4/NTFS journals) may retain metadata. Linux-native; Windows shims on forward roadmap. |
+| **Module 3: File Carver (ext4 + NTFS + FAT32)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP, BMP, ELF, SQLite3, MP3) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT structure recovery; FAT32 directory entry (0xE5) deleted cluster recovery for USB flash drives and SD cards. |
+| **Module 4: Cryptographic Hash Ledger** | ✅ **Fully Real & Validated** | SQLite append-only ledger with SHA-256 block hash chaining and Ed25519 digital signature verification. (Tamper-evident hash chain designed for single-authority forensic integrity rather than multi-node distributed consensus). |
 
 ---
 
@@ -33,7 +35,43 @@ The NTFS structure carver (`linux/cli/trustwipe_cli/carver/ntfs_carver.py`) dire
 
 ---
 
-## 3. Inherent Storage & Filesystem Limitations
+## 3. FAT32 Structure-Based Carving Scope & Boundaries
+
+The FAT32 structure carver (`linux/cli/trustwipe_cli/carver/fat_carver.py`) targets removable USB drives, flash drives, and SD memory cards:
+
+1. **Supported FAT32 Features:**
+   - **BPB Boot Sector Parsing:** Detects BIOS Parameter Block, sector size, cluster geometry, reserved sectors, and root cluster index.
+   - **Deleted Directory Entry Scanning:** Identifies 32-byte directory entries marked with the `0xE5` leading deleted marker.
+   - **Metadata Extraction:** Reconstructs 8.3 filenames, file sizes, and starting cluster addresses.
+   - **Contiguous Cluster Data Recovery:** Recovers raw data streams starting from the unallocated cluster location.
+2. **Documented FAT32 Boundaries:**
+   - **Fragmented File Chains:** Deleted FAT32 files lose their File Allocation Table cluster linkage. Contiguous allocation is assumed; highly fragmented deleted files require manual boundary reconstruction.
+
+---
+
+## 4. Operating System Scope & Live Boot Architecture
+
+1. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
+   - **Defensible Architectural Choice:** In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
+   - True data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88).
+   - TrustWipe packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
+2. **Host OS Status:**
+   - File/folder erasure and carver modules are implemented and validated natively for Linux.
+   - Windows desktop shims and mobile wrappers are positioned on the post-hackathon engineering roadmap.
+
+---
+
+## 5. Cryptographic Hash Chain vs. Distributed Blockchain
+
+1. **Architecture Rationale:**
+   - TrustWipe implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical RFC 8785 payload digest, and RFC 8032 Ed25519 signature.
+   - In a national forensic or law-enforcement compliance architecture (such as NTRO), there is a single accredited issuing authority.
+   - Distributed consensus mechanisms (Proof of Work / Proof of Stake) require multi-node peer networks and introduce latency and overhead without adding security value to a local, air-gapped forensic workstation.
+   - The hash chain delivers mathematical tamper-evidence: any modification to an existing block invalidates the entire subsequent chain.
+
+---
+
+## 6. Inherent Storage & Filesystem Limitations
 
 1. **Flash Translation Layer (FTL) on Solid-State Media:**
    - Host-level file or logical sector writes cannot overwrite retired bad blocks or overprovisioned flash memory.

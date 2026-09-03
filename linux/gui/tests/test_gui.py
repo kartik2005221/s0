@@ -136,3 +136,11 @@ def test_audit_api(client):
     r_verify = client.get("/api/audit/verify")
     assert r_verify.status_code == 200
     assert r_verify.json()["is_valid"] is True
+
+
+def test_portal_serves(client):
+    r = client.get("/portal/")
+    assert r.status_code == 200
+    assert b"TrustWipe" in r.content
+    assert b"Verification" in r.content
+
