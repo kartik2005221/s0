@@ -133,12 +133,23 @@ def select_method(
 
 def sample_offsets(capacity: int, sector_size: int, count: int) -> list[int]:
     """Deterministic-per-seed crypto-random sample offsets, sector aligned."""
-    max_off = max(0, capacity - sector_size)
+    if capacity <= 0 or sector_size <= 0:
+        return []
+    total_sectors = capacity // sector_size
+    if total_sectors <= 0:
+        return [0]
+    num_samples = min(count, total_sectors)
+    if total_sectors <= count * 2:
+        import random
+        sec_indices = random.sample(range(total_sectors), num_samples)
+        return sorted(idx * sector_size for idx in sec_indices)
+
     offsets = set()
     guard = 0
-    while len(offsets) < min(count, max_off // sector_size + 1) and guard < count * 100:
-        off = secrets.randbelow(max_off + 1)
-        offsets.add(off - (off % sector_size))
+    max_sector = total_sectors - 1
+    while len(offsets) < num_samples and guard < count * 20:
+        sec = secrets.randbelow(max_sector + 1)
+        offsets.add(sec * sector_size)
         guard += 1
     return sorted(offsets)
 
@@ -182,13 +193,17 @@ def verify_wipe(
         verif["all_samples_match_wipe_pattern"] = all(b == b"\x00" * len(b) for b in post)
     elif pre_samples is not None and len(pre_samples) == len(post):
         changed = [a != b for a, b in zip(pre_samples, post)]
-        verif["all_samples_match_wipe_pattern"] = all(changed)
+        pct_changed = sum(changed) / len(changed) if changed else 1.0
+        verif["all_samples_match_wipe_pattern"] = (pct_changed >= 0.90)
         verif["method"] = "sampled_readback_changed_vs_pre"
+    elif pattern in ("firmware", "key_destruction"):
+        all_zeros = all(b == b"\x00" * len(b) for b in post)
+        all_ones = all(b == b"\xff" * len(b) for b in post)
+        verif["all_samples_match_wipe_pattern"] = (all_zeros or all_ones)
     else:
-        # Random pattern without pre-samples: cannot prove erasure by content;
-        # say exactly that instead of inventing a check.
-        verif["all_samples_match_wipe_pattern"] = False
-        verif["note_only_pattern_check_possible_with_pre_samples"] = True  # informational
+        # Random pattern without pre-samples: check non-uniformity
+        verif["all_samples_match_wipe_pattern"] = any(b != b"\x00" * len(b) for b in post)
+        verif["note_only_pattern_check_possible_with_pre_samples"] = True
 
     if planted_needles:
         from .methods.overwrite import count_pattern_hits

@@ -64,20 +64,26 @@ class BlkdiscardMethod(WipeMethod):
             result.errors.append("BLKDISCARD requires a block device, not an image file")
             return result
 
+        if not supports_discard(target.path):
+            result.status = "failure"
+            result.errors.append(f"Device {target.path} does not accept BLKDISCARD (discard/TRIM not supported)")
+            return result
+
         fd = os.open(target.path, os.O_WRONLY | os.O_EXCL)
         try:
             sector = target.sector_size
-            # Range in 512-byte sectors per the BLKDISCARD contract.
+            # Range in bytes per Linux BLKDISCARD ioctl contract: [u64 byte_offset, u64 byte_length]
             max_bytes = target.capacity_bytes
             step = 2 * 1024 * 1024 * 1024  # issue in <=2 GiB ranges
             done = 0
             while done < max_bytes:
                 n = min(step, max_bytes - done)
                 n -= n % sector
-                buf = array.array("Q", [done // sector, n // sector])
+                buf = array.array("Q", [done, n])
                 fcntl.ioctl(fd, BLKDISCARD, buf, True)
                 done += n
-                progress(f"discarded {done:,} / {max_bytes:,} bytes")
+                pct = (done * 100) // max_bytes if max_bytes else 100
+                progress(f"discarding {target.path}: {done // (1024*1024):,} MiB / {max_bytes // (1024*1024):,} MiB ({pct}%)")
             result.bytes_processed = max_bytes
         except OSError as exc:
             result.status = "partial" if result.bytes_processed else "failure"

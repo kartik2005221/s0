@@ -79,11 +79,22 @@ def erase_single_file(
     chunk_size: int = 65536,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> FileEraseResult:
-    """Securely overwrite and unlink a single file."""
-    path_obj = Path(file_path).resolve()
+    raw_path = Path(file_path)
+    if raw_path.is_symlink() or os.path.islink(file_path):
+        return FileEraseResult(
+            path=str(raw_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error="Target is a symbolic link; refusing to follow symlink",
+        )
+
+    path_obj = raw_path.resolve()
     path_str = str(path_obj)
 
-    if not path_obj.exists() or path_obj.is_symlink() or not path_obj.is_file():
+    if not path_obj.exists() or not path_obj.is_file():
         return FileEraseResult(
             path=path_str,
             original_size=0,
@@ -91,7 +102,7 @@ def erase_single_file(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error="Target is not an existing regular file or is a symlink",
+            error="Target is not an existing regular file",
         )
 
     try:
@@ -104,8 +115,28 @@ def erase_single_file(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error=f"Cannot stat target file: {exc}",
+            error=f"Cannot stat target: {exc}",
         )
+
+    # Informational extent mapping
+    extents = get_file_extents(path_str)
+
+    # Detect Copy-on-Write (CoW) filesystem
+    cow_warning = None
+    try:
+        with open("/proc/mounts") as mf:
+            for mline in mf:
+                mparts = mline.split()
+                if len(mparts) >= 3 and mparts[2].lower() in ("btrfs", "zfs"):
+                    mp = mparts[1]
+                    if path_str.startswith(mp):
+                        cow_warning = (
+                            f"Target resides on CoW filesystem ({mparts[2]}). In-place write may allocate "
+                            "new blocks; original blocks may persist until reclaimed."
+                        )
+                        break
+    except Exception:
+        pass
 
     bytes_written_total = 0
 
@@ -247,6 +278,19 @@ def erase_folder(
         except Exception:
             pass
 
+    if root_dir.exists():
+        results.append(
+            FileEraseResult(
+                path=str(root_dir),
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=f"Directory {root_dir} could not be completely removed",
+            )
+        )
+
     return results
 
 
@@ -333,7 +377,8 @@ def erase_batch(
             )
             priv = core_crypto.load_private_pem(key_file)
             cert = cert_mod.sign_certificate(cert_dict, priv)
-        except Exception:
+        except Exception as e:
+            warnings.append(f"Certificate generation/signing failed: {e}")
             cert = None
 
     return BatchEraseSummary(

@@ -59,11 +59,12 @@
           "NVME_FORMAT_USER_DATA_ERASE", "NVME_FORMAT_CRYPTO_ERASE",
           "NVME_SANITIZE_BLOCK_ERASE", "NVME_SANITIZE_CRYPTO_ERASE",
           "WINDOWS_CLEAN_ALL", "WINDOWS_CIPHER_W", "WINDOWS_SED_KEY_DESTROY",
-          "ANDROID_FACTORY_RESET_FBE", "ANDROID_USER_SPACE_OVERWRITE"
+          "ANDROID_FACTORY_RESET_FBE", "ANDROID_USER_SPACE_OVERWRITE",
+          "FORENSIC_CARVING"
         ]},
-        "nist_category": { "enum": ["Clear", "Purge", "Destroy"], "description": "Must match the tier permitted for this method per core/standards/nist_800_88_mapping.md §3. Conditional methods record their reasoning in notes." },
+        "nist_category": { "enum": ["Clear", "Purge", "Destroy", "N/A"], "description": "Must match the tier permitted for this method per core/standards/nist_800_88_mapping.md §3. Conditional methods record their reasoning in notes." },
         "passes": { "type": "integer", "minimum": 1 },
-        "pattern": { "enum": ["zero", "random", "firmware", "key_destruction"] },
+        "pattern": { "enum": ["zero", "random", "firmware", "key_destruction", "carving"] },
         "start_time": { "type": "string", "format": "date-time" },
         "end_time": { "type": "string", "format": "date-time" },
         "bytes_processed": { "type": "integer", "minimum": 0 }

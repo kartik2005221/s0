@@ -103,3 +103,20 @@ def test_erase_batch_with_certificate(temp_test_env):
     ok, reason = verify_certificate(summary.certificate, [pub])
     assert ok is True
     assert "valid Ed25519 signature" in reason
+
+
+def test_erase_symlink_rejected(tmp_path):
+    """Verify that symlinks to files or directories are safely rejected without following."""
+    real_file = tmp_path / "real_file.txt"
+    real_file.write_bytes(b"REAL_PROTECTED_DATA")
+
+    symlink_file = tmp_path / "symlink_file.txt"
+    symlink_file.symlink_to(real_file)
+
+    res = erase_single_file(symlink_file)
+    assert res.status == "failure"
+    assert "symlink" in res.error.lower()
+
+    # The target of the symlink must remain untouched!
+    assert real_file.exists()
+    assert real_file.read_bytes() == b"REAL_PROTECTED_DATA"

@@ -23,3 +23,6 @@ demo-out/
 
 # OS
 .DS_Store
+tmp/
+/tmp/
+*.db

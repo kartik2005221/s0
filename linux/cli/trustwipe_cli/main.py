@@ -102,17 +102,35 @@ def _print_plan(
 # --------------------------------------------------------------------------- #
 
 
-def cmd_list(_args) -> int:
+def cmd_list(args) -> int:
     targets = list_block_targets()
-    if not targets:
-        print("(no block devices found)")
-        return 0
     mounted = set()
     try:
         with open("/proc/mounts") as f:
             mounted = {line.split()[0] for line in f}
     except OSError:
         pass
+
+    if getattr(args, "output_format", "text") == "json":
+        import json
+        data = [
+            {
+                "path": t.path,
+                "kind": t.kind,
+                "storage_type": t.storage_type,
+                "capacity_bytes": t.capacity_bytes,
+                "model": t.model,
+                "serial": t.serial,
+                "mounted": any(m.startswith(t.path) for m in mounted),
+            }
+            for t in targets
+        ]
+        print(json.dumps(data, indent=2))
+        return 0
+
+    if not targets:
+        print("(no block devices found)")
+        return 0
     print(
         f"{'PATH':<14} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
         f"{'MODEL':<24} {'SERIAL':<16} MOUNTED?"
@@ -362,7 +380,11 @@ def cmd_carve(args) -> int:
                 f"{c.file_id:<14} {c.extension:<6} {c.size_bytes:>10}  {c.confidence_score:>5}%  {c.sha256[:16]:<20} {c.filename}"
             )
         if len(summary.carved_files) > 20:
-            print(f"... and {len(summary.carved_files) - 20} more files (see output dir).")
+            print(f"... and {len(summary.carved_files) - 20} more files (see recovery_index.json).")
+
+    idx_file = Path(args.out_dir) / "recovery_index.json"
+    if idx_file.exists():
+        print(f"Recovery Index File       : {idx_file}")
 
     if summary.manifest_certificate:
         try:
@@ -424,9 +446,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     # 1. Drive Eraser Subcommands
     lst = sub.add_parser("list", help="list block-device wipe targets")
+    lst.add_argument(
+        "--output-format",
+        choices=["text", "json"],
+        default="text",
+        help="output format (default: text)",
+    )
     lst.set_defaults(func=cmd_list)
 
     common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--version", action="version", version=f"trustwipe-wipe {__version__}")
     common.add_argument("--target", required=True, help="block device path OR image file path")
     common.add_argument(
         "--passes",

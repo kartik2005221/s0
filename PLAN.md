@@ -66,10 +66,10 @@ trustwipe/
 ### Module 2: Secure File & Folder Eraser
 - **Target Scope:** Individual sensitive files, nested directory trees, and batch file lists.
 - **Sanitization Mechanism:**
-  * Physical Extent Resolution: Uses Linux `FIEMAP` ioctl / extent mapping to locate exact disk block offsets where file clusters reside.
+  * Extent Resolution & In-Place Overwriting: Maps physical file extents (via `filefrag` / extent diagnostics) and performs multi-pass in-place cluster overwriting with fsync flushes.
   * Multi-Pass In-Place Cluster Overwriting: Overwrites allocated sectors with random/zero patterns before unlinking.
-  * Metadata Cleansing: Truncates file size to 0, randomizes and resets inode timestamps (atime, mtime, ctime to epoch 0), renames file to random string before unlinking to scrub directory entry remnants.
-  * OS Cache & Journaling Disclosure: Logs explicit caveats regarding journaling filesystems (ext4/NTFS journals) and flash wear leveling.
+  * Metadata Cleansing: Truncates file size to 0, resets inode timestamps (atime, mtime to epoch 0), renames file to random string before unlinking to scrub directory entry remnants.
+  * OS Cache, CoW, & Journaling Disclosure: Logs explicit caveats regarding journaling filesystems (ext4/NTFS journals), Copy-on-Write filesystems (Btrfs/ZFS), and flash wear leveling.
 - **Verification:** Post-erase sampled block readback confirming 0x00 pattern and file non-existence.
 - **Certification:** Consolidated batch erasure certificate signed via Ed25519.
 

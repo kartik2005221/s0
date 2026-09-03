@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import secrets
 from dataclasses import asdict, dataclass, field
@@ -42,6 +43,7 @@ class CarvingSessionSummary:
     files_recovered: int
     carved_files: List[CarvedFile] = field(default_factory=list)
     manifest_certificate: Optional[dict] = None
+    warnings: List[str] = field(default_factory=list)
 
 
 def detect_filesystem(target_path: str | Path) -> str:
@@ -90,6 +92,8 @@ def carve_image(
     candidate_count = 0
     recovered_hashes = set()
 
+    warnings: List[str] = []
+
     # 1. Structure-based recovery if NTFS is detected
     if fs_type == "ntfs":
         try:
@@ -133,10 +137,62 @@ def carve_image(
                             )
                         )
                         recovered_hashes.add(f_hash)
-        except Exception:
-            pass
+        except Exception as e:
+            warnings.append(f"NTFS structure carving warning: {e}")
 
-    # 2. Raw Stream Signature-based Carving
+    # 2. Structure-based recovery if ext4 is detected
+    elif fs_type == "ext4":
+        try:
+            ext4_inodes = scan_ext4_deleted_inodes(target_p)
+            for inode in ext4_inodes:
+                if inode.data and len(inode.data) > 0:
+                    matched_sig = None
+                    for sig in SIGNATURES:
+                        if inode.data.startswith(sig.header):
+                            matched_sig = sig
+                            break
+                    ext = matched_sig.extension if matched_sig else "bin"
+                    if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
+                        continue
+
+                    candidate_count += 1
+                    if matched_sig:
+                        score, heuristics = score_carved_candidate(
+                            matched_sig, inode.data, has_valid_footer=(matched_sig.footer is not None and matched_sig.footer in inode.data)
+                        )
+                    else:
+                        score = 75
+                        heuristics = ["ext4 inode structure verified (+75%)"]
+
+                    if score >= min_confidence:
+                        f_hash = hashlib.sha256(inode.data).hexdigest()
+                        if f_hash in recovered_hashes:
+                            continue
+                        file_id = f"carved_{len(carved_files)+1:05d}"
+                        rec_filename = f"{file_id}_ext4_inode{inode.inode_num}_{score}pct.{ext}"
+                        rec_path = out_p / rec_filename
+                        rec_path.write_bytes(inode.data)
+
+                        carved_files.append(
+                            CarvedFile(
+                                file_id=file_id,
+                                filename=rec_filename,
+                                extension=ext,
+                                category=matched_sig.category if matched_sig else "document",
+                                offset=inode.extent_block_ranges[0][0] * 1024 if inode.extent_block_ranges else 0,
+                                size_bytes=len(inode.data),
+                                sha256=f_hash,
+                                confidence_score=score,
+                                heuristics=heuristics + [f"Recovered via ext4 inode #{inode.inode_num}"],
+                                recovered_path=str(rec_path),
+                                recovery_method="ext4_inode",
+                            )
+                        )
+                        recovered_hashes.add(f_hash)
+        except Exception as e:
+            warnings.append(f"ext4 structure carving warning: {e}")
+
+    # 3. Raw Stream Signature-based Carving
     active_signatures = SIGNATURES
     if extensions:
         norm_exts = [e.lower().lstrip(".") for e in extensions]
@@ -253,8 +309,9 @@ def carve_image(
                 device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",
                 device_type="image_file",
                 storage_type="IMAGE_FILE",
-                method="OVERWRITE_ZERO_1PASS",
-                nist_category="Clear",
+                method="FORENSIC_CARVING",
+                nist_category="N/A",
+                pattern="carving",
                 start_time=now_iso,
                 end_time=now_iso,
                 bytes_processed=scanned_bytes,
@@ -275,8 +332,36 @@ def carve_image(
             )
             priv = core_crypto.load_private_pem(key_file)
             manifest_cert = cert_mod.sign_certificate(cert_dict, priv)
-        except Exception:
+        except Exception as e:
+            warnings.append(f"Manifest signing failed: {e}")
             manifest_cert = None
+
+    # Write recovery_index.json for forensic logging and audit indexing
+    index_data = {
+        "target_path": str(target_p),
+        "source_filesystem": fs_type,
+        "total_bytes_scanned": scanned_bytes,
+        "files_recovered": len(carved_files),
+        "recovered_files": [
+            {
+                "file_id": c.file_id,
+                "filename": c.filename,
+                "extension": c.extension,
+                "category": c.category,
+                "offset": c.offset,
+                "size_bytes": c.size_bytes,
+                "sha256": c.sha256,
+                "confidence_score": c.confidence_score,
+                "recovery_method": c.recovery_method,
+            }
+            for c in carved_files
+        ],
+        "warnings": warnings,
+    }
+    try:
+        (out_p / "recovery_index.json").write_text(json.dumps(index_data, indent=2))
+    except Exception:
+        pass
 
     return CarvingSessionSummary(
         target_path=str(target_p),
@@ -286,4 +371,5 @@ def carve_image(
         files_recovered=len(carved_files),
         carved_files=carved_files,
         manifest_certificate=manifest_cert,
+        warnings=warnings,
     )

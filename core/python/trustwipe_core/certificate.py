@@ -33,10 +33,11 @@ WIPE_METHODS = {
     "WINDOWS_SED_KEY_DESTROY",
     "ANDROID_FACTORY_RESET_FBE",
     "ANDROID_USER_SPACE_OVERWRITE",
+    "FORENSIC_CARVING",
 }
 
-NIST_CATEGORIES = {"Clear", "Purge", "Destroy"}
-PATTERNS = {"zero", "random", "firmware", "key_destruction"}
+NIST_CATEGORIES = {"Clear", "Purge", "Destroy", "N/A"}
+PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving"}
 
 # Permitted NIST tier per method — mirrors core/standards/nist_800_88_mapping.md §3.
 # Enforced by validate() so a certificate cannot claim a tier its method never earned.
@@ -57,6 +58,7 @@ METHOD_TIERS = {
     "WINDOWS_SED_KEY_DESTROY": {"Purge"},
     "ANDROID_FACTORY_RESET_FBE": {"Purge"},
     "ANDROID_USER_SPACE_OVERWRITE": {"Clear"},
+    "FORENSIC_CARVING": {"N/A"},
 }
 STATUSES = {"success", "failure", "partial", "reset_triggered"}
 DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone"}

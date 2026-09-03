@@ -24,13 +24,21 @@ reports this instead of failing mysteriously.
 
 from __future__ import annotations
 
+import atexit
 import re
+import secrets
 import shutil
 import subprocess
 
 from .base import MethodResult, Plan, ProgressFn, Target, WipeMethod
 
-TEMP_PASSWORD = "TrustWipeEraseTemp2026"
+
+def generate_temp_password() -> str:
+    """Generate a random unpredictable session password for ATA security."""
+    return secrets.token_hex(16)
+
+
+TEMP_PASSWORD = generate_temp_password()
 
 
 def _run(cmd: list[str], timeout: int | None = None) -> tuple[int, str, str]:
@@ -60,10 +68,10 @@ class AtaSecureEraseMethod(WipeMethod):
             summary=f"ATA {variant}Security Erase executed by the drive firmware",
             commands=[
                 f"hdparm -I {target.path}",
-                f"hdparm --user-master u --security-set-pass {TEMP_PASSWORD} {target.path}",
+                f"hdparm --user-master u --security-set-pass <session_random_password> {target.path}",
                 f"hdparm --user-master u --security-erase{'-enhanced' if self.enhanced else ''} "
-                f"{TEMP_PASSWORD} {target.path}",
-                f"hdparm --user-master u --security-disable {TEMP_PASSWORD} {target.path}",
+                f"<session_random_password> {target.path}",
+                f"hdparm --user-master u --security-disable <session_random_password> {target.path}",
             ],
             warnings=[
                 "Firmware erase may take hours on large drives; do not interrupt power.",
@@ -124,33 +132,48 @@ class AtaSecureEraseMethod(WipeMethod):
             return result
 
         flag = "--security-erase-enhanced" if self.enhanced else "--security-erase"
+        temp_pass = generate_temp_password()
         steps = [
-            ["hdparm", "--user-master", "u", "--security-set-pass", TEMP_PASSWORD, target.path],
-            ["hdparm", "--user-master", "u", flag, TEMP_PASSWORD, target.path],
-            ["hdparm", "--user-master", "u", "--security-disable", TEMP_PASSWORD, target.path],
+            ["hdparm", "--user-master", "u", "--security-set-pass", temp_pass, target.path],
+            ["hdparm", "--user-master", "u", flag, temp_pass, target.path],
+            ["hdparm", "--user-master", "u", "--security-disable", temp_pass, target.path],
         ]
         labels = ["setting temporary security password",
                   "firmware erase RUNNING — this can take hours; do not cut power",
                   "removing temporary password"]
-        for step, label in zip(steps, labels):
-            progress(label)
+
+        password_set = False
+
+        def cleanup_lock():
+            if password_set:
+                _run(["hdparm", "--user-master", "u", "--security-disable", temp_pass, target.path])
+
+        atexit.register(cleanup_lock)
+        try:
+            for step, label in zip(steps, labels):
+                progress(label)
+                try:
+                    code, out, err = _run(step)
+                except subprocess.TimeoutExpired:
+                    result.status = "partial"
+                    result.errors.append(f"'{label}' timed out")
+                    return result
+                if label == labels[0] and code == 0:
+                    password_set = True
+                if code != 0:
+                    result.status = "failure"
+                    result.errors.append(f"{label}: {(err or out).strip()}")
+                    return result
+                if label == labels[-1]:
+                    password_set = False
+                if "SS" in out and "complete" in out.lower():
+                    progress(out.strip().splitlines()[-1])
+        finally:
+            cleanup_lock()
             try:
-                code, out, err = _run(step)
-            except subprocess.TimeoutExpired:
-                result.status = "partial"
-                result.errors.append(f"'{label}' timed out")
-                return result
-            if code != 0:
-                # If we failed after setting a password, TRY to remove it so we
-                # don't leave the user's drive locked behind our temp password.
-                if label != labels[-1]:
-                    _run(["hdparm", "--user-master", "u", "--security-disable",
-                          TEMP_PASSWORD, target.path])
-                result.status = "failure"
-                result.errors.append(f"{label}: {(err or out).strip()}")
-                return result
-            if "SS" in out and "complete" in out.lower():
-                progress(out.strip().splitlines()[-1])
+                atexit.unregister(cleanup_lock)
+            except Exception:
+                pass
 
         result.bytes_processed = target.capacity_bytes
         result.notes.append(
@@ -181,8 +204,6 @@ def _security_block(hdparm_i_output: str) -> str:
         if line and not line[0].isspace():  # next unindented section begins
             break
         block.append(line)
-        if re.search(r"\d+\s*min.*SECURITY ERASE", line):
-            break  # duration line terminates the block
     return "\n".join(block)
 
 

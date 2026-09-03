@@ -19,14 +19,19 @@ class SafetyError(RuntimeError):
 
 
 def _lsblk() -> list[dict]:
-    out = subprocess.run(
-        ["lsblk", "-J", "-b", "-o",
-         "NAME,PATH,TYPE,SIZE,SERIAL,MODEL,RM,ROTA,MOUNTPOINTS"],
-        capture_output=True, text=True, check=False,
-    )
-    if out.returncode != 0:
-        raise RuntimeError(f"lsblk failed: {out.stderr.strip()}")
-    return json.loads(out.stdout)["blockdevices"]
+    if not shutil.which("lsblk"):
+        return []
+    try:
+        out = subprocess.run(
+            ["lsblk", "-J", "-b", "-o",
+             "NAME,PATH,TYPE,SIZE,SERIAL,MODEL,RM,ROTA,MOUNTPOINTS"],
+            capture_output=True, text=True, check=False,
+        )
+        if out.returncode != 0:
+            return []
+        return json.loads(out.stdout).get("blockdevices", [])
+    except Exception:
+        return []
 
 
 def _sys_int(device_name: str, rel: str) -> int | None:
@@ -45,6 +50,10 @@ def _mounted_paths() -> set[str]:
                 parts = line.split()
                 if len(parts) >= 2:
                     mounts.add(parts[0])
+                    try:
+                        mounts.add(os.path.realpath(parts[0]))
+                    except OSError:
+                        pass
     except OSError:
         pass
     return mounts

@@ -42,3 +42,5 @@ The NTFS structure carver (`linux/cli/trustwipe_cli/carver/ntfs_carver.py`) dire
    - On ext4/ext3 or NTFS, metadata changes (file names, sizes, prior timestamps) may remain recorded in the filesystem journal until overwritten by subsequent operations.
 3. **Fragmented File Reconstruction Limits:**
    - Signature carvers reconstruct contiguous files reliably. Non-contiguous fragmented files with scattered clusters require structure-based parsing or format-specific stream validation.
+4. **Copy-on-Write (CoW) Filesystems (Btrfs, ZFS, APFS):**
+   - File-level overwriting via POSIX file descriptors (`open("r+b")`) allocates new storage blocks on CoW filesystems rather than overwriting physical sectors in-place. The pre-wipe data clusters remain intact until reclaimed. TrustWipe detects Btrfs/ZFS mounts and includes an explicit warning in certificate notes. Complete sanitization on CoW storage requires volume or whole-device sanitization.

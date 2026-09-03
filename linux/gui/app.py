@@ -211,12 +211,17 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
     def run() -> None:
         try:
+            def file_progress(fpath: str, cur_pass: int, total_p: int) -> None:
+                with _lock:
+                    _jobs[job_id]["log"].append(f"Overwriting {Path(fpath).name}: pass {cur_pass}/{total_p}")
+
             summary = erase_batch(
                 req.targets,
                 passes=req.passes,
                 pattern=req.pattern,
                 operator_id=req.operator_id,
                 organization="NTRO Digital Forensics & Data Sanitization Lab",
+                progress_callback=file_progress,
             )
             cert_p = None
             if summary.certificate:
@@ -264,12 +269,20 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
     def run() -> None:
         try:
+            def carve_progress(scanned: int, total: int, found: int) -> None:
+                with _lock:
+                    pct = (scanned * 100 // total) if total else 0
+                    msg = f"Carving: {scanned // (1024*1024)} MB / {total // (1024*1024)} MB ({pct}%) - {found} candidates"
+                    if not _jobs[job_id]["log"] or _jobs[job_id]["log"][-1] != msg:
+                        _jobs[job_id]["log"].append(msg)
+
             summary = carve_image(
                 req.target,
                 out_dir,
                 extensions=req.extensions,
                 min_confidence=req.min_confidence,
                 operator_id=req.operator_id,
+                progress_callback=carve_progress,
             )
             if summary.manifest_certificate:
                 try:
@@ -309,8 +322,8 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
 
 @app.get("/api/audit/blocks")
-def get_audit_blocks() -> JSONResponse:
-    blocks = list_audit_blocks(limit=100)
+def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
+    blocks = list_audit_blocks(limit=limit, offset=offset)
     return JSONResponse({
         "blocks": [
             {
@@ -343,7 +356,12 @@ def job_status(job_id: str) -> JSONResponse:
         job = _jobs.get(job_id)
         if not job:
             raise HTTPException(404, "unknown job")
-        return JSONResponse({k: job[k] for k in ("status", "log", "result") if k in job} | {"cmd": job.get("cmd")})
+        return JSONResponse({
+            "status": job.get("status", "unknown"),
+            "log": job.get("log", []),
+            "result": job.get("result", None),
+            "cmd": job.get("cmd", None),
+        })
 
 
 @app.get("/api/download/{job_id}/{filename}")

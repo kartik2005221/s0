@@ -138,6 +138,12 @@ def scan_ext4_deleted_inodes(
                         i_block = raw_inode[40:100]
                         extents = parse_extent_header(i_block)
                         if extents:
+                            data_chunks = []
+                            for (start_block, count) in extents:
+                                f.seek(start_block * sb.block_size)
+                                chunk = f.read(count * sb.block_size)
+                                data_chunks.append(chunk)
+                            inode_data = b"".join(data_chunks)[:size_lo] if data_chunks else None
                             recovered.append(
                                 Ext4RecoveredInode(
                                     inode_num=global_inode_num,
@@ -145,6 +151,7 @@ def scan_ext4_deleted_inodes(
                                     size_bytes=size_lo,
                                     deletion_time=dtime,
                                     extent_block_ranges=extents,
+                                    data=inode_data,
                                 )
                             )
     except Exception:

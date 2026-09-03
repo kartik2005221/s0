@@ -106,3 +106,84 @@ def test_carve_filtered_extensions(tmp_path):
     summary = carve_image(disk_img, out_dir, extensions=["jpg"])
     assert summary.files_recovered == 1
     assert summary.carved_files[0].extension == "jpg"
+
+
+def test_scoring_multi_formats():
+    """Verify confidence scoring across diverse file formats (GIF, GZIP, ZIP, BMP, ELF, SQLite)."""
+    import json
+
+    # GIF
+    sig_gif = get_signature_by_ext("gif")
+    assert sig_gif is not None
+    gif_data = b"GIF89a\x20\x00\x20\x00\x80\x00\x00" + b"\xaa" * 50 + b"\x3b"
+    score_gif, _ = score_carved_candidate(sig_gif, gif_data, has_valid_footer=True)
+    assert score_gif >= 80
+
+    # GZIP
+    sig_gz = get_signature_by_ext("gz")
+    assert sig_gz is not None
+    gz_data = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + b"\x55" * 100
+    score_gz, _ = score_carved_candidate(sig_gz, gz_data)
+    assert score_gz >= 60
+
+    # ZIP
+    sig_zip = get_signature_by_ext("zip")
+    assert sig_zip is not None
+    zip_data = b"PK\x03\x04" + b"\x12" * 100 + b"PK\x01\x02" + b"\x34" * 50 + b"PK\x05\x06"
+    score_zip, _ = score_carved_candidate(sig_zip, zip_data, has_valid_footer=True)
+    assert score_zip >= 80
+
+    # BMP
+    sig_bmp = get_signature_by_ext("bmp")
+    assert sig_bmp is not None
+    bmp_data = b"BM" + (b"\x00" * 12) + b"\x28\x00\x00\x00" + b"\xff" * 100
+    score_bmp, _ = score_carved_candidate(sig_bmp, bmp_data)
+    assert score_bmp >= 60
+
+    # ELF
+    sig_elf = get_signature_by_ext("elf")
+    assert sig_elf is not None
+    elf_data = b"\x7fELF\x02\x01\x01\x00" + b"\x77" * 200
+    score_elf, _ = score_carved_candidate(sig_elf, elf_data)
+    assert score_elf >= 60
+
+    # SQLite
+    sig_sql = get_signature_by_ext("sqlite")
+    assert sig_sql is not None
+    sql_data = b"SQLite format 3\x00\x10\x00\x01\x01" + b"\x00" * 500
+    score_sql, _ = score_carved_candidate(sig_sql, sql_data)
+    assert score_sql >= 60
+
+
+def test_adversarial_carving_zero_and_empty_images(tmp_path):
+    """Verify carver behavior on adversarial inputs (zeros, empty file, corrupt data)."""
+    import json
+    out_dir = tmp_path / "out_adversarial"
+
+    # 1. Empty file (0 bytes)
+    empty_img = tmp_path / "empty.raw"
+    empty_img.write_bytes(b"")
+    sum_empty = carve_image(empty_img, out_dir / "empty")
+    assert sum_empty.files_recovered == 0
+    assert sum_empty.total_bytes_scanned == 0
+
+    # 2. Entirely zero-filled image (1 MiB of 0x00)
+    zero_img = tmp_path / "zeros.raw"
+    zero_img.write_bytes(b"\x00" * (1024 * 1024))
+    sum_zero = carve_image(zero_img, out_dir / "zeros")
+    assert sum_zero.files_recovered == 0
+    assert sum_zero.total_bytes_scanned == 1024 * 1024
+
+    # 3. Truncated / corrupt image (Header present but file terminates before footer)
+    corrupt_img = tmp_path / "corrupt.raw"
+    corrupt_img.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x99" * 64)
+    sum_corrupt = carve_image(corrupt_img, out_dir / "corrupt", min_confidence=80)
+    # High confidence threshold rejects header-only incomplete JPEG without footer
+    assert sum_corrupt.files_recovered == 0
+
+    # 4. Check recovery_index.json generation
+    rec_idx = out_dir / "zeros" / "recovery_index.json"
+    assert rec_idx.exists()
+    idx_content = json.loads(rec_idx.read_text())
+    assert idx_content["files_recovered"] == 0
+    assert "recovered_files" in idx_content

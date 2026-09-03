@@ -78,7 +78,8 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                 signature TEXT NOT NULL,
                 prev_hash TEXT NOT NULL,
                 block_hash TEXT NOT NULL,
-                certificate_json TEXT
+                certificate_json TEXT,
+                UNIQUE(cert_uuid, operation_type)
             );
             """
         )
@@ -211,8 +212,9 @@ def list_audit_blocks(
     db_path: str | Path = DEFAULT_AUDIT_DB,
     operation_type: Optional[str] = None,
     limit: int = 100,
+    offset: int = 0,
 ) -> List[AuditBlock]:
-    """Retrieve audit blocks from the ledger with optional filtering."""
+    """Retrieve audit blocks from the ledger with optional filtering and pagination."""
     init_audit_db(db_path)
     conn = get_db_connection(db_path)
 
@@ -221,8 +223,8 @@ def list_audit_blocks(
     if operation_type:
         query += " WHERE operation_type = ?"
         params.append(operation_type)
-    query += " ORDER BY block_index ASC LIMIT ?"
-    params.append(limit)
+    query += " ORDER BY block_index ASC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
 
     cur = conn.execute(query, params)
     rows = cur.fetchall()
