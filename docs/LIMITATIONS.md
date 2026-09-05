@@ -12,52 +12,54 @@
 | Module | Development Status | Real Hardware Behavior & Requirements |
 |---|---|---|
 | **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). Bootable Live ISO (`linux/iso/`) for unmounted drive sanitization. |
-| **Module 2: File/Folder Eraser** | ✅ **Fully Real & Validated** | Overwrites allocated clusters, zeros inode timestamps, renames directory entries. Journaling filesystems (ext4/NTFS journals) may retain metadata. Linux-native; Windows shims on forward roadmap. |
-| **Module 3: File Carver (ext4 + NTFS + FAT32)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP, BMP, ELF, SQLite3, MP3) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT structure recovery; FAT32 directory entry (0xE5) deleted cluster recovery for USB flash drives and SD cards. |
+| **Module 2: File/Folder Eraser** | ✅ **Fully Real & Cross-Platform** | Overwrites allocated clusters, zeros inode/file timestamps, cleanses attributes/ADS, renames directory entries. Natively implemented and verified across Linux (Btrfs/ZFS CoW warnings, extents), Windows (`windows/` with Win32 FlushFileBuffers, ADS scrubbing, ReFS CoW warnings), and macOS (`macos/` with `fcntl(F_FULLFSYNC)`, APFS CoW warnings, and xattr stripping). |
+| **Module 3: File Carver (ext4, NTFS, FAT32, exFAT, & Fragmentation)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP, BMP, ELF, SQLite3, MP3) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT multi-run fragmented recovery; FAT32 directory entry recovery; exFAT directory entry set parsing (SD cards/USB); and multi-fragment/bifragment heuristic reassembly. |
 | **Module 4: Cryptographic Hash Ledger** | ✅ **Fully Real & Validated** | SQLite append-only ledger with SHA-256 block hash chaining and Ed25519 digital signature verification. (Tamper-evident hash chain designed for single-authority forensic integrity rather than multi-node distributed consensus). |
 
 ---
 
-## 2. NTFS Structure-Based Carving Scope & Boundaries
+## 2. NTFS Structure-Based Carving & Fragmented Reconstruction
 
 The NTFS structure carver (`linux/cli/trustwipe_cli/carver/ntfs_carver.py`) directly parses NTFS boot sectors and the Master File Table ($MFT) without mounting the filesystem:
 
 1. **Supported NTFS Features:**
    - **Boot Sector Parsing:** Detects `NTFS    ` OEM identifier, cluster sizes, sector geometry, and $MFT starting cluster offset.
    - **Resident Attributes:** Full extraction of `$FILE_NAME` (UTF-16LE file naming) and resident `$DATA` attributes stored directly within the 1024-byte MFT record.
-   - **Non-Resident Contiguous Runs:** Supports non-resident files mapped via single contiguous data run allocations.
+   - **Multi-Fragment Non-Resident Runlists:** Fully reassembles files scattered across multiple discontiguous cluster runs by traversing the entire runlist sequence, accumulating relative LCN deltas, and reconstructing disjoint cluster fragments.
+   - **Sparse Run Handling:** Accommodates sparse cluster runs (`offset_bytes_count == 0`) with zero-fill padding.
    - **Unallocated Record Discovery:** Identifies MFT records whose `InUse` flag is cleared (representing deleted files whose MFT slot has not been overwritten).
-2. **Documented NTFS Boundaries (Out of Scope / Future Work):**
-   - **Multi-Fragment Non-Resident Runlists:** Files scattered across multiple disjoint cluster runs require full extent chain reassembly, which is bounded in v2.0.
+2. **Documented NTFS Boundaries:**
    - **Transaction Log Replay ($LogFile):** NTFS metadata changes recorded in `$LogFile` are not replayed during raw carving.
    - **USN Journal ($UsnJrnl):** Update Sequence Number journal parsing is omitted.
-   - **Alternate Data Streams (ADS):** Only default unnamed primary `$DATA` streams are extracted; named secondary data streams are bypassed.
+   - **Alternate Data Streams (ADS):** Default unnamed primary `$DATA` streams are extracted; secondary named streams are bypassed during carver recovery.
 
 ---
 
-## 3. FAT32 Structure-Based Carving Scope & Boundaries
+## 3. FAT32 & exFAT Structure-Based Carving Scope
 
-The FAT32 structure carver (`linux/cli/trustwipe_cli/carver/fat_carver.py`) targets removable USB drives, flash drives, and SD memory cards:
+Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/SDUC):
 
-1. **Supported FAT32 Features:**
+1. **FAT32 Carving (`fat_carver.py`):**
    - **BPB Boot Sector Parsing:** Detects BIOS Parameter Block, sector size, cluster geometry, reserved sectors, and root cluster index.
    - **Deleted Directory Entry Scanning:** Identifies 32-byte directory entries marked with the `0xE5` leading deleted marker.
    - **Metadata Extraction:** Reconstructs 8.3 filenames, file sizes, and starting cluster addresses.
    - **Contiguous Cluster Data Recovery:** Recovers raw data streams starting from the unallocated cluster location.
-2. **Documented FAT32 Boundaries:**
-   - **Fragmented File Chains:** Deleted FAT32 files lose their File Allocation Table cluster linkage. Contiguous allocation is assumed; highly fragmented deleted files require manual boundary reconstruction.
+2. **exFAT Carving (`exfat_carver.py`):**
+   - **VBR Boot Sector Parsing:** Detects `EXFAT   ` OEM magic, sector/cluster bit-shifts, Cluster Heap offset, and root directory cluster.
+   - **Directory Entry Set Reconstruction:** Parses 32-byte directory entry sets: File Directory Entry (`0x05` deleted / `0x85` active), Stream Extension (`0x40` deleted / `0xC0` active), and multi-entry UTF-16LE File Names (`0x41` deleted / `0xC1` active).
+   - **Cluster Heap Recovery:** Accurately extracts file data clusters from the Cluster Heap, following FAT chains or contiguous cluster allocations up to logical file length.
 
 ---
 
-## 4. Operating System Scope & Live Boot Architecture
+## 4. Operating System Scope & Cross-Platform Architecture
 
-1. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
-   - **Defensible Architectural Choice:** In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
-   - True data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88).
-   - TrustWipe packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
-2. **Host OS Status:**
-   - File/folder erasure and carver modules are implemented and validated natively for Linux.
-   - Windows desktop shims and mobile wrappers are positioned on the post-hackathon engineering roadmap.
+1. **Cross-Platform File & Folder Erasure (Module 2):**
+   - **Linux (`linux/cli/trustwipe_cli/file_eraser.py`):** POSIX in-place overwrite, `fsync()`, `filefrag -v` extent inspection, `/proc/mounts` Btrfs/ZFS CoW warnings, timestamp zeroing, directory scrambling.
+   - **Windows (`windows/trustwipe_eraser.py`, `.bat`, `.ps1`):** Native Win32 direct file IO with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery & destruction, Read-Only/Hidden attribute stripping via `SetFileAttributesW`, ReFS CoW detection via `GetVolumeInformationW`.
+   - **macOS (`macos/trustwipe_eraser.py`, `.sh`):** Apple Darwin hardware flush via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) cleansing, APFS CoW detection and Time Machine snapshot warnings.
+2. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
+   - In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
+   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). TrustWipe packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
 
 ---
 

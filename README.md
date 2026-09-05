@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NIST SP 800-88](https://img.shields.io/badge/Compliance-NIST%20SP%20800--88%20Rev.1-success.svg)](docs/COMPLIANCE.md)
 [![Ed25519 Verified](https://img.shields.io/badge/Signatures-Ed25519%20RFC%208032-blueviolet.svg)](core/CANONICAL_JSON.md)
-[![Tests: 120 Passed](https://img.shields.io/badge/Tests-120%20Passed-brightgreen.svg)](docs/TEST_PLAN.md)
+[![Tests: 150 Passed](https://img.shields.io/badge/Tests-150%20Passed-brightgreen.svg)](docs/TEST_PLAN.md)
 [![Blockchain Ledger](https://img.shields.io/badge/Audit-SHA256%20Blockchain%20Ledger-orange.svg)](docs/ARCHITECTURE.md)
 
 ---
@@ -17,8 +17,8 @@
 **TrustWipe** is a unified digital forensic and data sanitization platform developed for the **National Technical Research Organisation (NTRO)** under **SIH26149**.
 
 It integrates two critical security capabilities into a single environment:
-1. **Defensive Sanitization:** Irreversible drive, file, and folder data destruction adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**.
-2. **Offensive Digital Forensics:** Advanced signature-based, structure-based (ext4), and Shannon entropy-scored file carving to extract and reconstruct deleted or fragmented evidence from formatted media.
+1. **Defensive Sanitization:** Irreversible drive, file, and folder data destruction adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**. Native cross-platform support across **Linux, Windows, and macOS**.
+2. **Offensive Digital Forensics:** Advanced signature-based, structure-based (**ext4, NTFS, FAT32, exFAT**), and Shannon entropy-scored file carving with **multi-fragment and bifragment reconstruction** to extract and reassemble deleted evidence from formatted disks, USB flash drives, and SD cards.
 3. **Blockchain Cryptographic Audit Trail:** An append-only local SQLite ledger with continuous **SHA-256 block hash chaining** guaranteeing unbroken chain of custody for all forensic operations.
 
 ---
@@ -32,11 +32,11 @@ It integrates two critical security capabilities into a single environment:
 │ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
 │    (Module 1)                    │ 1-pass Clear + 64-block verification│
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 2. Secure File & Folder Eraser   │ Extents overwrite, timestamp reset, │
-│    (Module 2)                    │ directory entry scrambling & batch  │
+│ 2. Secure File & Folder Eraser   │ Cross-Platform (Linux/Win/macOS),   │
+│    (Module 2)                    │ in-place overwrite, ADS/xattr scrub │
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 3. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
-│    (Module 3)                    │ & NTFS MFT parser & entropy scoring │
+│ 3. Advanced File Carving         │ Multi-FS (ext4, NTFS, FAT32, exFAT),│
+│    (Module 3)                    │ multi-run & bifragment reassembly   │
 ├──────────────────────────────────┼─────────────────────────────────────┤
 │ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
 │    (Module 4)                    │ SHA-256 block hash chaining         │

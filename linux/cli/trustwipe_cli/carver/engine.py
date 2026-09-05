@@ -13,8 +13,10 @@ from typing import Callable, List, Optional
 from trustwipe_core import certificate as cert_mod
 from trustwipe_core import crypto as core_crypto
 
+from .exfat_carver import parse_exfat_boot_sector, scan_exfat_deleted_files
 from .ext4_carver import parse_ext4_superblock, scan_ext4_deleted_inodes
 from .fat_carver import parse_fat32_boot_sector, scan_fat32_deleted_files
+from .fragmentation import reconstruct_bifragment_stream
 from .ntfs_carver import parse_ntfs_boot_sector, scan_ntfs_deleted_files
 from .scoring import calculate_shannon_entropy, score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, get_signature_by_ext
@@ -32,7 +34,9 @@ class CarvedFile:
     confidence_score: int
     heuristics: List[str] = field(default_factory=list)
     recovered_path: Optional[str] = None
-    recovery_method: str = "signature"  # "signature", "ntfs_mft", "ext4_inode"
+    recovery_method: str = "signature"  # "signature", "ntfs_mft", "ext4_inode", "fat32_directory", "exfat_entry", "bifragment_heuristic"
+    is_fragmented: bool = False
+    fragment_count: int = 1
 
 
 @dataclass
@@ -48,12 +52,14 @@ class CarvingSessionSummary:
 
 
 def _probe_fs_at_offset(f, offset: int) -> Optional[str]:
-    """Probe for NTFS, ext4, or FAT32 superblock at given byte offset."""
+    """Probe for NTFS, ext4, FAT32, or exFAT superblock at given byte offset."""
     try:
         f.seek(offset)
         header = f.read(2048)
         if len(header) >= 512 and header[3:11] == b"NTFS    ":
             return "ntfs"
+        if len(header) >= 512 and header[3:11] == b"EXFAT   ":
+            return "exfat"
         if len(header) >= 1082:
             import struct
             magic_ext4 = struct.unpack_from("<H", header, 1024 + 56)[0]
@@ -202,6 +208,10 @@ def carve_image(
                             rec_path = out_p / rec_filename
                             rec_path.write_bytes(nf.data)
 
+                            is_frag = (nf.fragment_count > 1)
+                            if is_frag:
+                                heuristics.append(f"Reconstructed {nf.fragment_count} fragmented cluster runs across $MFT non-resident extents")
+
                             carved_files.append(
                                 CarvedFile(
                                     file_id=file_id,
@@ -215,6 +225,8 @@ def carve_image(
                                     heuristics=heuristics + [f"Recovered via NTFS MFT record #{nf.record_num} (partition @ {part_offset})"],
                                     recovered_path=str(rec_path),
                                     recovery_method="ntfs_mft",
+                                    is_fragmented=is_frag,
+                                    fragment_count=nf.fragment_count,
                                 )
                             )
                             recovered_hashes.add(f_hash)
@@ -244,6 +256,10 @@ def carve_image(
                             score = 75
                             heuristics = ["ext4 inode structure verified (+75%)"]
 
+                        is_frag = (inode.fragment_count > 1)
+                        if is_frag:
+                            heuristics.append(f"Reconstructed {inode.fragment_count} fragmented extents across ext4 extent tree")
+
                         if score >= min_confidence:
                             f_hash = hashlib.sha256(inode.data).hexdigest()
                             if f_hash in recovered_hashes:
@@ -266,6 +282,8 @@ def carve_image(
                                     heuristics=heuristics + [f"Recovered via ext4 inode #{inode.inode_num} (partition @ {part_offset})"],
                                     recovered_path=str(rec_path),
                                     recovery_method="ext4_inode",
+                                    is_fragmented=is_frag,
+                                    fragment_count=inode.fragment_count,
                                 )
                             )
                             recovered_hashes.add(f_hash)
@@ -313,11 +331,67 @@ def carve_image(
                                     heuristics=heuristics + [f"Recovered via FAT32 cluster #{ff.first_cluster} (partition @ {part_offset})"],
                                     recovered_path=str(rec_path),
                                     recovery_method="fat32_directory",
+                                    is_fragmented=False,
+                                    fragment_count=1,
                                 )
                             )
                             recovered_hashes.add(f_hash)
             except Exception as e:
                 warnings.append(f"FAT32 structure carving warning (offset {part_offset}): {e}")
+
+        elif part_fs == "exfat":
+            try:
+                exfat_files = scan_exfat_deleted_files(target_p, partition_offset=part_offset)
+                for ef in exfat_files:
+                    if ef.data and len(ef.data) > 0:
+                        ext = Path(ef.filename).suffix.lower().lstrip(".") or "bin"
+                        if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
+                            continue
+
+                        candidate_count += 1
+                        sig = get_signature_by_ext(ext)
+                        if sig:
+                            score, heuristics = score_carved_candidate(
+                                sig, ef.data, has_valid_footer=(sig.footer is not None and sig.footer in ef.data)
+                            )
+                        else:
+                            score = 75
+                            heuristics = ["exFAT directory entry set structure verified (+75%)"]
+
+                        is_frag = (ef.fragment_count > 1)
+                        if is_frag:
+                            heuristics.append(f"Reconstructed {ef.fragment_count} fragmented cluster runs across exFAT cluster heap")
+
+                        if score >= min_confidence:
+                            f_hash = hashlib.sha256(ef.data).hexdigest()
+                            if f_hash in recovered_hashes:
+                                continue
+                            file_id = f"carved_{len(carved_files)+1:05d}"
+                            clean_fn = ef.filename.replace("/", "_").replace("\\", "_")
+                            rec_filename = f"{file_id}_exfat_clus{ef.first_cluster}_{score}pct_{clean_fn}"
+                            rec_path = out_p / rec_filename
+                            rec_path.write_bytes(ef.data)
+
+                            carved_files.append(
+                                CarvedFile(
+                                    file_id=file_id,
+                                    filename=rec_filename,
+                                    extension=ext,
+                                    category=sig.category if sig else "document",
+                                    offset=part_offset + ef.first_cluster * 4096,
+                                    size_bytes=len(ef.data),
+                                    sha256=f_hash,
+                                    confidence_score=score,
+                                    heuristics=heuristics + [f"Recovered via exFAT directory entry (partition @ {part_offset})"],
+                                    recovered_path=str(rec_path),
+                                    recovery_method="exfat_entry",
+                                    is_fragmented=is_frag,
+                                    fragment_count=ef.fragment_count,
+                                )
+                            )
+                            recovered_hashes.add(f_hash)
+            except Exception as e:
+                warnings.append(f"exFAT structure carving warning (offset {part_offset}): {e}")
 
     # 4. Raw Stream Signature-based Carving
     active_signatures = SIGNATURES
@@ -353,6 +427,8 @@ def carve_image(
                     carved_data = None
                     has_footer = False
 
+                    is_bifragmented = False
+                    frag_count = 1
                     if sig.footer:
                         footer_search_len = min(len(data) - idx, sig.max_size)
                         sub_slice = data[idx : idx + footer_search_len]
@@ -364,6 +440,21 @@ def carve_image(
                             if len(candidate_bytes) >= sig.min_size:
                                 carved_data = candidate_bytes
                                 has_footer = True
+                        elif len(sub_slice) >= sig.min_size and hasattr(f, "seek"):
+                            # Attempt bifragment heuristic reconstruction
+                            bifrag = reconstruct_bifragment_stream(
+                                head_data=sub_slice[:min(len(sub_slice), 64 * 1024)],
+                                disk_file=f,
+                                search_start_offset=global_offset + len(sub_slice),
+                                footer_pattern=sig.footer,
+                                max_search_bytes=2 * 1024 * 1024,
+                                max_file_size=sig.max_size,
+                            )
+                            if bifrag:
+                                carved_data = bifrag.data
+                                has_footer = True
+                                is_bifragmented = True
+                                frag_count = 2
                     else:
                         end_pos = min(len(data) - idx, sig.max_size)
                         candidate_bytes = data[idx : idx + end_pos]
@@ -376,6 +467,8 @@ def carve_image(
                             score, heuristics = score_carved_candidate(
                                 sig, carved_data, has_valid_footer=has_footer
                             )
+                            if is_bifragmented:
+                                heuristics.append("Reconstructed across 2 discontiguous cluster fragments (bifragment carving)")
 
                             if score >= min_confidence:
                                 file_id = f"carved_{len(carved_files)+1:05d}"
@@ -395,7 +488,9 @@ def carve_image(
                                     confidence_score=score,
                                     heuristics=heuristics,
                                     recovered_path=str(rec_path),
-                                    recovery_method="signature",
+                                    recovery_method="bifragment_heuristic" if is_bifragmented else "signature",
+                                    is_fragmented=is_bifragmented,
+                                    fragment_count=frag_count,
                                 )
                                 carved_files.append(carved_file)
                                 recovered_hashes.add(file_hash)

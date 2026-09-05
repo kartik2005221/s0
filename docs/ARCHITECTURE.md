@@ -59,16 +59,20 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 - Communicates via controller-level commands (`NVME_SANITIZE`, `ATA_SECURE_ERASE`, `BLKDISCARD`) and host-level multi-pass overwrite engines.
 - Conducts automated 64-block sampled readback verification and raw grep scanning for planted forensic markers.
 
-### 3.2 Module 2: Secure File & Folder Eraser (`trustwipe_cli/file_eraser.py`)
-- Selective sanitization of targeted files and directories.
-- In-place cluster overwriting with fsync flushes.
+### 3.2 Module 2: Secure File & Folder Eraser (`trustwipe_cli/file_eraser.py`, `windows/`, `macos/`)
+- Cross-platform selective sanitization across Linux, Windows, and macOS.
+- In-place cluster overwriting with hardware cache flushes (`fsync()`, `F_FULLFSYNC`, `FlushFileBuffers`).
+- File attribute and stream cleansing (Windows Alternate Data Streams `:Zone.Identifier`, macOS `xattr` quarantine stripping).
+- CoW filesystem detection (Linux Btrfs/ZFS, macOS APFS, Windows ReFS).
 - Metadata cleansing (timestamp zeroing, file truncation, directory entry renaming before unlinking).
 - Issues consolidated batch certificates signed with Ed25519.
 
 ### 3.3 Module 3: Advanced File Carving & Recovery (`trustwipe_cli/carver/`)
-- **Signature Engine (`signatures.py`):** High-fidelity header/footer scanning for JPEG, PNG, PDF, ZIP/DOCX/XLSX, GIF, GZIP.
-- **ext4 Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and inode extent tree parser for recovering deleted files with intact structure.
-- **NTFS Structure Engine (`ntfs_carver.py`):** Direct Master File Table ($MFT) parser extracting resident attributes and single-run non-resident data streams for deleted NTFS records.
+- **Signature Engine (`signatures.py`):** High-fidelity header/footer scanning for JPEG, PNG, PDF, ZIP/DOCX/XLSX, GIF, GZIP, BMP, ELF, SQLite3, MP3.
+- **ext4 Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and multi-extent tree parser for recovering deleted files with intact structure.
+- **NTFS Structure Engine (`ntfs_carver.py`):** Direct Master File Table ($MFT) parser extracting resident attributes and multi-fragment non-resident runlists for deleted NTFS records.
+- **FAT32 & exFAT Structure Engines (`fat_carver.py`, `exfat_carver.py`):** Direct parsing of BPB and exFAT VBR, cluster heap geometry, and directory entry sets for USB flash drives and SD cards.
+- **Fragmented Reconstruction Engine (`fragmentation.py`):** Non-resident cluster run reassembly, ext4 extent tree traversal, and bifragment heuristic stream reassembly across cluster gaps.
 - **Confidence Scoring (`scoring.py`):** Multi-factor scoring (header match 30%, footer match 30%, size plausibility 20%, Shannon entropy analysis 20%).
 
 ### 3.4 Module 4: Blockchain Audit Management Ledger (`trustwipe_cli/audit/`)

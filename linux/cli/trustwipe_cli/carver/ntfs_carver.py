@@ -42,6 +42,8 @@ class NtfsRecoveredFile:
     is_resident: bool
     is_deleted: bool
     data: Optional[bytes] = None
+    fragment_count: int = 1
+    runs: List[tuple[int, int]] = field(default_factory=list)
 
 
 def parse_ntfs_boot_sector(
@@ -153,36 +155,65 @@ def parse_mft_record_bytes(
                     real_size = len(file_data)
                     is_resident = True
                 else:
-                    # Non-resident single contiguous run
+                    # Non-resident multi-fragment runlist reconstruction
                     is_resident = False
                     runlist_offset = struct.unpack_from("<H", rec_bytes, offset + 32)[0]
                     real_size = struct.unpack_from("<Q", rec_bytes, offset + 48)[0]
                     runlist_data = rec_bytes[offset + runlist_offset :]
-                    if len(runlist_data) > 0 and runlist_data[0] != 0 and disk_file:
-                        b = runlist_data[0]
+
+                    runs: List[tuple[int, int]] = []
+                    r_idx = 0
+                    current_lcn = 0
+                    while r_idx < len(runlist_data):
+                        b = runlist_data[r_idx]
+                        if b == 0:
+                            break
                         len_size = b & 0x0F
                         off_size = (b >> 4) & 0x0F
-                        if len(runlist_data) >= 1 + len_size + off_size:
-                            run_len = int.from_bytes(
-                                runlist_data[1 : 1 + len_size], byteorder="little", signed=False
+                        r_idx += 1
+                        if r_idx + len_size + off_size > len(runlist_data):
+                            break
+
+                        run_len = int.from_bytes(
+                            runlist_data[r_idx : r_idx + len_size], byteorder="little", signed=False
+                        )
+                        r_idx += len_size
+
+                        if off_size > 0:
+                            lcn_delta = int.from_bytes(
+                                runlist_data[r_idx : r_idx + off_size], byteorder="little", signed=True
                             )
-                            run_offset = int.from_bytes(
-                                runlist_data[1 + len_size : 1 + len_size + off_size],
-                                byteorder="little",
-                                signed=True,
-                            )
-                            disk_byte_offset = partition_offset + run_offset * cluster_size
-                            bytes_to_read = min(real_size, run_len * cluster_size)
-                            # Save file position so we never corrupt the outer scan loop
-                            saved_pos = disk_file.tell()
-                            try:
-                                disk_file.seek(disk_byte_offset)
-                                raw_read = disk_file.read(bytes_to_read)
-                                file_data = raw_read[:real_size] if real_size > 0 else raw_read
-                            except Exception:
-                                pass
-                            finally:
-                                disk_file.seek(saved_pos)
+                            r_idx += off_size
+                            current_lcn += lcn_delta
+                            runs.append((current_lcn, run_len))
+                        else:
+                            # Sparse run
+                            runs.append((-1, run_len))
+
+                    fragment_count = len(runs)
+                    if runs and disk_file:
+                        saved_pos = disk_file.tell()
+                        try:
+                            chunks = []
+                            remaining_bytes = real_size
+                            for lcn, r_len in runs:
+                                if remaining_bytes <= 0:
+                                    break
+                                bytes_in_run = min(remaining_bytes, r_len * cluster_size)
+                                if lcn >= 0:
+                                    disk_byte_offset = partition_offset + lcn * cluster_size
+                                    disk_file.seek(disk_byte_offset)
+                                    raw_read = disk_file.read(bytes_in_run)
+                                    chunks.append(raw_read)
+                                else:
+                                    chunks.append(bytes(bytes_in_run))
+                                remaining_bytes -= bytes_in_run
+                            raw_combined = b"".join(chunks)
+                            file_data = raw_combined[:real_size] if real_size > 0 else raw_combined
+                        except Exception:
+                            pass
+                        finally:
+                            disk_file.seek(saved_pos)
 
         offset += attr_len
 
@@ -195,6 +226,8 @@ def parse_mft_record_bytes(
             is_resident=is_resident,
             is_deleted=(not is_allocated),
             data=file_data,
+            fragment_count=fragment_count if not is_resident else 1,
+            runs=runs if not is_resident else [],
         )
 
     return None

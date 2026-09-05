@@ -33,6 +33,7 @@ class Ext4RecoveredInode:
     deletion_time: int
     extent_block_ranges: List[tuple[int, int]] = field(default_factory=list)  # (start_block, count)
     data: Optional[bytes] = None
+    fragment_count: int = 1
 
 
 def parse_ext4_superblock(
@@ -72,8 +73,13 @@ def parse_ext4_superblock(
         return None
 
 
-def parse_extent_header(i_block_bytes: bytes) -> List[tuple[int, int]]:
-    """Parse ext4 60-byte extent header and extent entries."""
+def parse_extent_header(
+    i_block_bytes: bytes,
+    disk_file=None,
+    block_size: int = 4096,
+    partition_offset: int = 0,
+) -> List[tuple[int, int]]:
+    """Parse ext4 extent header and return (start_block, count) for all fragments."""
     if len(i_block_bytes) < 12:
         return []
     eh_magic, eh_entries, eh_max, eh_depth, _ = struct.unpack_from("<HHHHH", i_block_bytes, 0)
@@ -91,6 +97,26 @@ def parse_extent_header(i_block_bytes: bytes) -> List[tuple[int, int]]:
             start_block = (ee_start_hi << 32) | ee_start_lo
             extents.append((start_block, ee_len))
             offset += 12
+    elif eh_depth > 0 and disk_file is not None:
+        # Index node: read child extent blocks
+        offset = 12
+        saved_pos = disk_file.tell()
+        try:
+            for _ in range(eh_entries):
+                if offset + 12 > len(i_block_bytes):
+                    break
+                ei_block, ei_leaf_lo, ei_leaf_hi, _ = struct.unpack_from("<IIHH", i_block_bytes, offset)
+                child_block = (ei_leaf_hi << 32) | ei_leaf_lo
+                if child_block > 0:
+                    disk_file.seek(partition_offset + child_block * block_size)
+                    child_bytes = disk_file.read(block_size)
+                    extents.extend(parse_extent_header(child_bytes, disk_file, block_size, partition_offset))
+                offset += 12
+        except Exception:
+            pass
+        finally:
+            disk_file.seek(saved_pos)
+
     return extents
 
 
@@ -148,7 +174,9 @@ def scan_ext4_deleted_inodes(
                     # In ext4, deleted files have dtime > 0 and links_count == 0
                     if is_regular and dtime > 0 and links_count == 0 and size_lo > 0:
                         i_block = raw_inode[40:100]
-                        extents = parse_extent_header(i_block)
+                        extents = parse_extent_header(
+                            i_block, disk_file=f, block_size=sb.block_size, partition_offset=partition_offset
+                        )
                         if extents:
                             data_chunks = []
                             for (start_block, count) in extents:
@@ -164,6 +192,7 @@ def scan_ext4_deleted_inodes(
                                     deletion_time=dtime,
                                     extent_block_ranges=extents,
                                     data=inode_data,
+                                    fragment_count=len(extents),
                                 )
                             )
     except Exception:

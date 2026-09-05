@@ -1,0 +1,1 @@
+"""TrustWipe macOS module."""

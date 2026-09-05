@@ -12,9 +12,12 @@ Provides selective, forensic-grade file and folder sanitization:
 from __future__ import annotations
 
 import os
+import os
 import secrets
 import shutil
+import stat
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,6 +39,7 @@ class FileEraseResult:
     metadata_cleansed: bool = False
     cow_warning: Optional[str] = None
     extents_count: int = 0
+    filesystem: str = "unknown"
 
 
 @dataclass
@@ -49,27 +53,177 @@ class BatchEraseSummary:
     warnings: List[str] = field(default_factory=list)
 
 
-def get_file_extents(file_path: str) -> list[dict]:
-    """Attempt to resolve physical file extents using filefrag -v."""
-    extents = []
-    if not shutil.which("filefrag"):
-        return extents
+def detect_cow_and_filesystem(path_str: str) -> tuple[str, Optional[str]]:
+    """Detect underlying filesystem and CoW status across Linux, macOS, and Windows."""
+    fs_name = "unknown"
+    cow_warning = None
+
+    if sys.platform == "darwin":
+        # macOS / Darwin: check APFS or HFS+
+        try:
+            res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    if " on " in line and "(" in line:
+                        mp = line.split(" on ")[1].split(" (")[0].strip()
+                        opts = line.split(" (")[1].rstrip(")")
+                        if path_str.startswith(mp):
+                            if "apfs" in opts.lower():
+                                fs_name = "apfs"
+                                cow_warning = (
+                                    "Target resides on Apple File System (APFS), a Copy-on-Write (CoW) filesystem. "
+                                    "In-place overwrite allocates new blocks; original blocks and snapshots may persist until reclaimed."
+                                )
+                                break
+                            elif "hfs" in opts.lower():
+                                fs_name = "hfs+"
+        except Exception:
+            pass
+
+    elif sys.platform == "win32":
+        # Windows: check NTFS, ReFS, FAT32, exFAT
+        try:
+            drive_root = os.path.splitdrive(os.path.abspath(path_str))[0] + "\\"
+            import ctypes
+            vol_name = ctypes.create_unicode_buffer(260)
+            fs_buf = ctypes.create_unicode_buffer(260)
+            if ctypes.windll.kernel32.GetVolumeInformationW(
+                drive_root, vol_name, 260, None, None, None, fs_buf, 260
+            ):
+                fs_name = fs_buf.value.lower()
+                if fs_name == "refs":
+                    cow_warning = (
+                        "Target resides on Resilient File System (ReFS), a Copy-on-Write (CoW) filesystem. "
+                        "In-place overwrite allocates new allocation units; original data may persist."
+                    )
+        except Exception:
+            pass
+
+    else:
+        # Linux: check /proc/mounts for btrfs, zfs, ext4, xfs, etc.
+        try:
+            with open("/proc/mounts") as mf:
+                for mline in mf:
+                    mparts = mline.split()
+                    if len(mparts) >= 3:
+                        fstype = mparts[2].lower()
+                        mp = mparts[1]
+                        if path_str.startswith(mp):
+                            fs_name = fstype
+                            if fstype in ("btrfs", "zfs"):
+                                cow_warning = (
+                                    f"Target resides on CoW filesystem ({fstype}). In-place write may allocate "
+                                    "new blocks; original blocks may persist until reclaimed."
+                                )
+                                break
+        except Exception:
+            pass
+
+    return fs_name, cow_warning
+
+
+def platform_sync(fd: int) -> None:
+    """Flush OS and drive hardware write cache across platforms."""
+    if sys.platform == "darwin":
+        # Apple macOS: F_FULLFSYNC (fcntl command 51) flushes drive hardware cache
+        try:
+            import fcntl
+            fcntl.fcntl(fd, 51, 0)
+            return
+        except Exception:
+            pass
+    elif sys.platform == "win32":
+        try:
+            import msvcrt
+            import ctypes
+            handle = msvcrt.get_osfhandle(fd)
+            if ctypes.windll.kernel32.FlushFileBuffers(handle):
+                return
+        except Exception:
+            pass
+
     try:
-        proc = subprocess.run(
-            ["filefrag", "-v", file_path],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        if proc.returncode == 0:
-            for line in proc.stdout.splitlines():
-                line = line.strip()
-                if line and line[0].isdigit() and ":" in line:
-                    parts = line.split(":")
-                    extents.append({"raw": line})
+        os.fsync(fd)
     except Exception:
         pass
+
+
+def platform_cleanse_attributes(path_str: str) -> None:
+    """Clear platform-specific file attributes, locks, xattrs, and alternate data streams."""
+    try:
+        os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+    except Exception:
+        pass
+
+    if sys.platform == "darwin":
+        try:
+            subprocess.run(["xattr", "-c", path_str], capture_output=True, check=False)
+        except Exception:
+            pass
+
+    elif sys.platform == "win32":
+        try:
+            import ctypes
+            FILE_ATTRIBUTE_NORMAL = 0x80
+            ctypes.windll.kernel32.SetFileAttributesW(path_str, FILE_ATTRIBUTE_NORMAL)
+        except Exception:
+            pass
+        try:
+            zone_stream = f"{path_str}:Zone.Identifier"
+            if os.path.exists(zone_stream):
+                os.unlink(zone_stream)
+        except Exception:
+            pass
+
+
+def get_file_extents(file_path: str) -> list[dict]:
+    """Attempt to resolve physical file extents across Linux, macOS, and Windows."""
+    extents = []
+    if sys.platform == "linux" and shutil.which("filefrag"):
+        try:
+            proc = subprocess.run(
+                ["filefrag", "-v", file_path],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            if proc.returncode == 0:
+                for line in proc.stdout.splitlines():
+                    line = line.strip()
+                    if line and line[0].isdigit() and ":" in line:
+                        extents.append({"raw": line})
+        except Exception:
+            pass
+    elif sys.platform == "darwin":
+        try:
+            import fcntl
+            import struct
+            F_LOG2PHYS = 49
+            with open(file_path, "rb") as f:
+                buf = bytearray(24)
+                fcntl.fcntl(f.fileno(), F_LOG2PHYS, buf)
+                dev_offset = struct.unpack_from("<q", buf, 16)[0]
+                if dev_offset > 0:
+                    extents.append({"physical_offset": dev_offset})
+        except Exception:
+            pass
+    elif sys.platform == "win32" and shutil.which("fsutil"):
+        try:
+            proc = subprocess.run(
+                ["fsutil", "file", "queryExtents", file_path],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            if proc.returncode == 0:
+                for line in proc.stdout.splitlines():
+                    if "VCN" in line or "LCN" in line:
+                        extents.append({"raw": line.strip()})
+        except Exception:
+            pass
+
     return extents
 
 
@@ -120,25 +274,14 @@ def erase_single_file(
             error=f"Cannot stat target: {exc}",
         )
 
+    # Clear read-only locks, xattrs, and alternate data streams
+    platform_cleanse_attributes(path_str)
+
     # Informational extent mapping
     extents = get_file_extents(path_str)
 
-    # Detect Copy-on-Write (CoW) filesystem
-    cow_warning = None
-    try:
-        with open("/proc/mounts") as mf:
-            for mline in mf:
-                mparts = mline.split()
-                if len(mparts) >= 3 and mparts[2].lower() in ("btrfs", "zfs"):
-                    mp = mparts[1]
-                    if path_str.startswith(mp):
-                        cow_warning = (
-                            f"Target resides on CoW filesystem ({mparts[2]}). In-place write may allocate "
-                            "new blocks; original blocks may persist until reclaimed."
-                        )
-                        break
-    except Exception:
-        pass
+    # Detect filesystem & Copy-on-Write (CoW) status (Linux, macOS APFS, Windows ReFS)
+    fs_name, cow_warning = detect_cow_and_filesystem(path_str)
 
     bytes_written_total = 0
 
@@ -165,13 +308,13 @@ def erase_single_file(
                             progress_callback(path_str, bytes_written_total, file_size * passes)
 
                     f.flush()
-                    os.fsync(f.fileno())
+                    platform_sync(f.fileno())
 
                 # Truncate file size to 0
                 f.seek(0)
                 f.truncate(0)
                 f.flush()
-                os.fsync(f.fileno())
+                platform_sync(f.fileno())
 
         # 2. Metadata Cleansing: reset timestamps to epoch 0
         try:
@@ -201,6 +344,7 @@ def erase_single_file(
                 error="File still exists after unlinking attempt",
                 cow_warning=cow_warning,
                 extents_count=len(extents),
+                filesystem=fs_name,
             )
 
         return FileEraseResult(
@@ -213,6 +357,7 @@ def erase_single_file(
             metadata_cleansed=True,
             cow_warning=cow_warning,
             extents_count=len(extents),
+            filesystem=fs_name,
         )
 
     except Exception as exc:
@@ -226,6 +371,7 @@ def erase_single_file(
             error=str(exc),
             cow_warning=cow_warning,
             extents_count=len(extents),
+            filesystem=fs_name,
         )
 
 
