@@ -94,3 +94,89 @@ def test_win_cli_main_entrypoint(monkeypatch, tmp_path: Path):
 
     data = json.loads(cert_file.read_text(encoding="utf-8"))
     assert data["tool"]["platform"] == "windows"
+
+
+def test_win_cli_wipe_safety_refusal():
+    from windows.cli import check_windows_wipe_safety
+
+    # C: must be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_windows_wipe_safety("C:")
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_windows_wipe_safety(r"\\.\C:")
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_windows_wipe_safety("c:\\")
+
+    # PhysicalDrive0 without force must be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_windows_wipe_safety(r"\\.\PhysicalDrive0", force=False)
+
+    # Secondary drives should pass safety check
+    check_windows_wipe_safety("D:")
+    check_windows_wipe_safety(r"\\.\PhysicalDrive1")
+    check_windows_wipe_safety(r"\\.\PhysicalDrive0", force=True)
+
+
+def test_win_cli_wipe_partition_success(tmp_path: Path):
+    from windows.cli import wipe_drive_or_partition_windows
+
+    # Create mock secondary partition / USB drive (1 MiB)
+    drive_img = tmp_path / "usb_pendrive.raw"
+    drive_img.write_bytes(b"SENSITIVE SECTORS" * 65536)  # ~1.1 MiB
+
+    result, cert = wipe_drive_or_partition_windows(
+        str(drive_img),
+        passes=1,
+        pattern="zero",
+        mock_size=drive_img.stat().st_size,
+    )
+
+    assert result.status == "success"
+    assert result.verification_passed is True
+    assert result.samples_checked == 32
+    assert result.bytes_overwritten == drive_img.stat().st_size
+
+    # Verify drive raw bytes are entirely 0x00
+    wiped_data = drive_img.read_bytes()
+    assert wiped_data == b"\x00" * len(wiped_data)
+
+    # Verify cryptographic certificate
+    assert cert is not None
+    assert cert["tool"]["platform"] == "windows"
+    assert cert["signature"]["algorithm"] == "Ed25519"
+    pub_key = core_crypto.load_public_pem(REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem")
+    ok, reason = cert_mod.verify_certificate(cert, [pub_key])
+    assert ok, reason
+
+
+def test_win_cli_wipe_drive_main(monkeypatch, tmp_path: Path):
+    drive_img = tmp_path / "usb_stick.img"
+    drive_img.write_bytes(b"CONFIDENTIAL USB DATA" * 1024)
+    cert_file = tmp_path / "win_drive_cert.json"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "trustwipe_eraser.py",
+            "--wipe-drive",
+            str(drive_img),
+            "--yes",
+            "--passes",
+            "1",
+            "--pattern",
+            "zero",
+            "--cert-out",
+            str(cert_file),
+        ],
+    )
+
+    exit_code = win_main()
+    assert exit_code == 0
+    assert cert_file.exists()
+    cert_data = json.loads(cert_file.read_text(encoding="utf-8"))
+    assert cert_data["tool"]["platform"] == "windows"
+    assert cert_data["result"]["status"] == "success"
+

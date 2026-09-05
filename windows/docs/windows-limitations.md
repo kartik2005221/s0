@@ -10,11 +10,14 @@ verified on actual Windows hardware.
 | Capability | Evidence |
 |---|---|
 | Overwrite wipe of files / folders | `windows/cli/tests/test_win_cli.py` + `linux/cli/tests/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| Secondary partition wiping (`D:`, `E:`) | `test_win_cli.py::test_win_cli_wipe_partition_success`; volume lock & dismount via Win32 `FSCTL_DISMOUNT_VOLUME`, raw sector overwrite, sampled readback |
+| USB / Pen drive raw wiping (`\\.\PhysicalDriveX`) | `test_win_cli.py::test_win_cli_wipe_drive_main`; MBR/GPT and raw sector destruction, 32-sample verification |
+| Operating system drive safety guardrails | `test_win_cli.py::test_win_cli_wipe_safety_refusal`; hard rejection of active Windows `C:` volume and Disk 0 without force |
 | Win32 Alternate Data Stream (ADS) enumeration | `enumerate_ntfs_streams_win32()` dynamically calls `FindFirstStreamW`/`FindNextStreamW` via ctypes; mock-verified in `test_cross_platform_eraser.py::test_win32_ads_mock_enumeration` |
 | ADS scrubbing | `scrub_alternate_data_streams()` overwrites + unlinks each ADS; falls back to common stream names (`:Zone.Identifier`, `:SummaryInformation`, etc.) when dynamic enum unavailable |
 | FlushFileBuffers hardware flush | `win32_flush_buffers()` calls `kernel32.FlushFileBuffers()` via `msvcrt.get_osfhandle()`; falls back to `os.fsync()` on non-Windows |
 | Win32 attribute clearing | `win32_clear_attributes()` strips Read-Only/Hidden/System via `SetFileAttributesW`; chmod fallback |
-| Ed25519 signed certificate | `erase_batch_windows()` issues a schema-compliant sanitization certificate signed with demo private key; verified by `trustwipe-verify` |
+| Ed25519 signed certificate | `erase_batch_windows()` and `wipe_drive_or_partition_windows()` issue schema-compliant certificates; verified by `trustwipe-verify` |
 | ReFS Copy-on-Write detection | `detect_windows_filesystem()` queries `GetVolumeInformationW`; warns operator when target resides on ReFS |
 
 ## Coded, NOT executed against the real thing

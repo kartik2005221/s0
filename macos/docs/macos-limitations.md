@@ -10,10 +10,13 @@ verified on actual Apple hardware.
 | Capability | Evidence |
 |---|---|
 | Overwrite wipe of files / folders | `macos/cli/tests/test_mac_cli.py` + `linux/cli/tests/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| USB / Pen drive raw wiping (`/dev/rdiskX`) | `test_mac_cli.py::test_mac_cli_wipe_drive_main`; unmount via `diskutil`, character device raw overwrite, 32-sample verification |
+| Secondary partition wiping (`/dev/rdiskXsY`) | `test_mac_cli.py::test_mac_cli_wipe_partition_success`; volume unmount, raw block wipe, hardware cache flush |
+| Operating system drive safety guardrails | `test_mac_cli.py::test_mac_cli_wipe_safety_refusal`; hard rejection of macOS boot disk (`disk0`) and active `/` mounts without force |
 | Extended attribute (xattr) clearing | `macos_clear_attributes()` shells out to `xattr -c`; verified via mock in tests |
 | F_FULLFSYNC hardware cache flush | `macos_full_fsync()` calls `fcntl.fcntl(fd, 51, 0)` on Darwin; falls back to `os.fsync()` on non-Darwin |
 | APFS CoW detection | `detect_macos_filesystem()` parses `mount` output; warns operator when target resides on APFS |
-| Ed25519 signed certificate | `erase_batch_macos()` issues a schema-compliant sanitization certificate signed with demo private key; verified by `trustwipe-verify` |
+| Ed25519 signed certificate | `erase_batch_macos()` and `wipe_drive_or_partition_macos()` issue schema-compliant certificates; verified by `trustwipe-verify` |
 | Directory entry obfuscation | Filename randomized before unlinking to prevent directory-entry-level forensic recovery |
 | Timestamp zeroing | File timestamps reset to epoch 0 before unlinking |
 

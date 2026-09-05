@@ -102,3 +102,85 @@ def test_mac_cli_fullfsync_fallback():
     with tempfile.NamedTemporaryFile() as tmp:
         # Should not raise even on Linux (falls back to os.fsync)
         macos_full_fsync(tmp.fileno())
+
+
+def test_mac_cli_wipe_safety_refusal():
+    from macos.cli import check_macos_wipe_safety
+
+    # disk0 / rdisk0 without force must be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_macos_wipe_safety("/dev/disk0", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_macos_wipe_safety("/dev/rdisk0", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
+        check_macos_wipe_safety("/dev/disk0s2", force=False)
+
+    # Removable drive or force override should pass safety check
+    check_macos_wipe_safety("/dev/rdisk2")
+    check_macos_wipe_safety("/dev/disk2s1")
+    check_macos_wipe_safety("/dev/disk0", force=True)
+
+
+def test_mac_cli_wipe_partition_success(tmp_path: Path):
+    from macos.cli import wipe_drive_or_partition_macos
+
+    # Create mock secondary partition / USB drive (1 MiB)
+    drive_img = tmp_path / "mac_usb_drive.raw"
+    drive_img.write_bytes(b"TOP SECRET APFS SECTORS" * 45000)
+
+    result, cert = wipe_drive_or_partition_macos(
+        str(drive_img),
+        passes=1,
+        pattern="zero",
+        mock_size=drive_img.stat().st_size,
+    )
+
+    assert result.status == "success"
+    assert result.verification_passed is True
+    assert result.samples_checked == 32
+    assert result.bytes_overwritten == drive_img.stat().st_size
+
+    # Verify drive raw bytes are entirely 0x00
+    wiped_data = drive_img.read_bytes()
+    assert wiped_data == b"\x00" * len(wiped_data)
+
+    # Verify cryptographic certificate
+    assert cert is not None
+    assert cert["tool"]["platform"] == "macos"
+    assert cert["signature"]["algorithm"] == "Ed25519"
+    pub_key = core_crypto.load_public_pem(REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem")
+    ok, reason = cert_mod.verify_certificate(cert, [pub_key])
+    assert ok, reason
+
+
+def test_mac_cli_wipe_drive_main(monkeypatch, tmp_path: Path):
+    drive_img = tmp_path / "mac_usb_stick.img"
+    drive_img.write_bytes(b"CONFIDENTIAL MAC DATA" * 1024)
+    cert_file = tmp_path / "mac_drive_cert.json"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "trustwipe_eraser.py",
+            "--wipe-drive",
+            str(drive_img),
+            "--yes",
+            "--passes",
+            "1",
+            "--pattern",
+            "zero",
+            "--cert-out",
+            str(cert_file),
+        ],
+    )
+
+    exit_code = mac_main()
+    assert exit_code == 0
+    assert cert_file.exists()
+    cert_data = json.loads(cert_file.read_text(encoding="utf-8"))
+    assert cert_data["tool"]["platform"] == "macos"
+    assert cert_data["result"]["status"] == "success"
+
