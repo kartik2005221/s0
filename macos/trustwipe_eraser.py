@@ -6,7 +6,7 @@ Forensic-grade selective sanitization for Apple macOS (APFS, HFS+, FAT32, exFAT)
 - Resetting file timestamps to epoch 0
 - Directory entry obfuscation prior to unlinking
 - Detection and warning for Apple File System (APFS) Copy-on-Write (CoW) and Time Machine snapshots
-- Consolidated Ed25519 / SHA-256 sanitization certificate issuance
+- Consolidated Ed25519 / SHA-256 sanitization certificate issuance matching core schema
 """
 
 from __future__ import annotations
@@ -22,7 +22,20 @@ import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
+
+# Ensure core library is accessible
+REPO_ROOT = Path(__file__).resolve().parent.parent
+core_python_dir = REPO_ROOT / "core" / "python"
+if core_python_dir.exists() and str(core_python_dir) not in sys.path:
+    sys.path.insert(0, str(core_python_dir))
+
+try:
+    from trustwipe_core import certificate as cert_mod
+    from trustwipe_core import crypto as core_crypto
+except ImportError:
+    cert_mod = None
+    core_crypto = None
 
 # Darwin fcntl command for full hardware write cache flush
 F_FULLFSYNC = 51
@@ -261,57 +274,156 @@ def erase_folder_macos(
     return results
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="TrustWipe macOS Secure File & Folder Eraser")
-    parser.add_argument("--targets", "-t", nargs="+", required=True, help="Files or folders to erase")
-    parser.add_argument("--passes", "-p", type=int, default=1, help="Overwrite passes (default: 1)")
-    parser.add_argument("--pattern", choices=["zero", "random"], default="zero", help="Overwrite pattern")
-    parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
-    parser.add_argument("--json", action="store_true", help="Output JSON result")
-    args = parser.parse_args()
-
+def erase_batch_macos(
+    targets: List[str | Path],
+    passes: int = 1,
+    pattern: str = "zero",
+    operator_id: str = "op-forensic-01",
+    organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
+    signing_key_path: Optional[str | Path] = None,
+    generate_certificate: bool = True,
+) -> tuple[List[MacFileEraseResult], Optional[dict]]:
+    """Execute batch file & folder erasure on macOS and issue an Ed25519-signed certificate."""
+    start_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     results: List[MacFileEraseResult] = []
-    for t in args.targets:
+
+    for t in targets:
         p = Path(t).resolve()
         if p.is_dir():
-            results.extend(erase_folder_macos(p, passes=args.passes, pattern=args.pattern))
+            results.extend(erase_folder_macos(p, passes=passes, pattern=pattern))
         else:
-            results.append(erase_single_file_macos(p, passes=args.passes, pattern=args.pattern))
+            results.append(erase_single_file_macos(p, passes=passes, pattern=pattern))
+
+    end_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     total = len(results)
     success = sum(1 for r in results if r.status == "success")
     failed = sum(1 for r in results if r.status == "failure")
     total_bytes = sum(r.bytes_overwritten for r in results)
 
-    report = {
-        "platform": "macos",
-        "timestamp_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "standard": "NIST SP 800-88 Rev. 1 (Clear)",
-        "passes": args.passes,
-        "pattern": args.pattern,
-        "total_files": total,
-        "successful_files": success,
-        "failed_files": failed,
-        "total_bytes_overwritten": total_bytes,
-        "results": [asdict(r) for r in results],
-    }
+    warnings: List[str] = [
+        "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
+        "Caveat: Flash storage (SSDs/NVMe) FTL wear leveling may prevent physical overwriting of retired blocks.",
+    ]
+    for r in results:
+        if r.cow_warning and r.cow_warning not in warnings:
+            warnings.append(r.cow_warning)
+        if r.xattrs_cleared:
+            msg = f"Extended attributes and quarantine metadata stripped on {Path(r.path).name}"
+            if msg not in warnings:
+                warnings.append(msg)
 
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    report_file = out_dir / f"mac_erase_certificate_{int(time.time())}.json"
-    report_file.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    signed_cert = None
+    if generate_certificate:
+        key_file = (
+            Path(signing_key_path)
+            if signing_key_path
+            else REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+        )
+        if cert_mod and core_crypto and key_file.exists():
+            method_name = "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
+            cert_dict = cert_mod.build_certificate(
+                organization=organization,
+                operator_id=operator_id,
+                tool_name="trustwipe-macos-eraser",
+                tool_version="1.0.0",
+                platform="macos",
+                device_id=f"mac-batch-{secrets.token_hex(8)}",
+                device_type="internal_disk",
+                storage_type="UNKNOWN",
+                method=method_name,
+                nist_category="Clear",
+                start_time=start_time,
+                end_time=end_time,
+                bytes_processed=total_bytes,
+                capacity_bytes=total_bytes,
+                passes=passes,
+                pattern=pattern,
+                status="success" if failed == 0 else ("partial" if success > 0 else "failure"),
+                errors=[r.error for r in results if r.error] or None,
+                verification={
+                    "method": "file_non_existence_and_cluster_overwrite",
+                    "samples_checked": total,
+                    "all_samples_match_wipe_pattern": (failed == 0),
+                },
+                notes=[
+                    f"macOS batch sanitized {success}/{total} targets ({total_bytes} bytes overwritten).",
+                    "Hardware write cache flushed via fcntl(F_FULLFSYNC).",
+                    "Extended attributes (xattrs) and quarantine flags cleared prior to unlinking.",
+                ] + warnings,
+            )
+            priv = core_crypto.load_private_pem(key_file)
+            signed_cert = cert_mod.sign_certificate(cert_dict, priv)
+
+    return results, signed_cert
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="TrustWipe macOS Secure File & Folder Eraser")
+    parser.add_argument("--targets", "-t", nargs="+", required=True, help="Files or folders to erase")
+    parser.add_argument("--passes", "-p", type=int, default=1, help="Overwrite passes (default: 1)")
+    parser.add_argument("--pattern", choices=["zero", "random"], default="zero", help="Overwrite pattern")
+    parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
+    parser.add_argument("--signing-key", help="Path to Ed25519 issuer private key PEM")
+    parser.add_argument("--operator-id", default="op-forensic-01", help="Operator identifier")
+    parser.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab", help="Issuing organization")
+    parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
+    parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
+    parser.add_argument("--json", action="store_true", help="Output JSON result")
+    args = parser.parse_args()
+
+    results, signed_cert = erase_batch_macos(
+        targets=args.targets,
+        passes=args.passes,
+        pattern=args.pattern,
+        operator_id=args.operator_id,
+        organization=args.organization,
+        signing_key_path=args.signing_key,
+        generate_certificate=not args.no_certificate,
+    )
+
+    total = len(results)
+    success = sum(1 for r in results if r.status == "success")
+    failed = sum(1 for r in results if r.status == "failure")
+    total_bytes = sum(r.bytes_overwritten for r in results)
+
+    cert_path: Optional[Path] = None
+    if signed_cert:
+        out_dir = Path(args.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if args.cert_out:
+            cert_path = Path(args.cert_out)
+            cert_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            cert_path = out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
+        cert_path.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
 
     if args.json:
-        print(json.dumps(report, indent=2))
+        if signed_cert:
+            print(json.dumps(signed_cert, indent=2))
+        else:
+            summary = {
+                "platform": "macos",
+                "total_files": total,
+                "successful_files": success,
+                "failed_files": failed,
+                "total_bytes_overwritten": total_bytes,
+                "results": [asdict(r) for r in results],
+            }
+            print(json.dumps(summary, indent=2))
     else:
         print("=" * 65)
         print(" TRUSTWIPE (macOS) - SECURE FILE & FOLDER SANITIZATION")
         print("=" * 65)
-        print(f"Total files processed : {total}")
-        print(f"Successfully erased   : {success}")
-        print(f"Failures              : {failed}")
-        print(f"Bytes overwritten     : {total_bytes}")
-        print(f"Certificate saved     : {report_file}")
+        print(f"Total targets processed : {total}")
+        print(f"Successfully erased     : {success}")
+        print(f"Failures                : {failed}")
+        print(f"Bytes overwritten       : {total_bytes}")
+        if cert_path and signed_cert:
+            sig = signed_cert.get("signature", {})
+            print(f"Signed Certificate      : {cert_path}")
+            print(f"Signature Algorithm     : {sig.get('algorithm', 'Ed25519')}")
+            print(f"Key Fingerprint         : {sig.get('public_key_fingerprint', 'N/A')}")
         print("=" * 65)
 
     return 0 if failed == 0 else 1

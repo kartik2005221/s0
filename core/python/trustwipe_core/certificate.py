@@ -63,7 +63,7 @@ METHOD_TIERS = {
 STATUSES = {"success", "failure", "partial", "reset_triggered"}
 DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone"}
 STORAGE_TYPES = {"HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"}
-PLATFORMS = {"linux", "windows", "android"}
+PLATFORMS = {"linux", "windows", "macos", "android"}
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")

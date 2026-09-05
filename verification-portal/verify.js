@@ -49,7 +49,7 @@
   var STATUSES = ["success", "failure", "partial", "reset_triggered"];
   var DEVICE_TYPES = ["internal_disk", "removable_disk", "image_file", "phone"];
   var STORAGE_TYPES = ["HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"];
-  var PLATFORMS = ["linux", "windows", "android"];
+  var PLATFORMS = ["linux", "windows", "macos", "android"];
 
   var METHOD_TIERS = {
     "OVERWRITE_ZERO_1PASS": ["Clear"],

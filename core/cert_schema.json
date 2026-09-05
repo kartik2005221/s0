@@ -28,7 +28,7 @@
       "properties": {
         "name": { "type": "string" },
         "version": { "type": "string" },
-        "platform": { "type": "string", "enum": ["linux", "windows", "android"] },
+        "platform": { "type": "string", "enum": ["linux", "windows", "macos", "android"] },
         "os_kernel": { "type": "string" }
       }
     },
