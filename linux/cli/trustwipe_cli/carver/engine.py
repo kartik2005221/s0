@@ -47,24 +47,94 @@ class CarvingSessionSummary:
     warnings: List[str] = field(default_factory=list)
 
 
-def detect_filesystem(target_path: str | Path) -> str:
-    """Detect underlying filesystem from raw media headers."""
+def _probe_fs_at_offset(f, offset: int) -> Optional[str]:
+    """Probe for NTFS, ext4, or FAT32 superblock at given byte offset."""
     try:
-        with open(target_path, "rb") as f:
-            header = f.read(2048)
-            if len(header) >= 512 and header[3:11] == b"NTFS    ":
-                return "ntfs"
-            if len(header) >= 512:
-                import struct
-                if len(header) >= 1082:
-                    magic_ext4 = struct.unpack_from("<H", header, 1024 + 56)[0]
-                    if magic_ext4 == 0xEF53:
-                        return "ext4"
-                magic_boot = struct.unpack_from("<H", header, 510)[0]
-                if magic_boot == 0xAA55 and (header[82:87] == b"FAT32" or header[54:57] == b"FAT"):
-                    return "fat32"
+        f.seek(offset)
+        header = f.read(2048)
+        if len(header) >= 512 and header[3:11] == b"NTFS    ":
+            return "ntfs"
+        if len(header) >= 1082:
+            import struct
+            magic_ext4 = struct.unpack_from("<H", header, 1024 + 56)[0]
+            if magic_ext4 == 0xEF53:
+                return "ext4"
+        if len(header) >= 512:
+            import struct
+            magic_boot = struct.unpack_from("<H", header, 510)[0]
+            if magic_boot == 0xAA55 and (header[82:87] == b"FAT32" or header[54:57] == b"FAT"):
+                return "fat32"
     except Exception:
         pass
+    return None
+
+
+def detect_partitions(target_path: str | Path) -> list[tuple[str, int]]:
+    """Detect partitions and underlying filesystems on media (bare FS or MBR/GPT whole-disk)."""
+    results: list[tuple[str, int]] = []
+    try:
+        with open(target_path, "rb") as f:
+            # 1. Probe at offset 0 (bare filesystem image or superfloppy)
+            fs_at_0 = _probe_fs_at_offset(f, 0)
+            if fs_at_0:
+                return [(fs_at_0, 0)]
+
+            # 2. Check for MBR partition table (offset 0, magic 0x55AA at 510)
+            f.seek(0)
+            sector0 = f.read(512)
+            has_gpt = False
+            if len(sector0) == 512 and sector0[510:512] == b"\x55\xaa":
+                import struct
+                for i in range(4):
+                    entry_off = 446 + i * 16
+                    ptype = sector0[entry_off + 4]
+                    if ptype == 0xEE:
+                        has_gpt = True
+                    start_lba = struct.unpack_from("<I", sector0, entry_off + 8)[0]
+                    sectors = struct.unpack_from("<I", sector0, entry_off + 12)[0]
+                    if ptype != 0 and ptype != 0xEE and start_lba > 0 and sectors > 0:
+                        part_byte_off = start_lba * 512
+                        fs = _probe_fs_at_offset(f, part_byte_off)
+                        if fs:
+                            results.append((fs, part_byte_off))
+
+            # 3. Check for GPT partition table if protective MBR detected or sector 1 has EFI PART
+            if has_gpt or not results:
+                f.seek(512)
+                gpt_hdr = f.read(512)
+                if len(gpt_hdr) >= 92 and gpt_hdr[:8] == b"EFI PART":
+                    import struct
+                    part_lba = struct.unpack_from("<Q", gpt_hdr, 72)[0]
+                    num_parts = struct.unpack_from("<I", gpt_hdr, 80)[0]
+                    part_size = struct.unpack_from("<I", gpt_hdr, 84)[0]
+                    if 0 < num_parts <= 128 and 128 <= part_size <= 512:
+                        f.seek(part_lba * 512)
+                        for _ in range(num_parts):
+                            pentry = f.read(part_size)
+                            if len(pentry) < part_size:
+                                break
+                            if pentry[:16] == bytes(16):
+                                continue  # unused entry
+                            start_lba = struct.unpack_from("<Q", pentry, 32)[0]
+                            if start_lba > 0:
+                                part_byte_off = start_lba * 512
+                                fs = _probe_fs_at_offset(f, part_byte_off)
+                                if fs and (fs, part_byte_off) not in results:
+                                    results.append((fs, part_byte_off))
+    except Exception:
+        pass
+
+    if not results:
+        return [("raw", 0)]
+    return results
+
+
+def detect_filesystem(target_path: str | Path) -> str:
+    """Detect underlying filesystem from raw media headers or partition table."""
+    parts = detect_partitions(target_path)
+    for fs, _ in parts:
+        if fs != "raw":
+            return fs
     return "raw"
 
 
@@ -82,7 +152,7 @@ def carve_image(
     progress_callback: Optional[Callable[[int, int, int], None]] = None,
     generate_certificate: bool = True,
 ) -> CarvingSessionSummary:
-    """Scan raw disk image or block device with structure (NTFS/ext4) and signature carving."""
+    """Scan raw disk image or block device with structure (NTFS/ext4/FAT32) and signature carving."""
     target_p = Path(target_path).resolve()
     out_p = Path(output_dir).resolve()
     out_p.mkdir(parents=True, exist_ok=True)
@@ -91,7 +161,9 @@ def carve_image(
         raise FileNotFoundError(f"Target media not found: {target_p}")
 
     total_size = target_p.stat().st_size if target_p.is_file() else 0
-    fs_type = detect_filesystem(target_p)
+    detected_parts = detect_partitions(target_p)
+    fs_types = [p[0] for p in detected_parts if p[0] != "raw"]
+    fs_type = ", ".join(fs_types) if fs_types else "raw"
 
     carved_files: List[CarvedFile] = []
     scanned_bytes = 0
@@ -100,149 +172,152 @@ def carve_image(
 
     warnings: List[str] = []
 
-    # 1. Structure-based recovery if NTFS is detected
-    if fs_type == "ntfs":
-        try:
-            ntfs_files = scan_ntfs_deleted_files(target_p, include_allocated=False)
-            for nf in ntfs_files:
-                if nf.data and len(nf.data) > 0:
-                    ext = Path(nf.filename).suffix.lower().lstrip(".") or "bin"
-                    if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
-                        continue
-
-                    candidate_count += 1
-                    sig = get_signature_by_ext(ext)
-                    if sig:
-                        score, heuristics = score_carved_candidate(
-                            sig, nf.data, has_valid_footer=(sig.footer is not None and sig.footer in nf.data)
-                        )
-                    else:
-                        score = 75
-                        heuristics = ["NTFS MFT record structure verified (+75%)"]
-
-                    if score >= min_confidence:
-                        f_hash = hashlib.sha256(nf.data).hexdigest()
-                        file_id = f"carved_{len(carved_files)+1:05d}"
-                        rec_filename = f"{file_id}_ntfs_rec{nf.record_num}_{score}pct_{nf.filename}"
-                        rec_path = out_p / rec_filename
-                        rec_path.write_bytes(nf.data)
-
-                        carved_files.append(
-                            CarvedFile(
-                                file_id=file_id,
-                                filename=rec_filename,
-                                extension=ext,
-                                category=sig.category if sig else "document",
-                                offset=nf.record_num * 1024,
-                                size_bytes=len(nf.data),
-                                sha256=f_hash,
-                                confidence_score=score,
-                                heuristics=heuristics + [f"Recovered via NTFS MFT record #{nf.record_num}"],
-                                recovered_path=str(rec_path),
-                                recovery_method="ntfs_mft",
-                            )
-                        )
-                        recovered_hashes.add(f_hash)
-        except Exception as e:
-            warnings.append(f"NTFS structure carving warning: {e}")
-
-    # 2. Structure-based recovery if ext4 is detected
-    elif fs_type == "ext4":
-        try:
-            ext4_inodes = scan_ext4_deleted_inodes(target_p)
-            for inode in ext4_inodes:
-                if inode.data and len(inode.data) > 0:
-                    matched_sig = None
-                    for sig in SIGNATURES:
-                        if inode.data.startswith(sig.header):
-                            matched_sig = sig
-                            break
-                    ext = matched_sig.extension if matched_sig else "bin"
-                    if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
-                        continue
-
-                    candidate_count += 1
-                    if matched_sig:
-                        score, heuristics = score_carved_candidate(
-                            matched_sig, inode.data, has_valid_footer=(matched_sig.footer is not None and matched_sig.footer in inode.data)
-                        )
-                    else:
-                        score = 75
-                        heuristics = ["ext4 inode structure verified (+75%)"]
-
-                    if score >= min_confidence:
-                        f_hash = hashlib.sha256(inode.data).hexdigest()
-                        if f_hash in recovered_hashes:
+    # 1. Structure-based recovery across all detected partitions
+    for part_fs, part_offset in detected_parts:
+        if part_fs == "ntfs":
+            try:
+                ntfs_files = scan_ntfs_deleted_files(target_p, include_allocated=False, partition_offset=part_offset)
+                for nf in ntfs_files:
+                    if nf.data and len(nf.data) > 0:
+                        ext = Path(nf.filename).suffix.lower().lstrip(".") or "bin"
+                        if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
                             continue
-                        file_id = f"carved_{len(carved_files)+1:05d}"
-                        rec_filename = f"{file_id}_ext4_inode{inode.inode_num}_{score}pct.{ext}"
-                        rec_path = out_p / rec_filename
-                        rec_path.write_bytes(inode.data)
 
-                        carved_files.append(
-                            CarvedFile(
-                                file_id=file_id,
-                                filename=rec_filename,
-                                extension=ext,
-                                category=matched_sig.category if matched_sig else "document",
-                                offset=inode.extent_block_ranges[0][0] * 1024 if inode.extent_block_ranges else 0,
-                                size_bytes=len(inode.data),
-                                sha256=f_hash,
-                                confidence_score=score,
-                                heuristics=heuristics + [f"Recovered via ext4 inode #{inode.inode_num}"],
-                                recovered_path=str(rec_path),
-                                recovery_method="ext4_inode",
+                        candidate_count += 1
+                        sig = get_signature_by_ext(ext)
+                        if sig:
+                            score, heuristics = score_carved_candidate(
+                                sig, nf.data, has_valid_footer=(sig.footer is not None and sig.footer in nf.data)
                             )
-                        )
-                        recovered_hashes.add(f_hash)
-        except Exception as e:
-            warnings.append(f"ext4 structure carving warning: {e}")
+                        else:
+                            score = 75
+                            heuristics = ["NTFS MFT record structure verified (+75%)"]
 
-    # 3. Structure-based recovery if FAT32 is detected
-    elif fs_type == "fat32":
-        try:
-            fat_files = scan_fat32_deleted_files(target_p)
-            for ff in fat_files:
-                if ff.data and len(ff.data) > 0:
-                    ext = Path(ff.filename).suffix.lower().lstrip(".") or "bin"
-                    if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
-                        continue
+                        if score >= min_confidence:
+                            f_hash = hashlib.sha256(nf.data).hexdigest()
+                            if f_hash in recovered_hashes:
+                                continue
+                            file_id = f"carved_{len(carved_files)+1:05d}"
+                            rec_filename = f"{file_id}_ntfs_rec{nf.record_num}_{score}pct_{nf.filename}"
+                            rec_path = out_p / rec_filename
+                            rec_path.write_bytes(nf.data)
 
-                    candidate_count += 1
-                    sig = get_signature_by_ext(ext)
-                    if sig:
-                        score, heuristics = score_carved_candidate(
-                            sig, ff.data, has_valid_footer=(sig.footer is not None and sig.footer in ff.data)
-                        )
-                    else:
-                        score = 75
-                        heuristics = ["FAT32 directory entry structure verified (+75%)"]
-
-                    if score >= min_confidence:
-                        f_hash = hashlib.sha256(ff.data).hexdigest()
-                        file_id = f"carved_{len(carved_files)+1:05d}"
-                        rec_filename = f"{file_id}_fat32_clus{ff.first_cluster}_{score}pct_{ff.filename}"
-                        rec_path = out_p / rec_filename
-                        rec_path.write_bytes(ff.data)
-
-                        carved_files.append(
-                            CarvedFile(
-                                file_id=file_id,
-                                filename=rec_filename,
-                                extension=ext,
-                                category=sig.category if sig else "document",
-                                offset=ff.first_cluster * 4096,
-                                size_bytes=len(ff.data),
-                                sha256=f_hash,
-                                confidence_score=score,
-                                heuristics=heuristics + [f"Recovered via FAT32 cluster #{ff.first_cluster}"],
-                                recovered_path=str(rec_path),
-                                recovery_method="fat32_directory",
+                            carved_files.append(
+                                CarvedFile(
+                                    file_id=file_id,
+                                    filename=rec_filename,
+                                    extension=ext,
+                                    category=sig.category if sig else "document",
+                                    offset=part_offset + nf.record_num * 1024,
+                                    size_bytes=len(nf.data),
+                                    sha256=f_hash,
+                                    confidence_score=score,
+                                    heuristics=heuristics + [f"Recovered via NTFS MFT record #{nf.record_num} (partition @ {part_offset})"],
+                                    recovered_path=str(rec_path),
+                                    recovery_method="ntfs_mft",
+                                )
                             )
-                        )
-                        recovered_hashes.add(f_hash)
-        except Exception as e:
-            warnings.append(f"FAT32 structure carving warning: {e}")
+                            recovered_hashes.add(f_hash)
+            except Exception as e:
+                warnings.append(f"NTFS structure carving warning (offset {part_offset}): {e}")
+
+        elif part_fs == "ext4":
+            try:
+                ext4_inodes = scan_ext4_deleted_inodes(target_p, partition_offset=part_offset)
+                for inode in ext4_inodes:
+                    if inode.data and len(inode.data) > 0:
+                        matched_sig = None
+                        for sig in SIGNATURES:
+                            if inode.data.startswith(sig.header):
+                                matched_sig = sig
+                                break
+                        ext = matched_sig.extension if matched_sig else "bin"
+                        if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
+                            continue
+
+                        candidate_count += 1
+                        if matched_sig:
+                            score, heuristics = score_carved_candidate(
+                                matched_sig, inode.data, has_valid_footer=(matched_sig.footer is not None and matched_sig.footer in inode.data)
+                            )
+                        else:
+                            score = 75
+                            heuristics = ["ext4 inode structure verified (+75%)"]
+
+                        if score >= min_confidence:
+                            f_hash = hashlib.sha256(inode.data).hexdigest()
+                            if f_hash in recovered_hashes:
+                                continue
+                            file_id = f"carved_{len(carved_files)+1:05d}"
+                            rec_filename = f"{file_id}_ext4_inode{inode.inode_num}_{score}pct.{ext}"
+                            rec_path = out_p / rec_filename
+                            rec_path.write_bytes(inode.data)
+
+                            carved_files.append(
+                                CarvedFile(
+                                    file_id=file_id,
+                                    filename=rec_filename,
+                                    extension=ext,
+                                    category=matched_sig.category if matched_sig else "document",
+                                    offset=part_offset + (inode.extent_block_ranges[0][0] * 1024 if inode.extent_block_ranges else 0),
+                                    size_bytes=len(inode.data),
+                                    sha256=f_hash,
+                                    confidence_score=score,
+                                    heuristics=heuristics + [f"Recovered via ext4 inode #{inode.inode_num} (partition @ {part_offset})"],
+                                    recovered_path=str(rec_path),
+                                    recovery_method="ext4_inode",
+                                )
+                            )
+                            recovered_hashes.add(f_hash)
+            except Exception as e:
+                warnings.append(f"ext4 structure carving warning (offset {part_offset}): {e}")
+
+        elif part_fs == "fat32":
+            try:
+                fat_files = scan_fat32_deleted_files(target_p, partition_offset=part_offset)
+                for ff in fat_files:
+                    if ff.data and len(ff.data) > 0:
+                        ext = Path(ff.filename).suffix.lower().lstrip(".") or "bin"
+                        if extensions and ext not in [e.lower().lstrip(".") for e in extensions]:
+                            continue
+
+                        candidate_count += 1
+                        sig = get_signature_by_ext(ext)
+                        if sig:
+                            score, heuristics = score_carved_candidate(
+                                sig, ff.data, has_valid_footer=(sig.footer is not None and sig.footer in ff.data)
+                            )
+                        else:
+                            score = 75
+                            heuristics = ["FAT32 directory entry structure verified (+75%)"]
+
+                        if score >= min_confidence:
+                            f_hash = hashlib.sha256(ff.data).hexdigest()
+                            if f_hash in recovered_hashes:
+                                continue
+                            file_id = f"carved_{len(carved_files)+1:05d}"
+                            rec_filename = f"{file_id}_fat32_clus{ff.first_cluster}_{score}pct_{ff.filename}"
+                            rec_path = out_p / rec_filename
+                            rec_path.write_bytes(ff.data)
+
+                            carved_files.append(
+                                CarvedFile(
+                                    file_id=file_id,
+                                    filename=rec_filename,
+                                    extension=ext,
+                                    category=sig.category if sig else "document",
+                                    offset=part_offset + ff.first_cluster * 4096,
+                                    size_bytes=len(ff.data),
+                                    sha256=f_hash,
+                                    confidence_score=score,
+                                    heuristics=heuristics + [f"Recovered via FAT32 cluster #{ff.first_cluster} (partition @ {part_offset})"],
+                                    recovered_path=str(rec_path),
+                                    recovery_method="fat32_directory",
+                                )
+                            )
+                            recovered_hashes.add(f_hash)
+            except Exception as e:
+                warnings.append(f"FAT32 structure carving warning (offset {part_offset}): {e}")
 
     # 4. Raw Stream Signature-based Carving
     active_signatures = SIGNATURES
@@ -375,8 +450,6 @@ def carve_image(
                     verification={
                         "method": "forensic_signature_and_structure_carving",
                         "samples_checked": len(carved_files),
-                        "all_samples_match_wipe_pattern": True,
-                        "planted_pattern_hits_after": 0,
                     },
                     notes=[
                         f"Forensic Carving Session: Scanned {scanned_bytes} bytes on {target_p.name}.",

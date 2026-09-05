@@ -35,11 +35,14 @@ class Ext4RecoveredInode:
     data: Optional[bytes] = None
 
 
-def parse_ext4_superblock(image_path: str | Path) -> Optional[Ext4Superblock]:
-    """Parse ext4 superblock from a disk image at offset 1024."""
+def parse_ext4_superblock(
+    image_path: str | Path,
+    partition_offset: int = 0,
+) -> Optional[Ext4Superblock]:
+    """Parse ext4 superblock from a disk image at partition_offset + 1024."""
     try:
         with open(image_path, "rb") as f:
-            f.seek(EXT4_SUPERBLOCK_OFFSET)
+            f.seek(partition_offset + EXT4_SUPERBLOCK_OFFSET)
             sb_data = f.read(1024)
             if len(sb_data) < 1024:
                 return None
@@ -94,9 +97,10 @@ def parse_extent_header(i_block_bytes: bytes) -> List[tuple[int, int]]:
 def scan_ext4_deleted_inodes(
     image_path: str | Path,
     max_inodes: int = 500,
+    partition_offset: int = 0,
 ) -> List[Ext4RecoveredInode]:
-    """Scan ext4 image structure for deleted inode structures and extent trees."""
-    sb = parse_ext4_superblock(image_path)
+    """Scan ext4 image structure for genuinely deleted inode structures and extent trees."""
+    sb = parse_ext4_superblock(image_path, partition_offset=partition_offset)
     if not sb:
         return []
 
@@ -108,21 +112,26 @@ def scan_ext4_deleted_inodes(
 
             # Block group descriptor table starts at block 1 (for 1KB blocks) or block 1 (for >=2KB)
             desc_table_block = 2 if sb.block_size == 1024 else 1
-            f.seek(desc_table_block * sb.block_size)
 
             desc_size = 32  # 32 bytes for standard ext4 32-bit desc
             for group_idx in range(min(num_groups, 16)):
-                f.seek(desc_table_block * sb.block_size + group_idx * desc_size)
+                f.seek(partition_offset + desc_table_block * sb.block_size + group_idx * desc_size)
                 desc_data = f.read(desc_size)
                 if len(desc_data) < desc_size:
                     break
 
                 inode_table_block = struct.unpack_from("<I", desc_data, 8)[0]
-                inode_table_offset = inode_table_block * sb.block_size
+                inode_table_offset = partition_offset + inode_table_block * sb.block_size
 
                 # Scan inodes in this group
                 for inode_idx in range(min(sb.inodes_per_group, max_inodes)):
                     global_inode_num = group_idx * sb.inodes_per_group + inode_idx + 1
+
+                    # Reserved ext4 inodes 1-10 are system structures (inode 8 is journal)
+                    # User files are strictly allocated with inode numbers >= 11
+                    if global_inode_num < 11:
+                        continue
+
                     f.seek(inode_table_offset + inode_idx * sb.inode_size)
                     raw_inode = f.read(sb.inode_size)
                     if len(raw_inode) < 128:
@@ -131,16 +140,19 @@ def scan_ext4_deleted_inodes(
                     mode = struct.unpack_from("<H", raw_inode, 0)[0]
                     size_lo = struct.unpack_from("<I", raw_inode, 4)[0]
                     dtime = struct.unpack_from("<I", raw_inode, 20)[0]
+                    links_count = struct.unpack_from("<H", raw_inode, 26)[0]
 
                     # Regular file check ((mode & 0xF000) == 0x8000)
                     is_regular = (mode & 0xF000) == 0x8000
-                    if is_regular and (dtime > 0 or (mode != 0 and size_lo > 0)):
+
+                    # In ext4, deleted files have dtime > 0 and links_count == 0
+                    if is_regular and dtime > 0 and links_count == 0 and size_lo > 0:
                         i_block = raw_inode[40:100]
                         extents = parse_extent_header(i_block)
                         if extents:
                             data_chunks = []
                             for (start_block, count) in extents:
-                                f.seek(start_block * sb.block_size)
+                                f.seek(partition_offset + start_block * sb.block_size)
                                 chunk = f.read(count * sb.block_size)
                                 data_chunks.append(chunk)
                             inode_data = b"".join(data_chunks)[:size_lo] if data_chunks else None

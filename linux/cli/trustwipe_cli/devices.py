@@ -71,17 +71,91 @@ def _storage_type(name: str, rotational: int | None) -> str:
     return "UNKNOWN"
 
 
+def get_block_device_size(device_path: str | Path) -> int:
+    """Determine capacity in bytes of any Linux block special device using ioctl, sysfs, or blockdev."""
+    p = Path(device_path)
+    dev_name = p.name
+
+    # 1. Try ioctl BLKGETSIZE64
+    try:
+        import fcntl
+        import struct
+        BLKGETSIZE64 = 0x80081272
+        with open(p, "rb") as f:
+            buf = fcntl.ioctl(f.fileno(), BLKGETSIZE64, struct.pack("Q", 0))
+            sz = struct.unpack("Q", buf)[0]
+            if sz > 0:
+                return sz
+    except Exception:
+        pass
+
+    # 2. Try sysfs /sys/class/block/<dev>/size (sectors * 512)
+    try:
+        sys_size = Path("/sys/class/block") / dev_name / "size"
+        if sys_size.exists():
+            sectors = int(sys_size.read_text().strip())
+            if sectors > 0:
+                return sectors * 512
+    except Exception:
+        pass
+
+    # 3. Try blockdev --getsize64
+    if shutil.which("blockdev"):
+        try:
+            res = subprocess.run(
+                ["blockdev", "--getsize64", str(p)],
+                capture_output=True, text=True, check=True
+            )
+            sz = int(res.stdout.strip())
+            if sz > 0:
+                return sz
+        except Exception:
+            pass
+
+    # 4. Try lsblk
+    if shutil.which("lsblk"):
+        try:
+            res = subprocess.run(
+                ["lsblk", "-b", "-d", "-n", "-o", "SIZE", str(p)],
+                capture_output=True, text=True, check=True
+            )
+            sz = int(res.stdout.strip())
+            if sz > 0:
+                return sz
+        except Exception:
+            pass
+
+    return 0
+
+
+def _flatten_devs(devs: list[dict]) -> list[dict]:
+    flat = []
+    for d in devs:
+        flat.append(d)
+        if d.get("children"):
+            flat.extend(_flatten_devs(d["children"]))
+    return flat
+
+
 def list_block_targets() -> list[Target]:
-    """All top-level disk-class block devices with type detection."""
+    """All block devices and partitions (disks, partitions, loop, LVM, crypt)."""
     targets: list[Target] = []
-    for dev in _lsblk():
-        if dev.get("type") != "disk":
+    raw_devs = _lsblk()
+    flat_devs = _flatten_devs(raw_devs)
+
+    for dev in flat_devs:
+        dev_type = dev.get("type")
+        if dev_type not in ("disk", "part", "loop", "lvm", "crypt", "dm", "mpath"):
             continue
         name = dev["name"]
+        target_path = dev.get("path") or f"/dev/{name}"
         rotational = _sys_int(name, "queue/rotational")
         size = int(dev.get("size") or 0)
+        if size <= 0:
+            size = get_block_device_size(target_path)
+
         targets.append(Target(
-            path=dev.get("path") or f"/dev/{name}",
+            path=target_path,
             kind="block",
             capacity_bytes=size,
             sector_size=_sys_int(name, "queue/logical_block_size") or 512,
@@ -119,23 +193,36 @@ def device_id_for(target: Target) -> str:
         except OSError:
             pass
     # Last resort: content-independent identifier of the target path.
-    # For image files this is honest (the file IS the target); for block
-    # devices lacking serial+wwid it is recorded as a fallback in notes.
     return "sha256:" + hashlib.sha256(target.path.encode()).hexdigest()
 
 
-def check_safety(target: Target, force: bool = False) -> list[str]:
-    """Refuse system-critical targets unless --force. Returns warnings.
+def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
+    """Check if candidate_mount is parent_path or a sub-partition of parent_path."""
+    parent_real = os.path.realpath(parent_path)
+    cand_real = os.path.realpath(candidate_mount)
+    if parent_real == cand_real:
+        return True
 
-    This is the tool's most important function after the wipe itself: the
-    difference between a demo and an outage.
-    """
+    # If parent_real is already a partition (ends in digit), only exact match applies
+    # (e.g. /dev/sda1 must not match /dev/sda10)
+    p_name = Path(parent_real).name
+    if re.search(r"\d+$", p_name) and not (p_name.startswith("loop") and not re.search(r"p\d+$", p_name)):
+        return False
+
+    # Parent is a whole drive (e.g. /dev/sda, /dev/nvme0n1, /dev/loop0)
+    parent_esc = re.escape(parent_real)
+    pattern = rf"^{parent_esc}(?:p)?[0-9]+$"
+    return bool(re.match(pattern, cand_real))
+
+
+def check_safety(target: Target, force: bool = False) -> list[str]:
+    """Refuse system-critical targets unless --force. Returns warnings."""
     warnings: list[str] = []
     if target.kind == "image":
         return warnings
 
     mounted = _mounted_paths()
-    hits = sorted(m for m in mounted if m.startswith(target.path))
+    hits = sorted(m for m in mounted if _is_dev_or_subpartition(target.path, m))
     if hits:
         if not force:
             raise SafetyError(

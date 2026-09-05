@@ -43,12 +43,6 @@ def _make_qr_image(data: str, out_dir: Path, name: str = "cert_qr.png") -> Path:
     path = out_dir / name
     img.make_image(fill_color="black", back_color="white").save(path)
     return path
-    img = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=2)
-    img.add_data(data)
-    img.make(fit=True)
-    path = tmp_dir / "cert_qr.png"
-    img.make_image(fill_color="black", back_color="white").save(path)
-    return path
 
 
 def generate_pdf(

@@ -100,10 +100,10 @@ class AtaSecureEraseMethod(WipeMethod):
         info["supported"] = info["enhanced_supported"] or bool(re.search(
             r"^\s+supported:\s*Security Erase\s*$", sec, re.M))
         # State words appear as bare indented tokens; 'not' prefixes negate:
-        #   "not	enabled", "frozen", "not	locked"
-        info["enabled"] = not re.search(r"^\s*not\s+enabled\s*$", sec, re.M) and \
-            bool(re.search(r"^\s*(not\s+)?(enabled|locked)\s*$", sec, re.M))
-        info["frozen"] = bool(re.search(r"^\s+frozen\s*$", sec, re.M))
+        #   "not\tenabled", "frozen", "not\tlocked"
+        info["enabled"] = bool(re.search(r"^\s+enabled\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+enabled\s*$", sec, re.M))
+        info["locked"] = bool(re.search(r"^\s+locked\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+locked\s*$", sec, re.M))
+        info["frozen"] = bool(re.search(r"^\s+frozen\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+frozen\s*$", sec, re.M))
         return info
 
     def run(self, target: Target, progress: ProgressFn) -> MethodResult:

@@ -52,7 +52,7 @@ import sys as _sys
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
 from trustwipe_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
 from trustwipe_cli.carver import carve_image  # noqa: E402
-from trustwipe_cli.devices import SafetyError, check_safety, image_target, list_block_targets  # noqa: E402
+from trustwipe_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
 from trustwipe_cli.file_eraser import erase_batch  # noqa: E402
 from trustwipe_cli.methods.ata import hpa_dco_report  # noqa: E402
 from trustwipe_cli.wipe import select_method  # noqa: E402
@@ -83,9 +83,12 @@ def _find_target(path: str):
     p = Path(path)
     if p.is_block_device():
         for t in list_block_targets():
-            if Path(t.path) == p.resolve():
+            if Path(t.path).resolve() == p.resolve():
                 return t
-        raise HTTPException(400, f"unrecognised block device {path}")
+        size = get_block_device_size(p)
+        if size > 0:
+            return Target(path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN")
+        raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
     try:
         return image_target(path)
     except FileNotFoundError:

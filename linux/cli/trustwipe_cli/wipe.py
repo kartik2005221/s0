@@ -14,7 +14,9 @@ certificate) can state honestly why the chosen tier is what it is.
 
 from __future__ import annotations
 
+import collections
 import hashlib
+import math
 import secrets
 import shutil
 import sys
@@ -140,8 +142,7 @@ def sample_offsets(capacity: int, sector_size: int, count: int) -> list[int]:
         return [0]
     num_samples = min(count, total_sectors)
     if total_sectors <= count * 2:
-        import random
-        sec_indices = random.sample(range(total_sectors), num_samples)
+        sec_indices = secrets.SystemRandom().sample(range(total_sectors), num_samples)
         return sorted(idx * sector_size for idx in sec_indices)
 
     offsets = set()
@@ -154,13 +155,27 @@ def sample_offsets(capacity: int, sector_size: int, count: int) -> list[int]:
     return sorted(offsets)
 
 
+def _shannon_entropy(data: bytes) -> float:
+    """Calculate Shannon entropy in bits per byte (0.0 to 8.0)."""
+    if not data:
+        return 0.0
+    counts = collections.Counter(data)
+    n = len(data)
+    return -sum((c / n) * math.log2(c / n) for c in counts.values())
+
+
 def _read_samples(path: str, offsets: list[int], length: int) -> list[bytes]:
+    if not offsets:
+        return []
     blobs = []
-    with open(path, "rb") as f:
-        for off in offsets:
-            f.seek(off)
-            blob = f.read(length)
-            blobs.append(blob.ljust(length, b"\x00"))
+    try:
+        with open(path, "rb") as f:
+            for off in offsets:
+                f.seek(off)
+                blob = f.read(length)
+                blobs.append(blob.ljust(length, b"\x00"))
+    except Exception:
+        pass
     return blobs
 
 
@@ -189,7 +204,10 @@ def verify_wipe(
         "samples_checked": len(post),
         "sample_bytes_each": sample_bytes,
     }
-    if pattern == "zero":
+    if len(post) == 0:
+        verif["all_samples_match_wipe_pattern"] = False
+        verif["verification_error"] = "Zero readback samples obtained (empty or unreadable target)"
+    elif pattern == "zero":
         verif["all_samples_match_wipe_pattern"] = all(b == b"\x00" * len(b) for b in post)
     elif pre_samples is not None and len(pre_samples) == len(post):
         changed = [a != b for a, b in zip(pre_samples, post)]
@@ -201,8 +219,17 @@ def verify_wipe(
         all_ones = all(b == b"\xff" * len(b) for b in post)
         verif["all_samples_match_wipe_pattern"] = (all_zeros or all_ones)
     else:
-        # Random pattern without pre-samples: check non-uniformity
-        verif["all_samples_match_wipe_pattern"] = any(b != b"\x00" * len(b) for b in post)
+        # Random pattern without pre-samples: check non-zero ratio and Shannon entropy
+        non_zeros = [b != b"\x00" * len(b) for b in post]
+        pct_non_zero = sum(non_zeros) / len(non_zeros) if non_zeros else 0.0
+        entropies = [_shannon_entropy(b) for b in post if len(b) > 0]
+        avg_entropy = sum(entropies) / len(entropies) if entropies else 0.0
+
+        min_expected_entropy = min(7.0, (math.log2(sample_bytes) * 0.85) if sample_bytes > 1 else 0.0)
+
+        verif["average_entropy"] = round(avg_entropy, 3)
+        verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
+        verif["all_samples_match_wipe_pattern"] = (pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy)
         verif["note_only_pattern_check_possible_with_pre_samples"] = True
 
     if planted_needles:

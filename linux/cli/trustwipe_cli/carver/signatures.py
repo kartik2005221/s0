@@ -17,7 +17,6 @@ class FileSignature:
     min_size: int = 64
     max_size: int = 50 * 1024 * 1024  # 50 MB default cap
     fixed_size: Optional[int] = None
-    sub_headers: List[bytes] = None
 
 
 SIGNATURES: List[FileSignature] = [
@@ -62,7 +61,7 @@ SIGNATURES: List[FileSignature] = [
         extension="gif",
         category="image",
         header=b"GIF8",
-        footer=b"\x3b",
+        footer=b"\x00\x3b",
         min_size=32,
         max_size=20 * 1024 * 1024,
     ),
@@ -104,7 +103,7 @@ SIGNATURES: List[FileSignature] = [
         category="audio",
         header=b"ID3",
         min_size=128,
-        max_size=50 * 1024 * 1024,
+        max_size=15 * 1024 * 1024,
     ),
 ]
 

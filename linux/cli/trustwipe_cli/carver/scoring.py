@@ -84,16 +84,20 @@ def score_carved_candidate(
         if 3.0 <= entropy <= 7.8:
             score += 20
             heuristics.append(f"Shannon entropy ({entropy:.2f}/8.0) consistent with document structure (+20%)")
-        else:
+        elif entropy >= 1.5:
             score += 10
-            heuristics.append(f"Atypical document entropy ({entropy:.2f}/8.0) (+10%)")
+            heuristics.append(f"Moderate document entropy ({entropy:.2f}/8.0) (+10%)")
+        else:
+            heuristics.append(f"Suspiciously low entropy ({entropy:.2f}/8.0) for document (possible zero fill)")
     elif sig.category in ("executable", "audio", "video"):
         if 4.0 <= entropy <= 7.9:
             score += 20
             heuristics.append(f"Shannon entropy ({entropy:.2f}/8.0) consistent with {sig.category} binary (+20%)")
-        else:
+        elif entropy >= 2.0:
             score += 10
             heuristics.append(f"Moderate {sig.category} entropy ({entropy:.2f}/8.0) (+10%)")
+        else:
+            heuristics.append(f"Suspiciously low entropy ({entropy:.2f}/8.0) for {sig.category} (possible zero fill)")
 
     # Structure-specific checks
     if sig.extension == "pdf":

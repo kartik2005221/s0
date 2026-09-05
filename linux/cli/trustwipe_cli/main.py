@@ -33,7 +33,7 @@ from trustwipe_core import certificate as cert_mod
 from . import __version__
 from .audit import init_audit_db, list_audit_blocks, record_audit_event, verify_audit_ledger
 from .carver import carve_image
-from .devices import SafetyError, check_safety, image_target, list_block_targets
+from .devices import SafetyError, check_safety, get_block_device_size, image_target, list_block_targets
 from .devices import Target as DevTarget
 from .file_eraser import erase_batch
 from .methods.ata import AtaSecureEraseMethod, hpa_dco_report
@@ -56,9 +56,12 @@ def _resolve_target(path: str) -> DevTarget:
     p = Path(path)
     if p.is_block_device():
         for t in list_block_targets():
-            if Path(t.path) == p.resolve():
+            if Path(t.path).resolve() == p.resolve():
                 return t
-        return DevTarget(path=str(p), kind="block", capacity_bytes=p.stat().st_size)
+        size = get_block_device_size(p)
+        if size <= 0:
+            raise SafetyError(f"Block device {p} has zero or unreadable capacity.")
+        return DevTarget(path=str(p), kind="block", capacity_bytes=size)
     return image_target(path)
 
 
@@ -149,9 +152,14 @@ def cmd_list(args) -> int:
 def cmd_plan(args) -> int:
     try:
         target = _resolve_target(args.target)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, SafetyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+
+    if target.capacity_bytes <= 0:
+        print(f"error: target {target.path} has zero or unreadable capacity.", file=sys.stderr)
+        return 2
+
     try:
         warnings = check_safety(target, force=args.force)
     except SafetyError as exc:
@@ -178,9 +186,14 @@ def cmd_wipe(args) -> int:
     start_time = _now()
     try:
         target = _resolve_target(args.target)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, SafetyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+
+    if target.capacity_bytes <= 0:
+        print(f"error: target {target.path} has zero or unreadable capacity.", file=sys.stderr)
+        return 2
+
     try:
         warnings = check_safety(target, force=args.force)
     except SafetyError as exc:
@@ -267,9 +280,11 @@ def cmd_wipe(args) -> int:
 
     # Record in local blockchain audit ledger
     try:
-        record_audit_event(cert, operation_type="DRIVE_ERASE")
-    except Exception:
-        pass
+        blk = record_audit_event(cert, operation_type="DRIVE_ERASE")
+        if not getattr(args, "json", False):
+            print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+    except Exception as exc:
+        print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -349,9 +364,10 @@ def cmd_erase_files(args) -> int:
 
     if summary.certificate:
         try:
-            record_audit_event(summary.certificate, operation_type="FILE_ERASE")
-        except Exception:
-            pass
+            blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE")
+            print(f"Audit Ledger   : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+        except Exception as exc:
+            print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
         out_dir = Path(args.out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -420,9 +436,10 @@ def cmd_carve(args) -> int:
 
     if summary.manifest_certificate:
         try:
-            record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE")
-        except Exception:
-            pass
+            blk = record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE")
+            print(f"Audit Ledger              : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+        except Exception as exc:
+            print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
         out_dir = Path(args.out_dir)
         cert_p = (

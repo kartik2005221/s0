@@ -44,10 +44,14 @@ class NtfsRecoveredFile:
     data: Optional[bytes] = None
 
 
-def parse_ntfs_boot_sector(image_path: str | Path) -> Optional[NtfsBootSector]:
-    """Parse NTFS boot sector at offset 0."""
+def parse_ntfs_boot_sector(
+    image_path: str | Path,
+    partition_offset: int = 0,
+) -> Optional[NtfsBootSector]:
+    """Parse NTFS boot sector at partition_offset."""
     try:
         with open(image_path, "rb") as f:
+            f.seek(partition_offset)
             boot_data = f.read(512)
             if len(boot_data) < 512:
                 return None
@@ -94,6 +98,7 @@ def parse_mft_record_bytes(
     rec_bytes: bytes,
     disk_file=None,
     cluster_size: int = 4096,
+    partition_offset: int = 0,
 ) -> Optional[NtfsRecoveredFile]:
     """Parse single MFT record buffer (resident & single-run non-resident DATA)."""
     if len(rec_bytes) < 1024 or rec_bytes[0:4] != MFT_RECORD_MAGIC:
@@ -166,13 +171,18 @@ def parse_mft_record_bytes(
                                 byteorder="little",
                                 signed=True,
                             )
-                            disk_byte_offset = run_offset * cluster_size
+                            disk_byte_offset = partition_offset + run_offset * cluster_size
                             bytes_to_read = min(real_size, run_len * cluster_size)
+                            # Save file position so we never corrupt the outer scan loop
+                            saved_pos = disk_file.tell()
                             try:
                                 disk_file.seek(disk_byte_offset)
-                                file_data = disk_file.read(bytes_to_read)
+                                raw_read = disk_file.read(bytes_to_read)
+                                file_data = raw_read[:real_size] if real_size > 0 else raw_read
                             except Exception:
                                 pass
+                            finally:
+                                disk_file.seek(saved_pos)
 
         offset += attr_len
 
@@ -194,26 +204,29 @@ def scan_ntfs_deleted_files(
     image_path: str | Path,
     max_records: int = 2000,
     include_allocated: bool = False,
+    partition_offset: int = 0,
 ) -> List[NtfsRecoveredFile]:
     """Scan NTFS $MFT on disk image and recover deleted file entries."""
-    boot = parse_ntfs_boot_sector(image_path)
+    boot = parse_ntfs_boot_sector(image_path, partition_offset=partition_offset)
     if not boot:
         return []
 
     recovered: List[NtfsRecoveredFile] = []
     try:
         with open(image_path, "rb") as f:
-            mft_offset = boot.mft_start_cluster * boot.cluster_size
-            f.seek(mft_offset)
+            mft_offset = partition_offset + boot.mft_start_cluster * boot.cluster_size
 
             for rec_idx in range(max_records):
+                # Explicitly seek to record index to ensure stream integrity
+                rec_offset = mft_offset + rec_idx * boot.mft_record_size
+                f.seek(rec_offset)
                 rec_bytes = f.read(boot.mft_record_size)
                 if len(rec_bytes) < boot.mft_record_size:
                     break
 
                 if rec_bytes[0:4] == MFT_RECORD_MAGIC:
                     parsed = parse_mft_record_bytes(
-                        rec_bytes, disk_file=f, cluster_size=boot.cluster_size
+                        rec_bytes, disk_file=f, cluster_size=boot.cluster_size, partition_offset=partition_offset
                     )
                     if parsed:
                         if parsed.is_deleted or include_allocated:

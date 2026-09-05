@@ -42,10 +42,14 @@ class FatRecoveredFile:
     data: Optional[bytes] = None
 
 
-def parse_fat32_boot_sector(image_path: str | Path) -> Optional[Fat32BootSector]:
-    """Parse FAT32 BPB boot sector at offset 0."""
+def parse_fat32_boot_sector(
+    image_path: str | Path,
+    partition_offset: int = 0,
+) -> Optional[Fat32BootSector]:
+    """Parse FAT32 BPB boot sector at partition_offset."""
     try:
         with open(image_path, "rb") as f:
+            f.seek(partition_offset)
             boot = f.read(512)
             if len(boot) < 512:
                 return None
@@ -79,7 +83,7 @@ def parse_fat32_boot_sector(image_path: str | Path) -> Optional[Fat32BootSector]
                 return None
 
             cluster_sz = bytes_per_sec * sec_per_clus
-            data_start = (reserved_sec + fats_cnt * sec_per_fat_32) * bytes_per_sec
+            data_start = partition_offset + (reserved_sec + fats_cnt * sec_per_fat_32) * bytes_per_sec
 
             return Fat32BootSector(
                 oem_name=oem_name,
@@ -106,9 +110,10 @@ def scan_fat32_deleted_files(
     image_path: str | Path,
     include_allocated: bool = False,
     max_scan_clusters: int = 2048,
+    partition_offset: int = 0,
 ) -> List[FatRecoveredFile]:
     """Traverse FAT32 directory clusters and carve deleted entries (0xE5 marker)."""
-    boot = parse_fat32_boot_sector(image_path)
+    boot = parse_fat32_boot_sector(image_path, partition_offset=partition_offset)
     if not boot:
         return []
 

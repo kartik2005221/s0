@@ -9,18 +9,18 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-base: #06090e;
-      --bg-surface: #0c121d;
-      --bg-panel: #111a29;
-      --bg-elevated: #162236;
-      --border: #1e2e47;
-      --border-focus: #3b82f6;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      --bg-base: #222831;
+      --bg-surface: #2d333b;
+      --bg-panel: #393E46;
+      --bg-elevated: #444b54;
+      --border: #4d5765;
+      --border-focus: #00ADB5;
+      --text-main: #EEEEEE;
+      --text-muted: #c5cbd3;
+      --text-dim: #9aa5b1;
       
-      --accent-cyan: #06b6d4;
-      --accent-blue: #3b82f6;
+      --accent-cyan: #00ADB5;
+      --accent-blue: #00ADB5;
       --accent-emerald: #10b981;
       --accent-crimson: #ef4444;
       --accent-amber: #f59e0b;
@@ -60,20 +60,20 @@
     .brand-logo {
       width: 44px;
       height: 44px;
-      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      background: linear-gradient(135deg, #00ADB5, #393E46);
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.4rem;
-      box-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
+      box-shadow: 0 0 15px rgba(0, 173, 181, 0.35);
     }
 
     .brand-title h1 {
       font-size: 1.4rem;
       font-weight: 800;
       letter-spacing: -0.02em;
-      color: #fff;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 10px;
@@ -83,9 +83,9 @@
       font-family: var(--font-mono);
       font-size: 0.72rem;
       font-weight: 600;
-      background: rgba(6, 182, 212, 0.15);
+      background: rgba(0, 173, 181, 0.15);
       color: var(--accent-cyan);
-      border: 1px solid rgba(6, 182, 212, 0.35);
+      border: 1px solid rgba(0, 173, 181, 0.4);
       padding: 2px 8px;
       border-radius: 4px;
     }
@@ -157,14 +157,14 @@
     .nav-tab:hover {
       color: #fff;
       background: var(--bg-elevated);
-      border-color: #2b4166;
+      border-color: #5d6778;
     }
 
     .nav-tab.active {
-      background: rgba(59, 130, 246, 0.12);
-      color: #93c5fd;
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+      background: rgba(0, 173, 181, 0.15);
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 173, 181, 0.25);
     }
 
     .nav-tab .tab-num {
@@ -292,11 +292,13 @@
     }
 
     .btn-primary {
-      background: #2563eb;
-      color: #fff;
+      background: #00ADB5;
+      color: #222831;
+      font-weight: 700;
     }
     .btn-primary:hover {
-      background: #1d4ed8;
+      background: #008f96;
+      color: #ffffff;
     }
 
     .btn-danger {
@@ -314,7 +316,7 @@
     }
     .btn-secondary:hover {
       background: var(--bg-elevated);
-      border-color: #3b82f6;
+      border-color: #00ADB5;
     }
 
     .btn-sm {
@@ -347,14 +349,14 @@
 
     /* Console / Terminal Log */
     .terminal-container {
-      background: #04070d;
+      background: #1a1e24;
       border: 1px solid var(--border);
       border-radius: 6px;
       overflow: hidden;
     }
 
     .terminal-bar {
-      background: #0b111c;
+      background: #222831;
       padding: 8px 12px;
       font-size: 0.75rem;
       font-family: var(--font-mono);

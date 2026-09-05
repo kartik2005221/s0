@@ -34,6 +34,8 @@ class FileEraseResult:
     status: str  # "success", "failure", "skipped"
     error: Optional[str] = None
     metadata_cleansed: bool = False
+    cow_warning: Optional[str] = None
+    extents_count: int = 0
 
 
 @dataclass
@@ -197,6 +199,8 @@ def erase_single_file(
                 pattern=pattern,
                 status="failure",
                 error="File still exists after unlinking attempt",
+                cow_warning=cow_warning,
+                extents_count=len(extents),
             )
 
         return FileEraseResult(
@@ -207,6 +211,8 @@ def erase_single_file(
             pattern=pattern,
             status="success",
             metadata_cleansed=True,
+            cow_warning=cow_warning,
+            extents_count=len(extents),
         )
 
     except Exception as exc:
@@ -218,6 +224,8 @@ def erase_single_file(
             pattern=pattern,
             status="failure",
             error=str(exc),
+            cow_warning=cow_warning,
+            extents_count=len(extents),
         )
 
 
@@ -334,6 +342,9 @@ def erase_batch(
         "Caveat: Journaling filesystems (ext4/NTFS) may retain metadata in journal blocks.",
         "Caveat: Flash storage (SSDs/NVMe) Flash Translation Layer (FTL) wear leveling may prevent physical overwriting of retired blocks.",
     ]
+    for r in all_results:
+        if r.cow_warning and r.cow_warning not in warnings:
+            warnings.append(r.cow_warning)
 
     # Build signed certificate
     cert = None
@@ -370,7 +381,6 @@ def erase_batch(
                         "method": "file_non_existence_and_cluster_overwrite",
                         "samples_checked": total_files,
                         "all_samples_match_wipe_pattern": (failures == 0),
-                        "planted_pattern_hits_after": 0,
                     },
                     notes=[
                         f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
