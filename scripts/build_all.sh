@@ -34,7 +34,7 @@ echo "=> Python core and CLI packages installed in virtual environment."
 
 echo
 echo "── [2/7] Executing Automated Pytest Test Suites ────────────────────────"
-"$PYTEST" core/tests linux/cli/tests linux/gui/tests verification-portal/tests -v
+"$PYTEST" core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 echo "=> All pytest test suites PASSED."
 
 echo

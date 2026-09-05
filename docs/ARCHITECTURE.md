@@ -81,7 +81,7 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
   $$	ext{block\_hash} = 	ext{SHA256}(	ext{index} \parallel 	ext{timestamp} \parallel 	ext{op\_type} \parallel 	ext{target\_id} \parallel 	ext{operator\_id} \parallel 	ext{cert\_uuid} \parallel 	ext{payload\_hash} \parallel 	ext{signature} \parallel 	ext{prev\_hash})$$
 - Verification engine iterates from Genesis to tip, proving unbroken mathematical continuity.
 
-### 3.5 Unified Web Dashboard (`linux/gui/`)
+### 3.5 Unified Web Dashboard (`gui/`)
 - Multi-tab forensic operator console (FastAPI backend + responsive frontend):
   1. Drive Eraser Tab
   2. File & Folder Eraser Tab

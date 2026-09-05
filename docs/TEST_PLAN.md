@@ -44,5 +44,5 @@
 
 Execute all 120 automated tests:
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests linux/gui/tests verification-portal/tests -v
+.venv/bin/pytest core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 ```

@@ -74,7 +74,7 @@ TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
 ### 6. Launch Unified Web Dashboard
 ```bash
-bash linux/gui/run.sh
+bash gui/run.sh
 # Open http://127.0.0.1:8000
 ```
 

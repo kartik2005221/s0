@@ -1,0 +1,45 @@
+# Windows platform — validated vs. not validated
+
+Development environment: all Windows-specific code paths are structurally tested
+on Linux via mocked Win32 ctypes stubs. On genuine Windows deployments, the
+real kernel32.dll APIs are invoked. This file documents what has and hasn't been
+verified on actual Windows hardware.
+
+## Fully exercised (mock-verified on Linux, code path correct by inspection)
+
+| Capability | Evidence |
+|---|---|
+| Overwrite wipe of files / folders | `windows/cli/tests/test_win_cli.py` + `linux/cli/tests/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| Win32 Alternate Data Stream (ADS) enumeration | `enumerate_ntfs_streams_win32()` dynamically calls `FindFirstStreamW`/`FindNextStreamW` via ctypes; mock-verified in `test_cross_platform_eraser.py::test_win32_ads_mock_enumeration` |
+| ADS scrubbing | `scrub_alternate_data_streams()` overwrites + unlinks each ADS; falls back to common stream names (`:Zone.Identifier`, `:SummaryInformation`, etc.) when dynamic enum unavailable |
+| FlushFileBuffers hardware flush | `win32_flush_buffers()` calls `kernel32.FlushFileBuffers()` via `msvcrt.get_osfhandle()`; falls back to `os.fsync()` on non-Windows |
+| Win32 attribute clearing | `win32_clear_attributes()` strips Read-Only/Hidden/System via `SetFileAttributesW`; chmod fallback |
+| Ed25519 signed certificate | `erase_batch_windows()` issues a schema-compliant sanitization certificate signed with demo private key; verified by `trustwipe-verify` |
+| ReFS Copy-on-Write detection | `detect_windows_filesystem()` queries `GetVolumeInformationW`; warns operator when target resides on ReFS |
+
+## Coded, NOT executed against the real thing
+
+| Capability | What exists | Why untested | How to validate for real |
+|---|---|---|---|
+| FlushFileBuffers on real NTFS | Full code path including `msvcrt.get_osfhandle()` | No Windows machine in dev environment; `ctypes.windll` is absent on Linux | Run on genuine Windows 10/11 with NTFS volume |
+| Real ADS scrubbing on NTFS | Dynamic `FindFirstStreamW` enumeration + overwrite + unlink | Requires genuine NTFS with ADS-bearing files | Create test files with `notepad test.txt:secret.txt`, then run eraser |
+| Physical ReFS CoW semantics | Warning generated, but no verification that old blocks are actually unreachable | Requires Server 2016+ with ReFS-formatted volume | Format a test volume as ReFS, plant markers, erase, then scan raw blocks |
+| Windows batch launcher (.bat / .ps1) | `trustwipe-eraser.bat` and `trustwipe-eraser.ps1` shell out to Python | No Windows machine | Run on genuine Windows with Python installed |
+
+## Known behavioral caveats (true on real Windows too)
+
+- **Flash storage (SSD/NVMe):** FTL wear leveling may retain old data in retired
+  blocks. Overwrite provides NIST 800-88 "Clear" assurance, not "Purge". For Purge
+  on SSDs, use the block wiper with ATA Security Erase or NVMe Sanitize (Linux-only).
+- **NTFS compression / sparse files:** Overwrite targets the logical file extent.
+  Compressed clusters may be reallocated during overwrite; the NTFS journal preserves
+  metadata until flushed.
+- **NTFS journal ($LogFile):** File creation/deletion metadata may persist in the
+  journal even after successful file erasure. Full-device wipe is the only way to
+  guarantee journal destruction.
+- **Volume Shadow Copies / System Restore:** Previous file versions may exist in
+  VSS snapshots. Operators must `vssadmin delete shadows /for=C:` separately.
+- **Recycle Bin:** TrustWipe bypasses the Recycle Bin entirely (direct unlink).
+- **Encrypted volumes (BitLocker):** Overwrite operates on the decrypted view.
+  Original ciphertext blocks are inaccessible without the BitLocker recovery key,
+  providing defense-in-depth.

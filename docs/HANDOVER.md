@@ -18,7 +18,7 @@ bash scripts/build_all.sh
 
 ### Run All 120 Automated Pytest Tests:
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests linux/gui/tests verification-portal/tests -v
+.venv/bin/pytest core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 ```
 
 ### Run Module 1: End-to-End Drive Wipe Forensic Demo:
@@ -43,6 +43,6 @@ TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
 ### Launch Unified Web Console:
 ```bash
-bash linux/gui/run.sh
+bash gui/run.sh
 # Open http://127.0.0.1:8000
 ```

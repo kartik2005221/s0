@@ -63,7 +63,7 @@ All functions are unified under `trustwipe-wipe` (or `python -m trustwipe_cli.ma
 
 Launch the unified 4-module web console:
 ```bash
-bash linux/gui/run.sh
+bash gui/run.sh
 ```
 Open `http://127.0.0.1:8000` in your web browser.
 

@@ -29,7 +29,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from starlette.staticfiles import StaticFiles
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[1]
 VENV_BIN = REPO / ".venv" / "bin"
 CLI = VENV_BIN / "trustwipe-wipe"
 if not CLI.exists():

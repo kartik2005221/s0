@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 GUI_DIR = Path(__file__).resolve().parents[1]
-REPO = GUI_DIR.parents[1]
+REPO = GUI_DIR.parent
 sys.path.insert(0, str(GUI_DIR))
 sys.path.insert(0, str(REPO / "linux" / "cli"))
 
