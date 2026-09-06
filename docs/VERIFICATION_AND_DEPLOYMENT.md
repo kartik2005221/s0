@@ -1,7 +1,4 @@
-# s0 — Verification Portal & Air-Gapped Verification Architecture
-
-**Organization:** National Technical Research Organisation (NTRO)  
-**Theme:** Blockchain & Cybersecurity  
+# s0 — Verification Portal & Air-Gapped Verification Architecture  
 
 ---
 
@@ -48,8 +45,8 @@ Because the portal contains no server execution code (no Node, no Python, no PHP
 
 ## 2. Air-Gapped Forensic Reality & Offline Verification
 
-### 2.1 The Air-Gapped Requirement in Defense (NTRO)
-In national intelligence (NTRO), defense agencies, and police cyber-cells, forensic laboratories and sanitized machines are strictly **air-gapped** (isolated from the internet and local networks):
+### 2.1 The Air-Gapped Requirement in Secure Operations
+In national security, defense agencies, and police cyber-cells, forensic laboratories and sanitized machines are strictly **air-gapped** (isolated from the internet and local networks):
 - If certificate verification required a live cloud server or an online public blockchain (e.g. Ethereum or Solana), **the tool would be completely unusable inside an air-gapped facility**.
 - Furthermore, transmitting certificates over the public internet exposes classified drive serial numbers, forensic image hashes, and case identifiers to third parties.
 
@@ -125,8 +122,8 @@ An auditor or judge in an air-gapped court or SCIF has three offline options:
 ## 4. Trust Model: Pinned Keys (`keys.json`)
 
 To prevent an adversary from generating their own key pair and signing a fraudulent certificate, the Verification Portal utilizes **Strict Public Key Pinning**:
-- `keys.json` maintains the list of accredited issuing authorities (e.g., *NTRO Digital Forensics & Data Sanitization Lab*).
+- `keys.json` maintains the list of accredited issuing authorities (e.g., *Accredited Digital Forensics & Data Sanitization Lab*).
 - When a certificate is evaluated, the portal compares the certificate's `public_key_fingerprint` against `keys.json`:
-  - **Matched Pinned Key:** Display green `VALIDATED BY ACCREDITED NTRO AUTHORITY`.
+  - **Matched Pinned Key:** Display green `VALIDATED BY ACCREDITED AUTHORITY`.
   - **Unmatched Key with Valid Math:** Display amber `MATHEMATICALLY VALID BUT UNACCREDITED/UNKNOWN ISSUER KEY`.
   - **Tampered Content:** Display red `TAMPER DETECTED: SIGNATURE MISMATCH`.

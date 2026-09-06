@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # s0 macOS Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
-# National Technical Research Organisation (NTRO)
 
 if [ -z "${1:-}" ]; then
     echo "Usage:"

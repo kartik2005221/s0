@@ -1,7 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 REM s0 Master Build, Test, and Packaging Orchestrator (Windows CMD)
-REM National Technical Research Organisation (NTRO)
 
 cd /d "%~dp0.."
 set "REPO=%CD%"

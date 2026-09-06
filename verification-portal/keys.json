@@ -1,5 +1,5 @@
 {
-  "comment": "Pinned issuer public keys for s0 certificate verification. In production, verifiers pin accredited keys (e.g. NTRO, forensic labs, certified audit authorities).",
+  "comment": "Pinned issuer public keys for s0 certificate verification. In production, verifiers pin accredited keys (e.g. accredited forensic labs, certified audit authorities).",
   "trusted_keys": [
     {
       "issuer": "s0 Demo Lab (unaccredited development key)",

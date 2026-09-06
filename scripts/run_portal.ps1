@@ -1,7 +1,6 @@
 <#
 .SYNOPSIS
     Helper script to launch the static Verification Portal locally on Windows (PowerShell)
-    National Technical Research Organisation (NTRO)
 #>
 param(
     [string]$Port = "8080"

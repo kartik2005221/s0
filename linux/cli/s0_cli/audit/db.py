@@ -1,6 +1,5 @@
 """s0 Cryptographic Audit Ledger (Blockchain Hash-Chained Audit Log).
 
-Theme: Blockchain & Cybersecurity.
 Implements an immutable local append-only audit trail anchored by SHA-256 block hash chaining.
 """
 
@@ -92,9 +91,9 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                 0,
                 genesis_time,
                 "GENESIS",
-                "NTRO-SYSTEM",
+                "S0-SYSTEM",
                 "system-root",
-                "National Technical Research Organisation (NTRO)",
+                "Forensic Sanitization Authority",
                 "00000000-0000-0000-0000-000000000000",
                 "0" * 64,
                 "GENESIS_BLOCK_SIGNATURE",
@@ -111,9 +110,9 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                     0,
                     genesis_time,
                     "GENESIS",
-                    "NTRO-SYSTEM",
+                    "S0-SYSTEM",
                     "system-root",
-                    "National Technical Research Organisation (NTRO)",
+                    "Forensic Sanitization Authority",
                     "00000000-0000-0000-0000-000000000000",
                     "0" * 64,
                     "GENESIS_BLOCK_SIGNATURE",

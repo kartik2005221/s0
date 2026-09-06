@@ -453,7 +453,7 @@ def erase_batch(
     passes: int = 1,
     pattern: str = "zero",
     operator_id: str = "op-forensic-01",
-    organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
+    organization: str = "Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
     generate_certificate: bool = True,

@@ -1,6 +1,5 @@
-# s0 — Technical Limitations & Forensic Boundaries (NTRO)
+# s0 — Technical Limitations & Forensic Boundaries
 
-**Target Authority:** National Technical Research Organisation (NTRO)  
 **Commitment:** Absolute engineering honesty. We document every technical boundary across sanitization and forensic recovery.
 
 ---
@@ -67,7 +66,7 @@ Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/
 
 1. **Architecture Rationale:**
    - s0 implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical RFC 8785 payload digest, and RFC 8032 Ed25519 signature.
-   - In a national forensic or law-enforcement compliance architecture (such as NTRO), there is a single accredited issuing authority.
+   - In forensic and law-enforcement compliance architectures, there is a single accredited issuing authority.
    - Distributed consensus mechanisms (Proof of Work / Proof of Stake) require multi-node peer networks and introduce latency and overhead without adding security value to a local, air-gapped forensic workstation.
    - The hash chain delivers mathematical tamper-evidence: any modification to an existing block invalidates the entire subsequent chain.
 

@@ -1,6 +1,6 @@
-# s0 — Technical Evaluator & Developer Handover Guide (NTRO)
+# s0 — Technical Evaluator & Developer Handover Guide
 
-**Target Audience:** Technical Evaluators, NTRO Technical Committee, Digital Forensic Engineers, and Maintainers.  
+**Target Audience:** Technical Evaluators, Digital Forensic Engineers, and Maintainers.  
 **Version:** 2.0.0
 
 ---

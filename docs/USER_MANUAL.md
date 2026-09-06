@@ -1,6 +1,6 @@
-# s0 — User & Forensic Operator Manual (NTRO)
+# s0 — User & Forensic Operator Manual
 
-**Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, NTRO Field Technicians, and System Evaluators.  
+**Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, Field Technicians, and System Evaluators.  
 **Version:** 2.0.0
 
 ---
@@ -32,7 +32,7 @@ All functions are unified under `s0` (or `python -m s0_cli.main`).
   ```
 - **Execute Drive Sanitization:**
   ```bash
-  s0 wipe --target /dev/sda --yes --operator "op-ntro-01" --organization "NTRO Forensic Lab"
+  s0 wipe --target /dev/sda --yes --operator "op-forensic-01" --organization "Forensic Sanitization Lab"
   ```
 
 ### 2.2 Module 2: Secure File & Folder Eraser

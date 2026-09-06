@@ -173,7 +173,7 @@ def test_ntfs_resident_and_nonresident_carving(tmp_path):
     img = tmp_path / "ntfs_evidence.raw"
     out_dir = tmp_path / "carved_ntfs_output"
 
-    pdf_payload = b"%PDF-1.4\n1 0 obj\n<< /Title (TOP SECRET NTRO) >>\nendobj\nstream\nCONFIDENTIAL EVIDENCE\nendstream\n%%EOF"
+    pdf_payload = b"%PDF-1.4\n1 0 obj\n<< /Title (TOP SECRET EVIDENCE) >>\nendobj\nstream\nCONFIDENTIAL EVIDENCE\nendstream\n%%EOF"
     jpg_payload = bytes([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]) + b"JFIF" + bytes([0x00, 0x01]) + (b"AA" * 200) + bytes([0xFF, 0xD9])
 
     resident_files = [("classified_intel.pdf", pdf_payload)]
@@ -200,8 +200,8 @@ def test_ntfs_resident_and_nonresident_carving(tmp_path):
         img,
         out_dir,
         min_confidence=60,
-        operator_id="op-ntro-ntfs",
-        organization="NTRO Forensic Lab",
+        operator_id="op-ntfs",
+        organization="Forensic Lab",
     )
 
     assert summary.source_filesystem == "ntfs"

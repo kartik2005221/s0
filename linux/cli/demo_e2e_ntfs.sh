@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s0 NTFS Forensic Carving End-to-End Demo (NTRO)
+# s0 NTFS Forensic Carving End-to-End Demo
 #
 #   1. Construct an NTFS image containing planted deleted evidence files (PDF, JPEG)
 #   2. Detect NTFS volume and parse $MFT structure
@@ -23,7 +23,7 @@ cd "$REPO"
 
 echo "═══════════════════════════════════════════════════════════════════"
 echo " s0 NTFS Forensic Carving Demo — Target: $IMG"
-echo " National Technical Research Organisation (NTRO) • Theme: Blockchain & Forensics"
+echo " Cryptographic Data Sanitization & Forensic Recovery"
 echo "═══════════════════════════════════════════════════════════════════"
 
 echo
@@ -148,8 +148,8 @@ echo "── [3/6] Executing Structure & Signature Carving ───────
     --target "$IMG" \
     --out-dir "$REC_DIR" \
     --min-confidence 60 \
-    --operator "op-ntro-forensics" \
-    --organization "NTRO Digital Forensics & Data Sanitization Lab"
+    --operator "op-forensics" \
+    --organization "Digital Forensics & Data Sanitization Lab"
 
 echo
 echo "── [4/6] Cryptographic Hash Verification of Carved Files ─────────"

@@ -1,4 +1,4 @@
-"""s0 Unified Forensic & Sanitization Web Dashboard (NTRO).
+"""s0 Unified Forensic & Sanitization Web Dashboard.
 
 Endpoints:
   - GET  /                           -> Multi-tab Forensic GUI
@@ -49,7 +49,7 @@ IMAGE_DIRS = [
     REPO / "demo-out",
 ]
 
-app = FastAPI(title="s0 Forensic & Sanitization Dashboard (NTRO)", docs_url=None, redoc_url=None)
+app = FastAPI(title="s0 Forensic & Sanitization Dashboard", docs_url=None, redoc_url=None)
 
 PORTAL_DIR = REPO / "verification-portal"
 if PORTAL_DIR.is_dir():
@@ -80,7 +80,7 @@ class FileEraseRequest(BaseModel):
     targets: List[str]
     passes: int = 1
     pattern: str = "zero"
-    operator_id: str = Field(default="op-ntro-forensic")
+    operator_id: str = Field(default="op-forensic")
 
     @field_validator("operator_id")
     @classmethod
@@ -99,7 +99,7 @@ class CarveRequest(BaseModel):
     target: str
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
-    operator_id: str = Field(default="op-ntro-forensic")
+    operator_id: str = Field(default="op-forensic")
 
     @field_validator("operator_id")
     @classmethod
@@ -307,7 +307,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 passes=req.passes,
                 pattern=req.pattern,
                 operator_id=req.operator_id,
-                organization="NTRO Digital Forensics & Data Sanitization Lab",
+                organization="Digital Forensics & Data Sanitization Lab",
                 progress_callback=file_progress,
             )
             cert_filename = None

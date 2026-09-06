@@ -1,15 +1,13 @@
 # s0 — System Architecture & Forensic Engineering
 
 **Title:** Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
-**Organization / Department:** National Technical Research Organisation (NTRO)  
-**Theme:** Blockchain & Cybersecurity  
 **Version:** 2.0.0 (Production Architecture)
 
 ---
 
 ## 1. Executive Mission & System Overview
 
-s0 is an integrated, dual-capability software suite engineered specifically for intelligence, defense, and digital forensics operations at the **National Technical Research Organisation (NTRO)**. 
+s0 is an integrated, dual-capability software suite engineered specifically for intelligence, defense, and digital forensics operations. 
 
 s0 bridges the gap between two traditionally disjoint domains:
 1. **Defensive Anti-Forensics & Data Sanitization:** Irreversible destruction of sensitive intelligence data, files, and physical drives in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, anchored by **Ed25519 digital signatures**.

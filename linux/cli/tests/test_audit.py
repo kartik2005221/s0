@@ -26,7 +26,7 @@ def test_audit_db(tmp_path):
 def sample_cert():
     priv = load_private_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem")
     cert = build_certificate(
-        organization="NTRO Test Lab",
+        organization="Audit Test Lab",
         operator_id="op-test-1",
         tool_name="s0-cli",
         tool_version="1.0.0",

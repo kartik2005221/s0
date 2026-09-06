@@ -167,7 +167,7 @@ def carve_image(
     chunk_size: int = 2 * 1024 * 1024,  # 2 MiB read window
     overlap_size: int = 64 * 1024,      # 64 KiB window overlap
     operator_id: str = "op-forensic-01",
-    organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
+    organization: str = "Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     progress_callback: Optional[Callable[[int, int, int], None]] = None,
     generate_certificate: bool = True,

@@ -1,6 +1,5 @@
 # s0 — Windows Secure File & Folder Eraser (Module 2)
 
-**Target Authority:** NTRO — Digital Forensics & Data Sanitization  
 **Supported Operating Systems:** Windows 10, Windows 11, Windows Server 2016/2019/2022  
 **Supported Filesystems:** NTFS, ReFS, FAT32, exFAT
 

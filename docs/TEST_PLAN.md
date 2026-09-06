@@ -1,7 +1,5 @@
-# s0 — Comprehensive Test Plan & Verification Strategy (NTRO)
+# s0 — Comprehensive Test Plan & Verification Strategy
 
-**Organization:** National Technical Research Organisation (NTRO)  
-**Theme:** Blockchain & Cybersecurity  
 **Test Suite Status:** 190+ Automated Tests Passing (100% Green)
 
 ---

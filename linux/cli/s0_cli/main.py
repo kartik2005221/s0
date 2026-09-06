@@ -1,4 +1,4 @@
-"""S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI (NTRO).
+"""S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI.
 
 Subcommands:
   1. Drive Eraser:
@@ -543,7 +543,7 @@ def cmd_wipe(args) -> int:
 
 
 def cmd_erase_files(args) -> int:
-    print(f"==> S0 Module 2: Secure File & Folder Eraser (NTRO)")
+    print(f"==> S0 Module 2: Secure File & Folder Eraser")
 
     key_path = default_issuer_key(args.key)
     if key_path is None and not getattr(args, "no_certificate", False):
@@ -624,7 +624,7 @@ def cmd_erase_files(args) -> int:
 
 
 def cmd_carve(args) -> int:
-    print(f"==> S0 Module 3: Advanced File Carving & Recovery (NTRO)")
+    print(f"==> S0 Module 3: Advanced File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
     if key_path is None and not getattr(args, "no_certificate", False):
@@ -815,7 +815,7 @@ def cmd_keygen(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="s0",
-        description="S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI (NTRO)",
+        description="S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI",
     )
     p.add_argument("--version", action="version", version=f"s0 {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
@@ -862,7 +862,7 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument("--key", help="issuer private key PEM")
     wp.add_argument("--out-dir", default=".")
     wp.add_argument("--operator", default="unknown-operator")
-    wp.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab")
+    wp.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
     wp.add_argument("--no-pdf", action="store_true")
     wp.add_argument("--verify-samples", type=int, default=64)
     wp.add_argument(
@@ -890,8 +890,8 @@ def build_parser() -> argparse.ArgumentParser:
         fe.add_argument("--passes", type=int, default=1, help="number of overwrite passes")
         fe.add_argument("--pattern", choices=["zero", "random"], default="zero")
         fe.add_argument("--out-dir", default=".")
-        fe.add_argument("--operator", default="op-ntro-forensic")
-        fe.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab")
+        fe.add_argument("--operator", default="op-forensic")
+        fe.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
         fe.add_argument("--key", help="signing key path")
         fe.add_argument(
             "--no-certificate",
@@ -917,8 +917,8 @@ def build_parser() -> argparse.ArgumentParser:
     crv.add_argument("--out-dir", required=True, help="directory to store carved files")
     crv.add_argument("--extensions", help="comma-separated file extensions to carve (e.g. jpg,png,pdf,zip)")
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
-    crv.add_argument("--operator", default="op-ntro-forensic")
-    crv.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab")
+    crv.add_argument("--operator", default="op-forensic")
+    crv.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
     crv.add_argument("--key", help="signing key path")
     crv.add_argument(
         "--no-certificate",

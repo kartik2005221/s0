@@ -1,7 +1,6 @@
 <#
 .SYNOPSIS
     s0 Master Build, Test, and Packaging Orchestrator (PowerShell)
-    National Technical Research Organisation (NTRO)
 #>
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

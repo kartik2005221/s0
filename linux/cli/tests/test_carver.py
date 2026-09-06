@@ -62,8 +62,8 @@ def test_carve_disk_image_with_planted_files(tmp_path):
         disk_img,
         out_dir,
         min_confidence=60,
-        operator_id="op-ntro-forensic",
-        organization="NTRO Forensic Lab",
+        operator_id="op-forensic",
+        organization="Forensic Lab",
     )
 
     assert summary.files_recovered >= 3

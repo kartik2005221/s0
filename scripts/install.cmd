@@ -6,7 +6,6 @@ set "INSTALL_DIR=%USERPROFILE%\.s0"
 
 echo ==================================================================
 echo   S0 (Sector Zero) — Digital Forensic & Sanitization Suite
-echo   National Technical Research Organisation (NTRO)
 echo ==================================================================
 
 python --version >nul 2>&1 || (echo ERROR: Python 3.10+ required. & exit /b 1)

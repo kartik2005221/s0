@@ -90,8 +90,8 @@ def test_erase_batch_with_certificate(temp_test_env):
         [file1, sub_dir],
         passes=1,
         pattern="zero",
-        operator_id="op-ntro-test",
-        organization="NTRO Forensic Lab",
+        operator_id="op-test",
+        organization="Forensic Lab",
     )
 
     assert summary.total_files == 2  # file1 and file3 inside sub_dir

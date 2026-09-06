@@ -2,7 +2,6 @@
 
 > **Integrated Secure Data Erasure and Advanced File Recovery Platform**  
 > *Enterprise Forensic Carving & NIST SP 800-88 Compliant Sanitization Suite*  
-> *National Technical Research Organisation (NTRO) • Theme: Blockchain & Cybersecurity*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NIST SP 800-88](https://img.shields.io/badge/Compliance-NIST%20SP%20800--88%20Rev.1-success.svg)](docs/COMPLIANCE.md)
@@ -15,7 +14,7 @@
 
 ## 📌 Executive Overview
 
-**S0 (Sector Zero)** is an integrated digital forensics and cryptographic data sanitization suite developed for the **National Technical Research Organisation (NTRO)**.
+**S0 (Sector Zero)** is an integrated digital forensics and cryptographic data sanitization suite.
 
 It unifies two critical operational capabilities into a single high-assurance platform:
 1. **Defensive Sanitization:** Irreversible drive, file, and partition sanitization adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**. Native cross-platform execution on **Linux, Windows, and macOS** with in-place overwriting and metadata cleansing.
@@ -77,7 +76,7 @@ s0 list
 s0 plan --target /dev/sdb
 
 # Sanitize drive with real-time progress and opportunistic temperature monitoring
-s0 wipe --target /dev/sdb --yes --operator "op-01" --organization "NTRO Lab"
+s0 wipe --target /dev/sdb --yes --operator "op-01" --organization "Forensic Lab"
 ```
 
 ### 2. Secure File & Folder Erasure
@@ -163,5 +162,5 @@ bash scripts/build_all.sh
 
 ## 📄 License & Attribution
 
-Developed for the **National Technical Research Organisation (NTRO)**.  
+Enterprise Digital Forensics & Hardware Sanitization Suite.  
 Licensed under the [MIT License](LICENSE).

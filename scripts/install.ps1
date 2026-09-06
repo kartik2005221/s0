@@ -9,7 +9,6 @@ $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USER
 
 Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║" -ForegroundColor Cyan
-Write-Host "║      National Technical Research Organisation (NTRO)              ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {

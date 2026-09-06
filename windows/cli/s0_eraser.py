@@ -434,7 +434,7 @@ def erase_batch_windows(
     passes: int = 1,
     pattern: str = "zero",
     operator_id: str = "op-forensic-01",
-    organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
+    organization: str = "Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     generate_certificate: bool = True,
 ) -> tuple[List[WinFileEraseResult], Optional[dict]]:
@@ -635,7 +635,7 @@ def wipe_drive_or_partition_windows(
     pattern: str = "zero",
     chunk_size: int = 65536,
     operator_id: str = "op-forensic-01",
-    organization: str = "NTRO Digital Forensics & Data Sanitization Lab",
+    organization: str = "Digital Forensics & Data Sanitization Lab",
     signing_key_path: Optional[str | Path] = None,
     generate_certificate: bool = True,
     force: bool = False,
@@ -824,7 +824,7 @@ def main() -> int:
     parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
     parser.add_argument("--signing-key", help="Path to Ed25519 issuer private key PEM")
     parser.add_argument("--operator-id", default="op-forensic-01", help="Operator identifier")
-    parser.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab", help="Issuing organization")
+    parser.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab", help="Issuing organization")
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
     parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")

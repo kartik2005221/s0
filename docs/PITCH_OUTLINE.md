@@ -1,13 +1,11 @@
 # s0 — Technical Presentation & Live Demonstration
 
 **Title:** Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
-**Organization / Department:** National Technical Research Organisation (NTRO)  
-**Theme:** Blockchain & Cybersecurity  
 **Format:** 5-Minute Technical Pitch + 3-Minute Live Interactive Demonstration
 
 ---
 
-## 1. The Challenge Faced by NTRO & Defense Agencies
+## 1. The Challenge Faced in Defense & Forensics
 
 Digital forensics and data security operations face two fundamental, conflicting challenges:
 1. **The Sanitization Challenge (Defensive):** Intelligence agencies and defense establishments need to irreversibly sanitize decommissioned storage media and classified files so that foreign adversaries cannot extract confidential intelligence.
@@ -53,6 +51,6 @@ s0 integrates data sanitization, forensic file carving, and blockchain audit log
 - **Result:** Carver scans disk, identifies magic headers/footers, calculates Shannon entropy confidence scores (>85%), extracts recovered files, and outputs a signed forensic recovery manifest.
 
 ### Minute 3: Module 4 (Blockchain Audit Ledger)
-- **Presenter:** *"How do we guarantee unbroken chain-of-custody for NTRO audits?"*
+- **Presenter:** *"How do we guarantee unbroken chain-of-custody for compliance audits?"*
 - **Action:** Open GUI or run `s0 audit verify`.
 - **Result:** Displays the SHA-256 hash-chained block ledger. Simulate a tampering attempt in SQLite and show the auditor detecting the exact broken block index immediately.

@@ -8,7 +8,6 @@ INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║"
-echo "║      National Technical Research Organisation (NTRO)              ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 
 command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 is required."; exit 1; }

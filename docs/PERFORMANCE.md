@@ -1,7 +1,5 @@
-# s0 — Performance & Benchmark Evaluation Report (NTRO)
+# s0 — Performance & Benchmark Evaluation Report
 
-**Organization:** National Technical Research Organisation (NTRO)  
-**Theme:** Blockchain & Cybersecurity  
 **Date:** September 2026  
 
 ---

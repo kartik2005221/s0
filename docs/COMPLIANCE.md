@@ -1,6 +1,5 @@
-# s0 — Standards, Legal & Forensic Compliance (NTRO)
+# s0 — Standards, Legal & Forensic Compliance
 
-**Organization:** National Technical Research Organisation (NTRO)  
 **Standards Covered:** NIST SP 800-88 Rev. 1 • IEEE 2883-2022 • ISO/IEC 27037 (Digital Evidence Handling) • DPDPA 2023  
 **Version:** 2.0.0
 

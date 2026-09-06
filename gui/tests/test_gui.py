@@ -164,7 +164,7 @@ def test_operator_id_xss_injection_rejected(client, tmp_path):
         assert r_carve.status_code == 422, f"Failed to reject payload in carve: {p}"
 
     # Valid operator IDs must be accepted
-    r_valid = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": "op-forensic_01@ntro"})
+    r_valid = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": "op-forensic_01@lab"})
     assert r_valid.status_code == 200
 
 
