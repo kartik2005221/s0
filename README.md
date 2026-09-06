@@ -43,6 +43,25 @@ curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/inst
 
 ---
 
+## 🗑️ One-Line Uninstall
+
+### Linux & macOS
+```bash
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.sh | bash
+```
+
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.ps1 | iex
+```
+
+### Windows (Command Prompt)
+```cmd
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.cmd | cmd
+```
+
+---
+
 ## 🌟 Core Modules
 
 ```
