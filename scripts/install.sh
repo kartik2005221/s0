@@ -23,9 +23,9 @@ cd "$INSTALL_DIR"
 
 echo "==> Configuring Python environment..."
 python3 -m venv .venv
-.venv/bin/pip install --upgrade pip -q
-.venv/bin/pip install -e core/python -e linux/cli -q
-.venv/bin/pip install reportlab qrcode pillow -q
+.venv/bin/python3 -m pip install --upgrade pip -q
+.venv/bin/python3 -m pip install -e core/python -e linux/cli -q
+.venv/bin/python3 -m pip install reportlab qrcode pillow -q
 
 # Create local symlink
 BIN_DIR="${HOME}/.local/bin"
