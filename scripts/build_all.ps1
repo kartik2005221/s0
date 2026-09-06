@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     s0 Master Build, Test, and Packaging Orchestrator (PowerShell)
-    Smart India Hackathon 2026 (SIH26149) - NTRO
+    National Technical Research Organisation (NTRO)
 #>
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

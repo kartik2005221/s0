@@ -1,12 +1,12 @@
 @echo off
 REM S0 (Sector Zero) — One-Line Installer for Windows (CMD)
-REM Usage: curl -sSL https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.cmd | cmd
-set "REPO=https://github.com/kartik2005221/sih26149.git"
+REM Usage: curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
+set "REPO=https://github.com/kartik2005221/s0.git"
 set "INSTALL_DIR=%USERPROFILE%\.s0"
 
 echo ==================================================================
 echo   S0 (Sector Zero) — Digital Forensic & Sanitization Suite
-echo   Smart India Hackathon 2026 • NTRO • SIH26149
+echo   National Technical Research Organisation (NTRO)
 echo ==================================================================
 
 python --version >nul 2>&1 || (echo ERROR: Python 3.10+ required. & exit /b 1)

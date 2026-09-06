@@ -1,9 +1,8 @@
-# s0 — Comprehensive Test Plan & Verification Strategy (NTRO / SIH26149)
+# s0 — Comprehensive Test Plan & Verification Strategy (NTRO)
 
-**Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  
 **Theme:** Blockchain & Cybersecurity  
-**Test Suite Status:** 120 Automated Tests Passing (100% Green)
+**Test Suite Status:** 190+ Automated Tests Passing (100% Green)
 
 ---
 

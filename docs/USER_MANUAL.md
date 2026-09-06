@@ -1,7 +1,7 @@
-# s0 — User & Forensic Operator Manual (NTRO / SIH26149)
+# s0 — User & Forensic Operator Manual (NTRO)
 
 **Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, NTRO Field Technicians, and System Evaluators.  
-**Version:** 2.0.0 (SIH26149 Release)
+**Version:** 2.0.0
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```bash
 # Clone and enter directory
-cd sih26149
+cd s0
 
 # Run master build orchestrator (automatically sets up .venv and installs dependencies)
 bash scripts/build_all.sh

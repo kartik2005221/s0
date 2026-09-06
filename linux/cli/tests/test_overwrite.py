@@ -8,7 +8,7 @@ from s0_cli.methods.overwrite import (
     plant_patterns,
 )
 
-MARKER = b"SIH2026-CONFIDENTIAL-AADHAAR-XXXX-XXXX"
+MARKER = b"S0-CONFIDENTIAL-AADHAAR-XXXX-XXXX"
 
 
 def make_image(tmp_path, size=8 * 1024 * 1024):

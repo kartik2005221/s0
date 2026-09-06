@@ -1,4 +1,4 @@
-"""s0 Unified Forensic & Sanitization Web Dashboard (NTRO / SIH26149).
+"""s0 Unified Forensic & Sanitization Web Dashboard (NTRO).
 
 Endpoints:
   - GET  /                           -> Multi-tab Forensic GUI

@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 REM s0 Master Build, Test, and Packaging Orchestrator (Windows CMD)
-REM Smart India Hackathon 2026 (SIH26149) - NTRO
+REM National Technical Research Organisation (NTRO)
 
 cd /d "%~dp0.."
 set "REPO=%CD%"

@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Helper script to create a sparse/zeroed disk image file for testing on Windows (PowerShell)
-    Smart India Hackathon 2026 (SIH26149) - NTRO
+    National Technical Research Organisation (NTRO)
 #>
 param(
     [string]$ImagePath = "test_drive.img",

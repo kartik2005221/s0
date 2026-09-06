@@ -1,7 +1,7 @@
-# s0 — Evaluator & Developer Handover Guide (NTRO / SIH26149)
+# s0 — Technical Evaluator & Developer Handover Guide (NTRO)
 
-**Target Audience:** Hackathon Evaluators, NTRO Technical Committee, Digital Forensic Engineers, and Maintainers.  
-**Version:** 2.0.0 (SIH26149 Release)
+**Target Audience:** Technical Evaluators, NTRO Technical Committee, Digital Forensic Engineers, and Maintainers.  
+**Version:** 2.0.0
 
 ---
 

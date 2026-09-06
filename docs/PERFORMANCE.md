@@ -1,6 +1,5 @@
-# s0 — Performance & Benchmark Evaluation Report (SIH26149 / NTRO)
+# s0 — Performance & Benchmark Evaluation Report (NTRO)
 
-**Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  
 **Theme:** Blockchain & Cybersecurity  
 **Date:** September 2026  

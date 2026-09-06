@@ -1,7 +1,6 @@
-# s0 — SIH26149 Pitch Deck & Live Interactive Demonstration
+# s0 — Technical Presentation & Live Demonstration
 
-**Problem Statement ID:** 26149  
-**Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
+**Title:** Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
 **Organization / Department:** National Technical Research Organisation (NTRO)  
 **Theme:** Blockchain & Cybersecurity  
 **Format:** 5-Minute Technical Pitch + 3-Minute Live Interactive Demonstration

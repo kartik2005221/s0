@@ -15,7 +15,7 @@ from s0_core import certificate, crypto
 from s0_cli import main as cli_main
 from s0_cli.methods.overwrite import count_pattern_hits, plant_patterns
 
-MARKER = b"SIH2026-CONFIDENTIAL-PAN-ABCD1234F"
+MARKER = b"S0-CONFIDENTIAL-PAN-ABCD1234F"
 IMAGE_SIZE = 24 * 1024 * 1024
 
 

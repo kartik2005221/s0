@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # S0 (Sector Zero) — One-Line Installer for Linux & macOS
-# Usage: curl -sSL https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
 set -euo pipefail
 
-REPO="https://github.com/kartik2005221/sih26149.git"
+REPO="https://github.com/kartik2005221/s0.git"
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║"
-echo "║      Smart India Hackathon 2026 • NTRO • SIH26149                ║"
+echo "║      National Technical Research Organisation (NTRO)              ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 
 command -v python3 >/dev/null 2>&1 || { echo "ERROR: python3 is required."; exit 1; }

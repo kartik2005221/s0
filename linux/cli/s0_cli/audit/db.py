@@ -1,6 +1,6 @@
 """s0 Cryptographic Audit Ledger (Blockchain Hash-Chained Audit Log).
 
-Theme: Blockchain & Cybersecurity (SIH26149).
+Theme: Blockchain & Cybersecurity.
 Implements an immutable local append-only audit trail anchored by SHA-256 block hash chaining.
 """
 

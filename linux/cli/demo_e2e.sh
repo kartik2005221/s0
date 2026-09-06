@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s0 end-to-end demo — the core SIH demonstration loop.
+# s0 end-to-end demo — the core sanitization demonstration loop.
 #
 #   1. create a 256 MiB disk image and fill it with junk
 #   2. plant "confidential" markers a forensics tool could find
@@ -46,7 +46,7 @@ import sys
 sys.path.insert(0, "linux/cli")
 from s0_cli.methods.overwrite import plant_patterns, count_pattern_hits
 path = sys.argv[1]
-marker = b"SIH2026-CONFIDENTIAL-PAN-ABCD1234F|AADHAAR-1234-5678-9012"
+marker = b"S0-CONFIDENTIAL-PAN-ABCD1234F|AADHAAR-1234-5678-9012"
 import os
 size = os.path.getsize(path)
 n = max(16, size // (4 * 1024 * 1024))
@@ -79,7 +79,7 @@ echo "── [6/7] forensic check: raw byte-search of the wiped image ───�
 import sys
 sys.path.insert(0, "linux/cli")
 from s0_cli.methods.overwrite import count_pattern_hits
-hits = count_pattern_hits(sys.argv[1], b"SIH2026-CONFIDENTIAL")
+hits = count_pattern_hits(sys.argv[1], b"S0-CONFIDENTIAL")
 junk = count_pattern_hits(sys.argv[1], b"\x5a" * 4096)
 print(f"confidential-marker hits : {hits}")
 print(f"original junk-pattern hits: {junk}")

@@ -1,4 +1,4 @@
-"""S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI (SIH26149 / NTRO).
+"""S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI (NTRO).
 
 Subcommands:
   1. Drive Eraser:
@@ -398,7 +398,7 @@ def cmd_wipe(args) -> int:
     pre_samples = None
     offsets = None
     if args.plant_markers:
-        marker = b"SIH-DEMO-CONFIDENTIAL-" + secrets.token_hex(8).encode()
+        marker = b"S0-DEMO-CONFIDENTIAL-" + secrets.token_hex(8).encode()
         count = max(8, target.capacity_bytes // (4 * 1024 * 1024))
         plant_patterns(
             target.path, [(i * (target.capacity_bytes // count), marker) for i in range(count)]

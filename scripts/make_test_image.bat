@@ -1,7 +1,7 @@
 @echo off
 REM Helper script to create a sparse/zeroed disk image file for testing on Windows
 REM Usage: make_test_image.bat [image_path] [size_in_mb]
-REM Smart India Hackathon 2026 (SIH26149) - NTRO
+REM National Technical Research Organisation (NTRO)
 
 set "IMG_PATH=%~1"
 if "%IMG_PATH%"=="" set "IMG_PATH=test_drive.img"

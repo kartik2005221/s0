@@ -1,7 +1,7 @@
 # S0 (Sector Zero) 🛡️
 
 > **Integrated Secure Data Erasure and Advanced File Recovery Platform**  
-> *Smart India Hackathon (SIH 2026) • Problem Statement ID: 26149*  
+> *Enterprise Forensic Carving & NIST SP 800-88 Compliant Sanitization Suite*  
 > *National Technical Research Organisation (NTRO) • Theme: Blockchain & Cybersecurity*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -15,7 +15,7 @@
 
 ## 📌 Executive Overview
 
-**S0 (Sector Zero)** is an integrated digital forensics and data sanitization suite developed for the **National Technical Research Organisation (NTRO)** under **SIH26149**.
+**S0 (Sector Zero)** is an integrated digital forensics and cryptographic data sanitization suite developed for the **National Technical Research Organisation (NTRO)**.
 
 It unifies two critical operational capabilities into a single high-assurance platform:
 1. **Defensive Sanitization:** Irreversible drive, file, and partition sanitization adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**. Native cross-platform execution on **Linux, Windows, and macOS** with in-place overwriting and metadata cleansing.
@@ -29,17 +29,17 @@ It unifies two critical operational capabilities into a single high-assurance pl
 
 ### Linux & macOS
 ```bash
-curl -sSL https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
 ```
 
 ### Windows (Command Prompt)
 ```cmd
-curl -sSL https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.cmd | cmd
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
 ```
 
 ---
@@ -156,12 +156,12 @@ bash scripts/build_all.sh
 | [Test Plan & QA](docs/TEST_PLAN.md) | Testing pyramid, tamper matrix protocol, entropy tests, 180+ test suites |
 | [Technical Limitations](docs/LIMITATIONS.md) | Honest disclosure of SSD FTL, journaling filesystem remnants, ext4 parsing |
 | [Evaluator Handover](docs/HANDOVER.md) | Quickstart, automated build script, module execution, key ceremony |
-| [SIH Pitch Deck](docs/PITCH_OUTLINE.md) | Problem crisis, technical differentiators, live demo script, roadmap |
+| [Presentation & Pitch Outline](docs/PITCH_OUTLINE.md) | Problem crisis, technical differentiators, live demo script, roadmap |
 | [Verification Portal](docs/VERIFICATION_AND_DEPLOYMENT.md) | Zero-trust offline web deployment, public key pinning, custom key audit |
 
 ---
 
 ## 📄 License & Attribution
 
-Developed for **Smart India Hackathon (SIH 2026)** • **National Technical Research Organisation (NTRO)**.  
+Developed for the **National Technical Research Organisation (NTRO)**.  
 Licensed under the [MIT License](LICENSE).

@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
     S0 (Sector Zero) — One-Line Installer for Windows (PowerShell)
-    Usage: irm https://raw.githubusercontent.com/kartik2005221/sih26149/master/scripts/install.ps1 | iex
+    Usage: irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
-$Repo = "https://github.com/kartik2005221/sih26149.git"
+$Repo = "https://github.com/kartik2005221/s0.git"
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }
 
 Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║" -ForegroundColor Cyan
-Write-Host "║      Smart India Hackathon 2026 • NTRO • SIH26149                ║" -ForegroundColor Cyan
+Write-Host "║      National Technical Research Organisation (NTRO)              ║" -ForegroundColor Cyan
 Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {

@@ -1,16 +1,15 @@
-# s0 (Forensic & Sanitization Suite) — SIH26149 Master Plan
+# s0 (Forensic & Sanitization Suite) — Master Engineering Plan
 
-**Problem Statement ID:** 26149  
-**Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
-**Organization / Department:** National Technical Research Organisation (NTRO)  
+**Title:** Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
+**Target Organization:** National Technical Research Organisation (NTRO)  
 **Theme:** Blockchain & Cybersecurity  
-**Status:** Unified Engineering Plan (v2.0.0 — Pivoted to SIH26149)
+**Status:** Unified Engineering Plan (v2.0.0)
 
 ---
 
 ## 1. Executive Mission & Context
 
-SIH26149 addresses a dual operational necessity faced by national security, intelligence, defense, and law enforcement agencies like the **National Technical Research Organisation (NTRO)**:
+s0 addresses a dual operational necessity faced by national security, intelligence, defense, and law enforcement agencies like the **National Technical Research Organisation (NTRO)**:
 1. **Defensive Anti-Forensics & Sanitization:** Securely and irreversibly destroying sensitive data, classified files, or entire retired storage media so that no adversary or forensic laboratory can recover residual traces.
 2. **Offensive Digital Forensics & Evidence Recovery:** Extracting, carving, and reconstructing deleted or damaged files from formatted, corrupted, or tampered storage media to recover digital evidence with strict chain of custody.
 3. **Cryptographic Integrity & Chain of Custody (Blockchain Theme):** Providing an immutable, hash-chained local audit trail and Ed25519-signed certificates for all erasure and recovery operations.
@@ -102,7 +101,7 @@ s0/
 
 ---
 
-## 4. Phase Plan & Deliverables (SIH26149)
+## 4. Phase Plan & Deliverables
 
 | Phase | Module / Scope | Key Deliverables | Exit Verification Test |
 |---|---|---|---|
@@ -112,4 +111,4 @@ s0/
 | **Phase 4** | Advanced File Carver (Module 3) | `signatures.py`, `engine.py`, `ext4_carver.py`, `ntfs_carver.py`, `scoring.py` | `test_carver.py`, `test_ntfs_carver.py`: extracts planted JPEGs, PDFs, PNGs from ext4 & NTFS media with confidence scores > 85%. |
 | **Phase 5** | Blockchain Audit Ledger | `audit/db.py`, `audit/verify.py`, hash chain verification | `test_audit.py`: logs operations, verifies chain, detects simulated row tamper. |
 | **Phase 6** | Unified Web Dashboard | Extended GUI with Drive Erase, File Wipe, Carving, and Audit tabs | GUI tests pass; all 4 modules accessible in single web console. |
-| **Phase 7** | NTRO Documentation & Packaging | Updated docs targeting NTRO & SIH26149, master build script | `scripts/build_all.sh` runs all suites cleanly and outputs green report. |
+| **Phase 7** | NTRO Documentation & Packaging | Updated technical documentation and master build script | `scripts/build_all.sh` runs all suites cleanly and outputs green report. |

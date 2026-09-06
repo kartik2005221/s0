@@ -1,6 +1,5 @@
 # s0 — Verification Portal & Air-Gapped Verification Architecture
 
-**Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  
 **Theme:** Blockchain & Cybersecurity  
 

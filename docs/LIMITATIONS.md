@@ -1,4 +1,4 @@
-# s0 — Technical Limitations & Forensic Boundaries (NTRO / SIH26149)
+# s0 — Technical Limitations & Forensic Boundaries (NTRO)
 
 **Target Authority:** National Technical Research Organisation (NTRO)  
 **Commitment:** Absolute engineering honesty. We document every technical boundary across sanitization and forensic recovery.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# s0 NTFS Forensic Carving End-to-End Demo (NTRO / SIH26149)
+# s0 NTFS Forensic Carving End-to-End Demo (NTRO)
 #
 #   1. Construct an NTFS image containing planted deleted evidence files (PDF, JPEG)
 #   2. Detect NTFS volume and parse $MFT structure
@@ -23,7 +23,7 @@ cd "$REPO"
 
 echo "═══════════════════════════════════════════════════════════════════"
 echo " s0 NTFS Forensic Carving Demo — Target: $IMG"
-echo " Problem Statement ID: 26149 (NTRO) • Theme: Blockchain & Forensics"
+echo " National Technical Research Organisation (NTRO) • Theme: Blockchain & Forensics"
 echo "═══════════════════════════════════════════════════════════════════"
 
 echo

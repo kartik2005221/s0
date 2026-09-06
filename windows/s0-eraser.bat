@@ -1,6 +1,6 @@
 @echo off
 REM s0 Windows Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
-REM Smart India Hackathon 2026 (SIH26149) - NTRO
+REM National Technical Research Organisation (NTRO)
 
 if "%~1"=="" (
     echo Usage:
