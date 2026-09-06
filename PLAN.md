@@ -1,4 +1,4 @@
-# TrustWipe (Forensic & Sanitization Suite) — SIH26149 Master Plan
+# s0 (Forensic & Sanitization Suite) — SIH26149 Master Plan
 
 **Problem Statement ID:** 26149  
 **Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
@@ -15,21 +15,21 @@ SIH26149 addresses a dual operational necessity faced by national security, inte
 2. **Offensive Digital Forensics & Evidence Recovery:** Extracting, carving, and reconstructing deleted or damaged files from formatted, corrupted, or tampered storage media to recover digital evidence with strict chain of custody.
 3. **Cryptographic Integrity & Chain of Custody (Blockchain Theme):** Providing an immutable, hash-chained local audit trail and Ed25519-signed certificates for all erasure and recovery operations.
 
-Existing commercial tools force investigators to switch between separate, expensive, proprietary utilities (e.g. Blancco for wiping vs. FTK/Autopsy for recovery). TrustWipe provides a single, unified, open-source platform combining high-assurance sanitization, advanced file carving, and a blockchain-style tamper-evident audit ledger.
+Existing commercial tools force investigators to switch between separate, expensive, proprietary utilities (e.g. Blancco for wiping vs. FTK/Autopsy for recovery). s0 provides a single, unified, open-source platform combining high-assurance sanitization, advanced file carving, and a blockchain-style tamper-evident audit ledger.
 
 ---
 
 ## 2. System Architecture & Module Breakdown
 
 ```
-trustwipe/
+s0/
 ├── core/                               # Shared Cryptographic & Serialization Engine
 │   ├── cert_schema.json                # Schema v2.0.0 (Drive Wipe, File Wipe, Carving Manifest)
 │   ├── CANONICAL_JSON.md               # Deterministic Canonical JSON v1 Specification
 │   ├── standards/nist_800_88_mapping.md # NIST SP 800-88 & IEEE 2883-2022 registry
-│   └── python/trustwipe_core/          # Ed25519 signing, verifying, canonicalization, PDF/QR
+│   └── python/s0_core/          # Ed25519 signing, verifying, canonicalization, PDF/QR
 ├── linux/
-│   ├── cli/trustwipe_cli/
+│   ├── cli/s0_cli/
 │   │   ├── devices.py                  # Physical block and image device inventory
 │   │   ├── methods/                    # Module 1: NVMe, ATA, BLKDISCARD, Overwrite
 │   │   ├── wipe.py                     # Module 1: Drive erasure orchestrator
@@ -92,13 +92,13 @@ trustwipe/
 - **Certification:** Generated forensic recovery manifest signed with Ed25519.
 
 ### Audit Management System (Blockchain Hash-Chained Ledger)
-- **Storage:** Local SQLite database (`trustwipe_audit.db`).
+- **Storage:** Local SQLite database (`s0_audit.db`).
 - **Blockchain Mechanism:**
   * Genesis block initialized at installation.
   * Each audit event (Drive Wipe, File Wipe, File Carve, Recovery) forms a new block containing:
     `index`, `timestamp`, `operation_type`, `target_id`, `operator_id`, `cert_uuid`, `payload_hash`, `signature`, `prev_hash`, and `block_hash`.
   * `block_hash = SHA256(index + timestamp + op_type + target_id + cert_uuid + payload_hash + signature + prev_hash)`.
-- **Auditing Tool:** Built-in `trustwipe-cli audit verify` command verifying unbroken cryptographic chain from genesis to tip.
+- **Auditing Tool:** Built-in `s0-cli audit verify` command verifying unbroken cryptographic chain from genesis to tip.
 
 ---
 

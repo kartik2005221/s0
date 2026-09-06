@@ -19,9 +19,9 @@ from macos.cli import (
     macos_clear_attributes,
     macos_full_fsync,
 )
-from macos.cli.trustwipe_eraser import main as mac_main
-from trustwipe_core import certificate as cert_mod
-from trustwipe_core import crypto as core_crypto
+from macos.cli.s0_eraser import main as mac_main
+from s0_core import certificate as cert_mod
+from s0_core import crypto as core_crypto
 
 
 def test_mac_cli_single_file_erase(tmp_path: Path):
@@ -75,7 +75,7 @@ def test_mac_cli_main_entrypoint(monkeypatch, tmp_path: Path):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--targets",
             str(target),
             "--passes",
@@ -164,7 +164,7 @@ def test_mac_cli_wipe_drive_main(monkeypatch, tmp_path: Path):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--wipe-drive",
             str(drive_img),
             "--yes",
@@ -194,7 +194,7 @@ def test_mac_cli_pdf_and_qr_generation(monkeypatch, tmp_path: Path, capsys):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--targets",
             str(f),
             "--out-dir",
@@ -228,7 +228,7 @@ def test_mac_cli_no_pdf_flag(monkeypatch, tmp_path: Path):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--targets",
             str(f),
             "--out-dir",

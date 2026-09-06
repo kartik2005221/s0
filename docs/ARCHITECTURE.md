@@ -1,4 +1,4 @@
-# TrustWipe — System Architecture & Forensic Engineering
+# s0 — System Architecture & Forensic Engineering
 
 **Problem Statement ID:** 26149  
 **Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
@@ -10,9 +10,9 @@
 
 ## 1. Executive Mission & System Overview
 
-TrustWipe is an integrated, dual-capability software suite engineered specifically for intelligence, defense, and digital forensics operations at the **National Technical Research Organisation (NTRO)**. 
+s0 is an integrated, dual-capability software suite engineered specifically for intelligence, defense, and digital forensics operations at the **National Technical Research Organisation (NTRO)**. 
 
-TrustWipe bridges the gap between two traditionally disjoint domains:
+s0 bridges the gap between two traditionally disjoint domains:
 1. **Defensive Anti-Forensics & Data Sanitization:** Irreversible destruction of sensitive intelligence data, files, and physical drives in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, anchored by **Ed25519 digital signatures**.
 2. **Offensive Digital Forensics & Evidence Recovery:** Advanced signature-based, structure-based (ext4), and entropy-scored carving to extract and reconstruct deleted or fragmented files from formatted or corrupted storage media.
 3. **Blockchain-Themed Cryptographic Audit Trail:** An append-only local SQLite ledger where every wipe, file erasure, and forensic carving operation forms a cryptographic block chained by **SHA-256 block hashing**, ensuring complete non-repudiation and forensic chain of custody.
@@ -23,7 +23,7 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 
 ```
    ┌────────────────────────────────────────────────────────────────────────┐
-   │                       TRUSTWIPE ARCHITECTURE                           │
+   │                       S0 ARCHITECTURE                           │
    ├───────────────────────────────────┬────────────────────────────────────┤
    │     SANITIZATION SUBSYSTEM        │        FORENSIC SUBSYSTEM          │
    ├───────────────────────────────────┼────────────────────────────────────┤
@@ -34,7 +34,7 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
    ├───────────────────────────────────┴────────────────────────────────────┤
    │                  CRYPTOGRAPHIC CORE & INTEGRITY LAYER                  │
    ├────────────────────────────────────────────────────────────────────────┤
-   │ • Ed25519 Digital Signatures (RFC 8032) & TrustWipe Canonical JSON v1  │
+   │ • Ed25519 Digital Signatures (RFC 8032) & s0 Canonical JSON v1  │
    │ • Module 4: Blockchain Hash-Chained Audit Ledger (SQLite + SHA-256)    │
    └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -54,12 +54,12 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 
 ## 3. Subsystem Architecture
 
-### 3.1 Module 1: Secure Drive Eraser (`trustwipe_cli/methods/`)
+### 3.1 Module 1: Secure Drive Eraser (`s0_cli/methods/`)
 - Sanitizes physical HDDs, SSDs, NVMe drives, USB media, and raw image files.
 - Communicates via controller-level commands (`NVME_SANITIZE`, `ATA_SECURE_ERASE`, `BLKDISCARD`) and host-level multi-pass overwrite engines.
 - Conducts automated 64-block sampled readback verification and raw grep scanning for planted forensic markers.
 
-### 3.2 Module 2: Secure File & Folder Eraser (`trustwipe_cli/file_eraser.py`, `windows/`, `macos/`)
+### 3.2 Module 2: Secure File & Folder Eraser (`s0_cli/file_eraser.py`, `windows/`, `macos/`)
 - Cross-platform selective sanitization across Linux, Windows, and macOS.
 - In-place cluster overwriting with hardware cache flushes (`fsync()`, `F_FULLFSYNC`, `FlushFileBuffers`).
 - File attribute and stream cleansing (Windows Alternate Data Streams `:Zone.Identifier`, macOS `xattr` quarantine stripping).
@@ -67,7 +67,7 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 - Metadata cleansing (timestamp zeroing, file truncation, directory entry renaming before unlinking).
 - Issues consolidated batch certificates signed with Ed25519.
 
-### 3.3 Module 3: Advanced File Carving & Recovery (`trustwipe_cli/carver/`)
+### 3.3 Module 3: Advanced File Carving & Recovery (`s0_cli/carver/`)
 - **Signature Engine (`signatures.py`):** High-fidelity header/footer scanning for JPEG, PNG, PDF, ZIP/DOCX/XLSX, GIF, GZIP, BMP, ELF, SQLite3, MP3.
 - **ext4 Structure Engine (`ext4_carver.py`):** Direct ext4 superblock, block group descriptor, and multi-extent tree parser for recovering deleted files with intact structure.
 - **NTFS Structure Engine (`ntfs_carver.py`):** Direct Master File Table ($MFT) parser extracting resident attributes and multi-fragment non-resident runlists for deleted NTFS records.
@@ -75,8 +75,8 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 - **Fragmented Reconstruction Engine (`fragmentation.py`):** Non-resident cluster run reassembly, ext4 extent tree traversal, and bifragment heuristic stream reassembly across cluster gaps.
 - **Confidence Scoring (`scoring.py`):** Multi-factor scoring (header match 30%, footer match 30%, size plausibility 20%, Shannon entropy analysis 20%).
 
-### 3.4 Module 4: Blockchain Audit Management Ledger (`trustwipe_cli/audit/`)
-- **Unified Architecture (GUI & CLI):** Both the `s0` CLI and the Web GUI share the exact same append-only SQLite ledger file located at `~/.trustwipe/trustwipe_audit.db` (governed by `trustwipe_cli.audit.ledger.AuditLedger`). Every wipe, file erasure, or forensic carving operation—regardless of whether initiated from the terminal or the browser dashboard—appends to this shared ledger, forming a single unbroken timeline.
+### 3.4 Module 4: Blockchain Audit Management Ledger (`s0_cli/audit/`)
+- **Unified Architecture (GUI & CLI):** Both the `s0` CLI and the Web GUI share the exact same append-only SQLite ledger file located at `~/.s0/s0_audit.db` (governed by `s0_cli.audit.ledger.AuditLedger`). Every wipe, file erasure, or forensic carving operation—regardless of whether initiated from the terminal or the browser dashboard—appends to this shared ledger, forming a single unbroken timeline.
 - **Cryptographic Hash-Chained Blocks:** Every sanitization and forensic carving event forms an immutable block:
   $$\text{block\_hash} = \text{SHA256}(\text{index} \parallel \text{timestamp} \parallel \text{op\_type} \parallel \text{target\_id} \parallel \text{operator\_id} \parallel \text{cert\_uuid} \parallel \text{payload\_hash} \parallel \text{signature} \parallel \text{prev\_hash})$$
 - **Forensic Chain of Custody & Verification:** The verification engine iterates from the Genesis block to the tip, proving unbroken mathematical continuity. Any manual tampering with past SQLite rows instantly invalidates downstream block hashes (`prev_hash != block_hash`), detected immediately via `s0 audit verify` or the GUI Blockchain Audit Ledger tab.

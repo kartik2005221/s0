@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# TrustWipe end-to-end demo — the core SIH demonstration loop.
+# s0 end-to-end demo — the core SIH demonstration loop.
 #
 #   1. create a 256 MiB disk image and fill it with junk
 #   2. plant "confidential" markers a forensics tool could find
-#   3. show the device inventory (trustwipe-wipe list)
+#   3. show the device inventory (s0 list)
 #   4. dry-run the plan (nothing written)
 #   5. wipe it via the real CLI (zero pass, verified)
 #   6. grep the raw image for every planted marker -> must be ZERO hits
@@ -15,16 +15,16 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 PY="$REPO/.venv/bin/python"
-CLI=("$PY" -m trustwipe_cli.main)
-WORK="${TRUSTWIPE_DEMO_DIR:-$REPO/demo-out/e2e-$(date +%H%M%S)}"
+CLI=("$PY" -m s0_cli.main)
+WORK="${S0_DEMO_DIR:-$REPO/demo-out/e2e-$(date +%H%M%S)}"
 IMG="$WORK/target_disk.img"
-SIZE_MiB="${TRUSTWIPE_DEMO_SIZE_MIB:-256}"
+SIZE_MiB="${S0_DEMO_SIZE_MIB:-256}"
 
 mkdir -p "$WORK"
 cd "$REPO"
 
 echo "═══════════════════════════════════════════════════════════════════"
-echo " TrustWipe end-to-end demo — target: $IMG (${SIZE_MiB} MiB)"
+echo " s0 end-to-end demo — target: $IMG (${SIZE_MiB} MiB)"
 echo "═══════════════════════════════════════════════════════════════════"
 
 echo
@@ -44,7 +44,7 @@ echo "── [2/7] planting confidential markers at known offsets ────�
 "$PY" - "$IMG" <<'EOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from trustwipe_cli.methods.overwrite import plant_patterns, count_pattern_hits
+from s0_cli.methods.overwrite import plant_patterns, count_pattern_hits
 path = sys.argv[1]
 marker = b"SIH2026-CONFIDENTIAL-PAN-ABCD1234F|AADHAAR-1234-5678-9012"
 import os
@@ -70,7 +70,7 @@ echo "── [5/7] wiping (real overwrite + sampled verification) ────�
     --yes \
     --plant-markers \
     --operator "demo-operator" \
-    --organization "TrustWipe Demo Lab (unaccredited)" \
+    --organization "s0 Demo Lab (unaccredited)" \
     --out-dir "$WORK"
 
 echo
@@ -78,7 +78,7 @@ echo "── [6/7] forensic check: raw byte-search of the wiped image ───�
 "$PY" - "$IMG" <<'EOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from trustwipe_cli.methods.overwrite import count_pattern_hits
+from s0_cli.methods.overwrite import count_pattern_hits
 hits = count_pattern_hits(sys.argv[1], b"SIH2026-CONFIDENTIAL")
 junk = count_pattern_hits(sys.argv[1], b"\x5a" * 4096)
 print(f"confidential-marker hits : {hits}")

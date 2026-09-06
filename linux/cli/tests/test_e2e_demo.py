@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from trustwipe_core import certificate, crypto
-from trustwipe_cli import main as cli_main
-from trustwipe_cli.methods.overwrite import count_pattern_hits, plant_patterns
+from s0_core import certificate, crypto
+from s0_cli import main as cli_main
+from s0_cli.methods.overwrite import count_pattern_hits, plant_patterns
 
 MARKER = b"SIH2026-CONFIDENTIAL-PAN-ABCD1234F"
 IMAGE_SIZE = 24 * 1024 * 1024
@@ -37,7 +37,7 @@ def e2e(tmp_path_factory):
 
     out_dir = tmp / "out"
     key = tmp_path_factory.mktemp("k") / "issuer_private.pem"
-    from trustwipe_core.crypto import write_private_pem, write_public_pem
+    from s0_core.crypto import write_private_pem, write_public_pem
     priv = crypto.generate_private_key()
     write_private_pem(priv, key)
     pub = tmp_path_factory.mktemp("k") / "issuer_public.pem"
@@ -51,7 +51,7 @@ def e2e(tmp_path_factory):
         "--key", str(key),
         "--out-dir", str(out_dir),
         "--operator", "op-e2e-test",
-        "--organization", "TrustWipe Test Lab",
+        "--organization", "s0 Test Lab",
         "--pattern", "zero",
         "--plant-markers",
         "--json",

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from trustwipe_core import certificate, crypto
+from s0_core import certificate, crypto
 
 
 def test_build_and_validate(base_cert):
@@ -69,7 +69,7 @@ def test_signature_required_when_requested(base_cert):
 
 
 def test_refuses_to_sign_invalid_certificate(base_cert):
-    from trustwipe_core.certificate import CertificateError
+    from s0_core.certificate import CertificateError
 
     bad = json.loads(json.dumps(base_cert))
     bad["wipe"]["method"] = "MAKE_IT_CLEAN"
@@ -78,7 +78,7 @@ def test_refuses_to_sign_invalid_certificate(base_cert):
 
 
 def test_refuses_to_render_unsigned_to_pdf(base_cert):
-    from trustwipe_core import pdfgen
+    from s0_core import pdfgen
 
     with pytest.raises(ValueError):
         pdfgen.generate_pdf(base_cert, "/tmp/should-not-exist.pdf")

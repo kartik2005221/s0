@@ -1,4 +1,4 @@
-# TrustWipe — User & Forensic Operator Manual (NTRO / SIH26149)
+# s0 — User & Forensic Operator Manual (NTRO / SIH26149)
 
 **Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, NTRO Field Technicians, and System Evaluators.  
 **Version:** 2.0.0 (SIH26149 Release)
@@ -19,7 +19,7 @@ bash scripts/build_all.sh
 
 ## 2. Command-Line Interface (CLI) Manual
 
-All functions are unified under `s0` (or `python -m trustwipe_cli.main`).
+All functions are unified under `s0` (or `python -m s0_cli.main`).
 
 ### 2.1 Module 1: Secure Drive Eraser
 - **Inventory Disks:**

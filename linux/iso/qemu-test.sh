@@ -1,5 +1,5 @@
 #!/bin/bash
-# Headless QEMU smoke test for the TrustWipe ISO.
+# Headless QEMU smoke test for the s0 ISO.
 #
 # Boots the ISO, waits, captures a VNC screenshot, and greps the serial console
 # log for boot success/failure markers. A HUMAN still looks at the screenshot —

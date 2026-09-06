@@ -1,4 +1,4 @@
-# TrustWipe — Evaluator & Developer Handover Guide (NTRO / SIH26149)
+# s0 — Evaluator & Developer Handover Guide (NTRO / SIH26149)
 
 **Target Audience:** Hackathon Evaluators, NTRO Technical Committee, Digital Forensic Engineers, and Maintainers.  
 **Version:** 2.0.0 (SIH26149 Release)
@@ -23,7 +23,7 @@ bash scripts/build_all.sh
 
 ### Run Module 1: End-to-End Drive Wipe Forensic Demo:
 ```bash
-TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
+S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 ```
 
 ### Run Module 2: File & Folder Erasure:

@@ -1,18 +1,18 @@
-"""Unit tests for TrustWipe Structure-Based NTFS Carving Engine."""
+"""Unit tests for s0 Structure-Based NTFS Carving Engine."""
 
 import hashlib
 import struct
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.carver import (
+from s0_cli.carver import (
     carve_image,
     detect_filesystem,
     parse_ntfs_boot_sector,
     scan_ntfs_deleted_files,
 )
-from trustwipe_core.certificate import verify_certificate
-from trustwipe_core.crypto import load_public_pem
+from s0_core.certificate import verify_certificate
+from s0_core.crypto import load_public_pem
 
 
 def build_synthetic_mft_record(

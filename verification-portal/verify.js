@@ -1,8 +1,8 @@
 /**
- * TrustWipe Verification Engine (JavaScript Reference Implementation)
+ * s0 Verification Engine (JavaScript Reference Implementation)
  *
  * Implements:
- *  1. TrustWipe Canonical JSON v1 (core/CANONICAL_JSON.md)
+ *  1. s0 Canonical JSON v1 (core/CANONICAL_JSON.md)
  *  2. Schema v1.0.0 validator (mirroring core/cert_schema.json and core/python/certificate.py)
  *  3. Ed25519 cryptographic signature verifier against pinned issuer keys
  *
@@ -15,13 +15,13 @@
     var crypto = require("./vendor/crypto-bundle");
     module.exports = factory(crypto);
   } else {
-    root.TrustWipeVerifier = factory(root.TrustWipeCrypto);
+    root.S0Verifier = factory(root.S0Crypto);
   }
 }(typeof self !== "undefined" ? self : this, function(Crypto) {
   "use strict";
 
   if (!Crypto) {
-    throw new Error("TrustWipeCrypto bundle is required before loading verify.js");
+    throw new Error("S0Crypto bundle is required before loading verify.js");
   }
 
   var SCHEMA_VERSION = "1.0.0";
@@ -116,7 +116,7 @@
       out.push("null");
     } else if (typeof val === "number") {
       if (!Number.isInteger(val) || !Number.isFinite(val)) {
-        throw new Error("float values are not representable in TrustWipe Canonical JSON v1");
+        throw new Error("float values are not representable in s0 Canonical JSON v1");
       }
       out.push(val.toString(10));
     } else if (typeof val === "bigint") {

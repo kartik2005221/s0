@@ -1,17 +1,17 @@
-"""Unit tests for TrustWipe Module 3: Advanced File Carving & Recovery."""
+"""Unit tests for s0 Module 3: Advanced File Carving & Recovery."""
 
 import hashlib
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.carver import (
+from s0_cli.carver import (
     calculate_shannon_entropy,
     carve_image,
     score_carved_candidate,
     get_signature_by_ext,
 )
-from trustwipe_core.certificate import verify_certificate
-from trustwipe_core.crypto import load_public_pem
+from s0_core.certificate import verify_certificate
+from s0_core.crypto import load_public_pem
 
 
 def test_shannon_entropy():

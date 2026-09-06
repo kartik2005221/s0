@@ -1,0 +1,42 @@
+#!/bin/bash
+# live-build chroot hook: install the s0 code tree + kiosk service.
+# Runs inside the image build as root. No secrets are created here — see
+# README.md for the key-provisioning posture.
+
+set -e
+
+echo "==> installing s0 core + CLI into /opt/s0"
+mkdir -p /opt/s0
+cp -r /root/repo-snapshot/core /opt/s0/
+rm -rf /opt/s0/core/tests          # tests don't belong in the image
+chmod -R go-w /opt/s0
+
+# The GUI imports the CLI package by path; make both importable system-wide.
+cat > /usr/lib/python3/dist-packages/s0_path.pth <<'EOF'
+/opt/s0/core/python
+/opt/s0/linux/cli
+EOF
+
+echo "==> wrapper: s0 on PATH"
+cat > /usr/local/bin/s0 <<'EOF'
+#!/bin/sh
+exec python3 -m s0_cli.main "$@"
+EOF
+cat > /usr/local/bin/s0-verify <<'EOF'
+#!/bin/sh
+exec python3 -m s0_core.cli verify "$@"
+EOF
+chmod 0755 /usr/local/bin/s0 /usr/local/bin/s0-verify
+
+echo "==> kiosk user (no password, no sudo)"
+useradd -m -s /bin/bash -G video,input s0 || true
+
+echo "==> systemd services: local GUI server + chromium kiosk autostart"
+# (unit files ship via config/includes.chroot)
+for svc in s0-gui s0-kiosk; do
+    systemctl enable "$svc.service" 2>/dev/null || \
+        ln -sf "/etc/systemd/system/$svc.service" \
+            "/etc/systemd/system/multi-user.target.wants/$svc.service"
+done
+chmod 0755 /usr/local/bin/s0-wait-gui
+chmod 0644 /etc/systemd/system/s0-gui.service /etc/systemd/system/s0-kiosk.service

@@ -12,7 +12,7 @@ $PortalDir = Join-Path (Split-Path -Parent $ScriptDir) "verification-portal"
 Set-Location $PortalDir
 
 Write-Host "=================================================================" -ForegroundColor Cyan
-Write-Host " TrustWipe Verification Portal (Pure Client-Side Zero-Trust Web)" -ForegroundColor Cyan
+Write-Host " s0 Verification Portal (Pure Client-Side Zero-Trust Web)" -ForegroundColor Cyan
 Write-Host "=================================================================" -ForegroundColor Cyan
 Write-Host "Serving directory: $PortalDir"
 Write-Host "URL: http://127.0.0.1:$Port"

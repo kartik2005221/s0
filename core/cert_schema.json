@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://trustwipe.example/core/cert_schema.json",
-  "title": "TrustWipe Wipe Certificate",
-  "$comment": "SIGNING RULE: the signature covers this entire object EXCEPT the 'signature' member, computed over TrustWipe Canonical JSON v1 (see core/CANONICAL_JSON.md). Everything a verifier should trust lives in the signed payload; 'signature.signed_payload_hash' is a display annotation only, never evidence. Schema v1 contains NO float fields by design — see CANONICAL_JSON.md rule 5.",
+  "$id": "https://s0.example/core/cert_schema.json",
+  "title": "s0 Wipe Certificate",
+  "$comment": "SIGNING RULE: the signature covers this entire object EXCEPT the 'signature' member, computed over s0 Canonical JSON v1 (see core/CANONICAL_JSON.md). Everything a verifier should trust lives in the signed payload; 'signature.signed_payload_hash' is a display annotation only, never evidence. Schema v1 contains NO float fields by design — see CANONICAL_JSON.md rule 5.",
   "type": "object",
   "required": ["schema_version", "cert_uuid", "issued_at", "issuer", "tool", "device", "wipe", "result", "signature"],
   "additionalProperties": false,

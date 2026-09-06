@@ -16,7 +16,7 @@ verified on actual Apple hardware.
 | Extended attribute (xattr) clearing | `macos_clear_attributes()` shells out to `xattr -c`; verified via mock in tests |
 | F_FULLFSYNC hardware cache flush | `macos_full_fsync()` calls `fcntl.fcntl(fd, 51, 0)` on Darwin; falls back to `os.fsync()` on non-Darwin |
 | APFS CoW detection | `detect_macos_filesystem()` parses `mount` output; warns operator when target resides on APFS |
-| Ed25519 signed certificate | `erase_batch_macos()` and `wipe_drive_or_partition_macos()` issue schema-compliant certificates; verified by `trustwipe-verify` |
+| Ed25519 signed certificate | `erase_batch_macos()` and `wipe_drive_or_partition_macos()` issue schema-compliant certificates; verified by `s0-verify` |
 | Directory entry obfuscation | Filename randomized before unlinking to prevent directory-entry-level forensic recovery |
 | Timestamp zeroing | File timestamps reset to epoch 0 before unlinking |
 
@@ -32,7 +32,7 @@ verified on actual Apple hardware.
 ## Known behavioral caveats (true on real macOS too)
 
 - **APFS Copy-on-Write:** All writes to APFS allocate new blocks; the original data
-  blocks persist until the filesystem reclaims free space. TrustWipe issues an
+  blocks persist until the filesystem reclaims free space. s0 issues an
   explicit CoW warning in the sanitization certificate. For guaranteed destruction,
   use full-volume wipe from the bootable ISO.
 - **APFS snapshots:** Time Machine creates automatic local snapshots that preserve
@@ -40,14 +40,14 @@ verified on actual Apple hardware.
   must run `tmutil deletelocalsnapshots <date>` or `tmutil thinlocalsnapshots /`
   to purge snapshot-preserved copies.
 - **System Integrity Protection (SIP):** On macOS 10.11+, SIP prevents modification
-  of system-protected files even as root. TrustWipe cannot erase files under
+  of system-protected files even as root. s0 cannot erase files under
   `/System`, `/usr`, or `/Library` without disabling SIP from Recovery Mode.
 - **Flash storage (Apple Silicon / T2 chip):** All modern Macs use soldered NVMe
   SSDs with hardware encryption (T2 or Secure Enclave). For NIST "Purge" assurance,
   use macOS Recovery → `Disk Utility → Erase` which performs a cryptographic erase
-  (key destruction). TrustWipe's overwrite provides NIST "Clear" assurance only.
+  (key destruction). s0's overwrite provides NIST "Clear" assurance only.
 - **Sealed System Volume:** macOS 11+ uses a cryptographically sealed system volume.
-  TrustWipe cannot modify the SSV; this is intentional (no user data resides there).
+  s0 cannot modify the SSV; this is intentional (no user data resides there).
 - **FileVault 2:** Overwrite operates on the decrypted view. Original ciphertext
   blocks are inaccessible without the FileVault recovery key, providing defense-in-depth.
 - **Spotlight metadata:** `.Spotlight-V100` may cache file metadata. Full-volume wipe

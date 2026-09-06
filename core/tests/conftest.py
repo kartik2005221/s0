@@ -11,7 +11,7 @@ import pytest
 CORE_PYTHON = Path(__file__).resolve().parent.parent / "python"
 sys.path.insert(0, str(CORE_PYTHON))
 
-from trustwipe_core import crypto, certificate  # noqa: E402
+from s0_core import crypto, certificate  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -26,7 +26,7 @@ def keys(tmp_path_factory):
 def base_cert() -> dict:
     """An unsigned certificate resembling a real image-file wipe."""
     return certificate.build_certificate(
-        organization="TrustWipe Demo Lab",
+        organization="s0 Demo Lab",
         operator_id="op-demo-001",
         tool_name="s0-cli",
         tool_version="0.1.0",

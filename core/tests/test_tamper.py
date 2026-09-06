@@ -10,7 +10,7 @@ import json
 
 import pytest
 
-from trustwipe_core import certificate, crypto
+from s0_core import certificate, crypto
 
 
 def _leaves(node, path=()):

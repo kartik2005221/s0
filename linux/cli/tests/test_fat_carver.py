@@ -1,10 +1,10 @@
-"""Unit tests for TrustWipe Structure-Based FAT32 Recovery Engine."""
+"""Unit tests for s0 Structure-Based FAT32 Recovery Engine."""
 
 import struct
 from pathlib import Path
 import pytest
 
-from trustwipe_cli.carver import (
+from s0_cli.carver import (
     parse_fat32_boot_sector,
     scan_fat32_deleted_files,
     carve_image,

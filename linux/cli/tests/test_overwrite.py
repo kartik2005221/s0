@@ -2,7 +2,7 @@
 
 import os
 
-from trustwipe_cli.methods.overwrite import (
+from s0_cli.methods.overwrite import (
     OverwriteMethod,
     count_pattern_hits,
     plant_patterns,
@@ -19,7 +19,7 @@ def make_image(tmp_path, size=8 * 1024 * 1024):
 
 
 def test_plant_then_zero_wipe_removes_all_hits(tmp_path):
-    from trustwipe_cli.devices import image_target
+    from s0_cli.devices import image_target
 
     path = make_image(tmp_path)
     target = image_target(path)
@@ -43,7 +43,7 @@ def test_plant_then_zero_wipe_removes_all_hits(tmp_path):
 
 
 def test_random_single_pass_changes_content_and_reports_bytes(tmp_path):
-    from trustwipe_cli.devices import image_target
+    from s0_cli.devices import image_target
 
     path = make_image(tmp_path)
     with open(path, "r+b") as f:
@@ -61,7 +61,7 @@ def test_random_single_pass_changes_content_and_reports_bytes(tmp_path):
 
 
 def test_multi_pass_counts_all_bytes(tmp_path):
-    from trustwipe_cli.devices import image_target
+    from s0_cli.devices import image_target
 
     path = make_image(tmp_path, size=1024 * 1024)
     size = os.path.getsize(path)
@@ -76,7 +76,7 @@ def test_method_id_reflects_policy_choice():
 
 
 def test_unwritable_target_fails_cleanly(tmp_path):
-    from trustwipe_cli.devices import Target
+    from s0_cli.devices import Target
 
     bad = Target(path=str(tmp_path / "nope" / "missing.img"), kind="image",
                  capacity_bytes=4096, storage_type="IMAGE_FILE")
@@ -86,7 +86,7 @@ def test_unwritable_target_fails_cleanly(tmp_path):
 
 
 def test_plan_honest_about_clear_tier(tmp_path):
-    from trustwipe_cli.devices import image_target
+    from s0_cli.devices import image_target
 
     plan = OverwriteMethod(passes=2).plan(image_target(make_image(tmp_path)))
     assert plan.nist_category == "Clear"

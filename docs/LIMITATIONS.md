@@ -1,4 +1,4 @@
-# TrustWipe — Technical Limitations & Forensic Boundaries (NTRO / SIH26149)
+# s0 — Technical Limitations & Forensic Boundaries (NTRO / SIH26149)
 
 **Target Authority:** National Technical Research Organisation (NTRO)  
 **Commitment:** Absolute engineering honesty. We document every technical boundary across sanitization and forensic recovery.
@@ -20,7 +20,7 @@
 
 ## 2. NTFS Structure-Based Carving & Fragmented Reconstruction
 
-The NTFS structure carver (`linux/cli/trustwipe_cli/carver/ntfs_carver.py`) directly parses NTFS boot sectors and the Master File Table ($MFT) without mounting the filesystem:
+The NTFS structure carver (`linux/cli/s0_cli/carver/ntfs_carver.py`) directly parses NTFS boot sectors and the Master File Table ($MFT) without mounting the filesystem:
 
 1. **Supported NTFS Features:**
    - **Boot Sector Parsing:** Detects `NTFS    ` OEM identifier, cluster sizes, sector geometry, and $MFT starting cluster offset.
@@ -54,19 +54,19 @@ Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/
 ## 4. Operating System Scope & Cross-Platform Architecture
 
 1. **Cross-Platform File & Folder Erasure (Module 2):**
-   - **Linux (`linux/cli/trustwipe_cli/file_eraser.py`):** POSIX in-place overwrite, `fsync()`, `filefrag -v` extent inspection, `/proc/mounts` Btrfs/ZFS CoW warnings, timestamp zeroing, directory scrambling.
-   - **Windows (`windows/trustwipe_eraser.py`, `.bat`, `.ps1`):** Native Win32 direct file IO with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery & destruction, Read-Only/Hidden attribute stripping via `SetFileAttributesW`, ReFS CoW detection via `GetVolumeInformationW`.
-   - **macOS (`macos/trustwipe_eraser.py`, `.sh`):** Apple Darwin hardware flush via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) cleansing, APFS CoW detection and Time Machine snapshot warnings.
+   - **Linux (`linux/cli/s0_cli/file_eraser.py`):** POSIX in-place overwrite, `fsync()`, `filefrag -v` extent inspection, `/proc/mounts` Btrfs/ZFS CoW warnings, timestamp zeroing, directory scrambling.
+   - **Windows (`windows/s0_eraser.py`, `.bat`, `.ps1`):** Native Win32 direct file IO with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery & destruction, Read-Only/Hidden attribute stripping via `SetFileAttributesW`, ReFS CoW detection via `GetVolumeInformationW`.
+   - **macOS (`macos/s0_eraser.py`, `.sh`):** Apple Darwin hardware flush via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) cleansing, APFS CoW detection and Time Machine snapshot warnings.
 2. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
    - In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
-   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). TrustWipe packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
+   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). s0 packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
 
 ---
 
 ## 5. Cryptographic Hash Chain vs. Distributed Blockchain
 
 1. **Architecture Rationale:**
-   - TrustWipe implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical RFC 8785 payload digest, and RFC 8032 Ed25519 signature.
+   - s0 implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical RFC 8785 payload digest, and RFC 8032 Ed25519 signature.
    - In a national forensic or law-enforcement compliance architecture (such as NTRO), there is a single accredited issuing authority.
    - Distributed consensus mechanisms (Proof of Work / Proof of Stake) require multi-node peer networks and introduce latency and overhead without adding security value to a local, air-gapped forensic workstation.
    - The hash chain delivers mathematical tamper-evidence: any modification to an existing block invalidates the entire subsequent chain.
@@ -83,4 +83,4 @@ Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/
 3. **Fragmented File Reconstruction Limits:**
    - Signature carvers reconstruct contiguous files reliably. Non-contiguous fragmented files with scattered clusters require structure-based parsing or format-specific stream validation.
 4. **Copy-on-Write (CoW) Filesystems (Btrfs, ZFS, APFS):**
-   - File-level overwriting via POSIX file descriptors (`open("r+b")`) allocates new storage blocks on CoW filesystems rather than overwriting physical sectors in-place. The pre-wipe data clusters remain intact until reclaimed. TrustWipe detects Btrfs/ZFS mounts and includes an explicit warning in certificate notes. Complete sanitization on CoW storage requires volume or whole-device sanitization.
+   - File-level overwriting via POSIX file descriptors (`open("r+b")`) allocates new storage blocks on CoW filesystems rather than overwriting physical sectors in-place. The pre-wipe data clusters remain intact until reclaimed. s0 detects Btrfs/ZFS mounts and includes an explicit warning in certificate notes. Complete sanitization on CoW storage requires volume or whole-device sanitization.

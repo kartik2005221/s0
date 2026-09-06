@@ -1,5 +1,5 @@
 /**
- * S0 / TrustWipe Pure JavaScript Cryptographic Bundle
+ * S0 Pure JavaScript Cryptographic Bundle
  * Contains:
  *  - Official TweetNaCl-js (Public Domain / MIT by Dmitry Chestnykh)
  *  - Pure JS SHA-256 (FIPS 180-4)
@@ -14,7 +14,7 @@
   } else if (typeof module === "object" && module.exports) {
     module.exports = factory();
   } else {
-    root.TrustWipeCrypto = factory();
+    root.S0Crypto = factory();
   }
 }(typeof self !== "undefined" ? self : this, function() {
   "use strict";

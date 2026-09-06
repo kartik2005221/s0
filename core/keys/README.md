@@ -12,7 +12,7 @@ project has ever issued, so it is treated as unacceptable rather than unlikely.
 
 ## Real deployment
 
-- `trustwipe-keygen` runs **once, out-of-band**, on the issuing authority's own machine
+- `s0-keygen` runs **once, out-of-band**, on the issuing authority's own machine
   (NTRO or an accredited forensic authority).
 - The private key stays on that machine, offline where possible, backed up under the
   organization's key-management policy. Losing it means re-keying; leaking it means
@@ -28,7 +28,7 @@ project has ever issued, so it is treated as unacceptable rather than unlikely.
 - `issuer_public_key.pem` — placeholder demo issuer public key, committed so verifiers have
   something to pin in demos. Clearly labelled DEMO.
 - The matching demo private key is generated locally by whoever needs it:
-  `python -m trustwipe_core.cli keygen --out-dir core/keys --name demo_issuer`
+  `python -m s0_core.cli keygen --out-dir core/keys --name demo_issuer`
   It is gitignored. Anyone can generate it — it guards nothing but demo authenticity.
 
 ## What this does NOT protect against

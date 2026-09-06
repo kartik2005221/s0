@@ -1,17 +1,17 @@
-"""Unit tests for TrustWipe Module 2: Secure File & Folder Eraser."""
+"""Unit tests for s0 Module 2: Secure File & Folder Eraser."""
 
 import os
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.file_eraser import (
+from s0_cli.file_eraser import (
     erase_single_file,
     erase_folder,
     erase_batch,
     get_file_extents,
 )
-from trustwipe_core.certificate import verify_certificate
-from trustwipe_core.crypto import load_public_pem
+from s0_core.certificate import verify_certificate
+from s0_core.crypto import load_public_pem
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def test_erase_symlink_rejected(tmp_path):
 
 
 def test_s0_erase_cli_pdf_and_qr(tmp_path):
-    from trustwipe_cli.main import main as s0_main
+    from s0_cli.main import main as s0_main
     target = tmp_path / "erase_target.txt"
     target.write_bytes(b"DATA FOR S0 ERASE PDF TEST")
     out_dir = tmp_path / "s0_erase_out"

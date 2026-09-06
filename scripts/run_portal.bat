@@ -7,7 +7,7 @@ set "PORT=%~1"
 if "%PORT%"=="" set "PORT=8080"
 
 echo =================================================================
-echo  TrustWipe Verification Portal (Pure Client-Side Zero-Trust Web)
+echo  s0 Verification Portal (Pure Client-Side Zero-Trust Web)
 echo =================================================================
 echo URL: http://127.0.0.1:%PORT%
 echo Press Ctrl+C to stop.

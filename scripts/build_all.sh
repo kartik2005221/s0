@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TrustWipe Master Build, Test, and Packaging Orchestrator
+# s0 Master Build, Test, and Packaging Orchestrator
 # Builds everything buildable in this environment; logs skips with reasons.
 
 set -euo pipefail
@@ -19,7 +19,7 @@ PIP="$REPO/.venv/bin/pip"
 PYTEST="$REPO/.venv/bin/pytest"
 
 echo "=========================================================================="
-echo " TrustWipe — Master Build & Verification Orchestrator"
+echo " s0 — Master Build & Verification Orchestrator"
 echo "=========================================================================="
 echo "Repository Root: $REPO"
 echo "Python Runtime : $("$PY" --version 2>&1)"
@@ -39,7 +39,7 @@ echo "=> All pytest test suites PASSED."
 
 echo
 echo "── [3/7] Running End-to-End Live Forensic Demonstration ─────────────────"
-TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
+S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 echo "=> End-to-end sanitization, forensic readback, and tamper rejection PASSED."
 
 echo

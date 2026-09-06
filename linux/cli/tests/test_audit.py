@@ -1,18 +1,18 @@
-"""Unit tests for TrustWipe Audit Management & Blockchain Ledger."""
+"""Unit tests for s0 Audit Management & Blockchain Ledger."""
 
 import json
 import sqlite3
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.audit import (
+from s0_cli.audit import (
     init_audit_db,
     record_audit_event,
     list_audit_blocks,
     verify_audit_ledger,
 )
-from trustwipe_core.certificate import build_certificate, sign_certificate
-from trustwipe_core.crypto import load_private_pem, load_public_pem
+from s0_core.certificate import build_certificate, sign_certificate
+from s0_core.crypto import load_private_pem, load_public_pem
 
 
 @pytest.fixture

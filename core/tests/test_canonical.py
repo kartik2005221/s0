@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from trustwipe_core.canonical import CanonicalizationError, canonicalize, canonicalize_str
+from s0_core.canonical import CanonicalizationError, canonicalize, canonicalize_str
 
 VECTORS = json.loads(
     (Path(__file__).parent / "data" / "canonical_vectors.json").read_text("utf-8")

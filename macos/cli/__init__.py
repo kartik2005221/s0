@@ -1,6 +1,6 @@
-"""TrustWipe macOS Native CLI Module."""
+"""s0 macOS Native CLI Module."""
 
-from .trustwipe_eraser import (
+from .s0_eraser import (
     F_FULLFSYNC,
     MacDriveWipeResult,
     MacFileEraseResult,

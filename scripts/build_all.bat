@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
-REM TrustWipe Master Build, Test, and Packaging Orchestrator (Windows CMD)
+REM s0 Master Build, Test, and Packaging Orchestrator (Windows CMD)
 REM Smart India Hackathon 2026 (SIH26149) - NTRO
 
 cd /d "%~dp0.."
 set "REPO=%CD%"
 
 echo ==========================================================================
-echo  TrustWipe — Master Build ^& Verification Orchestrator (Windows CMD)
+echo  s0 — Master Build ^& Verification Orchestrator (Windows CMD)
 echo ==========================================================================
 echo Repository Root: %REPO%
 

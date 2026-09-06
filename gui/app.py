@@ -1,4 +1,4 @@
-"""TrustWipe Unified Forensic & Sanitization Web Dashboard (NTRO / SIH26149).
+"""s0 Unified Forensic & Sanitization Web Dashboard (NTRO / SIH26149).
 
 Endpoints:
   - GET  /                           -> Multi-tab Forensic GUI
@@ -41,15 +41,15 @@ def _get_s0_cmd() -> list[str]:
     which_s0 = shutil.which("s0")
     if which_s0:
         return [which_s0]
-    return [_sys.executable, "-m", "trustwipe_cli.main"]
+    return [_sys.executable, "-m", "s0_cli.main"]
 
 
 IMAGE_DIRS = [
-    Path(os.environ.get("TRUSTWIPE_IMAGE_DIR", "")) if os.environ.get("TRUSTWIPE_IMAGE_DIR") else None,
+    Path(os.environ.get("S0_IMAGE_DIR", "")) if os.environ.get("S0_IMAGE_DIR") else None,
     REPO / "demo-out",
 ]
 
-app = FastAPI(title="TrustWipe Forensic & Sanitization Dashboard (NTRO)", docs_url=None, redoc_url=None)
+app = FastAPI(title="s0 Forensic & Sanitization Dashboard (NTRO)", docs_url=None, redoc_url=None)
 
 PORTAL_DIR = REPO / "verification-portal"
 if PORTAL_DIR.is_dir():
@@ -60,13 +60,13 @@ _lock = threading.Lock()
 import sys as _sys
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
 _sys.path.insert(0, str(REPO / "core" / "python"))
-from trustwipe_core.temperature import read_temperature  # noqa: E402
-from trustwipe_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
-from trustwipe_cli.carver import carve_image  # noqa: E402
-from trustwipe_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
-from trustwipe_cli.file_eraser import erase_batch  # noqa: E402
-from trustwipe_cli.methods.ata import hpa_dco_report  # noqa: E402
-from trustwipe_cli.wipe import select_method  # noqa: E402
+from s0_core.temperature import read_temperature  # noqa: E402
+from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
+from s0_cli.carver import carve_image  # noqa: E402
+from s0_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
+from s0_cli.file_eraser import erase_batch  # noqa: E402
+from s0_cli.methods.ata import hpa_dco_report  # noqa: E402
+from s0_cli.wipe import select_method  # noqa: E402
 
 
 class WipeRequest(BaseModel):

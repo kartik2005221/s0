@@ -34,7 +34,7 @@ def small_image(tmp_path):
 def test_index_serves(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert b"TrustWipe" in r.content or b"TRUSTWIPE" in r.content.upper()
+    assert b"s0" in r.content.lower()
 
 
 def test_devices_lists_images(client, small_image):
@@ -78,7 +78,7 @@ def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_
         time.sleep(0.5)
     assert result is not None and result["returncode"] == 0, f"wipe job failed: {result}"
 
-    from trustwipe_core import certificate, crypto
+    from s0_core import certificate, crypto
 
     cert = json.loads(Path(result["certificate"]).read_text())
     key = crypto.load_public_pem(REPO / "core" / "keys" / "demo_issuer_public.pem")
@@ -141,7 +141,7 @@ def test_audit_api(client):
 def test_portal_serves(client):
     r = client.get("/portal/")
     assert r.status_code == 200
-    assert b"TrustWipe" in r.content
+    assert b"s0" in r.content.lower()
     assert b"Verification" in r.content
 
 

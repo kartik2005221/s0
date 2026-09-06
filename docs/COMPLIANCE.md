@@ -1,4 +1,4 @@
-# TrustWipe — Standards, Legal & Forensic Compliance (NTRO / SIH26149)
+# s0 — Standards, Legal & Forensic Compliance (NTRO / SIH26149)
 
 **Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  

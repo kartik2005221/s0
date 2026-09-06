@@ -1,5 +1,5 @@
 {
-  "$comment": "Golden vectors for TrustWipe Canonical JSON v1 (core/CANONICAL_JSON.md). Each vector: input JSON value and the exact canonical string expected. ALL implementations of the spec (python/js/c#/kotlin) must reproduce these byte-for-byte.",
+  "$comment": "Golden vectors for s0 Canonical JSON v1 (core/CANONICAL_JSON.md). Each vector: input JSON value and the exact canonical string expected. ALL implementations of the spec (python/js/c#/kotlin) must reproduce these byte-for-byte.",
   "vectors": [
     {
       "name": "empty_object",

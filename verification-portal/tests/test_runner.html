@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TrustWipe JavaScript Verification Suite</title>
+  <title>s0 JavaScript Verification Suite</title>
   <style>
     body { font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
     h1 { color: #58a6ff; }
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>🧪 TrustWipe JS In-Browser Test Suite</h1>
+  <h1>🧪 s0 JS In-Browser Test Suite</h1>
   <div id="results">Running tests...</div>
   <div id="summary"></div>
 
@@ -47,7 +47,7 @@
       var vData = await vResp.json();
       vData.vectors.forEach(function(v) {
         try {
-          var out = TrustWipeVerifier.canonicalizeStr(v.input);
+          var out = S0Verifier.canonicalizeStr(v.input);
           assert(out === v.canonical, "Golden vector: " + v.name, "expected: " + v.canonical + ", got: " + out);
         } catch (e) {
           assert(false, "Golden vector: " + v.name, e.message);
@@ -56,7 +56,7 @@
 
       // 2. Float rejection
       try {
-        TrustWipeVerifier.canonicalizeStr({ a: 12.34 });
+        S0Verifier.canonicalizeStr({ a: 12.34 });
         assert(false, "Rejection of float values in canonicalizeStr");
       } catch (e) {
         assert(true, "Rejection of float values in canonicalizeStr");
@@ -70,13 +70,13 @@
       // 4. Sample valid cert verification
       var cResp = await fetch("sample_valid_cert.json");
       var validCert = await cResp.json();
-      var vResult = TrustWipeVerifier.verifyCertificate(validCert, kData.trusted_keys);
+      var vResult = S0Verifier.verifyCertificate(validCert, kData.trusted_keys);
       assert(vResult.ok === true && vResult.status === "AUTHENTIC", "Sample valid cert verifies correctly", vResult.reason);
 
       // 5. Sample tampered cert rejection
       var tResp = await fetch("sample_tampered_cert.json");
       var tamperedCert = await tResp.json();
-      var tResult = TrustWipeVerifier.verifyCertificate(tamperedCert, kData.trusted_keys);
+      var tResult = S0Verifier.verifyCertificate(tamperedCert, kData.trusted_keys);
       assert(tResult.ok === false && tResult.status === "TAMPERED_OR_CORRUPT", "Tampered capacity_bytes rejected", tResult.reason);
 
       // 6. Key reorder invariance
@@ -92,13 +92,13 @@
         issuer: reordered.issuer,
         signature: reordered.signature
       };
-      var rResult = TrustWipeVerifier.verifyCertificate(reorderedKeys, kData.trusted_keys);
+      var rResult = S0Verifier.verifyCertificate(reorderedKeys, kData.trusted_keys);
       assert(rResult.ok === true, "Key reordering does not affect verification validity");
 
       // 7. Untrusted key rejection
       var untrustedCert = JSON.parse(JSON.stringify(validCert));
       untrustedCert.signature.public_key_fingerprint = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
-      var uResult = TrustWipeVerifier.verifyCertificate(untrustedCert, kData.trusted_keys);
+      var uResult = S0Verifier.verifyCertificate(untrustedCert, kData.trusted_keys);
       assert(uResult.ok === false && uResult.status === "UNTRUSTED_ISSUER", "Untrusted key fingerprint rejected");
 
       summaryDiv.innerHTML = "Total tests: " + (passed + failed) + " | Passed: " + passed + " | Failed: " + failed;

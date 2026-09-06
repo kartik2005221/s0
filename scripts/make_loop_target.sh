@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-IMG_PATH="${1:-/tmp/trustwipe_loop_test.img}"
+IMG_PATH="${1:-/tmp/s0_loop_test.img}"
 SIZE_MIB="${2:-256}"
 
 if [ "$(id -u)" -ne 0 ]; then

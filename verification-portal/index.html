@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrustWipe — Certificate Verification Portal</title>
+  <title>s0 — Certificate Verification Portal</title>
   <style>
     :root {
       --bg: #222831;
@@ -347,7 +347,7 @@
 <div class="container">
   <header>
     <div class="brand-title">
-      <span class="shield">🛡️</span> TrustWipe Verification Portal
+      <span class="shield">🛡️</span> s0 Verification Portal
     </div>
     <div class="subtitle">
       Cryptographic Certificate Audit & Verification Engine — Pure Client-Side Ed25519
@@ -394,7 +394,7 @@
       <div class="card" style="margin-top: 20px;">
         <h2>🔑 Pinned Issuer Keys</h2>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
-          TrustWipe operates on a zero-trust model. Certificates are verified exclusively against pinned public keys.
+          s0 operates on a zero-trust model. Certificates are verified exclusively against pinned public keys.
         </p>
         <div id="pinnedKeysList" style="font-size: 0.8rem; font-family: var(--font-mono); background: var(--code-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);">
           Loading pinned keys...
@@ -483,7 +483,7 @@
   </div>
 
   <footer>
-    <p>TrustWipe Secure Data Wiping Suite • Pure Client-Side Zero-Trust Verification Portal</p>
+    <p>s0 Secure Data Wiping Suite • Pure Client-Side Zero-Trust Verification Portal</p>
     <p style="font-size: 0.78rem; margin-top: 4px; color: #57606a;">
       No server communication required. Math and cryptographic signatures guarantee tamper evidence.
     </p>
@@ -496,7 +496,7 @@
 <script>
   var PINNED_KEYS = [
     {
-      issuer: "TrustWipe Demo Lab (unaccredited development key)",
+      issuer: "s0 Demo Lab (unaccredited development key)",
       fingerprint: "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
       public_key_spki_pem: "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA4viQlkj0bHna+uhXpU+r4LjzhKG5nq3tGMih9VoR7K0=\n-----END PUBLIC KEY-----",
       public_key_raw_hex: "e2f8909648f46c79dafae857a54fabe0b8f384a1b99eaded18c8a1f55a11ecad"
@@ -614,7 +614,7 @@
       return;
     }
 
-    var result = TrustWipeVerifier.verifyCertificate(certObj, PINNED_KEYS);
+    var result = S0Verifier.verifyCertificate(certObj, PINNED_KEYS);
     showResult(result, certObj);
   }
 
@@ -733,7 +733,7 @@
       return;
     }
 
-    var result = TrustWipeVerifier.verifyCertificate(certObj, [customKey]);
+    var result = S0Verifier.verifyCertificate(certObj, [customKey]);
     if (result.ok) {
       result.status = "VERIFIED_CUSTOM_KEY";
       result.reason = "Valid Ed25519 cryptographic signature verified against your custom public key. NOTE: This key is NOT in the official pinned authority registry.";
@@ -762,7 +762,7 @@
           document.getElementById("emptyState").innerHTML =
             '<span style="font-size: 3rem; opacity: 0.7;">📋</span>' +
             '<h3 style="margin-top: 10px; color: var(--accent);">Certificate Locator: ' + certParam + '</h3>' +
-            '<p style="margin-top: 8px;">TrustWipe operates on a zero-trust offline architecture: certificates are stored locally on forensic storage or in tamper-evident PDFs, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
+            '<p style="margin-top: 8px;">s0 operates on a zero-trust offline architecture: certificates are stored locally on forensic storage or in tamper-evident PDFs, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
         }
       }
     } catch (e) {

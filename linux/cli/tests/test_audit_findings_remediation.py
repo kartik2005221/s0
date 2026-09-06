@@ -15,29 +15,29 @@ import struct
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.carver.engine import (
+from s0_cli.carver.engine import (
     carve_image,
     detect_filesystem,
     detect_partitions,
 )
-from trustwipe_cli.carver.ext4_carver import (
+from s0_cli.carver.ext4_carver import (
     scan_ext4_deleted_inodes,
 )
-from trustwipe_cli.carver.ntfs_carver import (
+from s0_cli.carver.ntfs_carver import (
     ATTR_DATA,
     ATTR_END_MARKER,
     MFT_RECORD_MAGIC,
     parse_mft_record_bytes,
 )
-from trustwipe_cli.carver.scoring import (
+from s0_cli.carver.scoring import (
     score_carved_candidate,
 )
-from trustwipe_cli.carver.signatures import get_signature_by_ext
-from trustwipe_cli.devices import (
+from s0_cli.carver.signatures import get_signature_by_ext
+from s0_cli.devices import (
     Target,
     _is_dev_or_subpartition,
 )
-from trustwipe_cli.wipe import verify_wipe
+from s0_cli.wipe import verify_wipe
 
 
 def test_partition_mount_matching_no_false_positive():
@@ -241,7 +241,7 @@ def test_scoring_rejects_zero_filled_buffer():
 
 def test_random_wipe_verification_entropy(tmp_path: Path):
     import os
-    from trustwipe_cli.wipe import sample_offsets
+    from s0_cli.wipe import sample_offsets
 
     # Create file with random bytes
     rand_file = tmp_path / "random.img"
@@ -275,7 +275,7 @@ def test_random_wipe_verification_entropy(tmp_path: Path):
 
 
 def test_csprng_sample_offsets():
-    from trustwipe_cli.wipe import sample_offsets
+    from s0_cli.wipe import sample_offsets
 
     # Small device branch (total_sectors <= count * 2)
     offs_small = sample_offsets(capacity=4096, sector_size=512, count=4)

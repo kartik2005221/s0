@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the TrustWipe live ISO with Debian live-build.
+# Build the s0 live ISO with Debian live-build.
 #
 # REQUIRES: sudo (or root), live-build, xorriso. NOT runnable in this repo's
 # development environment — see README.md. scripts/build_all.sh skips it and
@@ -22,10 +22,10 @@ lb config noauto \
     --archive-areas "main contrib" \
     --mode debian \
     --binary-images iso-hybrid \
-    --bootappend-live "boot=live components quiet splash hostname=trustwipe" \
-    --packages-lists "trustwipe" \
+    --bootappend-live "boot=live components quiet splash hostname=s0" \
+    --packages-lists "s0" \
     --debian-installer false \
-    --iso-volume "TRUSTWIPE" \
+    --iso-volume "S0" \
     "${@}"
 
 echo "==> building (this downloads ~1GB of packages on first run)"

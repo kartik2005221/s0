@@ -1,11 +1,11 @@
-"""Tests for TrustWipe exFAT Structure-Based Carving Module."""
+"""Tests for s0 exFAT Structure-Based Carving Module."""
 
 import struct
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.carver.engine import carve_image, detect_filesystem, detect_partitions
-from trustwipe_cli.carver.exfat_carver import (
+from s0_cli.carver.engine import carve_image, detect_filesystem, detect_partitions
+from s0_cli.carver.exfat_carver import (
     ENTRY_TYPE_FILE_DELETED,
     ENTRY_TYPE_NAME_DELETED,
     ENTRY_TYPE_STREAM_DELETED,

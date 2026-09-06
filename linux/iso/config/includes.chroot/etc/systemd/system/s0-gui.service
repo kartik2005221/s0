@@ -1,0 +1,16 @@
+[Unit]
+Description=s0 wipe station — local GUI server (uvicorn, loopback only)
+After=multi-user.target
+
+[Service]
+User=s0
+Environment=S0_IMAGE_DIR=/opt/s0/images
+WorkingDirectory=/opt/s0/linux/gui
+ExecStart=/usr/bin/python3 -m uvicorn app:app --host 127.0.0.1 --port 8080
+Restart=always
+RestartSec=3
+
+# Loopback bind is a hard requirement: a wipe tool must not expose an
+# erase-the-disk API to the network.
+[Install]
+WantedBy=multi-user.target

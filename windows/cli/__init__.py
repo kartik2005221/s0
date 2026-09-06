@@ -1,6 +1,6 @@
-"""TrustWipe Windows Native CLI Module."""
+"""s0 Windows Native CLI Module."""
 
-from .trustwipe_eraser import (
+from .s0_eraser import (
     FSCTL_DISMOUNT_VOLUME,
     FSCTL_LOCK_VOLUME,
     GENERIC_READ,

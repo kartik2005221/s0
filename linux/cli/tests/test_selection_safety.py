@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
-import trustwipe_cli.wipe as wipe_mod
-from trustwipe_cli.devices import SafetyError, Target, check_safety, device_id_for
-from trustwipe_cli.methods.overwrite import OverwriteMethod
-from trustwipe_cli.wipe import select_method
+import s0_cli.wipe as wipe_mod
+from s0_cli.devices import SafetyError, Target, check_safety, device_id_for
+from s0_cli.methods.overwrite import OverwriteMethod
+from s0_cli.wipe import select_method
 
 IMG = Target(path="/tmp/x.img", kind="image", capacity_bytes=2**20,
              storage_type="IMAGE_FILE")
@@ -123,21 +123,21 @@ def block_dev(tmp_path):
 
 
 def test_refuses_mounted_device_without_force(block_dev, monkeypatch):
-    monkeypatch.setattr("trustwipe_cli.devices._mounted_paths",
+    monkeypatch.setattr("s0_cli.devices._mounted_paths",
                         lambda: {block_dev.path + "1"})
     with pytest.raises(SafetyError, match="mounted filesystems"):
         check_safety(block_dev, force=False)
 
 
 def test_force_downgrades_mount_refusal_to_warning(block_dev, monkeypatch):
-    monkeypatch.setattr("trustwipe_cli.devices._mounted_paths",
+    monkeypatch.setattr("s0_cli.devices._mounted_paths",
                         lambda: {block_dev.path + "1"})
     warnings = check_safety(block_dev, force=True)
     assert any("WITH MOUNTED FILESYSTEMS" in w for w in warnings)
 
 
 def test_refuses_running_root_filesystem(block_dev, monkeypatch):
-    monkeypatch.setattr("trustwipe_cli.devices._mounted_paths", lambda: set())
+    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
 
     class FakeProc:
         returncode = 0

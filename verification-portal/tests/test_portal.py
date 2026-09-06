@@ -6,15 +6,15 @@ import json
 from pathlib import Path
 
 import pytest
-from trustwipe_core.canonical import canonicalize_str, canonicalize
-from trustwipe_core.certificate import (
+from s0_core.canonical import canonicalize_str, canonicalize
+from s0_core.certificate import (
     validate,
     verify_certificate,
     METHOD_TIERS,
     WIPE_METHODS,
     NIST_CATEGORIES,
 )
-from trustwipe_core.crypto import (
+from s0_core.crypto import (
     load_public_pem,
     public_key_fingerprint,
     verify_payload,

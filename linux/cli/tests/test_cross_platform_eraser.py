@@ -10,12 +10,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import pytest
-from macos.trustwipe_eraser import (
+from macos.s0_eraser import (
     erase_batch_macos,
     erase_folder_macos,
     erase_single_file_macos,
 )
-from trustwipe_cli.file_eraser import (
+from s0_cli.file_eraser import (
     detect_cow_and_filesystem,
     erase_batch,
     erase_folder,
@@ -23,9 +23,9 @@ from trustwipe_cli.file_eraser import (
     platform_cleanse_attributes,
     platform_sync,
 )
-from trustwipe_core import certificate as cert_mod
-from trustwipe_core import crypto as core_crypto
-from windows.trustwipe_eraser import (
+from s0_core import certificate as cert_mod
+from s0_core import crypto as core_crypto
+from windows.s0_eraser import (
     WIN32_FIND_STREAM_DATA,
     enumerate_ntfs_streams_win32,
     erase_batch_windows,
@@ -256,8 +256,8 @@ def test_windows_dynamic_ads_enumeration_mock(monkeypatch, tmp_path: Path):
 
 
 def test_windows_cli_main(monkeypatch, tmp_path: Path):
-    """Test windows/trustwipe_eraser.py main CLI invocation."""
-    from windows.trustwipe_eraser import main as win_main
+    """Test windows/s0_eraser.py main CLI invocation."""
+    from windows.s0_eraser import main as win_main
 
     f = tmp_path / "cli_target_win.txt"
     f.write_bytes(b"DATA FOR WIN MAIN TEST")
@@ -267,7 +267,7 @@ def test_windows_cli_main(monkeypatch, tmp_path: Path):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--targets",
             str(f),
             "--passes",
@@ -290,8 +290,8 @@ def test_windows_cli_main(monkeypatch, tmp_path: Path):
 
 
 def test_macos_cli_main(monkeypatch, tmp_path: Path):
-    """Test macos/trustwipe_eraser.py main CLI invocation."""
-    from macos.trustwipe_eraser import main as mac_main
+    """Test macos/s0_eraser.py main CLI invocation."""
+    from macos.s0_eraser import main as mac_main
 
     f = tmp_path / "cli_target_mac.txt"
     f.write_bytes(b"DATA FOR MAC MAIN TEST")
@@ -301,7 +301,7 @@ def test_macos_cli_main(monkeypatch, tmp_path: Path):
         sys,
         "argv",
         [
-            "trustwipe_eraser.py",
+            "s0_eraser.py",
             "--targets",
             str(f),
             "--passes",

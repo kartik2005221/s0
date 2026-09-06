@@ -10,7 +10,7 @@ this file changes.
 |---|---|
 | Overwrite wipe of image files | `linux/cli/tests/test_e2e_demo.py`; planted confidential markers unrecoverable by raw byte-search afterwards |
 | Sampled read-back verification | same tests; 64 × 4 KiB samples checked against expected post-wipe state |
-| Certificate issuance → PDF/QR | demo run in `linux/cli/demo_e2e.sh`; independent `trustwipe-verify` passes; tampered copy fails |
+| Certificate issuance → PDF/QR | demo run in `linux/cli/demo_e2e.sh`; independent `s0-verify` passes; tampered copy fails |
 | BLKDISCARD ioctl code path | compiled + negative-tested (rejects non-block targets); loop-device exercise documented in HANDOVER.md as a user-run sudo step |
 | Safety refusals (mounted/root FS) | unit tests with simulated mount tables; logic identical for block devices |
 

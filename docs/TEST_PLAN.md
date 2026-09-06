@@ -1,4 +1,4 @@
-# TrustWipe — Comprehensive Test Plan & Verification Strategy (NTRO / SIH26149)
+# s0 — Comprehensive Test Plan & Verification Strategy (NTRO / SIH26149)
 
 **Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  

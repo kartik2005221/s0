@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TrustWipe macOS Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
+# s0 macOS Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
 # Smart India Hackathon 2026 (SIH26149) - NTRO
 
 if [ -z "${1:-}" ]; then
@@ -17,11 +17,11 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "$1" == --* ]]; then
-    exec python3 "${SCRIPT_DIR}/trustwipe_eraser.py" "$@"
+    exec python3 "${SCRIPT_DIR}/s0_eraser.py" "$@"
 fi
 
 TARGET="$1"
 PASSES="${2:-1}"
 PATTERN="${3:-zero}"
 
-exec python3 "${SCRIPT_DIR}/trustwipe_eraser.py" --targets "${TARGET}" --passes "${PASSES}" --pattern "${PATTERN}"
+exec python3 "${SCRIPT_DIR}/s0_eraser.py" --targets "${TARGET}" --passes "${PASSES}" --pattern "${PATTERN}"

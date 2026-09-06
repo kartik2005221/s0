@@ -1,4 +1,4 @@
-# TrustWipe — SIH26149 Pitch Deck & Live Interactive Demonstration
+# s0 — SIH26149 Pitch Deck & Live Interactive Demonstration
 
 **Problem Statement ID:** 26149  
 **Problem Statement Title:** Design and Development of an Integrated Secure Data Erasure and Advanced File Recovery Tool for Digital Forensics and Data Sanitization  
@@ -17,13 +17,13 @@ Digital forensics and data security operations face two fundamental, conflicting
 
 ---
 
-## 2. The Solution: TrustWipe Unified Forensic Suite
+## 2. The Solution: s0 Unified Forensic Suite
 
-TrustWipe integrates data sanitization, forensic file carving, and blockchain audit logging into a single high-performance platform:
+s0 integrates data sanitization, forensic file carving, and blockchain audit logging into a single high-performance platform:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        TRUSTWIPE CORE MODULES                          │
+│                        S0 CORE MODULES                          │
 ├──────────────────────────────────┬─────────────────────────────────────┤
 │ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
 │    (Module 1)                    │ 1-pass Clear + Forensic Verification│

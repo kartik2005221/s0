@@ -1,6 +1,6 @@
-# NIST SP 800-88 Rev.1 mapping — TrustWipe method registry
+# NIST SP 800-88 Rev.1 mapping — s0 method registry
 
-**Status of this document:** it maps TrustWipe's implemented methods to the sanitization
+**Status of this document:** it maps s0's implemented methods to the sanitization
 categories defined in *NIST SP 800-88 Rev.1, Guidelines for Media Sanitization*. It does **not**
 claim NIST certification — no software tool can be "NIST certified"; 800-88 is a decision
 framework an organization applies. Where a method's tier depends on hardware behavior we could
@@ -11,11 +11,11 @@ carries the same caveat in table form.
 
 ## 1. The three tiers
 
-| Tier | 800-88 definition (paraphrased) | TrustWipe's reading |
+| Tier | 800-88 definition (paraphrased) | s0's reading |
 |---|---|---|
 | **Clear** | Logical techniques applied to all user-addressable storage, protecting against simple non-invasive recovery (e.g. overwrite of the raw address space). | Every sector the OS can address is overwritten. Does **not** reach reallocated or overprovisioned areas. |
 | **Purge** | Physical or logical techniques rendering data unrecoverable even against advanced laboratory attacks — includes firmware-level erase and **cryptographic erase (destruction of encryption keys)**. | The drive's own firmware performs the erasure (ATA Security Erase, NVMe Sanitize/Format), or the encryption keys protecting the data are destroyed (FBE reset on Android, SED key destruction). |
-| **Destroy** | Physical destruction to the point rendering the medium unusable (shredding, disintegration, incineration). | Out of software scope by definition. TrustWipe never claims Destroy; certified destruction facilities perform this as a physical process. |
+| **Destroy** | Physical destruction to the point rendering the medium unusable (shredding, disintegration, incineration). | Out of software scope by definition. s0 never claims Destroy; certified destruction facilities perform this as a physical process. |
 
 The key distinction for honesty in this project: **Clear protects against software recovery;
 Purge protects against hardware/laboratory recovery.** Overwriting can never be Purge, because
@@ -59,7 +59,7 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 
 ¹ **Conditional:** a discard is a Purge only if the drive guarantees deterministic read-after-
    discard (DRAT/RZAT per its specification). Otherwise treat the outcome as Clear-equivalent at
-   most. TrustWipe records the classification it applied and why in the certificate `notes`.
+   most. s0 records the classification it applied and why in the certificate `notes`.
 ² Firmware erase timing/completion behavior on real controllers was **not observable** in the
    development environment; the command construction and result parsing are implemented and
    unit-tested against recorded output fixtures.
@@ -71,7 +71,7 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 
 NIST 800-88 Rev.1 requires **one** overwrite pass for Clear on modern drives; multi-pass
 patterns (DoD 5220.22-M etc.) are legacy policy artifacts from MFM/RLL-era physics and add no
-measurable security on current hardware. TrustWipe defaults to one pass and offers multi-pass
+measurable security on current hardware. s0 defaults to one pass and offers multi-pass
 only as an explicit policy option, labeled in the UI as compliance theater rather than added
 security. A wiping tool that implies "more passes = more secure" is selling folklore; we would
 rather explain the trade-off than flatter it.
@@ -79,7 +79,7 @@ rather explain the trade-off than flatter it.
 ## 5. HPA / DCO
 
 Host Protected Area and Device Configuration Overlay can hide sectors from host-addressable
-overwrites. Before any overwrite-based wipe of an ATA drive, TrustWipe detects HPA/DCO via
+overwrites. Before any overwrite-based wipe of an ATA drive, s0 detects HPA/DCO via
 `hdparm -N` / `hdparm --dco-identify` and offers removal (`-N p<visible>` / `--dco-restore`)
 so the subsequent wipe covers the full medium. Loop devices and image files exhibit neither,
 so this path is coded and fixture-tested but **not validated against real ATA firmware**.
@@ -93,7 +93,7 @@ grep for the planted bytes across the whole target must return zero hits. Sampli
 statistically strong but not exhaustive — certificates record exactly what was checked
 (`result.verification`), never more.
 
-## 7. What TrustWipe does not claim
+## 7. What s0 does not claim
 
 - No NIST/CSEC/"certified wipe" branding — 800-88 is a framework we follow and report against.
 - No Destroy tier.

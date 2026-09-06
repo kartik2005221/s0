@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# TrustWipe NTFS Forensic Carving End-to-End Demo (NTRO / SIH26149)
+# s0 NTFS Forensic Carving End-to-End Demo (NTRO / SIH26149)
 #
 #   1. Construct an NTFS image containing planted deleted evidence files (PDF, JPEG)
 #   2. Detect NTFS volume and parse $MFT structure
-#   3. Run structure & signature carver via CLI (trustwipe-wipe carve)
+#   3. Run structure & signature carver via CLI (s0 carve)
 #   4. Validate recovered file SHA-256 hashes against original planted evidence
 #   5. Validate Ed25519 signed forensic recovery manifest certificate
 #   6. Verify blockchain audit ledger continuity
@@ -13,8 +13,8 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 PY="$REPO/.venv/bin/python"
-CLI=("$PY" -m trustwipe_cli.main)
-WORK="${TRUSTWIPE_NTFS_DEMO_DIR:-$REPO/demo-out/ntfs-e2e-$(date +%H%M%S)}"
+CLI=("$PY" -m s0_cli.main)
+WORK="${S0_NTFS_DEMO_DIR:-$REPO/demo-out/ntfs-e2e-$(date +%H%M%S)}"
 IMG="$WORK/ntfs_evidence_target.raw"
 REC_DIR="$WORK/recovered_evidence"
 
@@ -22,7 +22,7 @@ mkdir -p "$WORK" "$REC_DIR"
 cd "$REPO"
 
 echo "═══════════════════════════════════════════════════════════════════"
-echo " TrustWipe NTFS Forensic Carving Demo — Target: $IMG"
+echo " s0 NTFS Forensic Carving Demo — Target: $IMG"
 echo " Problem Statement ID: 26149 (NTRO) • Theme: Blockchain & Forensics"
 echo "═══════════════════════════════════════════════════════════════════"
 
@@ -132,7 +132,7 @@ echo "── [2/6] Detecting Filesystem & Volume Structure ───────
 "$PY" - "$IMG" << 'PYEOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from trustwipe_cli.carver import detect_filesystem, parse_ntfs_boot_sector
+from s0_cli.carver import detect_filesystem, parse_ntfs_boot_sector
 path = sys.argv[1]
 fs = detect_filesystem(path)
 boot = parse_ntfs_boot_sector(path)
@@ -189,8 +189,8 @@ MANIFEST_JSON=$(ls "$REC_DIR"/carving_manifest_*.json | head -1)
 import json, sys
 from pathlib import Path
 sys.path.insert(0, "core/python")
-from trustwipe_core.certificate import verify_certificate
-from trustwipe_core.crypto import load_public_pem
+from s0_core.certificate import verify_certificate
+from s0_core.crypto import load_public_pem
 
 cert = json.load(open(sys.argv[1]))
 pub = load_public_pem("core/keys/demo_issuer_public.pem")

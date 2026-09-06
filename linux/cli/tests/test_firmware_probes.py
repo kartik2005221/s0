@@ -9,8 +9,8 @@ LIMITATIONS.md and the certificate notes say "not hardware-validated".
 
 import pytest
 
-from trustwipe_cli.methods import ata as ata_mod
-from trustwipe_cli.devices import Target
+from s0_cli.methods import ata as ata_mod
+from s0_cli.devices import Target
 
 
 BLOCK = Target(path="/dev/sda", kind="block", capacity_bytes=500 * 2**30,
@@ -183,7 +183,7 @@ def test_image_targets_report_hpa_check_unavailable():
 
 # --- NVMe -------------------------------------------------------------------
 
-from trustwipe_cli.methods.nvme import NvmeMethod, parse_sanitize_log  # noqa: E402
+from s0_cli.methods.nvme import NvmeMethod, parse_sanitize_log  # noqa: E402
 
 NVME_DEV = Target(path="/dev/nvme0n1", kind="block", capacity_bytes=1024**3,
                   storage_type="NVMe", model="QEMU NVMe Ctrl")
@@ -214,11 +214,11 @@ def test_format_crypto_refused_without_capability(monkeypatch):
 
 
 def test_blkdiscard_rejects_non_block_target(tmp_path):
-    from trustwipe_cli.methods.blkdiscard import BlkdiscardMethod
+    from s0_cli.methods.blkdiscard import BlkdiscardMethod
 
     img = tmp_path / "a.img"
     img.write_bytes(b"\x00" * 4096)
-    from trustwipe_cli.devices import image_target
+    from s0_cli.devices import image_target
 
     result = BlkdiscardMethod().run(image_target(str(img)), lambda m: None)
     assert result.status == "failure"

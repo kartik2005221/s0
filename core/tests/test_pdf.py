@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from trustwipe_core import crypto, certificate, pdfgen
-from trustwipe_core.canonical import canonicalize_str
+from s0_core import crypto, certificate, pdfgen
+from s0_core.canonical import canonicalize_str
 
 
 def _pdf_idat(data: bytes) -> bytes:

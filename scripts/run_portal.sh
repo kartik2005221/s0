@@ -8,7 +8,7 @@ PORT="${1:-8080}"
 PORTAL_DIR="$REPO/verification-portal"
 
 echo "================================================================="
-echo " TrustWipe Verification Portal (Pure Client-Side Zero-Trust Web)"
+echo " s0 Verification Portal (Pure Client-Side Zero-Trust Web)"
 echo "================================================================="
 echo "Serving directory: $PORTAL_DIR"
 echo "URL: http://127.0.0.1:$PORT"

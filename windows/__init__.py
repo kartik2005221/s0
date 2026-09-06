@@ -1,6 +1,6 @@
-"""TrustWipe Windows platform module.
+"""s0 Windows platform module.
 
-Backward-compatible re-export: code lives in windows/cli/trustwipe_eraser.py.
+Backward-compatible re-export: code lives in windows/cli/s0_eraser.py.
 """
 
-from .trustwipe_eraser import *  # noqa: F401,F403
+from .s0_eraser import *  # noqa: F401,F403

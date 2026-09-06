@@ -1,6 +1,6 @@
-# TrustWipe bootable ISO (offline wipe station)
+# s0 bootable ISO (offline wipe station)
 
-Boots a minimal Debian live system straight into the TrustWipe GUI in kiosk
+Boots a minimal Debian live system straight into the s0 GUI in kiosk
 mode, for "wipe this laptop from USB before recycling" use with no OS on the
 machine and no network needed.
 
@@ -22,11 +22,11 @@ with an explanatory log line rather than pretending.
 ## Layout
 
 - `auto/build.sh`      wrapper invoking `lb config`/`lb build` reproducibly
-- `config/package-lists/trustwipe.list.chroot`  everything the station needs
-- `config/hooks/live/9000-trustwipe.hook.chroot`  installs TrustWipe code,
+- `config/package-lists/s0.list.chroot`  everything the station needs
+- `config/hooks/live/9000-s0.hook.chroot`  installs s0 code,
   generates nothing secret, registers the kiosk autostart service
-- `config/includes.chroot/etc/systemd/system/trustwipe-gui.service`  the service:
-  auto-login user `trustwipe`, starts the local GUI, launches chromium kiosk
+- `config/includes.chroot/etc/systemd/system/s0-gui.service`  the service:
+  auto-login user `s0`, starts the local GUI, launches chromium kiosk
 - `qemu-test.sh`       headless boot smoke test (VNC screenshot after N seconds)
 
 ## Why kiosk chromium and not GTK
@@ -39,7 +39,7 @@ is the least code to maintain on an offline image.
 
 - The signing private key is NEVER in the image. Certificates produced by the
   station are signed by whatever issuer key the operator provisions onto the
-  boot media themselves (`/opt/trustwipe/keys/issuer_private.pem`), which they
+  boot media themselves (`/opt/s0/keys/issuer_private.pem`), which they
   create out-of-band per core/keys/README.md. Without provisioning, wipes run
   but certificate issuance fails loudly rather than silently self-signing.
 - Wipes target only explicit operator-selected devices; the root filesystem is

@@ -1,4 +1,4 @@
-# TrustWipe — Verification Portal & Air-Gapped Verification Architecture
+# s0 — Verification Portal & Air-Gapped Verification Architecture
 
 **Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  
@@ -8,7 +8,7 @@
 
 ## 1. What to Deploy to a Public Domain
 
-The TrustWipe Verification Portal is located in `verification-portal/`. It is engineered as a **100% client-side, zero-backend, static web application**.
+The s0 Verification Portal is located in `verification-portal/`. It is engineered as a **100% client-side, zero-backend, static web application**.
 
 ### 1.1 Deployment Bundle
 Deploy the contents of the `verification-portal/` directory:
@@ -37,8 +37,8 @@ Because the portal contains no server execution code (no Node, no Python, no PHP
    ```nginx
    server {
        listen 80;
-       server_name verify.trustwipe.gov.in;
-       root /var/www/trustwipe/verification-portal;
+       server_name verify.s0.gov.in;
+       root /var/www/s0/verification-portal;
        index index.html;
        add_header X-Content-Type-Options nosniff;
        add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' data: blob:;";
@@ -56,7 +56,7 @@ In national intelligence (NTRO), defense agencies, and police cyber-cells, foren
 
 ### 2.2 Why Cryptographic Key Verification is the Correct Architecture
 
-TrustWipe solves this by separating **Attestation** from **Verification** using asymmetric public-key cryptography (RFC 8032 Ed25519):
+s0 solves this by separating **Attestation** from **Verification** using asymmetric public-key cryptography (RFC 8032 Ed25519):
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -115,10 +115,10 @@ An auditor or judge in an air-gapped court or SCIF has three offline options:
 2. **Option B — Command-Line Offline Verifier:**
    - Run the included offline verification command:
      ```bash
-     python -m trustwipe_core.cli verify --cert /path/to/certificate.json --key core/keys/issuer_public_key.pem
+     python -m s0_core.cli verify --cert /path/to/certificate.json --key core/keys/issuer_public_key.pem
      ```
 3. **Option C — Paper Certificate with Embedded QR Code:**
-   - Scan the QR code printed on the official TrustWipe PDF certificate.
+   - Scan the QR code printed on the official s0 PDF certificate.
    - The QR code contains the canonical certificate payload and signature directly, enabling mobile offline verification.
 
 ---

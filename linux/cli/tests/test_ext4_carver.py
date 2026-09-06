@@ -1,18 +1,18 @@
-"""Unit tests for TrustWipe Structure-Based ext4 Carving Engine."""
+"""Unit tests for s0 Structure-Based ext4 Carving Engine."""
 
 import hashlib
 import struct
 from pathlib import Path
 
 import pytest
-from trustwipe_cli.carver import (
+from s0_cli.carver import (
     carve_image,
     detect_filesystem,
     parse_ext4_superblock,
     scan_ext4_deleted_inodes,
 )
-from trustwipe_core.certificate import verify_certificate
-from trustwipe_core.crypto import load_public_pem
+from s0_core.certificate import verify_certificate
+from s0_core.crypto import load_public_pem
 
 
 def build_synthetic_ext4_image(image_path: Path, payload: bytes) -> None:

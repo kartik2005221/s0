@@ -1,4 +1,4 @@
-# TrustWipe — Performance & Benchmark Evaluation Report (SIH26149 / NTRO)
+# s0 — Performance & Benchmark Evaluation Report (SIH26149 / NTRO)
 
 **Problem Statement ID:** 26149  
 **Organization:** National Technical Research Organisation (NTRO)  
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Test Environment
 
-TrustWipe has been engineered for high-throughput forensic data sanitization and rapid deleted artifact reconstruction across raw storage media. This document provides empirical benchmark metrics, throughput evaluations, and scaling characteristics measured across the unified TrustWipe engine.
+s0 has been engineered for high-throughput forensic data sanitization and rapid deleted artifact reconstruction across raw storage media. This document provides empirical benchmark metrics, throughput evaluations, and scaling characteristics measured across the unified s0 engine.
 
 ### Reference System Specifications
 - **Operating System:** Linux (Kernel 6.x+, POSIX-compliant)
@@ -60,7 +60,7 @@ Carving performance depends on whether structure-based metadata extraction (ext4
 
 ## 4. Cryptographic Verification & Audit Overhead
 
-TrustWipe embeds cryptographic guarantees at every operational stage. The table below details latency for each verification task.
+s0 embeds cryptographic guarantees at every operational stage. The table below details latency for each verification task.
 
 | Cryptographic Operation | Algorithm / Standard | Execution Time | Impact on Overall Job |
 |---|---|---|---|
@@ -89,6 +89,6 @@ Projected operational durations across typical drive capacities:
 
 ## 6. Resource Utilization & Memory Footprint
 
-- **RAM Footprint:** TrustWipe maintains a fixed resident set size (RSS) between **38 MiB and 65 MiB** during high-throughput wiping and carving jobs. Memory does not grow with target drive capacity because I/O is streamed via bounded 4 MiB circular buffers.
+- **RAM Footprint:** s0 maintains a fixed resident set size (RSS) between **38 MiB and 65 MiB** during high-throughput wiping and carving jobs. Memory does not grow with target drive capacity because I/O is streamed via bounded 4 MiB circular buffers.
 - **CPU Footprint:** Overwrite and carving threads utilize a single CPU core at 90–95% while leaving other cores free for OS and application services.
 - **Audit Ledger Storage:** SQLite audit blocks require approximately **1.4 KiB per logged transaction** (including full embedded certificate JSON and Ed25519 signature), allowing millions of operations to be retained in under 2 GB of audit database storage.

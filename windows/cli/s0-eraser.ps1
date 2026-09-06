@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    TrustWipe Windows Secure File & Folder Eraser PowerShell Runner
+    s0 Windows Secure File & Folder Eraser PowerShell Runner
 .DESCRIPTION
     Executes forensic-grade sanitization compliant with NIST SP 800-88 Rev. 1 on Microsoft Windows.
 .PARAMETER Targets
@@ -27,6 +27,6 @@ param (
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$eraserScript = Join-Path $scriptDir "trustwipe_eraser.py"
+$eraserScript = Join-Path $scriptDir "s0_eraser.py"
 
 python $eraserScript --targets $Targets --passes $Passes --pattern $Pattern --out-dir $OutDir

@@ -3,11 +3,11 @@
   "cert_uuid": "6da82f40-ba63-4f06-a2bd-fb7bee6e715a",
   "issued_at": "2026-08-31T01:59:10Z",
   "issuer": {
-    "organization": "TrustWipe Demo Lab",
+    "organization": "s0 Demo Lab",
     "operator_id": "op-demo-42"
   },
   "tool": {
-    "name": "trustwipe-cli",
+    "name": "s0-cli",
     "version": "0.1.0",
     "platform": "linux"
   },
@@ -39,7 +39,7 @@
   "signature": {
     "algorithm": "Ed25519",
     "public_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
-    "signature_base64url": "XdOW58bAcLG9uRjSi1L8KNaDJv9Yf20RmY-wjlNCVGblAIaQ6sWPBlWllEsqkpUq1bADZJMGNWcOT7hGAgSQDw",
-    "signed_payload_hash": "sha256:06adba4797d005940c7ef562c2da64967e479e35aea23a284f965c4b7cf4c815"
+    "signature_base64url": "8TMpR-uXVmys3d-5Anj0yD4VgISOt7UJOsUQPq43xeU-UKHrz09mQgK5w9zdexzItdHz6F0sO-lz10te6oksCA",
+    "signed_payload_hash": "sha256:e1bd9ded489544f9ee6f5cada68f289fde000dde0f2ceff30c6a1dfc3acd4c79"
   }
 }

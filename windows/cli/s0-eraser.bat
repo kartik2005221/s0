@@ -1,5 +1,5 @@
 @echo off
-REM TrustWipe Windows Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
+REM s0 Windows Secure Sanitization Platform Launcher (Files, Partitions, USB Drives)
 REM Smart India Hackathon 2026 (SIH26149) - NTRO
 
 if "%~1"=="" (
@@ -16,7 +16,7 @@ if "%~1"=="" (
 
 set FIRST_ARG=%~1
 if "%FIRST_ARG:~0,2%"=="--" (
-    python "%~dp0trustwipe_eraser.py" %*
+    python "%~dp0s0_eraser.py" %*
     exit /b %ERRORLEVEL%
 )
 
@@ -26,4 +26,4 @@ if "%PASSES%"=="" set PASSES=1
 set PATTERN=%~3
 if "%PATTERN%"=="" set PATTERN=zero
 
-python "%~dp0trustwipe_eraser.py" --targets "%TARGET%" --passes %PASSES% --pattern %PATTERN%
+python "%~dp0s0_eraser.py" --targets "%TARGET%" --passes %PASSES% --pattern %PATTERN%

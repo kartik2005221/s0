@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    TrustWipe Master Build, Test, and Packaging Orchestrator (PowerShell)
+    s0 Master Build, Test, and Packaging Orchestrator (PowerShell)
     Smart India Hackathon 2026 (SIH26149) - NTRO
 #>
 $ErrorActionPreference = 'Stop'
@@ -9,7 +9,7 @@ $Repo = Split-Path -Parent $ScriptDir
 Set-Location $Repo
 
 Write-Host "==========================================================================" -ForegroundColor Cyan
-Write-Host " TrustWipe — Master Build & Verification Orchestrator (PowerShell)" -ForegroundColor Cyan
+Write-Host " s0 — Master Build & Verification Orchestrator (PowerShell)" -ForegroundColor Cyan
 Write-Host "==========================================================================" -ForegroundColor Cyan
 Write-Host "Repository Root: $Repo"
 Write-Host "Started At     : $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ssZ'))"
