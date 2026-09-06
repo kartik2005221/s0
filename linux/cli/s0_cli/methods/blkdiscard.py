@@ -14,12 +14,14 @@ backing file) — that's how the ioctl path is exercised in this environment.
 from __future__ import annotations
 
 import array
-import ctypes
-import fcntl
-import struct
+import sys
 
 from .base import MethodResult, Plan, ProgressFn, Target, WipeMethod
 
+# BLKDISCARD is a Linux kernel ioctl — it does not exist on Windows or macOS.
+# We import fcntl lazily (inside the functions that use it) so that this module
+# can be safely imported on Windows without raising ModuleNotFoundError at CLI
+# startup. The class itself will simply never match a valid Windows target.
 BLKDISCARD = 0x1277  # linux/fs.h — [u64 start_sector, u64 nr_sectors]
 
 
@@ -59,6 +61,11 @@ class BlkdiscardMethod(WipeMethod):
         import os
 
         result = MethodResult(status="success")
+        if sys.platform != "linux":
+            result.status = "failure"
+            result.errors.append("BLKDISCARD is a Linux kernel ioctl and is not available on this platform")
+            return result
+
         if target.kind != "block":
             result.status = "failure"
             result.errors.append("BLKDISCARD requires a block device, not an image file")
@@ -68,6 +75,8 @@ class BlkdiscardMethod(WipeMethod):
             result.status = "failure"
             result.errors.append(f"Device {target.path} does not accept BLKDISCARD (discard/TRIM not supported)")
             return result
+
+        import fcntl
 
         fd = os.open(target.path, os.O_WRONLY | os.O_EXCL)
         try:
@@ -95,6 +104,10 @@ class BlkdiscardMethod(WipeMethod):
 
 def supports_discard(path: str) -> bool:
     """Cheap probe: does this block device accept a zero-length BLKDISCARD?"""
+    if sys.platform != "linux":
+        return False
+
+    import fcntl
     import os
 
     try:
