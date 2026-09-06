@@ -1,185 +1,301 @@
-# S0 (Sector Zero) 🛡️
+<div align="center">
 
-> **Integrated Secure Data Erasure and Advanced File Recovery Platform**  
-> *Enterprise Forensic Carving & NIST SP 800-88 Compliant Sanitization Suite*  
+# S0 — Sector Zero
+
+**Digital Forensics & Cryptographic Data Sanitization Suite**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![NIST SP 800-88](https://img.shields.io/badge/Compliance-NIST%20SP%20800--88%20Rev.1-success.svg)](docs/COMPLIANCE.md)
-[![Ed25519 Verified](https://img.shields.io/badge/Signatures-Ed25519%20RFC%208032-blueviolet.svg)](core/CANONICAL_JSON.md)
-[![Tests: 180+ Passed](https://img.shields.io/badge/Tests-180%2B%20Passed-brightgreen.svg)](docs/TEST_PLAN.md)
-[![Blockchain Ledger](https://img.shields.io/badge/Audit-SHA256%20Blockchain%20Ledger-orange.svg)](docs/ARCHITECTURE.md)
-[![Verification Portal](https://img.shields.io/badge/Web%20Portal-Live%20on%20Vercel-success.svg)](https://s0-vp.vercel.app/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1-green.svg)](docs/COMPLIANCE.md)
+[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](core/CANONICAL_JSON.md)
+[![Tests](https://img.shields.io/badge/Tests-180%2B_Passed-brightgreen.svg)](docs/TEST_PLAN.md)
+[![Verification Portal](https://img.shields.io/badge/Web_Portal-Live-success.svg)](https://s0-vp.vercel.app/)
+
+*One tool. Two capabilities. Unbreakable audit trail.*
+
+</div>
 
 ---
 
-## 📌 Executive Overview
+## What is S0?
 
-**S0 (Sector Zero)** is an integrated digital forensics and cryptographic data sanitization suite.
+**S0** is an open-source command-line suite that unifies two capabilities that typically require separate enterprise tools:
 
-It unifies two critical operational capabilities into a single high-assurance platform:
-1. **Defensive Sanitization:** Irreversible drive, file, and partition sanitization adhering to **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, verified by 64-block forensic readback and certified via **Ed25519 digital signatures**. Native cross-platform execution on **Linux, Windows, and macOS** with in-place overwriting and metadata cleansing.
-2. **Offensive Digital Forensics:** Advanced signature-based, structure-based (**ext4, NTFS, FAT32, exFAT**), and Shannon entropy-scored file carving with **multi-fragment and bifragment reconstruction** to recover deleted evidence from formatted disks, USB pendrives, and raw images.
-3. **Blockchain Cryptographic Audit Trail:** An append-only local SQLite ledger with continuous **SHA-256 block hash chaining** guaranteeing an unbroken, tamper-evident chain of custody for all forensic operations.
-4. **Zero-Trust Verification Portal:** A 100% client-side, air-gapped web verifier powered by audited TweetNaCl WebCrypto, supporting automated URL parameter loading (`?cert=`), custom public key verification, and tamper detection.
+| Capability | What S0 Does |
+|---|---|
+| 🛡️ **Defensive Sanitization** | Irreversibly destroys drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, then issues an Ed25519-signed certificate |
+| 🔍 **Offensive Forensics** | Carves and reconstructs deleted evidence from formatted disks, USB drives, and raw images across ext4, NTFS, FAT32, and exFAT |
+| 🔗 **Blockchain Audit Ledger** | Every operation writes an immutable SHA-256 block-chained entry into a local SQLite ledger — tamper-evident by math |
+| 🌐 **Zero-Trust Verification** | Certificates are verifiable in any browser, fully offline, with zero data ever sent to a server |
 
 ---
 
-## ⚡ One-Line Install
+## Install
+
+> **Requirements:** Python 3.10+, Git
 
 ### Linux & macOS
 ```bash
 curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
 ```
 
-### Windows (PowerShell)
+### Windows — PowerShell
 ```powershell
 irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
 ```
 
-### Windows (Command Prompt)
+### Windows — Command Prompt
 ```cmd
 curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
 ```
 
+After install, `s0` is immediately available in your terminal. Verify with:
+```bash
+s0 --version
+```
+
 ---
 
-## 🗑️ One-Line Uninstall
+## Uninstall
 
 ### Linux & macOS
 ```bash
 curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.sh | bash
 ```
 
-### Windows (PowerShell)
+### Windows — PowerShell
 ```powershell
 irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.ps1 | iex
 ```
 
-### Windows (Command Prompt)
+### Windows — Command Prompt
 ```cmd
 curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.cmd | cmd
 ```
 
 ---
 
-## 🌟 Core Modules
+## Quick Start
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          S0 CORE MODULES                               │
-├──────────────────────────────────┬─────────────────────────────────────┤
-│ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
-│    (Module 1)                    │ 1-pass Clear + 64-block verification│
-├──────────────────────────────────┼─────────────────────────────────────┤
-│ 2. Secure File & Folder Eraser   │ Cross-Platform (Linux/Win/macOS),   │
-│    (Module 2)                    │ in-place overwrite, ADS/xattr scrub │
-├──────────────────────────────────┼─────────────────────────────────────┤
-│ 3. Advanced File Carving         │ Multi-FS (ext4, NTFS, FAT32, exFAT),│
-│    (Module 3)                    │ multi-run & bifragment reassembly   │
-├──────────────────────────────────┼─────────────────────────────────────┤
-│ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
-│    (Module 4)                    │ SHA-256 block hash chaining         │
-└──────────────────────────────────┴─────────────────────────────────────┘
-```
-
----
-
-## 💻 CLI Quick Reference (`s0`)
-
-### 1. Drive Sanitization
+### List storage devices
 ```bash
-# List physical storage targets
 s0 list
+```
 
-# Dry-run plan (nothing written)
+### Plan a wipe (dry run — nothing written)
+```bash
 s0 plan --target /dev/sdb
-
-# Sanitize drive with real-time progress and opportunistic temperature monitoring
-s0 wipe --target /dev/sdb --yes --operator "op-01" --organization "Forensic Lab"
 ```
 
-### 2. Secure File & Folder Erasure
+### Sanitize a drive
 ```bash
-# In-place overwrite with metadata cleansing and timestamp resetting
-s0 erase --targets /classified/doc.pdf /classified/folder/ --passes 1
+s0 wipe --target /dev/sdb --yes --operator "analyst-01" --organization "Forensic Lab"
 ```
 
-### 3. Advanced File Carving & Recovery
+### Securely erase files or folders
 ```bash
-# Carve files across ext4/NTFS/FAT32/exFAT partitions
+s0 erase --targets /path/to/file.pdf /path/to/folder/ --passes 1
+```
+
+### Carve deleted files from a disk image
+```bash
 s0 carve --target /evidence/disk.raw --out-dir ./recovered --extensions jpg,png,pdf,zip --min-confidence 50
 ```
 
-### 4. Blockchain Audit Ledger
+### Inspect the audit ledger
 ```bash
-# List recent audit ledger blocks
 s0 audit list --limit 25
-
-# Verify cryptographic hash-chain continuity from genesis to tip
 s0 audit verify
 ```
 
-### 5. Offline Certificate Verification & Key Ceremony
+### Verify a certificate offline
 ```bash
-# Verify any signed certificate offline
 s0 verify certificate_12345678.json --key core/keys/demo_issuer_public.pem
-
-# Generate an Ed25519 authority keypair
-s0 keygen --out-dir ./my_keys --name ntro_authority
 ```
 
 ---
 
-## 📊 Unified Progress & Temperature Monitoring
+## Modules
 
-All long-running wipe and carve operations stream a unified, rate-throttled ANSI progress bar:
+### Module 1 — Secure Drive Eraser
 
-```text
-[s0 wipe]  | [████████████████░░░░] | 78.2% | 22.6 GiB / 28.9 GiB | 18.4 MB/s | Elapsed: 20m 30s | ETA: 05m 42s | Temp: 44°C
-[s0 carve] | [████████░░░░░░░░░░░░] | 35.4% | 10.2 GiB / 28.9 GiB | 142 MB/s  | Elapsed: 01m 15s | ETA: 02m 10s | Found: 36,790
+Sanitizes NVMe drives, SATA HDDs/SSDs, USB flash, SD cards, and raw `.raw`/`.img`/`.dd` forensic images.
+
+| Method | NIST 800-88 Tier | Speed |
+|---|---|---|
+| `NVME_SANITIZE` (Block/Crypto) | **Purge** | < 30s per TB |
+| `ATA_SECURE_ERASE` | **Purge** | Firmware-bound |
+| `BLKDISCARD` (SSD TRIM) | **Purge / Clear** | Instantaneous |
+| Zero Overwrite (1-pass) | **Clear** | ~1.2 GB/s |
+| Random Overwrite (1-pass) | **Clear** | ~450 MB/s |
+
+After every wipe: 64-block sampled readback verification + Ed25519-signed PDF certificate with embedded QR code.
+
+---
+
+### Module 2 — Secure File & Folder Eraser
+
+Cross-platform in-place cluster overwriting for Linux, Windows, and macOS.
+
+- **Linux:** POSIX extent overwriting (`filefrag`), `fsync()`, Btrfs/ZFS CoW warnings, inode timestamp zeroing
+- **Windows:** Win32 `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) scrubbing, ReFS CoW detection
+- **macOS:** `fcntl(F_FULLFSYNC)`, `xattr` extended attribute cleansing, APFS CoW warnings
+
+Each batch erasure produces a consolidated Ed25519-signed certificate.
+
+---
+
+### Module 3 — Advanced File Carver & Recovery
+
+Recovers deleted evidence from formatted storage without relying on intact filesystem tables.
+
+**Four carving engines:**
+
+1. **Signature Engine** — Header/footer byte-pattern scanning for JPEG, PNG, PDF, ZIP/Office, GIF, BMP, ELF, MP3, SQLite3, GZIP
+2. **ext4 Structure Engine** — Direct superblock, block group descriptor, inode table & extent tree parsing
+3. **NTFS Structure Engine** — Raw `$MFT` parsing: resident attributes, multi-fragment non-resident runlists, deleted record discovery
+4. **FAT32 / exFAT Engines** — BPB/VBR parsing, deleted directory entry scanning, cluster heap recovery (USB drives & SD cards)
+
+**Confidence scoring (0–100%):**
+- Header match: 30% · Footer match: 30% · Size plausibility: 20% · Shannon entropy: 20%
+
+**Structure-based carving performance:** 1 TB volume indexed in under 15 seconds.
+
+---
+
+### Module 4 — Blockchain Audit Ledger
+
+Every operation — wipe, file erasure, carve session — is appended to a local SQLite ledger as a cryptographic block:
+
+$$\text{block\_hash} = \text{SHA256}(\text{index} \| \text{timestamp} \| \text{op\_type} \| \text{target\_id} \| \text{cert\_uuid} \| \text{payload\_hash} \| \text{signature} \| \text{prev\_hash})$$
+
+- **Append-only:** No row can be deleted or modified
+- **Tamper-evident:** Altering any past block invalidates every subsequent hash
+- **Instant verification:** `s0 audit verify` traverses genesis→tip in milliseconds
+- **Shared by CLI and Web GUI:** One unified ledger regardless of how an operation was initiated
+
+---
+
+## Live Progress Bar
+
+All long-running operations stream a unified real-time ANSI progress bar:
+
+```
+[s0 wipe]  ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  18.4 MB/s  ETA 05m 42s  44°C
+[s0 carve] ████████░░░░░░░░░░░░  35.4%  10.2 GiB / 28.9 GiB  142 MB/s   ETA 02m 10s  Found: 36,790
 ```
 
-- **Opportunistic Thermal Probing:** Discovers thermal sensors automatically via Linux sysfs hwmon, NVMe SMART telemetry, or SATA SMART attribute 194/190.
-- **Graceful Fallback:** If a target (e.g. standard USB flash drive or virtual disk image) lacks thermal sensors, the temperature indicator is silently omitted without errors.
+Temperature is read automatically from Linux `sysfs hwmon`, NVMe SMART telemetry, or SATA SMART attribute 194/190. If no thermal sensor exists (USB sticks, virtual images), it is silently omitted — no error.
 
 ---
 
-## 🌐 Zero-Trust Verification Portal
+## Verification Portal
 
-Certificates generated by S0 can be verified independently using the client-side portal:
-- **Live Deployment:** [https://s0-vp.vercel.app/](https://s0-vp.vercel.app/)
-- **Zero-Backend Architecture:** Pure JavaScript running in the user's browser via audited TweetNaCl WebCrypto; no sensitive data or certificates are ever uploaded to any server.
-- **URL Parameter Verification:** Scan the QR code on any certificate PDF to automatically open and verify the certificate via `?cert=`.
-- **Two-Tier Public Key Verification:** Supports official pinned authorities as well as custom operator public keys with clear visual badges.
+Every certificate S0 issues can be independently verified at **[s0-vp.vercel.app](https://s0-vp.vercel.app/)**.
 
----
+- **100% client-side** — pure JavaScript via TweetNaCl WebCrypto. No certificate data ever leaves your browser.
+- **Air-gap compatible** — open `verification-portal/index.html` locally with no internet required.
+- **QR scan** — each PDF certificate embeds a QR code that auto-loads the certificate in the portal.
+- **Key pinning** — accredited authority keys are pinned in `keys.json`; unknown-but-valid keys display an amber warning instead of a false pass.
 
-## 🧪 Master Test Suite (180+ Tests)
-
-Execute the full cross-platform test matrix including unit tests, end-to-end forensic demonstrations, and Node.js browser crypto cross-verification:
+### Three offline verification modes
 
 ```bash
-bash scripts/build_all.sh
+# A. Command-line
+s0 verify certificate_12345678.json --key core/keys/issuer_public_key.pem
+
+# B. Browser (no server needed)
+# Open file:///path/to/verification-portal/index.html → drag & drop certificate.json
+
+# C. QR code on PDF certificate → mobile browser → zero upload
 ```
 
 ---
 
-## 📖 Documentation Index
+## Architecture
 
-| Document | Focus Area |
-|---|---|
-| [System Architecture](docs/ARCHITECTURE.md) | Subsystem architecture, threat model, cryptographic flow, ext4 structure |
-| [User & Operator Manual](docs/USER_MANUAL.md) | Comprehensive CLI manual for all modules, web dashboard guide, batch operations |
-| [Standards & Compliance](docs/COMPLIANCE.md) | NIST SP 800-88 Rev. 1, IEEE 2883-2022, ISO/IEC 27037 forensic standards |
-| [Test Plan & QA](docs/TEST_PLAN.md) | Testing pyramid, tamper matrix protocol, entropy tests, 180+ test suites |
-| [Technical Limitations](docs/LIMITATIONS.md) | Honest disclosure of SSD FTL, journaling filesystem remnants, ext4 parsing |
-| [Evaluator Handover](docs/HANDOVER.md) | Quickstart, automated build script, module execution, key ceremony |
-| [Presentation & Pitch Outline](docs/PITCH_OUTLINE.md) | Problem crisis, technical differentiators, live demo script, roadmap |
-| [Verification Portal](docs/VERIFICATION_AND_DEPLOYMENT.md) | Zero-trust offline web deployment, public key pinning, custom key audit |
+```
+s0/
+├── core/python/s0_core/      # Ed25519 signing, canonical JSON (RFC 8785), PDF/QR generation
+├── linux/cli/s0_cli/
+│   ├── methods/              # Module 1: NVMe, ATA, BLKDISCARD, Overwrite engines
+│   ├── wipe.py               # Module 1: Drive erasure orchestrator
+│   ├── file_eraser.py        # Module 2: Secure file & folder eraser
+│   ├── carver/               # Module 3: Signature, ext4, NTFS, FAT32, exFAT, entropy engines
+│   └── audit/                # Module 4: SHA-256 blockchain audit ledger (SQLite)
+├── windows/                  # Windows-native Module 2 (Win32 API, ADS scrubbing)
+├── macos/                    # macOS-native Module 2 (F_FULLFSYNC, xattr, APFS)
+├── gui/                      # FastAPI unified web dashboard (4 forensic tabs)
+├── linux/iso/                # Debian Live bootable ISO for unmounted drive sanitization
+├── verification-portal/      # Zero-backend static web certificate verifier
+└── scripts/                  # Install, uninstall, build & test orchestrators
+```
 
 ---
 
-## 📄 License & Attribution
+## Web Dashboard
 
-Enterprise Digital Forensics & Hardware Sanitization Suite.  
-Licensed under the [MIT License](LICENSE).
+Launch the local 4-tab forensic console:
+
+```bash
+bash gui/run.sh
+# Open: http://127.0.0.1:8000
+```
+
+| Tab | Function |
+|---|---|
+| Drive Eraser | Device selector, NIST category picker, real-time progress |
+| File Eraser | Batch path input, pattern selection, instant sanitization |
+| Forensic Carver | Image target, file type filters, interactive carved artifact table |
+| Blockchain Ledger | Live block timeline, block detail inspector, one-click hash-chain verification |
+
+---
+
+## Run Tests
+
+```bash
+# Full test suite (sets up venv automatically)
+bash scripts/build_all.sh
+
+# Pytest only
+.venv/bin/pytest core/tests linux/cli/tests -v
+
+# End-to-end drive wipe forensic demo
+S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
+
+# End-to-end NTFS carving demo
+bash linux/cli/demo_e2e_ntfs.sh
+```
+
+---
+
+## Compliance
+
+| Standard | Coverage |
+|---|---|
+| **NIST SP 800-88 Rev. 1** | Purge (NVMe/ATA firmware), Clear (overwrite, file erase) |
+| **IEEE 2883-2022** | Sanitization method classification |
+| **ISO/IEC 27037** | Evidence SHA-256 hashing at extraction, operator audit logging, Ed25519 non-repudiation |
+| **DPDPA 2023** | Certified destruction of personal data on retired media |
+
+See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Subsystem design, threat model, cryptographic flow |
+| [USER_MANUAL.md](docs/USER_MANUAL.md) | Complete CLI reference, web dashboard guide |
+| [COMPLIANCE.md](docs/COMPLIANCE.md) | NIST / IEEE / ISO / DPDPA standards matrix |
+| [PERFORMANCE.md](docs/PERFORMANCE.md) | Throughput benchmarks, scaling projections |
+| [LIMITATIONS.md](docs/LIMITATIONS.md) | Honest scope: SSD FTL, CoW filesystems, journal remnants |
+| [VERIFICATION_AND_DEPLOYMENT.md](docs/VERIFICATION_AND_DEPLOYMENT.md) | Air-gapped verification, key pinning, portal deployment |
+| [HANDOVER.md](docs/HANDOVER.md) | Evaluator quickstart, per-module test commands |
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
