@@ -921,6 +921,16 @@
     let allBlocksCache = [];
     let currentJobId = null;
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     function switchNav(tabId, el) {
       document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
       document.querySelectorAll(".tab-content").forEach(p => p.classList.remove("active"));
@@ -1187,18 +1197,50 @@
           files.forEach(f => {
             const tr = document.createElement("tr");
             const confBadge = f.conf >= 75 ? "badge-green" : (f.conf >= 50 ? "badge-cyan" : "badge-amber");
-            tr.innerHTML = `
-              <td class="code-cell"><strong>${f.id}</strong></td>
-              <td><span class="badge badge-purple">${f.ext.toUpperCase()}</span></td>
-              <td class="code-cell">${(f.size / 1024).toFixed(1)} KB</td>
-              <td><span class="badge ${confBadge}">${f.conf}%</span></td>
-              <td class="code-cell" style="color: var(--text-dim);">${f.sha256 ? f.sha256.substring(0, 16) + '...' : '—'}</td>
-              <td>
-                <a class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.72rem;" href="/api/download/${job.id}/${f.filename}">
-                  ⬇ Extract
-                </a>
-              </td>
-            `;
+
+            const tdId = document.createElement("td");
+            tdId.className = "code-cell";
+            const strongId = document.createElement("strong");
+            strongId.textContent = f.id || "";
+            tdId.appendChild(strongId);
+
+            const tdExt = document.createElement("td");
+            const spanExt = document.createElement("span");
+            spanExt.className = "badge badge-purple";
+            spanExt.textContent = (f.ext || "").toUpperCase();
+            tdExt.appendChild(spanExt);
+
+            const tdSize = document.createElement("td");
+            tdSize.className = "code-cell";
+            tdSize.textContent = `${((f.size || 0) / 1024).toFixed(1)} KB`;
+
+            const tdConf = document.createElement("td");
+            const spanConf = document.createElement("span");
+            spanConf.className = `badge ${confBadge}`;
+            spanConf.textContent = `${f.conf || 0}%`;
+            tdConf.appendChild(spanConf);
+
+            const tdHash = document.createElement("td");
+            tdHash.className = "code-cell";
+            tdHash.style.color = "var(--text-dim)";
+            tdHash.textContent = f.sha256 ? f.sha256.substring(0, 16) + "..." : "—";
+            if (f.sha256) tdHash.title = f.sha256;
+
+            const tdAction = document.createElement("td");
+            const btnExtract = document.createElement("a");
+            btnExtract.className = "btn btn-secondary btn-sm";
+            btnExtract.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
+            btnExtract.textContent = "⬇ Extract";
+            btnExtract.href = `/api/download/${encodeURIComponent(job.id)}/${encodeURIComponent(f.filename || "")}`;
+            tdAction.appendChild(btnExtract);
+
+            tr.appendChild(tdId);
+            tr.appendChild(tdExt);
+            tr.appendChild(tdSize);
+            tr.appendChild(tdConf);
+            tr.appendChild(tdHash);
+            tr.appendChild(tdAction);
+
             tbody.appendChild(tr);
           });
         }
@@ -1269,20 +1311,60 @@
         const prevShort = b.prev_hash ? b.prev_hash.substring(0, 12) + '...' : '—';
         const blockShort = b.block_hash ? b.block_hash.substring(0, 12) + '...' : '—';
 
-        tr.innerHTML = `
-          <td class="code-cell"><strong>#${b.index}</strong></td>
-          <td class="code-cell">${b.timestamp}</td>
-          <td><span class="badge ${opBadge}">${b.operation}</span></td>
-          <td class="code-cell" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis;">${b.target}</td>
-          <td>${b.operator}</td>
-          <td class="code-cell" style="color: var(--text-dim);" title="${b.prev_hash}">${prevShort}</td>
-          <td class="code-cell" style="color: #38bdf8;" title="${b.block_hash}">${blockShort}</td>
-          <td>
-            <button class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.72rem;" onclick="inspectBlock(${b.index})">
-              Inspect
-            </button>
-          </td>
-        `;
+        const tdIdx = document.createElement("td");
+        tdIdx.className = "code-cell";
+        const strongIdx = document.createElement("strong");
+        strongIdx.textContent = `#${b.index}`;
+        tdIdx.appendChild(strongIdx);
+
+        const tdTime = document.createElement("td");
+        tdTime.className = "code-cell";
+        tdTime.textContent = b.timestamp || "";
+
+        const tdOp = document.createElement("td");
+        const spanOp = document.createElement("span");
+        spanOp.className = `badge ${opBadge}`;
+        spanOp.textContent = b.operation || "";
+        tdOp.appendChild(spanOp);
+
+        const tdTarget = document.createElement("td");
+        tdTarget.className = "code-cell";
+        tdTarget.style.cssText = "max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+        tdTarget.textContent = b.target || "";
+        if (b.target) tdTarget.title = b.target;
+
+        const tdOpId = document.createElement("td");
+        tdOpId.textContent = b.operator || "";
+
+        const tdPrev = document.createElement("td");
+        tdPrev.className = "code-cell";
+        tdPrev.style.color = "var(--text-dim)";
+        tdPrev.textContent = prevShort;
+        if (b.prev_hash) tdPrev.title = b.prev_hash;
+
+        const tdBlock = document.createElement("td");
+        tdBlock.className = "code-cell";
+        tdBlock.style.color = "#38bdf8";
+        tdBlock.textContent = blockShort;
+        if (b.block_hash) tdBlock.title = b.block_hash;
+
+        const tdAction = document.createElement("td");
+        const btnInspect = document.createElement("button");
+        btnInspect.className = "btn btn-secondary btn-sm";
+        btnInspect.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
+        btnInspect.textContent = "Inspect";
+        btnInspect.onclick = () => inspectBlock(b.index);
+        tdAction.appendChild(btnInspect);
+
+        tr.appendChild(tdIdx);
+        tr.appendChild(tdTime);
+        tr.appendChild(tdOp);
+        tr.appendChild(tdTarget);
+        tr.appendChild(tdOpId);
+        tr.appendChild(tdPrev);
+        tr.appendChild(tdBlock);
+        tr.appendChild(tdAction);
+
         tbody.appendChild(tr);
       });
     }
@@ -1294,9 +1376,9 @@
       const filtered = allBlocksCache.filter(b => {
         const matchesOp = (opFilter === "ALL" || b.operation === opFilter);
         const matchesSearch = !search ||
-          b.target.toLowerCase().includes(search) ||
+          (b.target && b.target.toLowerCase().includes(search)) ||
           (b.block_hash && b.block_hash.toLowerCase().includes(search)) ||
-          b.operator.toLowerCase().includes(search);
+          (b.operator && b.operator.toLowerCase().includes(search));
         return matchesOp && matchesSearch;
       });
       renderAuditTable(filtered);
@@ -1316,12 +1398,12 @@
           banner.style.background = "rgba(16, 185, 129, 0.15)";
           banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
           banner.style.color = "#34d399";
-          banner.innerHTML = `🛡️ <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong> ${data.reason} (${data.total_blocks} blocks verified unbroken from genesis)`;
+          banner.innerHTML = `🛡️ <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
         } else {
           banner.style.background = "rgba(239, 68, 68, 0.15)";
           banner.style.border = "1px solid rgba(239, 68, 68, 0.35)";
           banner.style.color = "#f87171";
-          banner.innerHTML = `⚠️ <strong>INTEGRITY VIOLATION DETECTED:</strong> ${data.reason}`;
+          banner.innerHTML = `⚠️ <strong>INTEGRITY VIOLATION DETECTED:</strong> ${escapeHtml(data.reason)}`;
         }
       } catch (err) {
         banner.style.color = "#f87171";

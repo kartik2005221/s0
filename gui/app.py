@@ -26,7 +26,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
 REPO = Path(__file__).resolve().parents[1]
@@ -69,14 +69,38 @@ class FileEraseRequest(BaseModel):
     targets: List[str]
     passes: int = 1
     pattern: str = "zero"
-    operator_id: str = "op-ntro-forensic"
+    operator_id: str = Field(default="op-ntro-forensic")
+
+    @field_validator("operator_id")
+    @classmethod
+    def validate_operator_id(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("operator_id cannot be empty")
+        if any(c in v for c in "<>&\"'\\"):
+            raise ValueError("operator_id contains forbidden characters")
+        if len(v) > 64:
+            raise ValueError("operator_id exceeds maximum length of 64 characters")
+        return v
 
 
 class CarveRequest(BaseModel):
     target: str
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
-    operator_id: str = "op-ntro-forensic"
+    operator_id: str = Field(default="op-ntro-forensic")
+
+    @field_validator("operator_id")
+    @classmethod
+    def validate_operator_id(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("operator_id cannot be empty")
+        if any(c in v for c in "<>&\"'\\"):
+            raise ValueError("operator_id contains forbidden characters")
+        if len(v) > 64:
+            raise ValueError("operator_id exceeds maximum length of 64 characters")
+        return v
 
 
 def _find_target(path: str):
@@ -400,7 +424,12 @@ def download(job_id: str, filename: str) -> FileResponse:
         job = _jobs.get(job_id)
     if not job:
         raise HTTPException(404, "unknown job")
-    path = (Path(job["out_dir"]) / filename).resolve()
-    if not str(path).startswith(str(Path(job["out_dir"]).resolve())) or not path.is_file():
+    out_dir_path = Path(job["out_dir"]).resolve()
+    path = (out_dir_path / filename).resolve()
+    try:
+        path.relative_to(out_dir_path)
+    except ValueError:
         raise HTTPException(404, "no such artifact")
-    return FileResponse(path, filename=filename)
+    if not path.is_file():
+        raise HTTPException(404, "no such artifact")
+    return FileResponse(path, filename=path.name)

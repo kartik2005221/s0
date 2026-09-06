@@ -144,3 +144,62 @@ def test_portal_serves(client):
     assert b"TrustWipe" in r.content
     assert b"Verification" in r.content
 
+
+def test_operator_id_xss_injection_rejected(client, tmp_path):
+    target = tmp_path / "xss_test.txt"
+    target.write_text("DUMMY")
+
+    # XSS payloads must be rejected by Pydantic schema validation (HTTP 422)
+    xss_payloads = [
+        "<img src=x onerror=alert(1)>XSSPROBE",
+        "<script>alert(1)</script>",
+        "operator\"><svg onload=alert(1)>",
+        "op' OR '1'='1",
+    ]
+    for p in xss_payloads:
+        r_erase = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": p})
+        assert r_erase.status_code == 422, f"Failed to reject payload in erase-files: {p}"
+
+        r_carve = client.post("/api/carve", json={"target": str(target), "operator_id": p})
+        assert r_carve.status_code == 422, f"Failed to reject payload in carve: {p}"
+
+    # Valid operator IDs must be accepted
+    r_valid = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": "op-forensic_01@ntro"})
+    assert r_valid.status_code == 200
+
+
+def test_download_path_traversal_blocked(client, tmp_path):
+    import uuid
+    from app import _jobs, _lock
+
+    job_id = uuid.uuid4().hex[:12]
+    out_dir = tmp_path / f"job-{job_id}"
+    out_dir.mkdir()
+    artifact = out_dir / "certificate.json"
+    artifact.write_text('{"test": true}')
+
+    with _lock:
+        _jobs[job_id] = {"status": "done", "out_dir": str(out_dir)}
+
+    # Valid download succeeds
+    r_ok = client.get(f"/api/download/{job_id}/certificate.json")
+    assert r_ok.status_code == 200
+
+    # Path traversal attempts must return 404
+    r_trav1 = client.get(f"/api/download/{job_id}/../../etc/passwd")
+    assert r_trav1.status_code == 404
+
+    r_trav2 = client.get(f"/api/download/{job_id}/..%2f..%2fetc%2fpasswd")
+    assert r_trav2.status_code == 404
+
+
+def test_index_html_safe_rendering():
+    index_html = (GUI_DIR / "static" / "index.html").read_text(encoding="utf-8")
+    assert "function escapeHtml" in index_html
+    # Ensure unescaped injection into innerHTML is absent
+    assert "${b.operator}" not in index_html
+    assert "${b.target}" not in index_html
+    assert "tdOpId.textContent = b.operator" in index_html
+    assert "tdTarget.textContent = b.target" in index_html
+
+
