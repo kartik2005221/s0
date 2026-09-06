@@ -10,6 +10,7 @@ way around: the JSON remains the artifact of record.
 from __future__ import annotations
 
 import json
+import io
 from pathlib import Path
 
 import qrcode
@@ -25,23 +26,29 @@ from .canonical import canonicalize_str
 __all__ = ["generate_pdf", "QR_URL_TEMPLATE_DEFAULT"]
 
 # Placeholder for a real deployment's portal URL; informational only.
-QR_URL_TEMPLATE_DEFAULT = "https://verify.trustwipe.example/c/{cert_uuid}"
+QR_URL_TEMPLATE_DEFAULT = "https://trustwipe-vp.vercel.app/?cert={cert_uuid}"
 
 
 _STATUS_COLORS = {
     "success": colors.HexColor("#1b7f3b"),
     "reset_triggered": colors.HexColor("#1b5e9f"),
-    "partial": colors.HexColor("#b07d10"),
+    "partial": colors.HexColor("#c08500"),
     "failure": colors.HexColor("#a32020"),
 }
 
 
-def _make_qr_image(data: str, out_dir: Path, name: str = "cert_qr.png") -> Path:
+def _make_qr_bytes(data: str) -> bytes:
     img = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=2)
     img.add_data(data)
     img.make(fit=True)
+    buf = io.BytesIO()
+    img.make_image(fill_color="black", back_color="white").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _make_qr_image(data: str, out_dir: Path, name: str = "cert_qr.png") -> Path:
     path = out_dir / name
-    img.make_image(fill_color="black", back_color="white").save(path)
+    path.write_bytes(_make_qr_bytes(data))
     return path
 
 
@@ -159,21 +166,30 @@ def generate_pdf(
         ("Issuer key fingerprint", sig.get("public_key_fingerprint", "?")),
         ("Payload SHA-256", sig.get("signed_payload_hash", "(not recorded)")),
         ("Signature (base64url)", Paragraph(sig["signature_base64url"], mono)),
-        ("Verify offline", "Scan the QR with any verifier, or run: trustwipe-verify --in cert.json --key issuer_public.pem"),
+        ("Verify offline", "Scan the QR with any verifier, or run: s0 verify cert.json --key issuer_public.pem"),
     ])
     t = Table(sig_rows, colWidths=[45 * mm, 125 * mm])
     t.setStyle(TableStyle(body_style))
     story.append(t)
     story.append(Spacer(1, 6 * mm))
 
-    qr_path = _make_qr_image(qr_data, out_path.parent)
-    qr_img = Image(str(qr_path), width=42 * mm, height=42 * mm)
+    qr_bytes = _make_qr_bytes(qr_data)
+    qr_img = Image(io.BytesIO(qr_bytes), width=42 * mm, height=42 * mm)
     qr_tbl = Table([[qr_img, Paragraph(
         f"<font size='8'>{qr_caption}<br/><br/>The QR and this PDF are renderings of the "
         f"signed JSON, which is the artifact of record. Signature covers every field above; "
         f"any alteration invalidates it.</font>", styles["Normal"])]],
         colWidths=[50 * mm, 120 * mm])
     story.append(qr_tbl)
+
+    verify_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
+    if verify_url.startswith("http"):
+        story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph(
+            f'<font size="8">🔗 <a href="{verify_url}" color="#1d4ed8">'
+            f'<u>Verify this certificate online at {verify_url}</u></a></font>',
+            styles["Normal"],
+        ))
 
     doc.build(story)
     return out_path

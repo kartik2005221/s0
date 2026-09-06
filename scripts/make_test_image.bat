@@ -15,7 +15,7 @@ fsutil file createnew "%IMG_PATH%" %BYTES%
 if %ERRORLEVEL% equ 0 (
     echo ==> Created successfully!
     echo ==> You can now test wiping on this image target:
-    echo     windows\cli\trustwipe-eraser.bat --wipe-drive "%IMG_PATH%" --yes
+    echo     windows\cli\s0-eraser.bat --wipe-drive "%IMG_PATH%" --yes
 ) else (
     echo ==> Failed to create test image via fsutil. Trying Python fallback...
     python -c "with open('%IMG_PATH%', 'wb') as f: f.truncate(%BYTES%)"

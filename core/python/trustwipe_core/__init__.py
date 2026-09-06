@@ -17,6 +17,8 @@ from .certificate import (
     validate,
     verify_certificate,
 )
+from .progress import ProgressBar
+from .temperature import read_temperature
 from . import crypto
 
 __all__ = [
@@ -29,6 +31,7 @@ __all__ = [
     "sign_certificate",
     "validate",
     "verify_certificate",
+    "ProgressBar",
     "crypto",
     "__version__",
 ]

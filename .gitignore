@@ -21,6 +21,7 @@ dist/
 *.raw
 linux/cli/tests/tmp/
 demo-out/
+sanitization_reports/
 
 # OS
 .DS_Store

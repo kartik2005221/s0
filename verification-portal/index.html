@@ -229,6 +229,12 @@
       color: #f85149;
     }
 
+    .result-banner.custom-key {
+      background: rgba(31, 111, 235, 0.15);
+      border-color: #1f6feb;
+      color: #58a6ff;
+    }
+
     .banner-icon {
       font-size: 2rem;
       line-height: 1;
@@ -392,6 +398,21 @@
         </p>
         <div id="pinnedKeysList" style="font-size: 0.8rem; font-family: var(--font-mono); background: var(--code-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);">
           Loading pinned keys...
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h2>🔑 Custom Public Key Verification</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
+          Paste an Ed25519 public key (PEM format or 64-char raw hex) to verify self-signed or non-pinned authority certificates.
+          <br><strong style="color: #e3b341;">Notice: Never enter private keys. Only public keys are required for verification.</strong>
+        </p>
+        <textarea id="customKeyInput" rows="3" placeholder="-----BEGIN PUBLIC KEY-----&#10;MCowBQYDK2VwAyEA...&#10;-----END PUBLIC KEY-----&#10;or raw 64-character hex"
+          style="width: 100%; background: var(--code-bg); color: var(--text); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; font-family: var(--font-mono); font-size: 0.8rem; resize: vertical; box-sizing: border-box;"></textarea>
+        <div style="margin-top: 8px;">
+          <button id="btnVerifyCustomKey" style="background: #1f6feb; color: #ffffff; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+            Verify with Custom Key
+          </button>
         </div>
       </div>
     </div>
@@ -617,7 +638,12 @@
 
     banner.className = "result-banner";
 
-    if (res.ok) {
+    if (res.status === "VERIFIED_CUSTOM_KEY") {
+      banner.classList.add("custom-key");
+      icon.textContent = "🔑";
+      title.textContent = "VERIFIED (Custom Key — Not in Official Registry)";
+      desc.textContent = res.reason;
+    } else if (res.ok) {
       banner.classList.add("authentic");
       icon.textContent = "🛡️";
       title.textContent = "AUTHENTIC & VERIFIED";
@@ -683,6 +709,66 @@
       document.getElementById("tab-raw").classList.add("active");
     }
   }
+
+  document.getElementById("btnVerifyCustomKey").addEventListener("click", function() {
+    var rawText = jsonInput.value.trim();
+    if (!rawText) {
+      alert("Please paste or upload a certificate JSON first.");
+      return;
+    }
+    var customKey = document.getElementById("customKeyInput").value.trim();
+    if (!customKey) {
+      alert("Please paste an Ed25519 public key (PEM or raw 64-character hex).");
+      return;
+    }
+    var certObj;
+    try {
+      certObj = JSON.parse(rawText);
+    } catch (e) {
+      showResult({
+        ok: false,
+        status: "JSON_PARSE_ERROR",
+        reason: "Invalid JSON format: " + e.message
+      }, null);
+      return;
+    }
+
+    var result = TrustWipeVerifier.verifyCertificate(certObj, [customKey]);
+    if (result.ok) {
+      result.status = "VERIFIED_CUSTOM_KEY";
+      result.reason = "Valid Ed25519 cryptographic signature verified against your custom public key. NOTE: This key is NOT in the official pinned authority registry.";
+    }
+    showResult(result, certObj);
+  });
+
+  // Auto-load certificate from URL parameter ?cert=...
+  (function() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      var certParam = params.get("cert");
+      if (certParam) {
+        try {
+          var b64 = certParam.replace(/-/g, "+").replace(/_/g, "/");
+          while (b64.length % 4 !== 0) b64 += "=";
+          var decodedStr = (typeof atob !== "undefined") ? decodeURIComponent(escape(atob(b64))) : "";
+          if (decodedStr && decodedStr.trim().startsWith("{")) {
+            jsonInput.value = decodedStr;
+            runVerification();
+            return;
+          }
+        } catch (_) {}
+
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(certParam)) {
+          document.getElementById("emptyState").innerHTML =
+            '<span style="font-size: 3rem; opacity: 0.7;">📋</span>' +
+            '<h3 style="margin-top: 10px; color: var(--accent);">Certificate Locator: ' + certParam + '</h3>' +
+            '<p style="margin-top: 8px;">TrustWipe operates on a zero-trust offline architecture: certificates are stored locally on forensic storage or in tamper-evident PDFs, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
+        }
+      }
+    } catch (e) {
+      console.warn("URL cert parameter error:", e);
+    }
+  })();
 </script>
 </body>
 </html>

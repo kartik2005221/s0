@@ -28,17 +28,17 @@ TRUSTWIPE_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
 ### Run Module 2: File & Folder Erasure:
 ```bash
-.venv/bin/trustwipe-wipe erase-files --targets /path/to/file.txt --passes 1
+.venv/bin/s0 erase --targets /path/to/file.txt --passes 1
 ```
 
 ### Run Module 3: Advanced File Carving:
 ```bash
-.venv/bin/trustwipe-wipe carve --target /path/to/image.raw --out-dir ./recovered
+.venv/bin/s0 carve --target /path/to/image.raw --out-dir ./recovered
 ```
 
 ### Run Module 4: Blockchain Audit Ledger Verification:
 ```bash
-.venv/bin/trustwipe-wipe audit verify
+.venv/bin/s0 audit verify
 ```
 
 ### Launch Unified Web Console:

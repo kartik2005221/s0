@@ -20,6 +20,20 @@ from .fragmentation import reconstruct_bifragment_stream
 from .ntfs_carver import parse_ntfs_boot_sector, scan_ntfs_deleted_files
 from .scoring import calculate_shannon_entropy, score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, get_signature_by_ext
+import re
+
+
+def _sanitize_filename(raw: str, max_len: int = 200) -> str:
+    """Strip path separators, null bytes, and control characters from recovered filenames."""
+    clean = str(raw or "").strip()
+    clean = re.sub(r'[\x00-\x1f]', '_', clean)
+    parts = [re.sub(r'^\.+', '', p).strip() for p in re.split(r'[/\\:]+', clean) if p and p not in ('.', '..')]
+    parts = [p for p in parts if p]
+    clean = "_".join(parts)
+    clean = clean.strip('._ ')
+    clean = re.sub(r'_{2,}', '_', clean)
+    clean = clean[:max_len] if clean else "unnamed"
+    return clean or "unnamed"
 
 
 @dataclass
@@ -204,8 +218,16 @@ def carve_image(
                             if f_hash in recovered_hashes:
                                 continue
                             file_id = f"carved_{len(carved_files)+1:05d}"
-                            rec_filename = f"{file_id}_ntfs_rec{nf.record_num}_{score}pct_{nf.filename}"
+                            safe_name = _sanitize_filename(nf.filename)
+                            rec_filename = f"{file_id}_ntfs_rec{nf.record_num}_{score}pct_{safe_name}"
                             rec_path = out_p / rec_filename
+                            try:
+                                if not rec_path.resolve().is_relative_to(out_p.resolve()):
+                                    rec_filename = f"{file_id}_sanitized.{ext}"
+                                    rec_path = out_p / rec_filename
+                            except (ValueError, RuntimeError):
+                                rec_filename = f"{file_id}_sanitized.{ext}"
+                                rec_path = out_p / rec_filename
                             rec_path.write_bytes(nf.data)
 
                             is_frag = (nf.fragment_count > 1)
@@ -314,8 +336,16 @@ def carve_image(
                             if f_hash in recovered_hashes:
                                 continue
                             file_id = f"carved_{len(carved_files)+1:05d}"
-                            rec_filename = f"{file_id}_fat32_clus{ff.first_cluster}_{score}pct_{ff.filename}"
+                            safe_name = _sanitize_filename(ff.filename)
+                            rec_filename = f"{file_id}_fat32_clus{ff.first_cluster}_{score}pct_{safe_name}"
                             rec_path = out_p / rec_filename
+                            try:
+                                if not rec_path.resolve().is_relative_to(out_p.resolve()):
+                                    rec_filename = f"{file_id}_sanitized.{ext}"
+                                    rec_path = out_p / rec_filename
+                            except (ValueError, RuntimeError):
+                                rec_filename = f"{file_id}_sanitized.{ext}"
+                                rec_path = out_p / rec_filename
                             rec_path.write_bytes(ff.data)
 
                             carved_files.append(
@@ -367,9 +397,16 @@ def carve_image(
                             if f_hash in recovered_hashes:
                                 continue
                             file_id = f"carved_{len(carved_files)+1:05d}"
-                            clean_fn = ef.filename.replace("/", "_").replace("\\", "_")
+                            clean_fn = _sanitize_filename(ef.filename)
                             rec_filename = f"{file_id}_exfat_clus{ef.first_cluster}_{score}pct_{clean_fn}"
                             rec_path = out_p / rec_filename
+                            try:
+                                if not rec_path.resolve().is_relative_to(out_p.resolve()):
+                                    rec_filename = f"{file_id}_sanitized.{ext}"
+                                    rec_path = out_p / rec_filename
+                            except (ValueError, RuntimeError):
+                                rec_filename = f"{file_id}_sanitized.{ext}"
+                                rec_path = out_p / rec_filename
                             rec_path.write_bytes(ef.data)
 
                             carved_files.append(

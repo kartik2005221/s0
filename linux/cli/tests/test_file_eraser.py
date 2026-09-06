@@ -120,3 +120,23 @@ def test_erase_symlink_rejected(tmp_path):
     # The target of the symlink must remain untouched!
     assert real_file.exists()
     assert real_file.read_bytes() == b"REAL_PROTECTED_DATA"
+
+
+def test_s0_erase_cli_pdf_and_qr(tmp_path):
+    from trustwipe_cli.main import main as s0_main
+    target = tmp_path / "erase_target.txt"
+    target.write_bytes(b"DATA FOR S0 ERASE PDF TEST")
+    out_dir = tmp_path / "s0_erase_out"
+
+    rc = s0_main(["erase", "--targets", str(target), "--out-dir", str(out_dir)])
+    assert rc == 0
+    assert not target.exists()
+
+    jsons = list(out_dir.glob("*.json"))
+    pdfs = list(out_dir.glob("*.pdf"))
+    qrs = list(out_dir.glob("*.qr.png"))
+    assert len(jsons) == 1
+    assert len(pdfs) == 1
+    assert len(qrs) == 1
+    assert pdfs[0].stat().st_size > 0
+    assert qrs[0].stat().st_size > 0

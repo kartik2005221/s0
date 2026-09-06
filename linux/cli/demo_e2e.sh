@@ -56,7 +56,7 @@ print(f"planted {n} markers; pre-wipe raw-grep hits = "
 EOF
 
 echo
-echo "── [3/7] device inventory (trustwipe-wipe list) ─────────────────────"
+echo "── [3/7] device inventory (s0 list) ─────────────────────────────────"
 "${CLI[@]}" list || true
 
 echo
@@ -98,9 +98,9 @@ tampered = json.loads(json.dumps(cert))
 tampered["device"]["capacity_bytes"] += 1   # forge one byte
 json.dump(tampered, open(sys.argv[1].replace(".json", ".tampered.json"), "w"))
 EOF
-.venv/bin/trustwipe-verify --cert "$CERT_JSON" --key core/keys/demo_issuer_public.pem
+.venv/bin/s0 verify "$CERT_JSON" --key core/keys/demo_issuer_public.pem
 echo "→ tampered copy:"
-.venv/bin/trustwipe-verify --cert "${CERT_JSON%.json}.tampered.json" \
+.venv/bin/s0 verify "${CERT_JSON%.json}.tampered.json" \
     --key core/keys/demo_issuer_public.pem && {
     echo "TAMPER CHECK FAILED — tampered cert verified!"; exit 1
 } || echo "→ tampered certificate correctly REJECTED"

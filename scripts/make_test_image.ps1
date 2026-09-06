@@ -17,4 +17,4 @@ $fs.Close()
 
 Write-Host "==> Created successfully!" -ForegroundColor Green
 Write-Host "==> You can test wiping on this image target:"
-Write-Host "    windows\cli\trustwipe-eraser.bat --wipe-drive `"$ImagePath`" --yes"
+Write-Host "    windows\cli\s0-eraser.bat --wipe-drive `"$ImagePath`" --yes"

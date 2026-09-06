@@ -45,15 +45,15 @@ TrustWipe integrates data sanitization, forensic file carving, and blockchain au
 
 ### Minute 1: Module 1 & 2 (Drive & File Sanitization)
 - **Presenter:** *"Judges, let us demonstrate irreversible sanitization on sensitive files and storage media."*
-- **Action:** Run `trustwipe-wipe erase-files --targets classified_intel.pdf` and `demo_e2e.sh`.
+- **Action:** Run `s0 erase --targets classified_intel.pdf` and `demo_e2e.sh`.
 - **Result:** File clusters overwritten, metadata zeroed, 64-block forensic scan shows 0 hits, Ed25519 signed certificate generated.
 
 ### Minute 2: Module 3 (Advanced File Carving & Recovery)
 - **Presenter:** *"Now let us switch to our offensive forensic capability: carving deleted evidence from a formatted raw disk image."*
-- **Action:** Run `trustwipe-wipe carve --target /evidence/suspect_drive.raw --out-dir ./recovered`.
+- **Action:** Run `s0 carve --target /evidence/suspect_drive.raw --out-dir ./recovered`.
 - **Result:** Carver scans disk, identifies magic headers/footers, calculates Shannon entropy confidence scores (>85%), extracts recovered files, and outputs a signed forensic recovery manifest.
 
 ### Minute 3: Module 4 (Blockchain Audit Ledger)
 - **Presenter:** *"How do we guarantee unbroken chain-of-custody for NTRO audits?"*
-- **Action:** Open GUI or run `trustwipe-wipe audit verify`.
+- **Action:** Open GUI or run `s0 audit verify`.
 - **Result:** Displays the SHA-256 hash-chained block ledger. Simulate a tampering attempt in SQLite and show the auditor detecting the exact broken block index immediately.

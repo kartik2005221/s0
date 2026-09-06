@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -137,8 +138,69 @@ def _flatten_devs(devs: list[dict]) -> list[dict]:
     return flat
 
 
+def _windows_disk_targets() -> list[Target]:
+    targets = []
+    import string
+    for letter in string.ascii_uppercase:
+        drive_path = f"{letter}:"
+        try:
+            if Path(f"{letter}:\\").exists():
+                sz = 0
+                try:
+                    from windows.cli.trustwipe_eraser import get_windows_target_size
+                    sz = get_windows_target_size(drive_path)
+                except Exception:
+                    pass
+                targets.append(Target(
+                    path=drive_path,
+                    kind="block",
+                    capacity_bytes=sz,
+                    storage_type="UNKNOWN",
+                    model=f"Windows Volume {drive_path}",
+                ))
+        except Exception:
+            pass
+    return targets
+
+
+def _macos_disk_targets() -> list[Target]:
+    targets = []
+    if not shutil.which("diskutil"):
+        return []
+    try:
+        proc = subprocess.run(["diskutil", "list"], capture_output=True, text=True, check=False)
+        if proc.returncode == 0:
+            for line in proc.stdout.splitlines():
+                line_str = line.strip()
+                if line_str.startswith("/dev/disk"):
+                    parts = line_str.split()
+                    dev = parts[0]
+                    rdev = dev.replace("/dev/disk", "/dev/rdisk")
+                    sz = 0
+                    try:
+                        from macos.cli.trustwipe_eraser import get_macos_target_size
+                        sz = get_macos_target_size(dev)
+                    except Exception:
+                        pass
+                    targets.append(Target(
+                        path=rdev,
+                        kind="block",
+                        capacity_bytes=sz,
+                        storage_type="UNKNOWN",
+                        model="macOS Disk",
+                    ))
+    except Exception:
+        pass
+    return targets
+
+
 def list_block_targets() -> list[Target]:
     """All block devices and partitions (disks, partitions, loop, LVM, crypt)."""
+    if sys.platform == "win32":
+        return _windows_disk_targets()
+    if sys.platform == "darwin":
+        return _macos_disk_targets()
+
     targets: list[Target] = []
     raw_devs = _lsblk()
     flat_devs = _flatten_devs(raw_devs)

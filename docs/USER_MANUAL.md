@@ -19,42 +19,42 @@ bash scripts/build_all.sh
 
 ## 2. Command-Line Interface (CLI) Manual
 
-All functions are unified under `trustwipe-wipe` (or `python -m trustwipe_cli.main`).
+All functions are unified under `s0` (or `python -m trustwipe_cli.main`).
 
 ### 2.1 Module 1: Secure Drive Eraser
 - **Inventory Disks:**
   ```bash
-  trustwipe-wipe list
+  s0 list
   ```
 - **Dry-Run Planning:**
   ```bash
-  trustwipe-wipe plan --target /dev/sda
+  s0 plan --target /dev/sda
   ```
 - **Execute Drive Sanitization:**
   ```bash
-  trustwipe-wipe wipe --target /dev/sda --yes --operator "op-ntro-01" --organization "NTRO Forensic Lab"
+  s0 wipe --target /dev/sda --yes --operator "op-ntro-01" --organization "NTRO Forensic Lab"
   ```
 
 ### 2.2 Module 2: Secure File & Folder Eraser
 - **Sanitize Specific Files / Folders:**
   ```bash
-  trustwipe-wipe erase-files       --targets /path/to/classified_doc.pdf /path/to/sensitive_folder/       --passes 1       --pattern zero       --out-dir ./certificates
+  s0 erase       --targets /path/to/classified_doc.pdf /path/to/sensitive_folder/       --passes 1       --pattern zero       --out-dir ./certificates
   ```
 
 ### 2.3 Module 3: Advanced File Carving & Recovery
 - **Carve Evidence from Formatted Media / Disk Image:**
   ```bash
-  trustwipe-wipe carve       --target /evidence/suspect_drive.raw       --out-dir ./recovered_evidence       --extensions jpg,png,pdf,zip       --min-confidence 50
+  s0 carve       --target /evidence/suspect_drive.raw       --out-dir ./recovered_evidence       --extensions jpg,png,pdf,zip       --min-confidence 50
   ```
 
 ### 2.4 Module 4: Blockchain Cryptographic Audit Ledger
 - **List Audit Blocks:**
   ```bash
-  trustwipe-wipe audit list --limit 20
+  s0 audit list --limit 20
   ```
 - **Verify Blockchain Hash-Chain Continuity:**
   ```bash
-  trustwipe-wipe audit verify
+  s0 audit verify
   ```
 
 ---

@@ -40,9 +40,15 @@ if core_python_dir.exists() and str(core_python_dir) not in sys.path:
 try:
     from trustwipe_core import certificate as cert_mod
     from trustwipe_core import crypto as core_crypto
+    from trustwipe_core.progress import ProgressBar
+    from trustwipe_core.temperature import read_temperature
+    from trustwipe_core import pdfgen
 except ImportError:
     cert_mod = None
     core_crypto = None
+    ProgressBar = None
+    read_temperature = lambda _: None
+    pdfgen = None
 
 # Win32 Constants
 GENERIC_READ = 0x80000000
@@ -436,12 +442,21 @@ def erase_batch_windows(
     start_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     results: List[WinFileEraseResult] = []
 
+    total_est = sum(Path(t).stat().st_size for t in targets if Path(t).is_file()) * passes
+    bar = ProgressBar(max(total_est, 1024), operation="s0-win erase") if ProgressBar and total_est > 0 else None
+
     for t in targets:
         p = Path(t).resolve()
         if p.is_dir():
             results.extend(erase_folder_windows(p, passes=passes, pattern=pattern))
         else:
             results.append(erase_single_file_windows(p, passes=passes, pattern=pattern))
+        if bar:
+            written_so_far = sum(r.bytes_overwritten for r in results)
+            bar.update(written_so_far, extra=p.name[:20])
+
+    if bar:
+        bar.finish()
 
     end_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -675,6 +690,8 @@ def wipe_drive_or_partition_windows(
     verification_passed = True
     samples_checked = 0
 
+    bar = ProgressBar(capacity * passes, operation="s0-win wipe") if ProgressBar else None
+
     try:
         with open(open_path, "r+b", buffering=0) as f:
             for _ in range(passes):
@@ -686,7 +703,16 @@ def wipe_drive_or_partition_windows(
                     f.write(buf)
                     rem -= to_write
                     total_written += to_write
+                    if bar:
+                        temp = read_temperature(open_path)
+                        extra = f"Temp: {temp}°C" if temp is not None else ""
+                        bar.update(total_written, extra=extra)
                 win32_flush_buffers(f)
+
+            if bar:
+                temp = read_temperature(open_path)
+                extra = f"Temp: {temp}°C" if temp is not None else ""
+                bar.finish(extra=extra)
 
             # Sampled verification
             num_samples = 32
@@ -787,7 +813,7 @@ def wipe_drive_or_partition_windows(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="TrustWipe Windows Secure Sanitization Tool (Files, Partitions, Drives)")
+    parser = argparse.ArgumentParser(description="S0 (Sector Zero) Windows Native Forensic Sanitization Suite (Files, Partitions, Drives)")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument("--wipe-partition", help="Drive letter of secondary partition to wipe (e.g. D:, E:)")
     parser.add_argument("--wipe-drive", help="Physical drive path to wipe (e.g. \\\\.\\PhysicalDrive1 or disk number)")
@@ -801,6 +827,8 @@ def main() -> int:
     parser.add_argument("--organization", default="NTRO Digital Forensics & Data Sanitization Lab", help="Issuing organization")
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
     parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
+    parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
+    parser.add_argument("--qr-url-template", default="https://trustwipe-vp.vercel.app/?cert={cert_uuid}", help="URL template for verification QR")
     parser.add_argument("--json", action="store_true", help="Output JSON result")
     args = parser.parse_args()
 
@@ -826,12 +854,23 @@ def main() -> int:
         )
 
         cert_path: Optional[Path] = None
+        pdf_path: Optional[Path] = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             cert_path = Path(args.cert_out) if args.cert_out else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
             cert_path.parent.mkdir(parents=True, exist_ok=True)
             cert_path.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
+
+            if pdfgen and not args.no_pdf:
+                pdf_target = out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.pdf"
+                qr_target = out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.qr.png"
+                try:
+                    pdfgen.generate_pdf(signed_cert, pdf_target, qr_url_template=args.qr_url_template)
+                    pdfgen.write_qr_file(signed_cert, qr_target)
+                    pdf_path = pdf_target
+                except Exception:
+                    pass
 
         if args.json:
             if signed_cert:
@@ -840,7 +879,7 @@ def main() -> int:
                 print(json.dumps(asdict(result), indent=2))
         else:
             print("=" * 65)
-            print(" TRUSTWIPE (WINDOWS) - BLOCK SANITIZATION REPORT")
+            print(" S0 (WINDOWS NATIVE) - BLOCK SANITIZATION REPORT")
             print("=" * 65)
             print(f"Target                 : {result.target} ({result.target_type})")
             print(f"Capacity               : {result.capacity_bytes} bytes")
@@ -853,6 +892,8 @@ def main() -> int:
             if cert_path and signed_cert:
                 sig = signed_cert.get("signature", {})
                 print(f"Signed Certificate     : {cert_path}")
+                if pdf_path:
+                    print(f"PDF Certificate        : {pdf_path}")
                 print(f"Key Fingerprint        : {sig.get('public_key_fingerprint', 'N/A')}")
             print("=" * 65)
 
@@ -876,12 +917,23 @@ def main() -> int:
         total_bytes = sum(r.bytes_overwritten for r in results)
 
         cert_path: Optional[Path] = None
+        pdf_path: Optional[Path] = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
             cert_path = Path(args.cert_out) if args.cert_out else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
             cert_path.parent.mkdir(parents=True, exist_ok=True)
             cert_path.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
+
+            if pdfgen and not args.no_pdf:
+                pdf_target = out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.pdf"
+                qr_target = out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.qr.png"
+                try:
+                    pdfgen.generate_pdf(signed_cert, pdf_target, qr_url_template=args.qr_url_template)
+                    pdfgen.write_qr_file(signed_cert, qr_target)
+                    pdf_path = pdf_target
+                except Exception:
+                    pass
 
         if args.json:
             if signed_cert:
@@ -898,7 +950,7 @@ def main() -> int:
                 print(json.dumps(summary, indent=2))
         else:
             print("=" * 65)
-            print(" TRUSTWIPE (WINDOWS) - SECURE FILE & FOLDER SANITIZATION")
+            print(" S0 (WINDOWS NATIVE) - SECURE FILE & FOLDER SANITIZATION")
             print("=" * 65)
             print(f"Total targets processed : {total}")
             print(f"Successfully erased     : {success}")
@@ -907,6 +959,8 @@ def main() -> int:
             if cert_path and signed_cert:
                 sig = signed_cert.get("signature", {})
                 print(f"Signed Certificate      : {cert_path}")
+                if pdf_path:
+                    print(f"PDF Certificate         : {pdf_path}")
                 print(f"Signature Algorithm     : {sig.get('algorithm', 'Ed25519')}")
                 print(f"Key Fingerprint         : {sig.get('public_key_fingerprint', 'N/A')}")
             print("=" * 65)

@@ -184,3 +184,61 @@ def test_mac_cli_wipe_drive_main(monkeypatch, tmp_path: Path):
     assert cert_data["tool"]["platform"] == "macos"
     assert cert_data["result"]["status"] == "success"
 
+
+def test_mac_cli_pdf_and_qr_generation(monkeypatch, tmp_path: Path, capsys):
+    f = tmp_path / "mac_report_target.txt"
+    f.write_bytes(b"DATA FOR MAC PDF REPORT TEST")
+    out_dir = tmp_path / "reports_mac"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "trustwipe_eraser.py",
+            "--targets",
+            str(f),
+            "--out-dir",
+            str(out_dir),
+        ],
+    )
+
+    exit_code = mac_main()
+    assert exit_code == 0
+    captured = capsys.readouterr().out
+    assert "S0 (macOS NATIVE)" in captured
+    assert "PDF Certificate" in captured
+
+    # Verify JSON, PDF, and QR artifacts
+    jsons = list(out_dir.glob("*.json"))
+    pdfs = list(out_dir.glob("*.pdf"))
+    qrs = list(out_dir.glob("*.qr.png"))
+    assert len(jsons) == 1
+    assert len(pdfs) == 1
+    assert len(qrs) == 1
+    assert pdfs[0].stat().st_size > 0
+    assert qrs[0].stat().st_size > 0
+
+
+def test_mac_cli_no_pdf_flag(monkeypatch, tmp_path: Path):
+    f = tmp_path / "mac_nopdf_target.txt"
+    f.write_bytes(b"DATA FOR MAC NO PDF TEST")
+    out_dir = tmp_path / "reports_mac_nopdf"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "trustwipe_eraser.py",
+            "--targets",
+            str(f),
+            "--out-dir",
+            str(out_dir),
+            "--no-pdf",
+        ],
+    )
+
+    exit_code = mac_main()
+    assert exit_code == 0
+    assert len(list(out_dir.glob("*.json"))) == 1
+    assert len(list(out_dir.glob("*.pdf"))) == 0
+

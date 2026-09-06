@@ -48,7 +48,7 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
    - *Mitigation:* Module 2 executes physical cluster overwriting, resets inode timestamps to epoch 0, and scrambles directory entry filenames before unlinking.
 3. **Audit Record Alteration:**
    - *Threat:* An insider alters database records to hide unauthorized data destruction or evidence tampering.
-   - *Mitigation:* Modifying any row in the SQLite ledger breaks the SHA-256 block hash continuity (`prev_hash != block_hash`), detected instantly by `trustwipe-wipe audit verify`.
+   - *Mitigation:* Modifying any row in the SQLite ledger breaks the SHA-256 block hash continuity (`prev_hash != block_hash`), detected instantly by `s0 audit verify`.
 
 ---
 

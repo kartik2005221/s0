@@ -20,9 +20,9 @@ echo "==> Attaching to next available loop device..."
 LOOP_DEV=$(losetup --find --show "$IMG_PATH")
 
 echo "==> Attached: $LOOP_DEV -> $IMG_PATH"
-echo "==> You can now run TrustWipe against this block device:"
-echo "    sudo trustwipe-wipe plan --target $LOOP_DEV"
-echo "    sudo trustwipe-wipe wipe --target $LOOP_DEV --yes"
+echo "==> You can now run S0 against this block device:"
+echo "    sudo s0 plan --target $LOOP_DEV"
+echo "    sudo s0 wipe --target $LOOP_DEV --yes"
 echo
 echo "==> To detach later:"
 echo "    sudo losetup -d $LOOP_DEV"
