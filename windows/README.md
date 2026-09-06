@@ -27,12 +27,12 @@ Sanitizing files reliably on Microsoft Windows presents distinct architectural c
 
 ### Command Prompt (`cmd.exe`):
 ```cmd
-windows\trustwipe-eraser.bat C:\Sensitive\evidence.docx 1 zero
+windows\s0-eraser.bat C:\Sensitive\evidence.docx 1 zero
 ```
 
 ### PowerShell:
 ```powershell
-.\windows\trustwipe-eraser.ps1 -Targets "C:\Sensitive\ConfidentialFolder" -Passes 1 -Pattern zero
+.\windows\s0-eraser.ps1 -Targets "C:\Sensitive\ConfidentialFolder" -Passes 1 -Pattern zero
 ```
 
 ### Python Direct:

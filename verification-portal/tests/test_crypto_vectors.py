@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,11 +14,15 @@ PORTAL = Path(__file__).resolve().parent.parent
 
 # Probe for node
 def find_node() -> str | None:
-    for candidate in [
-        "/home/kartik/.hermes/node/bin/node",
+    candidates = [
+        os.environ.get("NODE_BIN"),
         shutil.which("node"),
         shutil.which("nodejs"),
-    ]:
+        str(Path.home() / ".hermes" / "node" / "bin" / "node"),
+        "/usr/local/bin/node",
+        "/usr/bin/node",
+    ]
+    for candidate in candidates:
         if candidate and Path(candidate).is_file():
             return candidate
     return None

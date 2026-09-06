@@ -489,7 +489,7 @@ def erase_batch_windows(
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
-                tool_name="trustwipe-windows-eraser",
+                tool_name="s0-windows-eraser",
                 tool_version="1.0.0",
                 platform="windows",
                 device_id=f"win-batch-{secrets.token_hex(8)}",
@@ -781,7 +781,7 @@ def wipe_drive_or_partition_windows(
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
-                tool_name="trustwipe-windows-eraser",
+                tool_name="s0-windows-eraser",
                 tool_version="1.0.0",
                 platform="windows",
                 device_id=f"win-{target_type}-{secrets.token_hex(6)}",

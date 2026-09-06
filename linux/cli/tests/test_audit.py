@@ -28,7 +28,7 @@ def sample_cert():
     cert = build_certificate(
         organization="NTRO Test Lab",
         operator_id="op-test-1",
-        tool_name="trustwipe-cli",
+        tool_name="s0-cli",
         tool_version="1.0.0",
         platform="linux",
         device_id="drive-12345",

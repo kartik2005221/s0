@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import List, Optional
@@ -31,9 +32,17 @@ from starlette.staticfiles import StaticFiles
 
 REPO = Path(__file__).resolve().parents[1]
 VENV_BIN = REPO / ".venv" / "bin"
-CLI = VENV_BIN / "trustwipe-wipe"
-if not CLI.exists():
-    CLI = shutil.which("trustwipe-wipe") or "trustwipe-wipe"
+
+
+def _get_s0_cmd() -> list[str]:
+    v_s0 = VENV_BIN / "s0"
+    if v_s0.is_file() and os.access(v_s0, os.X_OK):
+        return [str(v_s0)]
+    which_s0 = shutil.which("s0")
+    if which_s0:
+        return [which_s0]
+    return [_sys.executable, "-m", "trustwipe_cli.main"]
+
 
 IMAGE_DIRS = [
     Path(os.environ.get("TRUSTWIPE_IMAGE_DIR", "")) if os.environ.get("TRUSTWIPE_IMAGE_DIR") else None,
@@ -50,6 +59,8 @@ _lock = threading.Lock()
 
 import sys as _sys
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
+_sys.path.insert(0, str(REPO / "core" / "python"))
+from trustwipe_core.temperature import read_temperature  # noqa: E402
 from trustwipe_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
 from trustwipe_cli.carver import carve_image  # noqa: E402
 from trustwipe_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
@@ -192,9 +203,11 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
 
     job_id = uuid.uuid4().hex[:12]
     out_dir = REPO / "demo-out" / f"gui-wipe-{job_id}"
-    cmd = [str(CLI), "wipe", "--target", req.target, "--yes",
-           "--pattern", req.pattern, "--passes", str(req.passes),
-           "--out-dir", str(out_dir), "--json"]
+    cmd = _get_s0_cmd() + [
+        "wipe", "--target", req.target, "--yes",
+        "--pattern", req.pattern, "--passes", str(req.passes),
+        "--out-dir", str(out_dir), "--json"
+    ]
     key = REPO / "core" / "keys" / "demo_issuer_private.pem"
     if key.exists():
         cmd += ["--key", str(key)]
@@ -209,8 +222,14 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
 
             def pump_stderr() -> None:
                 for line in proc.stderr:
+                    clean = line.rstrip()
+                    if not clean:
+                        continue
                     with _lock:
-                        _jobs[job_id]["log"].append(line.rstrip())
+                        if clean.startswith("[s0 wipe]") and _jobs[job_id]["log"] and _jobs[job_id]["log"][-1].startswith("[s0 wipe]"):
+                            _jobs[job_id]["log"][-1] = clean
+                        else:
+                            _jobs[job_id]["log"].append(clean)
 
             pumper = threading.Thread(target=pump_stderr, daemon=True)
             pumper.start()
@@ -253,9 +272,35 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
     def run() -> None:
         try:
-            def file_progress(fpath: str, cur_pass: int, total_p: int) -> None:
+            t_start = time.monotonic()
+            last_log_time = 0.0
+
+            def file_progress(fpath: str, written_bytes: int, total_bytes: int) -> None:
+                nonlocal last_log_time
+                now = time.monotonic()
+                if now - last_log_time < 0.2 and written_bytes < total_bytes:
+                    return
+                last_log_time = now
+
+                elapsed = max(0.001, now - t_start)
+                speed = written_bytes / elapsed
+                speed_str = f"{speed / (1024 * 1024):.1f} MiB/s" if speed >= 1024 * 1024 else f"{speed / 1024:.1f} KiB/s"
+                pct = (written_bytes * 100 // total_bytes) if total_bytes > 0 else 0
+                rem_bytes = max(0, total_bytes - written_bytes)
+                eta_sec = int(rem_bytes / speed) if speed > 0 else 0
+                eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
+
+                temp = read_temperature(fpath)
+                temp_str = f" | Temp: {temp}°C" if temp is not None else ""
+
+                w_mb = written_bytes / (1024 * 1024)
+                tot_mb = total_bytes / (1024 * 1024)
+                msg = f"[s0 erase] | {pct:3d}% | {w_mb:.1f} MiB / {tot_mb:.1f} MiB | {speed_str} | ETA: {eta_str}{temp_str} ({Path(fpath).name[:20]})"
                 with _lock:
-                    _jobs[job_id]["log"].append(f"Overwriting {Path(fpath).name}: pass {cur_pass}/{total_p}")
+                    if not _jobs[job_id]["log"] or not _jobs[job_id]["log"][-1].startswith("[s0 erase]"):
+                        _jobs[job_id]["log"].append(msg)
+                    else:
+                        _jobs[job_id]["log"][-1] = msg
 
             summary = erase_batch(
                 req.targets,
@@ -312,12 +357,35 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
     def run() -> None:
         try:
+            t_start = time.monotonic()
+            last_log_time = 0.0
+
             def carve_progress(scanned: int, total: int, found: int) -> None:
+                nonlocal last_log_time
+                now = time.monotonic()
+                if now - last_log_time < 0.2 and scanned < total:
+                    return
+                last_log_time = now
+
+                elapsed = max(0.001, now - t_start)
+                speed = scanned / elapsed
+                speed_str = f"{speed / (1024 * 1024):.1f} MiB/s" if speed >= 1024 * 1024 else f"{speed / 1024:.1f} KiB/s"
+                pct = (scanned * 100 // total) if total > 0 else 0
+                rem_bytes = max(0, total - scanned)
+                eta_sec = int(rem_bytes / speed) if speed > 0 else 0
+                eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
+
+                temp = read_temperature(req.target)
+                temp_str = f" | Temp: {temp}°C" if temp is not None else ""
+
+                scanned_mb = scanned / (1024 * 1024)
+                total_mb = total / (1024 * 1024)
+                msg = f"[s0 carve] | {pct:3d}% | {scanned_mb:.1f} MiB / {total_mb:.1f} MiB | {speed_str} | {found} candidates | ETA: {eta_str}{temp_str}"
                 with _lock:
-                    pct = (scanned * 100 // total) if total else 0
-                    msg = f"Carving: {scanned // (1024*1024)} MB / {total // (1024*1024)} MB ({pct}%) - {found} candidates"
-                    if not _jobs[job_id]["log"] or _jobs[job_id]["log"][-1] != msg:
+                    if not _jobs[job_id]["log"] or not _jobs[job_id]["log"][-1].startswith("[s0 carve]"):
                         _jobs[job_id]["log"].append(msg)
+                    else:
+                        _jobs[job_id]["log"][-1] = msg
 
             summary = carve_image(
                 req.target,

@@ -361,7 +361,7 @@ def erase_batch_macos(
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
-                tool_name="trustwipe-macos-eraser",
+                tool_name="s0-macos-eraser",
                 tool_version="1.0.0",
                 platform="macos",
                 device_id=f"mac-batch-{secrets.token_hex(8)}",
@@ -625,7 +625,7 @@ def wipe_drive_or_partition_macos(
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
-                tool_name="trustwipe-macos-eraser",
+                tool_name="s0-macos-eraser",
                 tool_version="1.0.0",
                 platform="macos",
                 device_id=f"mac-{target_type}-{secrets.token_hex(6)}",

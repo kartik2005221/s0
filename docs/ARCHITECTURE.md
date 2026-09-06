@@ -76,10 +76,11 @@ TrustWipe bridges the gap between two traditionally disjoint domains:
 - **Confidence Scoring (`scoring.py`):** Multi-factor scoring (header match 30%, footer match 30%, size plausibility 20%, Shannon entropy analysis 20%).
 
 ### 3.4 Module 4: Blockchain Audit Management Ledger (`trustwipe_cli/audit/`)
-- Append-only local SQLite ledger (`trustwipe_audit.db`).
-- Every sanitization and forensic carving event forms a block:
-  $$	ext{block\_hash} = 	ext{SHA256}(	ext{index} \parallel 	ext{timestamp} \parallel 	ext{op\_type} \parallel 	ext{target\_id} \parallel 	ext{operator\_id} \parallel 	ext{cert\_uuid} \parallel 	ext{payload\_hash} \parallel 	ext{signature} \parallel 	ext{prev\_hash})$$
-- Verification engine iterates from Genesis to tip, proving unbroken mathematical continuity.
+- **Unified Architecture (GUI & CLI):** Both the `s0` CLI and the Web GUI share the exact same append-only SQLite ledger file located at `~/.trustwipe/trustwipe_audit.db` (governed by `trustwipe_cli.audit.ledger.AuditLedger`). Every wipe, file erasure, or forensic carving operation—regardless of whether initiated from the terminal or the browser dashboard—appends to this shared ledger, forming a single unbroken timeline.
+- **Cryptographic Hash-Chained Blocks:** Every sanitization and forensic carving event forms an immutable block:
+  $$\text{block\_hash} = \text{SHA256}(\text{index} \parallel \text{timestamp} \parallel \text{op\_type} \parallel \text{target\_id} \parallel \text{operator\_id} \parallel \text{cert\_uuid} \parallel \text{payload\_hash} \parallel \text{signature} \parallel \text{prev\_hash})$$
+- **Forensic Chain of Custody & Verification:** The verification engine iterates from the Genesis block to the tip, proving unbroken mathematical continuity. Any manual tampering with past SQLite rows instantly invalidates downstream block hashes (`prev_hash != block_hash`), detected immediately via `s0 audit verify` or the GUI Blockchain Audit Ledger tab.
+- **Cross-Platform Compatibility:** Linux, Windows (`s0-windows-eraser`), and macOS (`s0-macos-eraser`) generate JSON audit records and certificates conforming to the same cryptographic specification, which can be verified identically or imported into the unified ledger.
 
 ### 3.5 Unified Web Dashboard (`gui/`)
 - Multi-tab forensic operator console (FastAPI backend + responsive frontend):

@@ -295,7 +295,7 @@ def make_certificate(
     cert = cert_mod.build_certificate(
         organization=organization,
         operator_id=operator_id,
-        tool_name="trustwipe-wipe-cli",
+        tool_name="s0-wipe",
         tool_version=tool_version,
         platform="linux",
         device_id=device_id_for(target),

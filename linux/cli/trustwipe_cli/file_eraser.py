@@ -507,7 +507,7 @@ def erase_batch(
                 cert_dict = cert_mod.build_certificate(
                     organization=organization,
                     operator_id=operator_id,
-                    tool_name="trustwipe-file-eraser",
+                    tool_name="s0-erase",
                     tool_version="1.0.0",
                     platform="linux",
                     device_id=f"batch-files-{secrets.token_hex(8)}",

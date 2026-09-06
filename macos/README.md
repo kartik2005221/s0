@@ -27,7 +27,7 @@ Sanitizing files reliably on Apple macOS involves hardware and filesystem consid
 
 ### Terminal:
 ```bash
-./macos/trustwipe-eraser.sh ~/Documents/confidential.pdf 1 zero
+./macos/s0-eraser.sh ~/Documents/confidential.pdf 1 zero
 ```
 
 ### Python Direct:

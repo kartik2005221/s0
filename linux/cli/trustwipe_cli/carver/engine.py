@@ -565,7 +565,7 @@ def carve_image(
                 cert_dict = cert_mod.build_certificate(
                     organization=organization,
                     operator_id=operator_id,
-                    tool_name="trustwipe-carver",
+                    tool_name="s0-carve",
                     tool_version="1.0.0",
                     platform="linux",
                     device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",

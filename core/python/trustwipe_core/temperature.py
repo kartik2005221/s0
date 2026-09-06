@@ -15,15 +15,35 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
+_TEMP_CACHE: dict[str, tuple[float, Optional[int]]] = {}
 
-def read_temperature(device_path: str) -> Optional[int]:
-    """Best-effort temperature read in Celsius. Returns None if unsupported."""
+
+def read_temperature(device_path: str, cache_ttl: float = 2.0) -> Optional[int]:
+    """Best-effort temperature read in Celsius with rate-limiting cache.
+
+    Caches readings for `cache_ttl` seconds (default 2.0s) to avoid spawning
+    excessive external subprocesses (smartctl, powershell, nvme) on high-frequency chunk loops.
+    """
     if not device_path:
         return None
 
+    now = time.monotonic()
+    cached = _TEMP_CACHE.get(device_path)
+    if cached is not None:
+        last_time, last_temp = cached
+        if now - last_time < cache_ttl:
+            return last_temp
+
+    val = _read_temperature_raw(device_path)
+    _TEMP_CACHE[device_path] = (now, val)
+    return val
+
+
+def _read_temperature_raw(device_path: str) -> Optional[int]:
     try:
         if sys.platform.startswith("linux"):
             return _read_linux_temp(device_path)
@@ -107,26 +127,45 @@ def _read_windows_temp(device_path: str) -> Optional[int]:
     if t is not None:
         return t
 
-    # 2. Try PowerShell Storage Cmdlet
+    # 2. Try PowerShell Storage Cmdlet targeted at the specific disk
     if shutil.which("powershell"):
         try:
-            ps_cmd = (
-                "Get-PhysicalDisk | Select-Object -ExpandProperty OperationalStatus -ErrorAction SilentlyContinue; "
-                "Get-StorageReliabilityCounter -PhysicalDisk (Get-PhysicalDisk | Select-Object -First 1) "
-                "| Select-Object -ExpandProperty Temperature -ErrorAction SilentlyContinue"
-            )
-            proc = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", ps_cmd],
-                capture_output=True,
-                text=True,
-                timeout=3,
-            )
-            for line in proc.stdout.splitlines():
-                line = line.strip()
-                if line.isdigit():
-                    val = int(line)
-                    if 0 < val < 125:
-                        return val
+            norm = device_path.strip().rstrip("\\")
+            ps_cmd = None
+
+            # Check if drive letter e.g. D: or \\.\D:
+            m_letter = re.search(r"([A-Za-z]):", norm)
+            if m_letter:
+                letter = m_letter.group(1).upper()
+                ps_cmd = (
+                    f"$p = Get-Partition -DriveLetter '{letter}' -ErrorAction SilentlyContinue; "
+                    "if ($p) { "
+                    "$d = Get-Disk -Number $p.DiskNumber -ErrorAction SilentlyContinue | Get-PhysicalDisk -ErrorAction SilentlyContinue; "
+                    "if ($d) { (Get-StorageReliabilityCounter -PhysicalDisk $d -ErrorAction SilentlyContinue).Temperature } "
+                    "}"
+                )
+            elif "physicaldrive" in norm.lower() or norm.isdigit():
+                m_num = re.search(r"(\d+)$", norm)
+                if m_num:
+                    disk_num = m_num.group(1)
+                    ps_cmd = (
+                        f"$d = Get-Disk -Number {disk_num} -ErrorAction SilentlyContinue | Get-PhysicalDisk -ErrorAction SilentlyContinue; "
+                        "if ($d) { (Get-StorageReliabilityCounter -PhysicalDisk $d -ErrorAction SilentlyContinue).Temperature }"
+                    )
+
+            if ps_cmd:
+                proc = subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", ps_cmd],
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                )
+                for line in proc.stdout.splitlines():
+                    line = line.strip()
+                    if line.isdigit():
+                        val = int(line)
+                        if 0 < val < 125:
+                            return val
         except Exception:
             pass
     return None

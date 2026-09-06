@@ -28,7 +28,7 @@ def base_cert() -> dict:
     return certificate.build_certificate(
         organization="TrustWipe Demo Lab",
         operator_id="op-demo-001",
-        tool_name="trustwipe-cli",
+        tool_name="s0-cli",
         tool_version="0.1.0",
         platform="linux",
         device_id="sha256:" + "ab" * 32,
