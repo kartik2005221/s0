@@ -274,9 +274,11 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
         try:
             t_start = time.monotonic()
             last_log_time = 0.0
+            last_temp_time = 0.0
+            last_temp_val = [None]
 
             def file_progress(fpath: str, written_bytes: int, total_bytes: int) -> None:
-                nonlocal last_log_time
+                nonlocal last_log_time, last_temp_time
                 now = time.monotonic()
                 if now - last_log_time < 0.2 and written_bytes < total_bytes:
                     return
@@ -290,8 +292,10 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 eta_sec = int(rem_bytes / speed) if speed > 0 else 0
                 eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
 
-                temp = read_temperature(fpath)
-                temp_str = f" | Temp: {temp}°C" if temp is not None else ""
+                if now - last_temp_time >= 2.0:
+                    last_temp_time = now
+                    last_temp_val[0] = read_temperature(fpath)
+                temp_str = f" | Temp: {last_temp_val[0]}°C" if last_temp_val[0] is not None else ""
 
                 w_mb = written_bytes / (1024 * 1024)
                 tot_mb = total_bytes / (1024 * 1024)
@@ -359,9 +363,11 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         try:
             t_start = time.monotonic()
             last_log_time = 0.0
+            last_carve_temp_time = 0.0
+            last_carve_temp_val = [None]
 
             def carve_progress(scanned: int, total: int, found: int) -> None:
-                nonlocal last_log_time
+                nonlocal last_log_time, last_carve_temp_time
                 now = time.monotonic()
                 if now - last_log_time < 0.2 and scanned < total:
                     return
@@ -375,8 +381,10 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 eta_sec = int(rem_bytes / speed) if speed > 0 else 0
                 eta_str = f"{eta_sec // 60:02d}:{eta_sec % 60:02d}"
 
-                temp = read_temperature(req.target)
-                temp_str = f" | Temp: {temp}°C" if temp is not None else ""
+                if now - last_carve_temp_time >= 2.0:
+                    last_carve_temp_time = now
+                    last_carve_temp_val[0] = read_temperature(req.target)
+                temp_str = f" | Temp: {last_carve_temp_val[0]}°C" if last_carve_temp_val[0] is not None else ""
 
                 scanned_mb = scanned / (1024 * 1024)
                 total_mb = total / (1024 * 1024)

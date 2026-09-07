@@ -532,6 +532,18 @@ def wipe_drive_or_partition_macos(
     samples_checked = 0
 
     bar = ProgressBar(capacity * passes, operation="s0-mac wipe") if ProgressBar else None
+    _last_temp_time = [0.0]
+    _last_temp_val = [None]
+
+    def _get_temp(path: str) -> str:
+        """Temperature string, throttled to once per 2 seconds."""
+        import time as _time
+        now = _time.monotonic()
+        if now - _last_temp_time[0] >= 2.0:
+            _last_temp_time[0] = now
+            _last_temp_val[0] = read_temperature(path)
+        t = _last_temp_val[0]
+        return f"Temp: {t}°C" if t is not None else ""
 
     try:
         with open(open_path, "r+b", buffering=0) as f:
@@ -545,16 +557,12 @@ def wipe_drive_or_partition_macos(
                     rem -= to_write
                     total_written += to_write
                     if bar:
-                        temp = read_temperature(open_path)
-                        extra = f"Temp: {temp}°C" if temp is not None else ""
-                        bar.update(total_written, extra=extra)
+                        bar.update(total_written, extra=_get_temp(open_path))
                 f.flush()
                 macos_full_fsync(f.fileno())
 
             if bar:
-                temp = read_temperature(open_path)
-                extra = f"Temp: {temp}°C" if temp is not None else ""
-                bar.finish(extra=extra)
+                bar.finish(extra=_get_temp(open_path))
 
             # Sampled verification
             num_samples = 32
