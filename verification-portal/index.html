@@ -3,295 +3,603 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s0 — Certificate Verification Portal</title>
+  <title>s0 — Cryptographic Certificate Verification Portal</title>
   <style>
     :root {
-      --bg: #222831;
-      --card-bg: #393E46;
-      --card-border: #4d5765;
-      --text: #EEEEEE;
-      --text-muted: #c5cbd3;
-      --primary: #00ADB5;
-      --primary-hover: #008f96;
-      --danger: #da3633;
-      --danger-bg: rgba(218, 54, 51, 0.15);
-      --warning: #d29922;
-      --warning-bg: rgba(210, 153, 34, 0.15);
-      --success: #00ADB5;
-      --success-bg: rgba(0, 173, 181, 0.15);
-      --accent: #00ADB5;
-      --code-bg: #1c2128;
+      --bg-canvas: #090d16;
+      --bg-card: #111827;
+      --bg-card-hover: #151f32;
+      --bg-elevated: #162033;
+      --border-subtle: #202b3d;
+      --border-focus: #00adb5;
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      
+      --primary: #00adb5;
+      --primary-hover: #008c93;
+      --primary-glow: rgba(0, 173, 181, 0.2);
+      
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --success-border: rgba(16, 185, 129, 0.35);
+      --success-glow: rgba(16, 185, 129, 0.25);
+      
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --danger-border: rgba(239, 68, 68, 0.35);
+      --danger-glow: rgba(239, 68, 68, 0.25);
+      
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --warning-border: rgba(245, 158, 11, 0.35);
+      
+      --info: #3b82f6;
+      --info-bg: rgba(59, 130, 246, 0.12);
+      --info-border: rgba(59, 130, 246, 0.35);
+      
+      --code-bg: #090d14;
       --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg);
-      color: var(--text);
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      max-width: 100vw;
+      min-height: 100vh;
+      background-color: var(--bg-canvas);
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 173, 181, 0.12), transparent 70%),
+        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05), transparent 40%);
+      color: var(--text-primary);
       font-family: var(--font-sans);
       line-height: 1.5;
-      padding: 24px;
-      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .container {
-      max-width: 1000px;
+    /* Container & Layout */
+    .portal-container {
+      width: 100%;
+      max-width: 1280px;
       margin: 0 auto;
+      padding: 24px 16px 64px;
+      min-width: 0;
     }
 
+    /* Header */
     header {
       text-align: center;
-      margin-bottom: 32px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 28px;
+      padding: 24px 16px 28px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(17, 24, 39, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      background: rgba(0, 173, 181, 0.1);
+      border: 1px solid rgba(0, 173, 181, 0.3);
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .brand-badge .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--primary);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
     }
 
     .brand-title {
-      font-size: 2.2rem;
+      font-size: 2.1rem;
       font-weight: 800;
       letter-spacing: -0.5px;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 12px;
     }
 
-    .brand-title .shield {
-      color: var(--accent);
+    .brand-title .logo-glyph {
+      color: var(--primary);
+      filter: drop-shadow(0 0 12px var(--primary-glow));
     }
 
     .subtitle {
-      color: var(--text-muted);
+      color: var(--text-secondary);
       font-size: 1rem;
-      margin-top: 6px;
+      margin-top: 8px;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
-    .trust-tagline {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 4px 12px;
-      background: rgba(88, 166, 255, 0.1);
-      color: var(--accent);
-      border: 1px solid rgba(88, 166, 255, 0.3);
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
+    .trust-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 14px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
     }
 
-    .grid {
+    .trust-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Grid Layout */
+    .portal-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: 24px;
+      width: 100%;
+      min-width: 0;
     }
 
-    @media (min-width: 860px) {
-      .grid {
-        grid-template-columns: 1fr 1fr;
+    @media (min-width: 980px) {
+      .portal-grid {
+        grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+        align-items: start;
       }
     }
 
+    .portal-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    /* Cards */
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
       padding: 20px;
+      min-width: 0;
+      max-width: 100%;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     .card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 16px;
+      font-size: 1.15rem;
+      font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: #fff;
+      gap: 10px;
+      color: #ffffff;
+      letter-spacing: -0.2px;
     }
 
+    /* Drag and Drop Zone */
     .dropzone {
-      border: 2px dashed var(--card-border);
-      border-radius: 8px;
-      padding: 32px 16px;
+      border: 2px dashed var(--border-subtle);
+      border-radius: 12px;
+      padding: 32px 18px;
       text-align: center;
       cursor: pointer;
-      transition: all 0.2s;
-      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.015);
+      position: relative;
     }
 
-    .dropzone.dragover {
-      border-color: var(--accent);
-      background: rgba(88, 166, 255, 0.05);
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: rgba(0, 173, 181, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .dropzone-icon {
+      font-size: 2.4rem;
+      margin-bottom: 8px;
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    .dropzone:hover .dropzone-icon {
+      transform: scale(1.08);
     }
 
     .dropzone p {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+    }
+
+    .dropzone p strong {
+      color: var(--text-primary);
+    }
+
+    .dropzone .hint {
+      font-size: 0.78rem;
       color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-top: 8px;
+      margin-top: 6px;
     }
 
     .dropzone input[type="file"] {
       display: none;
     }
 
-    .btn-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 14px;
-    }
-
-    button, .btn {
-      background: #21262d;
-      color: var(--text);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    button:hover, .btn:hover {
-      background: #30363d;
-      border-color: #8b949e;
-    }
-
-    button.primary {
-      background: var(--primary);
-      border-color: rgba(240, 246, 252, 0.1);
-      color: #fff;
-    }
-
-    button.primary:hover {
-      background: var(--primary-hover);
-    }
-
-    button.danger-outline {
-      border-color: rgba(218, 54, 51, 0.5);
-      color: #f85149;
-    }
-
-    button.danger-outline:hover {
-      background: var(--danger-bg);
+    /* Textarea & Inputs */
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: block;
+      margin-bottom: 6px;
     }
 
     textarea {
       width: 100%;
+      max-width: 100%;
+      min-width: 0;
       height: 140px;
       background: var(--code-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      color: var(--text);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: var(--text-primary);
       font-family: var(--font-mono);
-      font-size: 0.85rem;
-      padding: 10px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      padding: 12px;
       resize: vertical;
-      margin-top: 12px;
+      transition: border-color 0.2s;
+      outline: none;
+      word-break: break-all;
     }
 
     textarea:focus {
-      outline: none;
-      border-color: var(--accent);
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--primary-glow);
     }
 
-    /* Results section */
-    .result-banner {
-      border-radius: 8px;
-      padding: 16px 20px;
-      margin-bottom: 20px;
+    /* Buttons */
+    .btn-group {
       display: flex;
-      align-items: center;
-      gap: 16px;
-      border: 1px solid transparent;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    .result-banner.authentic {
-      background: var(--success-bg);
-      border-color: var(--success);
-      color: #7ee787;
-    }
-
-    .result-banner.tampered {
-      background: var(--danger-bg);
-      border-color: var(--danger);
-      color: #f85149;
-    }
-
-    .result-banner.untrusted {
-      background: var(--warning-bg);
-      border-color: var(--warning);
-      color: #f2cc60;
-    }
-
-    .result-banner.invalid {
-      background: var(--danger-bg);
-      border-color: var(--danger);
-      color: #f85149;
-    }
-
-    .result-banner.custom-key {
-      background: rgba(31, 111, 235, 0.15);
-      border-color: #1f6feb;
-      color: #58a6ff;
-    }
-
-    .banner-icon {
-      font-size: 2rem;
-      line-height: 1;
-    }
-
-    .banner-text h3 {
-      font-size: 1.25rem;
-      margin-bottom: 4px;
-    }
-
-    .banner-text p {
-      font-size: 0.9rem;
-      opacity: 0.9;
-    }
-
-    .prop-table {
-      width: 100%;
-      border-collapse: collapse;
+    button, .btn {
+      background: #1e293b;
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 9px 16px;
       font-size: 0.88rem;
-      margin-top: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
     }
 
-    .prop-table th, .prop-table td {
-      padding: 8px 10px;
+    button:hover, .btn:hover {
+      background: #27354a;
+      border-color: #3b4d66;
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #0b1320;
+      font-weight: 700;
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    button.scenario-btn {
+      flex: 1;
+      min-width: 180px;
+      padding: 8px 12px;
+      font-size: 0.82rem;
       text-align: left;
-      border-bottom: 1px solid var(--card-border);
+      justify-content: flex-start;
+      background: rgba(255, 255, 255, 0.03);
     }
 
-    .prop-table th {
-      color: var(--text-muted);
-      width: 35%;
-      font-weight: 500;
+    button.scenario-btn:hover {
+      background: rgba(255, 255, 255, 0.07);
     }
 
-    .prop-table td {
-      color: var(--text);
+    button.danger-outline {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    button.danger-outline:hover {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+    }
+
+    /* Pinned Keys List */
+    .key-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 8px;
+      font-size: 0.8rem;
       font-family: var(--font-mono);
       word-break: break-all;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
+    .key-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
     }
 
-    .badge-clear { background: rgba(88, 166, 255, 0.2); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); }
-    .badge-purge { background: rgba(35, 134, 54, 0.2); color: #7ee787; border: 1px solid rgba(35, 134, 54, 0.4); }
-    .badge-destroy { background: rgba(218, 54, 51, 0.2); color: #f85149; border: 1px solid rgba(218, 54, 51, 0.4); }
+    .key-badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid var(--success-border);
+    }
 
+    /* Verification Result Area */
+    #emptyState {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--text-muted);
+    }
+
+    #emptyState .empty-icon {
+      font-size: 3.2rem;
+      opacity: 0.3;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    /* Verdict Banner */
+    .result-banner {
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      border: 1px solid transparent;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    .result-banner.authentic {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(16, 185, 129, 0.06) 100%);
+      border-color: var(--success-border);
+      color: #a7f3d0;
+      box-shadow: 0 0 24px var(--success-glow);
+    }
+
+    .result-banner.tampered, .result-banner.invalid {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.06) 100%);
+      border-color: var(--danger-border);
+      color: #fecaca;
+      box-shadow: 0 0 24px var(--danger-glow);
+    }
+
+    .result-banner.untrusted {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.06) 100%);
+      border-color: var(--warning-border);
+      color: #fde68a;
+    }
+
+    .result-banner.custom-key {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0.06) 100%);
+      border-color: var(--info-border);
+      color: #bfdbfe;
+    }
+
+    .banner-icon {
+      font-size: 2.2rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .banner-text {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .banner-text h3 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+      color: #ffffff;
+    }
+
+    .banner-text p {
+      font-size: 0.88rem;
+      line-height: 1.45;
+      opacity: 0.95;
+      word-break: break-word;
+    }
+
+    /* Metric Summary Badges */
+    .metric-ribbon {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .metric-box {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .metric-val {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Section Subheaders */
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 20px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.2px;
+    }
+
+    /* Property Table with Fixed Layout */
+    .table-container {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+
+    .prop-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+      background: rgba(0, 0, 0, 0.15);
+      font-size: 0.86rem;
+      min-width: 0;
+    }
+
+    .prop-table tr:not(:last-child) th,
+    .prop-table tr:not(:last-child) td {
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .prop-table th {
+      width: 36%;
+      padding: 9px 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-align: left;
+      vertical-align: top;
+      background: rgba(255, 255, 255, 0.015);
+      white-space: normal;
+    }
+
+    .prop-table td {
+      width: 64%;
+      padding: 9px 12px;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      vertical-align: top;
+    }
+
+    /* NIST Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-clear { 
+      background: rgba(59, 130, 246, 0.18); 
+      color: #60a5fa; 
+      border: 1px solid rgba(59, 130, 246, 0.4); 
+    }
+    .badge-purge { 
+      background: rgba(16, 185, 129, 0.18); 
+      color: #34d399; 
+      border: 1px solid rgba(16, 185, 129, 0.4); 
+    }
+    .badge-destroy { 
+      background: rgba(239, 68, 68, 0.18); 
+      color: #f87171; 
+      border: 1px solid rgba(239, 68, 68, 0.4); 
+    }
+
+    /* Tabs */
     .tabs {
       display: flex;
-      border-bottom: 1px solid var(--card-border);
-      margin-top: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-top: 24px;
+      gap: 4px;
     }
 
     .tab-btn {
@@ -299,118 +607,191 @@
       border: none;
       border-bottom: 2px solid transparent;
       color: var(--text-muted);
-      padding: 8px 16px;
+      padding: 10px 16px;
       border-radius: 0;
+      font-size: 0.88rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.02);
     }
 
     .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-      font-weight: 600;
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: rgba(0, 173, 181, 0.05);
     }
 
     .tab-content {
       display: none;
-      margin-top: 12px;
+      margin-top: 14px;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .tab-content.active {
       display: block;
     }
 
-    pre code {
-      display: block;
-      background: var(--code-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
-      padding: 12px;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: #c9d1d9;
-      overflow-x: auto;
-      max-height: 250px;
+    /* Code Viewers with Absolute Overflow Containment */
+    .code-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
     }
 
+    .code-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 8px;
+    }
+
+    .btn-copy {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+    }
+
+    pre {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 260px;
+    }
+
+    pre code {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.81rem;
+      line-height: 1.55;
+      color: #d1d5db;
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    /* Footer */
     footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid var(--card-border);
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
       text-align: center;
       color: var(--text-muted);
       font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
 
-<div class="container">
+<div class="portal-container">
   <header>
+    <div class="brand-badge">
+      <span class="pulse-dot"></span>
+      Zero-Trust Offline Verifier
+    </div>
     <div class="brand-title">
-      <span class="shield">🛡️</span> s0 Verification Portal
+      <span class="logo-glyph">🛡️</span> s0 Verification Portal
     </div>
     <div class="subtitle">
-      Cryptographic Certificate Audit & Verification Engine — Pure Client-Side Ed25519
+      Mathematical non-repudiation and cryptographic audit for digital sanitization certificates.
     </div>
-    <div class="trust-tagline">
-      Zero-Trust Offline Cryptographic Architecture
+    <div class="trust-meta">
+      <span>🔒 100% Client-Side In-Browser</span>
+      <span>⚡ Pure WebCrypto &amp; Ed25519</span>
+      <span>📦 Zero Server Communication</span>
     </div>
   </header>
 
-  <div class="grid">
-    <!-- Left Column: Input & Actions -->
-    <div>
+  <div class="portal-grid">
+    <!-- Left Column: Input & Authority Keys -->
+    <div class="portal-col">
+      <!-- Upload Card -->
       <div class="card">
-        <h2>📂 Input Certificate</h2>
+        <div class="card-header">
+          <h2>📂 Input Certificate</h2>
+        </div>
+        
         <div class="dropzone" id="dropzone">
-          <span style="font-size: 2.2rem;">📄</span>
-          <p><strong>Drag & Drop</strong> certificate JSON here, or <strong>Click to Browse</strong></p>
+          <span class="dropzone-icon">📄</span>
+          <p><strong>Drag &amp; drop</strong> certificate JSON here</p>
+          <p class="hint">or click to browse local filesystem</p>
           <input type="file" id="fileInput" accept=".json,application/json">
         </div>
 
         <div style="margin-top: 16px;">
-          <label style="font-size: 0.85rem; color: var(--text-muted);">Or paste raw certificate JSON:</label>
+          <label for="jsonInput">Or paste raw certificate JSON:</label>
           <textarea id="jsonInput" placeholder="{
-  "schema_version": "1.0.0",
-  "cert_uuid": "...",
+  &quot;schema_version&quot;: &quot;1.0.0&quot;,
+  &quot;cert_uuid&quot;: &quot;...&quot;,
   ...
 }"></textarea>
         </div>
 
         <div class="btn-group">
-          <button class="primary" id="btnVerify">Verify Signature</button>
+          <button class="primary" id="btnVerify">
+            <span>🛡️</span> Verify Signature
+          </button>
           <button id="btnClear">Clear</button>
         </div>
 
-        <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--card-border);">
-          <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">⚡ Live Demonstration Scenarios:</label>
+        <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+          <label>⚡ Live Demonstration Scenarios:</label>
           <div class="btn-group" style="margin-top: 8px;">
-            <button id="btnLoadValid">Load Authentic Certificate</button>
-            <button class="danger-outline" id="btnLoadTampered">Load Tampered Certificate</button>
+            <button class="scenario-btn" id="btnLoadValid">
+              <span style="color: #34d399;">✓</span> Load Authentic Certificate
+            </button>
+            <button class="scenario-btn danger-outline" id="btnLoadTampered">
+              <span style="color: #f87171;">⚠️</span> Load Tampered Certificate
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top: 20px;">
-        <h2>🔑 Pinned Issuer Keys</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
-          s0 operates on a zero-trust model. Certificates are verified exclusively against pinned public keys.
+      <!-- Pinned Keys Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🔑 Pinned Issuer Keys</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+          Certificates are verified exclusively against pinned public keys shipped with this verifier.
         </p>
-        <div id="pinnedKeysList" style="font-size: 0.8rem; font-family: var(--font-mono); background: var(--code-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);">
-          Loading pinned keys...
+        <div id="pinnedKeysList">
+          <div class="key-box">Loading pinned authority keys...</div>
         </div>
       </div>
 
-      <div class="card" style="margin-top: 20px;">
-        <h2>🔑 Custom Public Key Verification</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
-          Paste an Ed25519 public key (PEM format or 64-char raw hex) to verify self-signed or non-pinned authority certificates.
-          <br><strong style="color: #e3b341;">Notice: Never enter private keys. Only public keys are required for verification.</strong>
+      <!-- Custom Key Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🗝️ Custom Public Key Verification</h2>
+        </div>
+        <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 10px;">
+          Verify certificates issued by non-pinned authority keys.
+          <br><strong style="color: #fbbf24;">Notice: Verification is mathematical: never paste a private key. Only public keys are needed.</strong>
         </p>
-        <textarea id="customKeyInput" rows="3" placeholder="-----BEGIN PUBLIC KEY-----&#10;MCowBQYDK2VwAyEA...&#10;-----END PUBLIC KEY-----&#10;or raw 64-character hex"
-          style="width: 100%; background: var(--code-bg); color: var(--text); border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; font-family: var(--font-mono); font-size: 0.8rem; resize: vertical; box-sizing: border-box;"></textarea>
-        <div style="margin-top: 8px;">
-          <button id="btnVerifyCustomKey" style="background: #1f6feb; color: #ffffff; border: none; border-radius: 6px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem;">
+        <textarea id="customKeyInput" rows="3" placeholder="-----BEGIN PUBLIC KEY-----&#10;MCowBQYDK2VwAyEA...&#10;-----END PUBLIC KEY-----&#10;or raw 64-character hex"></textarea>
+        <div style="margin-top: 10px;">
+          <button id="btnVerifyCustomKey" style="background: var(--info); color: #ffffff; border: none;">
             Verify with Custom Key
           </button>
         </div>
@@ -418,15 +799,22 @@
     </div>
 
     <!-- Right Column: Verification Results -->
-    <div>
+    <div class="portal-col">
       <div class="card" id="resultsCard">
-        <h2>🔍 Verification Audit Result</h2>
-        <div id="emptyState" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
-          <span style="font-size: 3rem; opacity: 0.4;">🔒</span>
-          <p style="margin-top: 12px;">No certificate loaded yet.<br>Upload a certificate JSON or click a scenario button to verify.</p>
+        <div class="card-header">
+          <h2>🔍 Verification Audit Result</h2>
         </div>
 
-        <div id="resultContainer" style="display: none;">
+        <!-- Empty State -->
+        <div id="emptyState">
+          <span class="empty-icon">🔒</span>
+          <p style="font-size: 1rem; color: var(--text-secondary); font-weight: 600;">No certificate loaded yet</p>
+          <p style="font-size: 0.85rem; margin-top: 6px;">Upload a certificate JSON file or select a live demo scenario.</p>
+        </div>
+
+        <!-- Result Container -->
+        <div id="resultContainer" style="display: none; min-width: 0; max-width: 100%;">
+          <!-- Verdict Banner -->
           <div id="resultBanner" class="result-banner">
             <div class="banner-icon" id="bannerIcon">✓</div>
             <div class="banner-text">
@@ -435,60 +823,153 @@
             </div>
           </div>
 
-          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">📜 Certificate Overview</h3>
-          <table class="prop-table">
-            <tbody>
-              <tr><th>Certificate UUID</th><td id="resUuid">-</td></tr>
-              <tr><th>Issued At</th><td id="resIssuedAt">-</td></tr>
-              <tr><th>Issuing Org</th><td id="resIssuer">-</td></tr>
-              <tr><th>Operator ID</th><td id="resOperator">-</td></tr>
-              <tr><th>Tool Platform</th><td id="resTool">-</td></tr>
-            </tbody>
-          </table>
+          <!-- Quick Metrics Ribbon -->
+          <div class="metric-ribbon">
+            <div class="metric-box">
+              <div class="metric-label">NIST Tier</div>
+              <div class="metric-val" id="resNistTier">-</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Capacity</div>
+              <div class="metric-val" id="metricCapacity">-</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Method</div>
+              <div class="metric-val" id="metricMethod">-</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Integrity</div>
+              <div class="metric-val" id="metricIntegrity" style="color: var(--success);">-</div>
+            </div>
+          </div>
 
-          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">💾 Device & Wipe Method</h3>
-          <table class="prop-table">
-            <tbody>
-              <tr><th>Device ID / Serial</th><td id="resDevice">-</td></tr>
-              <tr><th>Storage Type / Size</th><td id="resStorage">-</td></tr>
-              <tr><th>Wipe Method</th><td id="resMethod">-</td></tr>
-              <tr><th>NIST 800-88 Tier</th><td id="resNistTier">-</td></tr>
-              <tr><th>Forensic Verification</th><td id="resForensic">-</td></tr>
-            </tbody>
-          </table>
+          <!-- Certificate Identity -->
+          <div class="section-title">📜 Certificate Metadata</div>
+          <div class="table-container">
+            <table class="prop-table">
+              <tbody>
+                <tr><th>Certificate UUID</th><td id="resUuid">-</td></tr>
+                <tr><th>Issued At</th><td id="resIssuedAt">-</td></tr>
+                <tr><th>Issuing Authority</th><td id="resIssuer">-</td></tr>
+                <tr><th>Operator ID</th><td id="resOperator">-</td></tr>
+                <tr><th>Sanitization Tool</th><td id="resTool">-</td></tr>
+              </tbody>
+            </table>
+          </div>
 
-          <h3 style="font-size: 1rem; color: var(--accent); margin-top: 16px;">🔐 Cryptographic Evidence</h3>
-          <table class="prop-table">
-            <tbody>
-              <tr><th>Algorithm</th><td>Ed25519 (RFC 8032)</td></tr>
-              <tr><th>Key Fingerprint</th><td id="resFingerprint">-</td></tr>
-              <tr><th>Payload SHA-256</th><td id="resPayloadHash">-</td></tr>
-            </tbody>
-          </table>
+          <!-- Target Media & Geometry -->
+          <div class="section-title">💾 Target Media &amp; Sanitization Protocol</div>
+          <div class="table-container">
+            <table class="prop-table">
+              <tbody>
+                <tr><th>Device Model / ID</th><td id="resDevice">-</td></tr>
+                <tr><th>Media Type &amp; Size</th><td id="resStorage">-</td></tr>
+                <tr><th>Wipe Method</th><td id="resMethod">-</td></tr>
+                <tr><th>Forensic Verification</th><td id="resForensic">-</td></tr>
+              </tbody>
+            </table>
+          </div>
 
+          <!-- Cryptographic Evidence -->
+          <div class="section-title">🔐 Cryptographic Proof</div>
+          <div class="table-container">
+            <table class="prop-table">
+              <tbody>
+                <tr><th>Signature Algorithm</th><td>Ed25519 (RFC 8032 Pure)</td></tr>
+                <tr><th>Key Fingerprint</th><td id="resFingerprint">-</td></tr>
+                <tr><th>Payload SHA-256</th><td id="resPayloadHash">-</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Payload Tabs -->
           <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('canonical')">Canonical Payload</button>
-            <button class="tab-btn" onclick="switchTab('raw')">Raw Certificate JSON</button>
+            <button class="tab-btn active" onclick="switchTab('canonical')">Canonical Payload (s0 v1)</button>
+            <button class="tab-btn" onclick="switchTab('raw')">Formatted JSON</button>
           </div>
 
           <div id="tab-canonical" class="tab-content active">
-            <pre><code id="codeCanonical">-</code></pre>
+            <div class="code-wrapper">
+              <div class="code-actions">
+                <button class="btn-copy" onclick="copyCode('codeCanonical')">📋 Copy Canonical</button>
+              </div>
+              <pre><code id="codeCanonical">-</code></pre>
+            </div>
           </div>
+
           <div id="tab-raw" class="tab-content">
-            <pre><code id="codeRaw">-</code></pre>
+            <div class="code-wrapper">
+              <div class="code-actions">
+                <button class="btn-copy" onclick="copyCode('codeRaw')">📋 Copy JSON</button>
+              </div>
+              <pre><code id="codeRaw">-</code></pre>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
   </div>
 
   <footer>
-    <p>s0 Secure Data Wiping Suite • Pure Client-Side Zero-Trust Verification Portal</p>
-    <p style="font-size: 0.78rem; margin-top: 4px; color: #57606a;">
-      No server communication required. Math and cryptographic signatures guarantee tamper evidence.
+    <p>s0 Secure Data Sanitization &amp; Digital Forensic Suite • Pure Client-Side Zero-Trust Verification</p>
+    <p style="font-size: 0.78rem; margin-top: 6px; color: var(--text-muted);">
+      Mathematical non-repudiation: Ed25519 public key signatures guarantee proof of sanitization without server callbacks.
     </p>
   </footer>
 </div>
+
+<!-- Embedded Fallback Samples for Offline / file:/// Usage -->
+<script>
+  var SAMPLE_VALID_CERT = {
+    "schema_version": "1.0.0",
+    "cert_uuid": "6da82f40-ba63-4f06-a2bd-fb7bee6e715a",
+    "issued_at": "2026-08-31T01:59:10Z",
+    "issuer": {
+      "organization": "s0 Demo Lab",
+      "operator_id": "op-demo-42"
+    },
+    "tool": {
+      "name": "s0-cli",
+      "version": "0.1.0",
+      "platform": "linux"
+    },
+    "device": {
+      "device_id": "test-drive-001",
+      "device_type": "image_file",
+      "storage_type": "IMAGE_FILE",
+      "capacity_bytes": 1048576,
+      "model": "Virtual Test Drive",
+      "serial_number": "SN-12345678"
+    },
+    "wipe": {
+      "method": "OVERWRITE_ZERO_1PASS",
+      "nist_category": "Clear",
+      "start_time": "2026-08-31T07:00:00Z",
+      "end_time": "2026-08-31T07:01:00Z",
+      "bytes_processed": 1048576
+    },
+    "result": {
+      "status": "success",
+      "verification": {
+        "method": "sampled_readback",
+        "samples_checked": 64,
+        "sample_bytes_each": 4096,
+        "all_samples_match_wipe_pattern": true,
+        "planted_pattern_hits_after": 0
+      }
+    },
+    "signature": {
+      "algorithm": "Ed25519",
+      "public_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
+      "signature_base64url": "8TMpR-uXVmys3d-5Anj0yD4VgISOt7UJOsUQPq43xeU-UKHrz09mQgK5w9zdexzItdHz6F0sO-lz10te6oksCA",
+      "signed_payload_hash": "sha256:e1bd9ded489544f9ee6f5cada68f289fde000dde0f2ceff30c6a1dfc3acd4c79"
+    }
+  };
+
+  var SAMPLE_TAMPERED_CERT = JSON.parse(JSON.stringify(SAMPLE_VALID_CERT));
+  SAMPLE_TAMPERED_CERT.device.capacity_bytes = 999999999;
+</script>
 
 <!-- Load pure client-side crypto & verifier -->
 <script src="vendor/crypto-bundle.js"></script>
@@ -521,8 +1002,13 @@
     if (!el) return;
     var html = "";
     PINNED_KEYS.forEach(function(k) {
-      html += "<div><strong>" + (k.issuer || "Pinned Key") + "</strong><br>" +
-              "<span style='color: #58a6ff;'>" + k.fingerprint + "</span></div>";
+      html += '<div class="key-box">' +
+                '<div class="key-header">' +
+                  '<strong>' + (k.issuer || "Pinned Key") + '</strong>' +
+                  '<span class="key-badge">Active Trust</span>' +
+                '</div>' +
+                '<div style="color: var(--primary); font-size: 0.78rem;">' + k.fingerprint + '</div>' +
+              '</div>';
     });
     el.innerHTML = html;
   }
@@ -570,7 +1056,7 @@
     document.getElementById("resultContainer").style.display = "none";
   });
 
-  // Scenario loading
+  // Scenario loading (network fetch with embedded fallback for file:// compatibility)
   document.getElementById("btnLoadValid").addEventListener("click", function() {
     fetch("tests/sample_valid_cert.json")
       .then(function(r) { return r.json(); })
@@ -578,8 +1064,10 @@
         jsonInput.value = JSON.stringify(cert, null, 2);
         runVerification();
       })
-      .catch(function(e) {
-        alert("Could not load sample valid cert: " + e);
+      .catch(function() {
+        // Fallback for file:/// protocol where local fetches are blocked
+        jsonInput.value = JSON.stringify(SAMPLE_VALID_CERT, null, 2);
+        runVerification();
       });
   });
 
@@ -590,8 +1078,10 @@
         jsonInput.value = JSON.stringify(cert, null, 2);
         runVerification();
       })
-      .catch(function(e) {
-        alert("Could not load sample tampered cert: " + e);
+      .catch(function() {
+        // Fallback for file:/// protocol
+        jsonInput.value = JSON.stringify(SAMPLE_TAMPERED_CERT, null, 2);
+        runVerification();
       });
   });
 
@@ -623,7 +1113,15 @@
     if (bytes < 1024) return bytes + " B";
     var units = ["B", "KiB", "MiB", "GiB", "TiB"];
     var i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i] + " (" + bytes.toLocaleString() + " B)";
+    return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i] + " (" + Number(bytes).toLocaleString() + " B)";
+  }
+
+  function formatBytesShort(bytes) {
+    if (!bytes && bytes !== 0) return "-";
+    if (bytes < 1024) return bytes + " B";
+    var units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(1) + " " + units[i];
   }
 
   function showResult(res, cert) {
@@ -640,29 +1138,39 @@
 
     if (res.status === "VERIFIED_CUSTOM_KEY") {
       banner.classList.add("custom-key");
-      icon.textContent = "🔑";
-      title.textContent = "VERIFIED (Custom Key — Not in Official Registry)";
+      icon.textContent = "🗝️";
+      title.textContent = "VERIFIED (Custom Key — Non-Pinned Authority)";
       desc.textContent = res.reason;
+      document.getElementById("metricIntegrity").textContent = "Custom Key";
+      document.getElementById("metricIntegrity").style.color = "var(--info)";
     } else if (res.ok) {
       banner.classList.add("authentic");
       icon.textContent = "🛡️";
-      title.textContent = "AUTHENTIC & VERIFIED";
+      title.textContent = "AUTHENTIC & CRYPTOGRAPHICALLY VERIFIED";
       desc.textContent = res.reason;
+      document.getElementById("metricIntegrity").textContent = "✓ Authentic";
+      document.getElementById("metricIntegrity").style.color = "var(--success)";
     } else if (res.status === "TAMPERED_OR_CORRUPT") {
       banner.classList.add("tampered");
       icon.textContent = "⚠️";
-      title.textContent = "TAMPER DETECTED / INVALID SIGNATURE";
+      title.textContent = "SIGNATURE MISMATCH / TAMPER DETECTED";
       desc.textContent = res.reason;
+      document.getElementById("metricIntegrity").textContent = "✗ Tampered";
+      document.getElementById("metricIntegrity").style.color = "var(--danger)";
     } else if (res.status === "UNTRUSTED_ISSUER") {
       banner.classList.add("untrusted");
       icon.textContent = "❓";
       title.textContent = "UNTRUSTED ISSUER KEY";
       desc.textContent = res.reason;
+      document.getElementById("metricIntegrity").textContent = "Untrusted";
+      document.getElementById("metricIntegrity").style.color = "var(--warning)";
     } else {
       banner.classList.add("invalid");
       icon.textContent = "❌";
       title.textContent = "VALIDATION FAILED (" + res.status + ")";
       desc.textContent = res.reason;
+      document.getElementById("metricIntegrity").textContent = "Invalid";
+      document.getElementById("metricIntegrity").style.color = "var(--danger)";
     }
 
     if (cert) {
@@ -675,18 +1183,21 @@
       var dev = cert.device || {};
       document.getElementById("resDevice").textContent = (dev.model ? dev.model + " • " : "") + (dev.serial_number || dev.device_id || "-");
       document.getElementById("resStorage").textContent = (dev.storage_type || "-") + " • " + formatBytes(dev.capacity_bytes);
+      document.getElementById("metricCapacity").textContent = formatBytesShort(dev.capacity_bytes);
 
       var wipe = cert.wipe || {};
-      document.getElementById("resMethod").textContent = (wipe.method || "-") + (wipe.passes ? " (" + wipe.passes + " pass)" : "");
+      var methodStr = (wipe.method || "-");
+      document.getElementById("resMethod").textContent = methodStr + (wipe.passes ? " (" + wipe.passes + " pass)" : "");
+      document.getElementById("metricMethod").textContent = methodStr.replace("OVERWRITE_", "").replace("_1PASS", "");
 
       var tier = wipe.nist_category || "Unknown";
       var tierClass = "badge-" + tier.toLowerCase();
       document.getElementById("resNistTier").innerHTML = "<span class='badge " + tierClass + "'>" + tier + "</span>";
 
       var verif = (cert.result && cert.result.verification) || {};
-      var verifText = verif.samples_checked ? (verif.samples_checked + " samples checked (all match wipe pattern)") : "Standard verification";
+      var verifText = verif.samples_checked ? (verif.samples_checked + " samples checked (100% match wipe pattern)") : "Standard verification";
       if (verif.planted_pattern_hits_after !== undefined) {
-        verifText += " • Planted marker hits: " + verif.planted_pattern_hits_after;
+        verifText += " • Planted markers: " + verif.planted_pattern_hits_after + " hits";
       }
       document.getElementById("resForensic").textContent = verifText;
 
@@ -710,6 +1221,20 @@
     }
   }
 
+  function copyCode(elementId) {
+    var el = document.getElementById(elementId);
+    if (!el) return;
+    var text = el.textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = event.target;
+      var origText = btn.textContent;
+      btn.textContent = "✓ Copied!";
+      setTimeout(function() { btn.textContent = origText; }, 1800);
+    }).catch(function() {
+      alert("Copy failed — please select and copy manually.");
+    });
+  }
+
   document.getElementById("btnVerifyCustomKey").addEventListener("click", function() {
     var rawText = jsonInput.value.trim();
     if (!rawText) {
@@ -718,7 +1243,7 @@
     }
     var customKey = document.getElementById("customKeyInput").value.trim();
     if (!customKey) {
-      alert("Please paste an Ed25519 public key (PEM or raw 64-character hex).");
+      alert("Please paste an Ed25519 public key (PEM format or 64-character raw hex).");
       return;
     }
     var certObj;
@@ -760,9 +1285,9 @@
 
         if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(certParam)) {
           document.getElementById("emptyState").innerHTML =
-            '<span style="font-size: 3rem; opacity: 0.7;">📋</span>' +
-            '<h3 style="margin-top: 10px; color: var(--accent);">Certificate Locator: ' + certParam + '</h3>' +
-            '<p style="margin-top: 8px;">s0 operates on a zero-trust offline architecture: certificates are stored locally on forensic storage or in tamper-evident PDFs, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
+            '<span class="empty-icon">📋</span>' +
+            '<h3 style="margin-top: 10px; color: var(--primary);">Certificate Locator: ' + certParam + '</h3>' +
+            '<p style="margin-top: 8px; font-size: 0.88rem;">s0 operates on a zero-trust offline architecture: certificates are stored locally on forensic storage, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
         }
       }
     } catch (e) {
