@@ -412,10 +412,20 @@ def cmd_wipe(args) -> int:
     # Initialize unified progress bar
     total_bytes = target.capacity_bytes * getattr(args, "passes", 1)
     bar = ProgressBar(total_bytes, operation="s0 wipe")
+    _last_temp_time: list[float] = [0.0]  # mutable cell so the closure can mutate it
+    _last_temp_val: list = [None]
+
+    def _get_temp() -> str:
+        """Return temperature string, throttled to at most once per 2 seconds."""
+        now = time.monotonic()
+        if now - _last_temp_time[0] >= 2.0:
+            _last_temp_time[0] = now
+            _last_temp_val[0] = read_temperature(target.path)
+        t = _last_temp_val[0]
+        return f"Temp: {t}°C" if t is not None else ""
 
     def progress(msg: str) -> None:
-        temp = read_temperature(target.path)
-        temp_str = f"Temp: {temp}°C" if temp is not None else ""
+        temp_str = _get_temp()
 
         # Overwrite progress matching: "pass X/Y: N.N Unit / M.M Unit ..."
         m_over = re.search(r"pass (\d+)/(\d+):\s+([\d.]+)\s+(B|KiB|MiB|GiB|TiB)", msg)
@@ -653,10 +663,16 @@ def cmd_carve(args) -> int:
         target_size = target_path.stat().st_size
 
     bar = ProgressBar(target_size, operation="s0 carve") if target_size > 0 else None
+    _last_carve_temp_time: list[float] = [0.0]
+    _last_carve_temp_val: list = [None]
 
     def carve_progress_cb(scanned: int, total: int, found: int) -> None:
         if bar:
-            temp = read_temperature(args.target)
+            now = time.monotonic()
+            if now - _last_carve_temp_time[0] >= 2.0:
+                _last_carve_temp_time[0] = now
+                _last_carve_temp_val[0] = read_temperature(args.target)
+            temp = _last_carve_temp_val[0]
             extra = f"Found: {found:,}"
             if temp is not None:
                 extra += f" | Temp: {temp}°C"

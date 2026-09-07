@@ -11,7 +11,7 @@ Deploy the contents of the `verification-portal/` directory:
 ```
 verification-portal/
 ├── index.html              # Interactive verification UI (drag-and-drop, QR scanner, payload viewer)
-├── verify.js               # Pure JS verifier (RFC 8785 canonicalizer + Ed25519 validator)
+├── verify.js               # Pure JS verifier (s0 Canonical JSON v1 + Ed25519 validator)
 ├── keys.json               # Trusted authority public key registry (pinned keys & fingerprints)
 └── vendor/
     └── crypto-bundle.js    # Self-contained crypto primitives (no CDN or external network needed)
@@ -61,7 +61,7 @@ s0 solves this by separating **Attestation** from **Verification** using asymmet
 │  [ Sanitization / Carving ]                            │
 │             │                                          │
 │             ▼                                          │
-│  [ RFC 8785 Canonical JSON Payload ]                   │
+│  [ s0 Canonical JSON v1 Payload ]                     │
 │             │                                          │
 │             ▼                                          │
 │  [ Ed25519 Sign with Private Key ] (Offline Key)       │
@@ -88,8 +88,8 @@ s0 solves this by separating **Attestation** from **Verification** using asymmet
 ```
 
 ### 2.3 Mathematical Proof of Non-Repudiation
-1. **Deterministic Canonicalization (RFC 8785):**
-   - Whitespace, key order, and number representations are canonicalized into an unambiguous UTF-8 byte stream.
+1. **Deterministic Canonicalization (s0 Canonical JSON v1):**
+   - Key order, whitespace, and string escaping are deterministically canonicalized into an unambiguous UTF-8 byte stream per the [s0 Canonical JSON v1 specification](../core/CANONICAL_JSON.md). The spec deliberately deviates from RFC 8785/JCS on one point: float fields are forbidden at the schema level (all numeric values are integers), eliminating ES6 double-formatting ambiguity across languages without implementing it.
 2. **Ed25519 Digital Signature (RFC 8032):**
    - The issuing authority signs the canonical byte digest with its private key:
      $$S = \text{Sign}_{K_{\text{priv}}}(\text{SHA256}(\text{Canonical}(P)))$$

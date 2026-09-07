@@ -1,10 +1,12 @@
 # s0 Canonical JSON v1
 
-Every component that signs or verifies an s0 certificate — the Python core, the static
-verification portal (JavaScript), the Windows app (C#), the Android app (Kotlin) — MUST produce
-byte-identical canonical form for the same logical object. This document is the contract. Each
-implementation is tested against the golden vectors in `core/tests/data/canonical_vectors.json`
-and against certificates produced by the reference implementation.
+Every component that signs or verifies an s0 certificate — the Python core (`core/python/s0_core/canonical.py`)
+and the static verification portal (`verification-portal/verify.js`) — MUST produce byte-identical canonical
+form for the same logical object. This document is the contract. Each implementation is tested against the
+golden vectors in `core/tests/data/canonical_vectors.json` and against certificates produced by the reference
+implementation.
+
+*(Future roadmap: Windows native C# app and Android Kotlin app will implement this same spec when delivered.)*
 
 ## Rules
 
