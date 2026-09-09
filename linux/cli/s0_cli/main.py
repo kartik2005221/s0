@@ -255,8 +255,8 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
-            ans = input(f"\nType WIPE to permanently erase {target.path} (Windows Native): ")
-            if ans.strip() != "WIPE":
+            ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (Windows Native): ")
+            if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
                 return 2
 
@@ -314,8 +314,8 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
-            ans = input(f"\nType WIPE to permanently erase {target.path} (macOS Native): ")
-            if ans.strip() != "WIPE":
+            ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (macOS Native): ")
+            if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
                 return 2
 
@@ -390,9 +390,9 @@ def cmd_wipe(args) -> int:
     if not args.yes:
         _print_plan(target, candidate, alternatives, warnings, None)
         answer = input(
-            f"\nType WIPE to erase {target.path} ({plan.method_id}, NIST {plan.nist_category}): "
+            f"\nType '{target.path}' to confirm permanent erasure ({plan.method_id}, NIST {plan.nist_category}): "
         )
-        if answer.strip() != "WIPE":
+        if answer.strip() != str(target.path):
             print("aborted — nothing was written", file=sys.stderr)
             return 2
 
@@ -928,10 +928,10 @@ def cmd_image(args) -> int:
         print(f"⚠️  WARNING: Target destination '{args.destination}' is a PHYSICAL BLOCK DEVICE!")
         print("   Writing will OVERWRITE all existing partition tables, filesystems, and data.")
         try:
-            conf = input("Type 'CONFIRM-CLONE' to proceed: ").strip()
+            conf = input(f"Type '{args.destination}' to confirm clone to {args.destination}: ").strip()
         except EOFError:
             conf = ""
-        if conf != "CONFIRM-CLONE":
+        if conf != str(args.destination):
             print("Aborted by operator.")
             return 1
 

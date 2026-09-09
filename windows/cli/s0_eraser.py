@@ -845,8 +845,8 @@ def main() -> int:
         target = args.wipe_partition or args.wipe_drive
         if not args.yes:
             print(f"WARNING: This will PERMANENTLY DESTROY all data on {target}!")
-            confirm = input(f"Type 'yes' to proceed with wiping {target}: ").strip().lower()
-            if confirm != "yes":
+            confirm = input(f"Type '{target}' to confirm wiping {target}: ").strip()
+            if confirm != target:
                 print("Aborted by user.")
                 return 1
 

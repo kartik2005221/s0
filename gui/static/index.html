@@ -642,9 +642,9 @@
         <div class="form-group" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px;">
           <label style="color: #f87171;">Destructive Safety Lock:</label>
           <p style="font-size: 0.78rem; color: #fca5a5; margin-bottom: 8px;">
-            Type <strong style="font-family: var(--font-mono); color: #fff;">WIPE</strong> to confirm permanent physical destruction of data on this target:
+            Type exact target path <strong id="driveConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">target device path</strong> to confirm permanent physical destruction:
           </p>
-          <input type="text" id="driveConfirm" placeholder='Type "WIPE" to arm command' style="border-color: rgba(239, 68, 68, 0.5);">
+          <input type="text" id="driveConfirm" placeholder='Type exact target device path to arm command' style="border-color: rgba(239, 68, 68, 0.5);">
         </div>
 
         <button class="btn btn-danger" onclick="startDriveWipe()">
@@ -1100,6 +1100,8 @@
 
     async function onDriveSelected() {
       const target = document.getElementById("driveSelect").value;
+      const promptEl = document.getElementById("driveConfirmPromptPath");
+      if (promptEl) promptEl.textContent = target || "target device path";
       if (!target) return;
       try {
         const res = await fetch("/api/plan", {
@@ -1131,8 +1133,8 @@
       const pattern = document.getElementById("drivePattern").value;
       const passes = parseInt(document.getElementById("drivePasses").value, 10) || 1;
 
-      if (confirm_text !== "WIPE") {
-        alert('Destructive safety lock: Please type "WIPE" in the confirmation box.');
+      if (confirm_text !== target) {
+        alert(`Destructive safety lock: Please type the exact target path "${target}" in the confirmation box.`);
         return;
       }
 

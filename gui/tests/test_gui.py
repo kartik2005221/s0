@@ -58,13 +58,13 @@ def test_plan_refuses_missing(client):
 
 
 def test_wipe_requires_exact_confirmation(client, small_image):
-    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": "wipe"})
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": "WIPE"})
     assert r.status_code == 400
-    assert "WIPE" in r.json()["detail"]
+    assert small_image in r.json()["detail"]
 
 
 def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_path):
-    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": "WIPE"})
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image})
     job_id = r.json()["job_id"]
 
     result = None

@@ -221,8 +221,8 @@ def api_plan(req: dict) -> JSONResponse:
 
 @app.post("/api/wipe")
 def start_wipe(req: WipeRequest) -> JSONResponse:
-    if req.confirm_text != "WIPE":
-        raise HTTPException(400, 'confirmation must be exactly "WIPE"')
+    if req.confirm_text.strip() != req.target.strip():
+        raise HTTPException(400, f'confirmation must be exact target path: "{req.target}"')
     plan = plan_payload(req.target)
     if plan["refusal"]:
         raise HTTPException(409, plan["refusal"])
