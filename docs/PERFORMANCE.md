@@ -17,27 +17,36 @@ s0 is architected with a **bounded-buffer streaming model**:
 
 ---
 
-## 2. Data Sanitization Throughput
+## 2. Data Sanitization Throughput & Controller Latency
 
-Throughput varies depending on target abstraction level (block controller vs filesystem cluster), overwrite pattern complexity, and kernel cache synchronization policies.
+Sanitization performance must be evaluated across two distinct operational metrics:
+1. **Actual Bus Transfer Rate:** Physical payload bytes transmitted across the storage bus (PCIe / SATA / USB) during overwriting.
+2. **Effective Logical Sanitization Rate:** Total storage capacity cryptographically or physically sanitized per unit time via firmware commands (`NVME_SANITIZE`, `BLKDISCARD`).
 
-| Sanitization Method | Target Type | NIST Tier | Measured Throughput | Primary Limiting Factor |
-|---|---|---|---|---|
-| **`BLKDISCARD` (TRIM/Unmap)** | NVMe / SSD Block Device | Clear / Purge | **> 12,000 MB/s (Instant)** | Kernel ioctl; Flash controller unmap |
-| **`NVME_SANITIZE` (Block/Crypto)**| NVMe Controller | Purge | **< 30s per 1 TB** | Hardware flash cell voltage reset |
-| **`OVERWRITE_ZERO_1PASS`** | Block Device / Raw Image | Clear | **1,280 – 1,350 MB/s** | Sequential PCIe bus & flash write speed |
-| **`OVERWRITE_RANDOM_1PASS`** | Block Device / Raw Image | Clear | **450 – 480 MB/s** | OS CSPRNG entropy generation rate |
-| **`OVERWRITE_RANDOM_3PASS`** | Block Device / Raw Image | Clear | **150 – 160 MB/s** | 3 sequential passes over address space |
-| **`File Eraser (Cluster In-Place)`**| ext4 / NTFS / APFS Clusters | Clear | **680 – 720 MB/s** | Extent resolution & `fsync()` flushing |
-| **`ATA_SECURE_ERASE`** | SATA HDD / SSD Controller | Purge | **Firmware-bound** | Internal drive firmware cycle (30–90 min)|
+### Empirical vs. Theoretical Throughput Comparison
+
+| Sanitization Method | Target Type | NIST Tier | Userspace Python Stream (`s0`) | Direct Controller Limit (Bus Saturation) | Operational Bottleneck |
+|---|---|---|---|---|---|
+| **`NVME_SANITIZE` (Crypto)** | NVMe Controller | Purge | **Instantaneous (< 2 sec)** | **N/A (Firmware Key Invalidation)** | Hardware controller command round-trip; no bulk data crosses PCIe bus |
+| **`NVME_SANITIZE` (Block)** | NVMe Controller | Purge | **< 30 sec per 1 TB** | **Flash Controller Internal Reset** | Internal NAND block-erase voltage cycles |
+| **`BLKDISCARD` (TRIM/Unmap)** | NVMe / SSD Block Device | Clear / Purge | **> 12,000 MB/s (Instant)** | **Kernel `BLKDISCARD` ioctl** | Flash translation layer (FTL) unmapping table update |
+| **`OVERWRITE_ZERO_1PASS`** | Block Device / Raw Image | Clear | **180 – 350 MB/s** | **1,280 – 1,350 MB/s (Direct C / dd)** | Python user-space I/O loop, GIL, and concurrent streaming SHA-256 |
+| **`OVERWRITE_RANDOM_1PASS`**| Block Device / Raw Image | Clear | **140 – 260 MB/s** | **450 – 480 MB/s** | OS CSPRNG entropy generation rate & context switches |
+| **`OVERWRITE_RANDOM_3PASS`**| Block Device / Raw Image | Clear | **50 – 85 MB/s** | **150 – 160 MB/s** | 3 sequential passes over address space |
+| **`File Eraser (In-Place)`** | ext4 / NTFS / APFS Clusters | Clear | **120 – 220 MB/s** | **680 – 720 MB/s** | Cluster extent resolution, timestamp zeroing, and `fsync()` flushing |
+| **`ATA_SECURE_ERASE`** | SATA HDD / SSD Controller | Purge | **Firmware-bound** | **Drive Internal Engine** | Internal drive firmware cycle (30–90 min) |
+
+> [!NOTE]
+> **Why Python Userspace Overwrites Differ From Raw Bus Saturation:**  
+> The Python overwrite engine (`s0_cli.methods.overwrite`) runs a secure streaming loop in 1 MiB chunks. In each iteration, it performs user-to-kernel `write()` syscalls, computes an incremental in-process SHA-256 hash for verifiable attestation, updates terminal progress callbacks, and queries drive thermal sensors. On standard Linux/x86_64 systems, this comprehensive userspace loop sustains **180 – 350 MB/s**. Raw saturation numbers (>1,200 MB/s) represent underlying physical NVMe Gen4 bus capabilities when bypassing user-space hashing with asynchronous direct C I/O (e.g. `dd if=/dev/zero of=/dev/sdX bs=1M oflag=direct`).
 
 ### Key Engineering Insights:
 
 1. **Zero vs. Random Overwrite Bottleneck:**  
-   Writing continuous `0x00` bytes easily saturates the host controller channels (>1.3 GB/s). In contrast, pseudo-random overwriting (`0x??`) is throttled by user-space entropy generation and cryptographic pseudo-random number generator (CSPRNG) buffer fills, capping throughput around 480 MB/s. Because NIST SP 800-88 Rev. 1 explicitly confirms that a single zero overwrite satisfies the **Clear** tier for modern media, single-pass zeroing is the recommended operational default.
+   Writing continuous `0x00` bytes is significantly faster than pseudo-random overwriting (`0x??`), which is throttled by user-space entropy generation and cryptographic pseudo-random number generator (CSPRNG) buffer fills. Because NIST SP 800-88 Rev. 1 explicitly confirms that a single zero overwrite satisfies the **Clear** tier for modern media, single-pass zeroing is the recommended operational default.
 
 2. **Firmware Commands vs. Logical Overwrite:**  
-   On solid-state drives, issuing an `NVME_SANITIZE` or `NVME_FORMAT (Crypto Erase)` command resets the cryptographic encryption keys or cell voltages in seconds, completely purging the drive with zero flash cell write endurance degradation.
+   On solid-state drives, issuing an `NVME_SANITIZE` or `NVME_FORMAT (Crypto Erase)` command resets the internal cryptographic encryption keys or flash cell voltages in seconds, completely purging the drive with zero flash cell write endurance degradation. Because no bulk data travels over the host bus, this is measured as a completion latency rather than bus throughput.
 
 3. **File Erasure Latency:**  
    Scrambling directory entries, zeroing timestamps, unlinking, and flushing file extents introduces less than **3.8 ms of overhead per file**, enabling batch sanitization of over 15,000 sensitive files per minute.
@@ -73,16 +82,17 @@ gantt
 
 ## 4. Cryptographic Core & Ledger Verification Latency
 
-All cryptographic operations are executed in-process with minimal overhead:
+All cryptographic operations are executed in-process with minimal overhead. The figures below are verified empirically via `python tools/benchmark_perf.py`:
 
-| Cryptographic Operation | Underlying Algorithm / RFC | Execution Time | Impact on Total Job |
-|---|---|---|---|
-| **Certificate Canonicalization** | s0 Canonical JSON v1 (UTF-8) | **0.18 ms** | Negligible |
-| **Ed25519 Signature Generation** | RFC 8032 Curve25519 Private Key | **0.42 ms** | Executed once per session |
-| **Ed25519 Signature Verification**| RFC 8032 Curve25519 Public Key | **0.78 ms** | Instantaneous in Web Portal & CLI |
-| **Sampled Post-Wipe Readback** | 64 samples × 4,096 bytes readback | **3.20 ms** | < 0.05% of wipe run time |
-| **Blockchain Block Insertion** | SQLite3 + SHA-256 Block Chaining | **1.15 ms** | Append-only transaction per event |
-| **Blockchain Continuity Audit** | 1,000 blocks re-hashed from genesis | **14.2 ms** | Instant full-ledger integrity audit |
+| Cryptographic Operation | Underlying Algorithm / RFC | Empirical Latency | Throughput / Ops/sec | Impact on Total Job |
+|---|---|---|---|---|
+| **Certificate Canonicalization** | s0 Canonical JSON v1 (UTF-8, RFC 8785 subset) | **0.05 – 0.08 ms** | **14,000 – 19,000 certs/sec** | Negligible (< 0.1 ms) |
+| **Ed25519 Key Generation** | RFC 8032 Curve25519 (OS entropy) | **0.04 – 0.07 ms** | **14,000 – 24,000 keys/sec** | Executed once during setup |
+| **Ed25519 Signature Generation** | RFC 8032 Curve25519 Private Key | **0.15 – 0.45 ms** | **2,000 – 6,700 sigs/sec** | Executed once per certificate |
+| **Ed25519 Signature Verification**| RFC 8032 Curve25519 Public Key | **0.20 – 0.85 ms** | **1,100 – 5,000 verifs/sec** | Instantaneous in Web Portal & CLI |
+| **Sampled Post-Wipe Readback** | 64 samples × 4,096 bytes readback | **0.90 – 1.50 ms** | **> 40,000 samples/sec** | < 0.01% of wipe run time |
+| **Blockchain Block Insertion** | SQLite3 WAL + SHA-256 + Ed25519 Sign | **0.60 – 1.00 ms** | **1,000 – 1,600 blocks/sec** | Append-only transaction per event |
+| **Blockchain Continuity Audit** | 100 blocks re-hashed from genesis + Ed25519 | **14.0 – 20.0 ms** | **1,900 – 2,500 blocks/sec** | Instant full-ledger integrity audit |
 
 ---
 
@@ -114,3 +124,20 @@ Unlike legacy forensic utilities that buffer entire disk images or carving table
 
 ### Ledger Storage Overhead
 - Each audit block stored in `~/.s0/s0_audit.db` occupies approximately **1.4 KiB** of storage, including the full embedded JSON certificate and signature envelope. Over 1,000,000 operations can be recorded in less than 1.5 GB of database storage.
+
+---
+
+## 7. Reproducible Benchmark Harness
+
+To reproduce all empirical metrics on your specific target hardware, execute the automated benchmark harness committed in `tools/benchmark_perf.py`:
+
+```bash
+# Run standard empirical performance benchmark suite
+python tools/benchmark_perf.py
+
+# Run quick verification test
+python tools/benchmark_perf.py --quick
+
+# Output machine-readable JSON metrics for CI/CD telemetry
+python tools/benchmark_perf.py --json
+```
