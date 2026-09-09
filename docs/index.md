@@ -55,7 +55,7 @@ Every sanitization operation outputs a digitally signed certificate. The signatu
 
 ### 2. Air-Gapped & Offline Verification
 Certificates can be audited without connecting to the internet or any central database. The suite provides three independent offline verification mechanisms:
-- **Client-Side Web Portal:** Single-page application using pure WebCrypto. Drag & drop JSON to audit signatures offline.
+- **Client-Side Web Portal:** Single-page application using pure WebCrypto. Drag & drop JSON to audit signatures offline (Live at [s0-vp.vercel.app](https://s0-vp.vercel.app/)).
 - **CLI Verifier:** `python3 -m s0_core.cli verify --cert certificate.json --key pubkey.pem`
 - **Tamper-Evident PDF & QR:** Offline optical verification using standard smartphone cameras.
 
@@ -71,4 +71,4 @@ We do not believe in vaporware or exaggerated claims. Hardware boundaries, Copy-
 - **Architecture Overview:** [System Architecture](ARCHITECTURE.md)
 - **Compliance Mapping:** [NIST SP 800-88 & Legal Standards](COMPLIANCE.md)
 - **Developer Handover:** [Handover & Quickstart Guide](HANDOVER.md)
-- **Verification Portal:** [Offline Verification Guide](VERIFICATION_AND_DEPLOYMENT.md#3-how-offline-verification-is-performed)
+- **Verification Portal:** [Offline Verification Guide](VERIFICATION_AND_DEPLOYMENT.md#3-how-offline-verification-is-performed) • [Live Portal (s0-vp.vercel.app)](https://s0-vp.vercel.app/)

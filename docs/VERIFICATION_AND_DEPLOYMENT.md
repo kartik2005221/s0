@@ -29,6 +29,7 @@ Because the portal contains no server execution code (no Node, no Python, no PHP
 3. **Vercel / Netlify:**
    - Framework preset: *Other / Static HTML*
    - Root directory: `verification-portal`
+   - *Production instance live at:* [https://s0-vp.vercel.app/](https://s0-vp.vercel.app/)
 4. **Self-Hosted Air-Gapped / Intranet Nginx:**
    ```nginx
    server {
