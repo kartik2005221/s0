@@ -81,7 +81,7 @@
 }
 
 /* ================================================================
-   1. REMOVE TOP HEADER (GitBook-style Layout)
+   1. REMOVE TOP HEADER & GITBOOK SIDEBAR HEADER
    ================================================================ */
 .md-header {
   display: none !important;
@@ -90,7 +90,7 @@
 /* Sidebar positioning from top of screen */
 .md-sidebar {
   top: 0 !important;
-  padding-top: 1.25rem !important;
+  padding-top: 0 !important;
   height: 100vh !important;
 }
 
@@ -103,72 +103,142 @@
   margin-top: 1rem !important;
 }
 
-/* Show Logo and Title at the top of the left sidebar like GitBook */
-.md-nav--primary > .md-nav__title {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-  font-size: 1.05rem !important;
-  font-weight: 700 !important;
-  color: #FFFFFF !important;
-  padding: 0.5rem 0.6rem 1rem 0.6rem !important;
-  margin-bottom: 0.75rem !important;
+/* Solid Opaque Sticky Sidebar Header (Prevents scroll bleed) */
+.s0-sidebar-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 20 !important;
+  background-color: #222831 !important;
+  padding: 1.25rem 0.6rem 0.85rem 0.6rem !important;
   border-bottom: 1px solid #393E46 !important;
-  height: auto !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  cursor: default !important;
-}
-
-.md-nav--primary > .md-nav__title .md-nav__button.md-logo {
-  display: inline-flex !important;
-  align-items: center !important;
-  position: static !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  color: #00ADB5 !important;
-}
-
-.md-nav--primary > .md-nav__title .md-nav__button.md-logo svg {
-  width: 1.6rem !important;
-  height: 1.6rem !important;
-  fill: #00ADB5 !important;
-}
-
-/* GitHub repo button inside left sidebar */
-.md-nav--primary > .md-nav__source {
-  display: block !important;
-  padding: 0 0.6rem 0.85rem 0.6rem !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   margin-bottom: 0.85rem !important;
 }
 
-.md-nav--primary > .md-nav__source .md-source {
+.s0-brand-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  margin-bottom: 0.75rem !important;
+  text-decoration: none !important;
+}
+
+.s0-brand-logo svg {
+  width: 1.85rem !important;
+  height: 1.85rem !important;
+  fill: #00ADB5 !important;
+  display: block !important;
+}
+
+.s0-brand-text {
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  letter-spacing: -0.01em !important;
+  text-decoration: none !important;
+}
+
+.s0-brand-text:hover {
+  color: #00ADB5 !important;
+}
+
+/* GitHub repo button in sidebar */
+.s0-repo-link {
+  display: block !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.s0-repo-link .md-source {
   background-color: #282e38 !important;
   border: 1px solid #393E46 !important;
   border-radius: 6px !important;
-  padding: 0.4rem 0.75rem !important;
+  padding: 0.35rem 0.65rem !important;
   color: #cbd5e1 !important;
   display: flex !important;
   align-items: center !important;
   gap: 0.5rem !important;
+  font-size: 0.82rem !important;
+  text-decoration: none !important;
   transition: all 0.15s ease !important;
 }
 
-.md-nav--primary > .md-nav__source .md-source:hover {
+.s0-repo-link .md-source:hover {
   border-color: #00ADB5 !important;
   color: #FFFFFF !important;
   background-color: rgba(0, 173, 181, 0.1) !important;
 }
 
-/* ================================================================
-   2. SEARCH BOX
-   ================================================================ */
-.md-search__inner {
-  background-color: #282e38 !important;
-  border: 1px solid #393E46;
-  border-radius: 8px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+/* Sidebar Search Bar (GitBook Style) */
+.s0-search-container {
+  display: block !important;
+  width: 100% !important;
+}
+
+.s0-search-container .md-search {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+.s0-search-container .md-search__inner {
+  position: relative !important;
+  width: 100% !important;
+  opacity: 1 !important;
+  height: auto !important;
+  transform: none !important;
+  float: none !important;
+  padding: 0 !important;
+}
+
+.s0-search-container .md-search__form {
+  background-color: #1a1e24 !important;
+  border: 1px solid #393E46 !important;
+  border-radius: 6px !important;
+  height: 2.2rem !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.s0-search-container .md-search__form:focus-within {
+  border-color: #00ADB5 !important;
+  box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.25) !important;
+}
+
+.s0-search-container .md-search__input {
+  color: #FFFFFF !important;
+  font-size: 0.82rem !important;
+  height: 2.2rem !important;
+  padding-left: 2.2rem !important;
+  padding-right: 2rem !important;
+}
+
+.s0-search-container .md-search__input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+.s0-search-container .md-search__icon[for="__search"] {
+  color: #00ADB5 !important;
+  left: 0.6rem !important;
+  top: 0.5rem !important;
+}
+
+.s0-search-container .md-search__icon[for="__search"] svg {
+  fill: #00ADB5 !important;
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.s0-search-container .md-search__output {
+  position: fixed !important;
+  left: 14rem !important;
+  top: 2rem !important;
+  width: 32rem !important;
+  max-width: calc(100vw - 16rem) !important;
+  z-index: 100 !important;
+  background-color: #1a1e24 !important;
+  border: 1px solid #393E46 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
 }
 
 .md-search__input {
@@ -653,14 +723,31 @@
 }
 
 /* ================================================================
-   14. MERMAID DIAGRAMS
+   14. MERMAID DIAGRAMS (Readable Sizing & Smooth Scroll)
    ================================================================ */
 .mermaid {
   text-align: center;
   background-color: #1a1e24 !important;
   border: 1px solid #393E46;
   border-radius: 8px;
-  padding: 1rem;
+  padding: 1.25rem 1rem;
+  overflow-x: auto !important;
+  margin: 1.5rem 0;
+  display: flex !important;
+  justify-content: center;
+}
+
+.mermaid svg {
+  min-width: 600px !important;
+  max-width: 100% !important;
+  height: auto !important;
+  font-size: 14px !important;
+}
+
+@media screen and (max-width: 45em) {
+  .mermaid svg {
+    min-width: 480px !important;
+  }
 }
 
 /* ================================================================

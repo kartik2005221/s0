@@ -7,7 +7,7 @@ site_url: https://s0-docs-ten.vercel.app/
 repo_url: https://github.com/kartik2005221/s0
 repo_name: kartik2005221/s0
 copyright: >-
-  Copyright &copy; 2025 Kartik & s0 Contributors &mdash;
+  Copyright &copy; 2025-2026 @kartik2005221 &mdash;
   <a href="https://github.com/kartik2005221/s0/blob/master/LICENSE">MIT License</a>
 
 docs_dir: docs
@@ -15,6 +15,7 @@ site_dir: public
 
 theme:
   name: material
+  custom_dir: overrides
   language: en
   icon:
     logo: material/shield-check

@@ -1,0 +1,32 @@
+{% import "partials/nav-item.html" as item with context %}
+{% set class = "md-nav md-nav--primary" %}
+{% if "navigation.tabs" in features %}
+  {% set class = class ~ " md-nav--lifted" %}
+{% endif %}
+{% if "toc.integrate" in features %}
+  {% set class = class ~ " md-nav--integrated" %}
+{% endif %}
+<nav class="{{ class }}" aria-label="{{ lang.t('nav') }}" data-md-level="0">
+  <div class="s0-sidebar-header">
+    <div class="s0-brand-row">
+      <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" title="{{ config.site_name | e }}" class="s0-brand-logo" aria-label="{{ config.site_name }}">
+        {% include "partials/logo.html" %}
+      </a>
+      <a href="{{ config.extra.homepage | d(nav.homepage.url, true) | url }}" class="s0-brand-text">{{ config.site_name }}</a>
+    </div>
+    {% if config.repo_url %}
+      <div class="md-nav__source s0-repo-link">
+        {% include "partials/source.html" %}
+      </div>
+    {% endif %}
+    <div class="s0-search-container">
+      {% include "partials/search.html" %}
+    </div>
+  </div>
+  <ul class="md-nav__list" data-md-scrollfix>
+    {% for nav_item in nav.items %}
+      {% set path = "__nav_" ~ loop.index %}
+      {{ item.render(nav_item, path, 1) }}
+    {% endfor %}
+  </ul>
+</nav>
