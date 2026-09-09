@@ -253,7 +253,7 @@ diskutil eject /dev/disk2
    - Confirm by typing the safety phrase (`CONFIRM-WIPE`).
    - Monitor real-time progress, read/write throughput, and drive temperature.
    - Upon completion, the tool issues an **Ed25519-signed sanitization certificate** and generates a tamper-evident PDF with QR code verification.
-   - Save the certificate to an external USB or scan the on-screen QR code using any smartphone or the offline [Verification Portal](../verification-portal/index.html).
+   - Save the certificate to an external USB or scan the on-screen QR code using any smartphone or the offline [Verification Portal](VERIFICATION_AND_DEPLOYMENT.md#3-how-offline-verification-is-performed).
 
 ---
 

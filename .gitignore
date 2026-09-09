@@ -14,6 +14,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+public/
+site/
 .venv/
 
 # Wipe test artifacts (disk images can be large)

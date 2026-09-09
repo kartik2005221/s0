@@ -1,0 +1,80 @@
+site_name: s0 Documentation
+site_description: Digital Forensic & Sanitization Suite — NIST SP 800-88 Compliant Architecture
+site_author: Kartik & s0 Contributors
+repo_url: https://github.com/kartik2005221/s0
+repo_name: kartik2005221/s0
+
+docs_dir: docs
+site_dir: public
+
+theme:
+  name: material
+  language: en
+  palette:
+    # Slate / Dark Mode (Default)
+    - scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    # Light Mode
+    - scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  font:
+    text: Fira Sans
+    code: Fira Code
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Overview: index.md
+  - User Guides:
+      - User Manual: USER_MANUAL.md
+      - Bare-Metal Live ISO: LIVE_ISO_BUILD_GUIDE.md
+      - Verification & Deployment: VERIFICATION_AND_DEPLOYMENT.md
+  - Architecture & Engineering:
+      - System Architecture: ARCHITECTURE.md
+      - Canonical JSON v1 Specification: CANONICAL_JSON.md
+      - Evaluator Handover: HANDOVER.md
+      - Performance Benchmarks: PERFORMANCE.md
+  - Forensic & Compliance:
+      - NIST SP 800-88 Compliance: COMPLIANCE.md
+      - Limitations & Boundaries: LIMITATIONS.md
+      - Forensic Test Plan: TEST_PLAN.md
+      - Pitch & Defense Outline: PITCH_OUTLINE.md

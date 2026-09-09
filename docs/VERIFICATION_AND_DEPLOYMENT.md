@@ -89,7 +89,7 @@ s0 solves this by separating **Attestation** from **Verification** using asymmet
 
 ### 2.3 Mathematical Proof of Non-Repudiation
 1. **Deterministic Canonicalization (s0 Canonical JSON v1):**
-   - Key order, whitespace, and string escaping are deterministically canonicalized into an unambiguous UTF-8 byte stream per the [s0 Canonical JSON v1 specification](../core/CANONICAL_JSON.md). The spec deliberately deviates from RFC 8785/JCS on one point: float fields are forbidden at the schema level (all numeric values are integers), eliminating ES6 double-formatting ambiguity across languages without implementing it.
+   - Key order, whitespace, and string escaping are deterministically canonicalized into an unambiguous UTF-8 byte stream per the [s0 Canonical JSON v1 specification](CANONICAL_JSON.md). The spec deliberately deviates from RFC 8785/JCS on one point: float fields are forbidden at the schema level (all numeric values are integers), eliminating ES6 double-formatting ambiguity across languages without implementing it.
 2. **Ed25519 Digital Signature (RFC 8032):**
    - The issuing authority signs the canonical byte digest with its private key:
      $$S = \text{Sign}_{K_{\text{priv}}}(\text{SHA256}(\text{Canonical}(P)))$$

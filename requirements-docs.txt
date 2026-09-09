@@ -1,0 +1,2 @@
+# Documentation Site Dependencies (MkDocs Material)
+mkdocs-material>=9.5.0
