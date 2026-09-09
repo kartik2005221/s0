@@ -25,9 +25,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import secrets
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -824,6 +826,77 @@ def cmd_keygen(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Module 6: Upgrade & Maintenance
+# --------------------------------------------------------------------------- #
+
+
+def cmd_upgrade(args) -> int:
+    """Upgrade S0 installation to the latest version."""
+    print("╔══════════════════════════════════════════════════════════════════╗")
+    print("║      S0 (Sector Zero) — Suite Upgrade & Maintenance Tool         ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    print()
+
+    repo_dir = None
+    env_dir = os.environ.get("S0_INSTALL_DIR")
+    if env_dir and Path(env_dir).is_dir():
+        repo_dir = Path(env_dir)
+    else:
+        home_s0 = Path.home() / ".s0"
+        if home_s0.is_dir() and (home_s0 / ".git").is_dir():
+            repo_dir = home_s0
+        else:
+            cur = Path(__file__).resolve()
+            for parent in [cur] + list(cur.parents):
+                if (parent / ".git").is_dir():
+                    repo_dir = parent
+                    break
+
+    if not repo_dir:
+        print("[ERROR] Could not locate S0 git installation repository.", file=sys.stderr)
+        print("To install or upgrade S0, run:")
+        if sys.platform == "win32":
+            print("  irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex")
+        else:
+            print("  curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash")
+        return 1
+
+    print(f"[*] Found S0 installation at: {repo_dir}")
+    try:
+        cur_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_dir), text=True
+        ).strip()
+        print(f"[*] Current commit: {cur_hash}")
+        print("[*] Pulling latest changes from GitHub origin/master...")
+        subprocess.check_call(["git", "fetch", "origin", "master", "-q"], cwd=str(repo_dir))
+        latest_hash = subprocess.check_output(
+            ["git", "rev-parse", "--short", "origin/master"], cwd=str(repo_dir), text=True
+        ).strip()
+
+        if cur_hash == latest_hash and not getattr(args, "force", False):
+            print(f"[✓] S0 is already up-to-date at commit {cur_hash}.")
+        else:
+            subprocess.check_call(["git", "pull", "--ff-only", "origin", "master", "-q"], cwd=str(repo_dir))
+            print(f"[✓] Source updated: {cur_hash} → {latest_hash}")
+
+        py_bin = sys.executable
+        print("[*] Refreshing dependencies...")
+        subprocess.check_call([py_bin, "-m", "pip", "install", "--upgrade", "pip", "-q"])
+        subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "core" / "python"), "-q"])
+        subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "linux" / "cli"), "-q"])
+        subprocess.check_call([py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
+        print("[✓] Dependencies refreshed.")
+
+        ver = subprocess.check_output([py_bin, "-m", "s0_cli.main", "--version"], text=True).strip()
+        print()
+        print(f"✅ S0 upgraded successfully to {ver} ({latest_hash})")
+        return 0
+    except Exception as exc:
+        print(f"[ERROR] Upgrade failed: {exc}", file=sys.stderr)
+        return 1
+
+
+# --------------------------------------------------------------------------- #
 # CLI Parser Setup
 # --------------------------------------------------------------------------- #
 
@@ -960,6 +1033,11 @@ def build_parser() -> argparse.ArgumentParser:
     kg.add_argument("--out-dir", default=".", help="directory to store private and public keys")
     kg.add_argument("--name", default="operator_key", help="key filename prefix")
     kg.set_defaults(func=cmd_keygen)
+
+    # 7. Upgrade Subcommand
+    upg = sub.add_parser("upgrade", help="upgrade S0 suite to the latest version from GitHub")
+    upg.add_argument("--force", action="store_true", help="force re-installation of dependencies even if up to date")
+    upg.set_defaults(func=cmd_upgrade)
 
     return p
 

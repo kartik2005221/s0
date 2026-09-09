@@ -42,6 +42,30 @@ The **s0 (Sector Zero)** suite unites two traditionally disjoint capabilities:
     bash scripts/build_all.sh
     ```
 
+### 2.1 Upgrading S0
+
+To keep S0 updated with the latest forensic capabilities, compliance rules, and patches:
+
+=== "Command Line (Universal)"
+    ```bash
+    s0 upgrade
+    ```
+
+=== "Linux & macOS"
+    ```bash
+    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash
+    ```
+
+=== "Windows (PowerShell)"
+    ```powershell
+    irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex
+    ```
+
+=== "Windows (CMD)"
+    ```cmd
+    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.cmd | cmd
+    ```
+
 ---
 
 ## 3. Module 1: Secure Drive Eraser

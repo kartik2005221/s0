@@ -30,3 +30,9 @@ sanitization_reports/
 tmp/
 /tmp/
 *.db
+
+# Agent tools
+.agents/
+skills-lock.json
+
+

@@ -55,6 +55,32 @@ s0 --version
 
 ---
 
+## Upgrade
+
+To upgrade an existing S0 installation to the latest version:
+
+### Linux & macOS
+```bash
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash
+```
+
+### Windows — PowerShell
+```powershell
+irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex
+```
+
+### Windows — Command Prompt
+```cmd
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.cmd | cmd
+```
+
+Or directly from your terminal:
+```bash
+s0 upgrade
+```
+
+---
+
 ## Uninstall
 
 ### Linux & macOS
