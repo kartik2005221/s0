@@ -41,11 +41,13 @@
     "WINDOWS_SED_KEY_DESTROY",
     "ANDROID_FACTORY_RESET_FBE",
     "ANDROID_USER_SPACE_OVERWRITE",
-    "FORENSIC_CARVING"
+    "FORENSIC_CARVING",
+    "FORENSIC_IMAGING",
+    "FORENSIC_CLONING"
   ];
 
   var NIST_CATEGORIES = ["Clear", "Purge", "Destroy", "N/A"];
-  var PATTERNS = ["zero", "random", "firmware", "key_destruction", "carving"];
+  var PATTERNS = ["zero", "random", "firmware", "key_destruction", "carving", "imaging", "cloning"];
   var STATUSES = ["success", "failure", "partial", "reset_triggered"];
   var DEVICE_TYPES = ["internal_disk", "removable_disk", "image_file", "phone"];
   var STORAGE_TYPES = ["HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"];
@@ -66,7 +68,9 @@
     "WINDOWS_SED_KEY_DESTROY": ["Purge"],
     "ANDROID_FACTORY_RESET_FBE": ["Purge"],
     "ANDROID_USER_SPACE_OVERWRITE": ["Clear"],
-    "FORENSIC_CARVING": ["N/A"]
+    "FORENSIC_CARVING": ["N/A"],
+    "FORENSIC_IMAGING": ["N/A"],
+    "FORENSIC_CLONING": ["N/A"]
   };
 
   var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

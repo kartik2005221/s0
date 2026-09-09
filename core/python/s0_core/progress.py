@@ -83,6 +83,9 @@ class ProgressBar:
             self.stream.write("\n")
             self.stream.flush()
 
+    def close(self) -> None:
+        self.finish()
+
     def _draw(self) -> None:
         elapsed = max(time.monotonic() - self._start_time, 0.001)
         pct = (self._current / self.total) * 100.0

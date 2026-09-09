@@ -127,6 +127,16 @@ s0 erase --targets /path/to/file.pdf /path/to/folder/ --passes 1
 s0 carve --target /evidence/disk.raw --out-dir ./recovered --extensions jpg,png,pdf,zip --min-confidence 50
 ```
 
+### Create a forensic bit-stream image of a drive (for safe recovery)
+```bash
+s0 image --source /dev/sdb --destination /evidence/disk.raw
+```
+
+### Clone a drive (bit-for-bit hardware disk copy)
+```bash
+s0 clone --source /dev/sdb --destination /dev/sdc
+```
+
 ### Inspect the audit ledger
 ```bash
 s0 audit list --limit 25
@@ -188,9 +198,21 @@ Recovers deleted evidence from formatted storage without relying on intact files
 
 ---
 
-### Module 4 — Blockchain Audit Ledger
+### Module 4 — Forensic Drive Imager & Bit-Stream Copy
 
-Every operation — wipe, file erasure, carve session — is appended to a local SQLite ledger as a cryptographic block:
+Complies with **NIST SP 800-86** and **ISO/IEC 27037** for digital evidence acquisition and hardware drive preservation.
+
+- **Safe Bit-Stream Duplication:** Creates forensically sound raw images (`.raw`, `.img`, `.dd`) or direct 1:1 disk clones before running recovery operations.
+- **Simultaneous Dual Cryptographic Hashing:** Computes live SHA-256 and MD5 hashes on-the-fly during acquisition.
+- **Fault-Tolerant Bad Sector Recovery:** Automatically detects degraded or failing NAND/magnetic sectors, drops down to sector-by-sector reads, zero-fills unreadable blocks to preserve offset alignment, and generates a bad sector error map (similar to GNU ddrescue).
+- **Write-Blocking Safety Verification:** Refuses to overwrite the source media or system/root drives.
+- **Signed Acquisition Manifest & Ledger:** Generates an Ed25519-signed acquisition certificate and records the forensic event in the blockchain audit ledger.
+
+---
+
+### Module 5 — Blockchain Audit Ledger
+
+Every operation — wipe, file erasure, carving, drive imaging — is appended to a local SQLite ledger as a cryptographic block:
 
 $$\text{block\_hash} = \text{SHA256}(\text{index} \| \text{timestamp} \| \text{op\_type} \| \text{target\_id} \| \text{cert\_uuid} \| \text{payload\_hash} \| \text{signature} \| \text{prev\_hash})$$
 
@@ -247,7 +269,8 @@ s0/
 │   ├── wipe.py               # Module 1: Drive erasure orchestrator
 │   ├── file_eraser.py        # Module 2: Secure file & folder eraser
 │   ├── carver/               # Module 3: Signature, ext4, NTFS, FAT32, exFAT, entropy engines
-│   └── audit/                # Module 4: SHA-256 blockchain audit ledger (SQLite)
+│   ├── imager.py             # Module 4: Forensic drive bit-stream imaging & cloning
+│   └── audit/                # Module 5: SHA-256 blockchain audit ledger (SQLite)
 ├── windows/                  # Windows-native Module 2 (Win32 API, ADS scrubbing)
 ├── macos/                    # macOS-native Module 2 (F_FULLFSYNC, xattr, APFS)
 ├── gui/                      # FastAPI unified web dashboard (4 forensic tabs)

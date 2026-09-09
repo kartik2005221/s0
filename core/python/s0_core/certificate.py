@@ -34,10 +34,12 @@ WIPE_METHODS = {
     "ANDROID_FACTORY_RESET_FBE",
     "ANDROID_USER_SPACE_OVERWRITE",
     "FORENSIC_CARVING",
+    "FORENSIC_IMAGING",
+    "FORENSIC_CLONING",
 }
 
 NIST_CATEGORIES = {"Clear", "Purge", "Destroy", "N/A"}
-PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving"}
+PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging", "cloning"}
 
 # Permitted NIST tier per method — mirrors core/standards/nist_800_88_mapping.md §3.
 # Enforced by validate() so a certificate cannot claim a tier its method never earned.
@@ -59,6 +61,8 @@ METHOD_TIERS = {
     "ANDROID_FACTORY_RESET_FBE": {"Purge"},
     "ANDROID_USER_SPACE_OVERWRITE": {"Clear"},
     "FORENSIC_CARVING": {"N/A"},
+    "FORENSIC_IMAGING": {"N/A"},
+    "FORENSIC_CLONING": {"N/A"},
 }
 STATUSES = {"success", "failure", "partial", "reset_triggered"}
 DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone"}

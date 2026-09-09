@@ -210,11 +210,55 @@ recovered_evidence/
 
 ---
 
-## 6. Module 4: Blockchain Cryptographic Audit Ledger
+## 6. Module 4: Forensic Drive Imager & Bit-Stream Copy
 
-Every wipe, file erasure, and carving session is appended as an immutable block to `~/.s0/s0_audit.db`.
+In digital forensics and incident response (**NIST SP 800-86**, **ISO/IEC 27037**), recovery operations or file carving must never be performed directly on original evidence media. 
 
-### 6.1 Inspecting Audit Blocks (`s0 audit list`)
+The `s0 image` and `s0 clone` commands create an exact, bit-for-bit physical replica of storage drives with simultaneous cryptographic verification and fault-tolerant recovery.
+
+### 6.1 Creating a Forensic Bit-Stream Disk Image
+To acquire a complete raw image (`.raw` / `.img` / `.dd`) of a physical drive or flash media:
+
+```bash
+s0 image \
+    --source /dev/sdb \
+    --destination /evidence/suspect_drive.raw \
+    --operator "analyst-01" \
+    --organization "Forensic Lab"
+```
+
+### 6.2 Cloning a Drive (1:1 Disk Duplication)
+To duplicate a source drive directly to a clean target drive:
+
+```bash
+s0 clone \
+    --source /dev/sdb \
+    --destination /dev/sdc \
+    --yes
+```
+
+### 6.3 Fault-Tolerant Bad-Sector Handling
+Degraded or failing drives with unreadable magnetic sectors or worn NAND blocks normally crash standard tools with `EIO (Input/output error)`. 
+
+`s0 image` features built-in error recovery:
+- Drops down to 512-byte sector-level reads across failing blocks
+- Zero-fills unreadable sectors (`\x00` padding) to maintain exact cluster/sector offset alignment
+- Logs bad block offsets in a forensic error map within the acquisition manifest
+- Completes acquisition without aborting
+
+### 6.4 Simultaneous Cryptographic Hashing
+During acquisition, s0 streams data through live SHA-256 and MD5 hashers. The hashes are computed dynamically without requiring a separate, time-consuming second read pass.
+
+### 6.5 Output Manifest & Audit Ledger Integration
+Each imaging operation produces an acquisition manifest JSON file and appends the event to the blockchain audit ledger.
+
+---
+
+## 7. Module 5: Blockchain Cryptographic Audit Ledger
+
+Every wipe, file erasure, carving session, and drive acquisition is appended as an immutable block to `~/.s0/s0_audit.db`.
+
+### 7.1 Inspecting Audit Blocks (`s0 audit list`)
 ```bash
 s0 audit list --limit 20
 ```
@@ -228,7 +272,7 @@ IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BL
 22    2026-09-09T10:14:02Z FILE_CARVE     analyst-42     seized_drive.raw     f100e49ab88190c3...
 ```
 
-### 6.2 Verifying Blockchain Continuity (`s0 audit verify`)
+### 7.2 Verifying Blockchain Continuity (`s0 audit verify`)
 Audit the cryptographic continuity from Genesis to Tip:
 
 ```bash
@@ -252,9 +296,9 @@ Details      : Block #14 prev_hash does not match Block #13 block_hash. Tamper d
 
 ---
 
-## 7. Offline Certificate Verification
+## 8. Offline Certificate Verification
 
-### 7.1 Command-Line Verification (`s0 verify`)
+### 8.1 Command-Line Verification (`s0 verify`)
 ```bash
 s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_public.pem
 ```
@@ -270,14 +314,14 @@ Issuer       : Digital Forensic Unit
 Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e339d251a
 ```
 
-### 7.2 Air-Gapped Web Verification
+### 8.2 Air-Gapped Web Verification
 1. Double-click `verification-portal/index.html` on any offline computer.
 2. Drag and drop `certificate_a8f3b201.json`.
 3. The portal executes pure WebCrypto validation in browser memory and displays the verified green banner.
 
 ---
 
-## 8. Authority Key Generation (`s0 keygen`)
+## 9. Authority Key Generation (`s0 keygen`)
 
 To establish an accredited signing authority:
 

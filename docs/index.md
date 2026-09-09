@@ -52,6 +52,16 @@ Built for security engineers, digital forensic examiners, compliance auditors, a
 
     [:octicons-arrow-right-24: File Carver Guide](forensic-carving-guide.md)
 
+-   :material-content-copy:{ .lg .middle } **Drive Imager & Cloner**
+
+    ---
+
+    Forensic bit-stream disk acquisition engine compliant with NIST SP 800-86 and ISO/IEC 27037. Creates forensically sound raw images (`.raw`, `.img`, `.dd`) or 1:1 hardware disk clones with real-time simultaneous SHA-256/MD5 hashing, write-blocking safety refusals, and fault-tolerant zero-filling for failing storage media.
+
+    **Capabilities:** Raw Bit-Stream Image · 1:1 Disk Clone · Fault-Tolerant Bad Sector Recovery · Live Dual Hashing
+
+    [:octicons-arrow-right-24: Drive Imager Manual](USER_MANUAL.md#6-module-4-forensic-drive-imager-bit-stream-copy)
+
 -   :material-shield-check:{ .lg .middle } **Blockchain Audit Ledger**
 
     ---
@@ -60,7 +70,7 @@ Built for security engineers, digital forensic examiners, compliance auditors, a
 
     **Verification:** Ed25519 · SHA-256 chain · 100% client-side portal
 
-    [:octicons-arrow-right-24: Audit Ledger Specs](USER_MANUAL.md#6-module-4-blockchain-cryptographic-audit-ledger)
+    [:octicons-arrow-right-24: Audit Ledger Specs](USER_MANUAL.md#7-module-5-blockchain-cryptographic-audit-ledger)
 
 </div>
 
@@ -177,11 +187,17 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 
     [:octicons-arrow-right-24: Carving Guide](forensic-carving-guide.md)
 
+-   :material-content-copy: **Forensic Drive Imager**
+
+    Bit-stream acquisition, 1:1 disk cloning, fault-tolerant zero filling, and dual hashing.
+
+    [:octicons-arrow-right-24: Imager Docs](USER_MANUAL.md#6-module-4-forensic-drive-imager-bit-stream-copy)
+
 -   :material-shield-check: **Blockchain Audit Ledger**
 
     Append-only SQLite architecture, SHA-256 hash chaining, and integrity audits.
 
-    [:octicons-arrow-right-24: Audit Ledger Docs](USER_MANUAL.md#6-module-4-blockchain-cryptographic-audit-ledger)
+    [:octicons-arrow-right-24: Audit Ledger Docs](USER_MANUAL.md#7-module-5-blockchain-cryptographic-audit-ledger)
 
 -   :material-certificate: **Verification & Air-Gapped Trust**
 

@@ -897,6 +897,91 @@ def cmd_upgrade(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Module 7: Forensic Bit-Stream Drive Imaging & Cloning
+# --------------------------------------------------------------------------- #
+
+
+def cmd_image(args) -> int:
+    """Forensic bit-stream disk acquisition and device cloning."""
+    from .imager import ImagingOptions, acquire_image
+
+    print("╔══════════════════════════════════════════════════════════════════╗")
+    print("║      S0 (Sector Zero) — Forensic Disk Imager & Bit-Stream Copy  ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    print()
+
+    dst_p = Path(args.destination)
+    is_blk = False
+    try:
+        is_blk = dst_p.is_block_device() or (sys.platform == "darwin" and dst_p.is_char_device())
+    except Exception:
+        pass
+    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower() or args.destination.startswith(r"\\.\\")):
+        is_blk = True
+
+    if is_blk and not args.yes:
+        print(f"⚠️  WARNING: Target destination '{args.destination}' is a PHYSICAL BLOCK DEVICE!")
+        print("   Writing will OVERWRITE all existing partition tables, filesystems, and data.")
+        try:
+            conf = input("Type 'CONFIRM-CLONE' to proceed: ").strip()
+        except EOFError:
+            conf = ""
+        if conf != "CONFIRM-CLONE":
+            print("Aborted by operator.")
+            return 1
+
+    bar = ProgressBar(total_bytes=1, operation="Forensic Acquisition")
+
+    def _progress(bytes_copied, total_bytes, speed, bad_sectors):
+        if bar.total <= 1 and total_bytes > 0:
+            bar.total = total_bytes
+        extra = f"{speed:.1f} MB/s"
+        if bad_sectors > 0:
+            extra += f" | Bad Sectors: {bad_sectors}"
+        bar.update(bytes_copied, extra=extra)
+
+    options = ImagingOptions(
+        source=args.source,
+        destination=args.destination,
+        block_size=args.block_size,
+        error_recovery=not args.no_recovery,
+        operator=args.operator,
+        organization=args.organization,
+        key_path=args.key,
+        no_certificate=args.no_certificate,
+        out_dir=args.out_dir,
+    )
+
+    print(f"[*] Source      : {args.source}")
+    print(f"[*] Destination : {args.destination}")
+    print(f"[*] Block Size  : {args.block_size:,} bytes")
+    print(f"[*] Fault Tol.  : {'Enabled (Zero-fill bad blocks)' if not args.no_recovery else 'Disabled (Abort on error)'}")
+    print()
+
+    result = acquire_image(options, progress_callback=_progress)
+    bar.finish()
+    print()
+
+    if not result.success:
+        print(f"❌ ACQUISITION FAILED: {result.error}", file=sys.stderr)
+        return 1
+
+    print("✅ FORENSIC ACQUISITION COMPLETED SUCCESSFULLY")
+    print(f"   Operation       : {'Drive Clone' if result.is_clone else 'Raw Bit-Stream Image'}")
+    print(f"   Bytes Acquired  : {result.bytes_copied:,} bytes ({result.bytes_copied / (1024**3):.2f} GB)")
+    print(f"   Duration        : {result.duration_seconds:.2f} seconds ({result.speed_mbps:.1f} MB/s)")
+    print(f"   Bad Sectors     : {result.bad_sectors_count}")
+    print(f"   Source SHA-256  : {result.source_sha256}")
+    print(f"   Source MD5      : {result.source_md5}")
+    if result.manifest_path:
+        print(f"   Manifest File   : {result.manifest_path}")
+    if result.manifest_certificate:
+        print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
+    print()
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # CLI Parser Setup
 # --------------------------------------------------------------------------- #
 
@@ -1038,6 +1123,21 @@ def build_parser() -> argparse.ArgumentParser:
     upg = sub.add_parser("upgrade", help="upgrade S0 suite to the latest version from GitHub")
     upg.add_argument("--force", action="store_true", help="force re-installation of dependencies even if up to date")
     upg.set_defaults(func=cmd_upgrade)
+
+    # 8. Forensic Imaging & Cloning Subcommands (image & clone alias)
+    for img_cmd in ("image", "clone"):
+        img = sub.add_parser(img_cmd, help="forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition")
+        img.add_argument("--source", required=True, help="path to source block device or raw image file")
+        img.add_argument("--destination", "--dest", required=True, help="path to destination image file or block device")
+        img.add_argument("--block-size", type=int, default=1048576, help="buffer block size in bytes (default: 1048576 / 1MB)")
+        img.add_argument("--no-recovery", action="store_true", help="abort on I/O read error instead of zero-filling bad sectors")
+        img.add_argument("--out-dir", default=".", help="directory to store acquisition manifest and certificate")
+        img.add_argument("--operator", default="op-forensic", help="operator ID")
+        img.add_argument("--organization", default="Digital Forensics & Incident Response Lab", help="organization name")
+        img.add_argument("--key", help="path to Ed25519 issuer private key PEM")
+        img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
+        img.add_argument("--yes", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
+        img.set_defaults(func=cmd_image)
 
     return p
 
