@@ -9,11 +9,12 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 REPO_ROOT="$(cd ../.. && pwd)"
-SNAPSHOT="$(mktemp -d)/repo-snapshot"
+STAGING_DIR="$(pwd)/config/includes.chroot/root/repo-snapshot"
 
-echo "==> snapshotting $REPO_ROOT -> $SNAPSHOT"
-mkdir -p "$SNAPSHOT"
-cp -r "$REPO_ROOT/core" "$REPO_ROOT/linux" "$SNAPSHOT/"
+echo "==> staging repo snapshot ($REPO_ROOT) -> $STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+trap 'rm -rf "$STAGING_DIR"' EXIT INT TERM
+cp -r "$REPO_ROOT/core" "$REPO_ROOT/linux" "$REPO_ROOT/gui" "$STAGING_DIR/"
 
 echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
 lb config noauto \

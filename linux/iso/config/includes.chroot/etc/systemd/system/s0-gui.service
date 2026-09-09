@@ -5,7 +5,7 @@ After=multi-user.target
 [Service]
 User=root
 Environment=S0_IMAGE_DIR=/opt/s0/images
-WorkingDirectory=/opt/s0/linux/gui
+WorkingDirectory=/opt/s0/gui
 ExecStart=/usr/bin/python3 -m uvicorn app:app --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=3
