@@ -28,7 +28,8 @@ The following table maps each identified threat to the specific control s0 uses 
 Ed25519 keys are generated locally. The private key never leaves the forensic workstation.
 
 ```bash
-s0 keygen --out ./my_lab_key
+# Generate local Ed25519 keypair for forensic authority
+s0 keygen --out-dir ./my_lab_key --name authority
 ```
 
 This produces:

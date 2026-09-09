@@ -33,16 +33,19 @@ Execute the launcher script from the root of the repository:
 
 === "Linux & macOS"
     ```bash
+    # Start the FastAPI web console on loopback
     bash gui/run.sh
     ```
     The server initializes dependencies, binds to loopback, and prints:
-    ```
+    ```text
+    INFO:     Started server process
     INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
     ```
     Open `http://127.0.0.1:8000` in your web browser.
 
 === "Windows"
     ```powershell
+    # Launch Uvicorn server on Windows PowerShell
     python -m uvicorn gui.app:app --host 127.0.0.1 --port 8000
     ```
     Or execute `gui\run.bat` if available.

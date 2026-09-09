@@ -4,28 +4,31 @@
   Complete flag-level documentation for every <code>s0</code> subcommand.
 </p>
 
-`s0` is a single unified binary that exposes eight subcommands covering the full lifecycle of forensic media sanitization, file carving, and certificate management. Every subcommand follows the same structural contract: human-readable defaults, `--json` machine-readable output where applicable, and cryptographically signed audit trails for every destructive operation.
+`s0` is a single unified binary that exposes ten subcommands covering the full lifecycle of forensic media sanitization, bit-stream acquisition, file carving, cryptographic verification, and certificate management. Every subcommand follows the same structural contract: human-readable defaults, `--json` machine-readable output where applicable, and cryptographically signed audit trails for every destructive or forensic operation.
 
 ---
 
 ## Command Hierarchy
 
-```
+```bash
+# Top-level entrypoint
 s0 [--version] <subcommand> [flags]
 ```
 
 ```mermaid
-graph TD
+flowchart TD
     S0["<b>s0</b>"]:::root
 
     S0 --> LIST["list\n─────────────\nDiscover targets"]
     S0 --> PLAN["plan\n─────────────\nDry-run strategy"]
     S0 --> WIPE["wipe\n─────────────\nSanitize drive"]
     S0 --> ERASE["erase / erase-files\n─────────────\nSecure file deletion"]
+    S0 --> IMAGE["image / clone\n─────────────\nForensic acquisition"]
     S0 --> CARVE["carve\n─────────────\nForensic recovery"]
     S0 --> AUDIT["audit\n─────────────\nAudit ledger"]
     S0 --> VERIFY["verify\n─────────────\nOffline cert check"]
     S0 --> KEYGEN["keygen\n─────────────\nKey pair generation"]
+    S0 --> UPGRADE["upgrade\n─────────────\nSuite self-update"]
 
     AUDIT --> AL["audit list"]
     AUDIT --> AV["audit verify"]
@@ -35,7 +38,7 @@ graph TD
     classDef leaf fill:#222831,stroke:#393E46,color:#EEEEEE;
 
     class S0 root;
-    class LIST,PLAN,WIPE,ERASE,CARVE,AUDIT,VERIFY,KEYGEN sub;
+    class LIST,PLAN,WIPE,ERASE,IMAGE,CARVE,AUDIT,VERIFY,KEYGEN,UPGRADE sub;
     class AL,AV leaf;
 ```
 
@@ -55,7 +58,8 @@ List all block-device targets visible to the system, with metadata useful for se
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Discover attached block devices and forensic images
     s0 list [--output-format {text,json}]
     ```
 
@@ -77,13 +81,31 @@ List all block-device targets visible to the system, with metadata useful for se
     | `SERIAL` | Drive serial number from kernel |
     | `MOUNTED?` | `yes` / `no` — whether any partition is currently mounted |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 list [-h] [--output-format {text,json}]
+
+    options:
+      -h, --help            show this help message and exit
+      --output-format {text,json}
+                            output format (default: text)
+    ```
+
+=== "Recommendations"
+
+    - **Output Format (`--output-format`)**:
+        - **`text` (Default / Recommended for Operators)**: Clean ASCII tabular view with explicit headers. Recommended for field technicians confirming physical drive labels against serial numbers before initiating sanitization.
+        - **`json` (Recommended for Automation & Agents)**: Returns a typed JSON array. Recommended when piping to `jq`, feeding downstream bash loops, or running autonomous forensic triage agents.
+
 === "Examples"
 
     **Human-readable table (default)**
     ```bash
+    # List all physical block devices and storage volumes
     s0 list
     ```
-    ```
+    ```text
     PATH            TYPE   STORAGE  CAPACITY   MODEL                  SERIAL        MOUNTED?
     /dev/sda        ATA    HDD      1.0 TB     WDC WD10EZEX-00BN5A0   WD-WCC3F...   no
     /dev/nvme0n1    NVMe   SSD      512.1 GB   Samsung SSD 980 PRO    S5GXNX...     yes
@@ -92,6 +114,7 @@ List all block-device targets visible to the system, with metadata useful for se
 
     **JSON output for scripting**
     ```bash
+    # Extract unmounted storage targets using jq
     s0 list --output-format json | jq '.[] | select(.mounted == false)'
     ```
     ```json
@@ -111,6 +134,7 @@ List all block-device targets visible to the system, with metadata useful for se
 
     **Filter unmounted drives and feed into a wipe loop**
     ```bash
+    # Batch process all unmounted secondary drives
     TARGETS=$(s0 list --output-format json | jq -r '.[] | select(.mounted == false) | .path')
     for DEV in $TARGETS; do
         s0 wipe --target "$DEV" --yes --operator "batch-job-01"
@@ -118,7 +142,7 @@ List all block-device targets visible to the system, with metadata useful for se
     ```
 
 !!! tip "No root required for image files"
-    `s0 list` enumerates block devices and may require root to show all entries. However, any `.raw`, `.img`, or `.dd` image file works as a `--target` in `plan`, `wipe`, `erase`, and `carve` without elevated privileges — ideal for CI/CD test pipelines.
+    `s0 list` enumerates block devices and may require root to show all entries. However, any `.raw`, `.img`, or `.dd` image file works as a `--target` in `plan`, `wipe`, `erase`, `image`, and `carve` without elevated privileges — ideal for CI/CD test pipelines.
 
 ---
 
@@ -128,7 +152,8 @@ Perform a complete dry-run analysis: s0 inspects the target, selects the optimal
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Dry-run analysis and method inspection
     s0 plan --target PATH \
             [--passes N] \
             [--pattern zero|random] \
@@ -160,13 +185,48 @@ Perform a complete dry-run analysis: s0 inspects the target, selects the optimal
     | `alternatives` | Other methods considered and why they were ranked lower |
     | `hpa_dco` | Whether a Host Protected Area or Device Configuration Overlay was detected |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 plan [-h] [--version] --target TARGET [--passes PASSES]
+                   [--pattern {zero,random}] [--no-firmware]
+                   [--discard-purge-justification TEXT] [--force]
+
+    options:
+      -h, --help            show this help message and exit
+      --version             show program's version number and exit
+      --target TARGET       block device path OR image file path
+      --passes PASSES       overwrite passes (default 1 — one pass IS Clear per
+                            NIST 800-88)
+      --pattern {zero,random}
+      --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
+                            overwrite only
+      --discard-purge-justification TEXT
+                            record drive-spec deterministic-TRIM evidence to let
+                            BLKDISCARD claim Purge
+      --force               override mounted/root safety refusals
+    ```
+
+=== "Recommendations"
+
+    - **Overwrite Pattern (`--pattern zero` vs `random`)**:
+        - **`zero` (Default / Strongly Recommended)**: NIST SP 800-88 Rev. 1 Section 2.4 confirms that a single pass of fixed zeros is fully sufficient to achieve Clear sanitization on all modern hard drives and solid-state storage. Writing zeros achieves maximum write speed (1,280–1,350 MB/s).
+        - **`random`**: Requires user-space CSPRNG generation, reducing write throughput to ~450 MB/s. Recommend only when required by legacy military contracts or internal policies specifying pseudorandom noise.
+    - **Pass Count (`--passes 1`)**:
+        - **`1` pass (Recommended)**: Multi-pass overwriting (e.g. DoD 5220.22-M 3-pass or 7-pass) is obsolete for modern PRML media and causes needless write wear on flash cells. 1 pass satisfies NIST SP 800-88 Clear.
+    - **Firmware vs Overwrite (`--no-firmware`)**:
+        - **Leave unset / Allow Firmware (Recommended)**: For NVMe and SATA drives, firmware commands (Crypto Erase / Sanitize) execute in seconds and erase all physical flash blocks including over-provisioned areas and bad blocks that software overwrite cannot reach (Purge tier). Use `--no-firmware` only if connected via an unstable USB-to-SATA bridge that crashes during SCSI/ATA pass-through commands.
+    - **Safety Refusal Override (`--force`)**:
+        - **Avoid `--force` (Strong Recommendation)**: `s0` refuses to touch mounted partitions or root (`/`) filesystems to protect operator systems. Only use `--force` in dedicated air-gapped test benches or inside bootable live ISO environments where root devices are loop-mounted.
+
 === "Examples"
 
     **Inspect an NVMe drive**
     ```bash
+    # Plan sanitization method for high-speed NVMe storage
     s0 plan --target /dev/nvme0n1
     ```
-    ```
+    ```text
     ┌─────────────────────────────────────────────────────────┐
     │  s0 · Wipe Plan                                         │
     ├─────────────────────────────────────────────────────────┤
@@ -177,7 +237,7 @@ Perform a complete dry-run analysis: s0 inspects the target, selects the optimal
     │  Method       : nvme_sanitize (Crypto Erase)            │
     │  NIST Category: PURGE                                   │
     │  Summary      : NVMe Sanitize (Crypto Erase) will be    │
-    │                 issued via nvme-cli. Estimated time: 3s  │
+    │                 issued via nvme-cli. Estimated time: 3s │
     │  Commands     : nvme sanitize /dev/nvme0n1 --sanact=4   │
     │  Warnings     : None                                    │
     │  Alternatives : NVMe Format FW, BLKDISCARD, overwrite   │
@@ -187,11 +247,13 @@ Perform a complete dry-run analysis: s0 inspects the target, selects the optimal
 
     **Force software-only plan with 3 random passes**
     ```bash
+    # Force 3-pass software random overwrite
     s0 plan --target /dev/sda --no-firmware --passes 3 --pattern random
     ```
 
     **Promote BLKDISCARD to Purge with justification**
     ```bash
+    # Document deterministic TRIM evidence for Purge certification
     s0 plan --target /dev/sdb \
         --discard-purge-justification "Manufacturer TLC NAND with FTL-backed discard; confirmed in datasheet Rev.C §4.2"
     ```
@@ -213,7 +275,8 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Execute drive sanitization with verification and certificate issuance
     s0 wipe --target PATH \
             [--yes] \
             [--key PEM] \
@@ -263,16 +326,67 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
     | `certificate_<UUID8>.pdf` | Human-readable PDF with embedded QR code. |
     | `certificate_<UUID8>.qr.png` | Standalone QR code image linking to the verification portal. |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 wipe [-h] [--version] --target TARGET [--passes PASSES]
+                   [--pattern {zero,random}] [--no-firmware]
+                   [--discard-purge-justification TEXT] [--force] [--yes]
+                   [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
+                   [--organization ORGANIZATION] [--no-pdf]
+                   [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--json]
+                   [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
+
+    options:
+      -h, --help            show this help message and exit
+      --version             show program's version number and exit
+      --target TARGET       block device path OR image file path
+      --passes PASSES       overwrite passes (default 1 — one pass IS Clear per
+                            NIST 800-88)
+      --pattern {zero,random}
+      --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
+                            overwrite only
+      --discard-purge-justification TEXT
+                            record drive-spec deterministic-TRIM evidence to let
+                            BLKDISCARD claim Purge
+      --force               override mounted/root safety refusals
+      --yes                 skip interactive WIPE prompt
+      --key KEY             issuer private key PEM
+      --out-dir OUT_DIR
+      --operator OPERATOR
+      --organization ORGANIZATION
+      --no-pdf
+      --verify-samples VERIFY_SAMPLES
+      --plant-markers       plant recoverable markers first, then require 0 grep
+                            hits afterwards
+      --json                machine-readable stdout
+      --portal-url PORTAL_URL
+                            verification portal base URL
+      --qr-url-template QR_URL_TEMPLATE
+    ```
+
+=== "Recommendations"
+
+    - **Verification Sampling (`--verify-samples 64`)**:
+        - **`64` samples (Default / Recommended)**: Verifies 64 evenly spaced 4,096-byte blocks (262,144 bytes total) across the entire LBA span. Mathematically ensures $>99.9\%$ confidence that sanitization ran across the entire address space without introducing I/O latency.
+        - **`256` or `1024` samples (Recommended for Regulatory Escrow)**: Recommended when producing certificates for judicial proceedings, defense audits, or strict regulatory escrow.
+    - **Confirmation Mode (`--yes`)**:
+        - **Omit `--yes` for Interactive Lab Use (Recommended)**: Keeps the mandatory terminal prompt (`Type WIPE to confirm:`) active, eliminating inadvertent drive selection errors.
+        - **Pass `--yes` for CI/CD & Headless Live ISO (Recommended)**: Pass `--yes` only in non-interactive batch runners after an upstream script has verified drive serial numbers.
+    - **Authority Key Management (`--key`)**:
+        - **Supply Lab Key (`--key /path/to/private.pem`, Recommended for Production)**: The auto-discovered demo key provides integrity but not identity. Always use your organization's registered private key for legal compliance.
+
 === "Examples"
 
     **Minimal interactive wipe**
     ```bash
+    # Prompt operator to type WIPE before sanitizing
     sudo s0 wipe --target /dev/sdb
-    # Prompts: Type WIPE to confirm:
     ```
 
     **Non-interactive with operator metadata**
     ```bash
+    # Non-interactive sanitization with accredited lab metadata
     sudo s0 wipe \
         --target /dev/sda \
         --yes \
@@ -283,6 +397,7 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 
     **3-pass random overwrite, software-only (e.g. USB thumb drive)**
     ```bash
+    # Multi-pass overwrite for legacy USB storage
     sudo s0 wipe \
         --target /dev/sdc \
         --no-firmware \
@@ -293,6 +408,7 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 
     **JSON output for CI/CD integration**
     ```bash
+    # Capture structured event stream during headless execution
     sudo s0 wipe --target /dev/nvme0n1 --yes --json 2>&1 | tee wipe.log
     ```
     ```json
@@ -305,12 +421,14 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 
     **Custom QR URL template**
     ```bash
+    # Embed private intranet verification route into QR code
     sudo s0 wipe --target /dev/sda --yes \
         --qr-url-template "https://verify.myorg.internal/cert/{cert_uuid}"
     ```
 
     **Demo / test mode with marker planting**
     ```bash
+    # Plant test markers and assert zero hits after erasure
     s0 wipe --target disk_image.raw \
         --plant-markers \
         --yes \
@@ -334,7 +452,8 @@ Securely erase individual files and directories with full metadata scrubbing. Un
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Securely erase files and directory trees with metadata scrubbing
     s0 erase --targets PATH... \
              [--passes N] \
              [--pattern zero|random] \
@@ -364,15 +483,52 @@ Securely erase individual files and directories with full metadata scrubbing. Un
     | `--portal-url` | URL | `https://s0-vp.vercel.app/` | no | Portal URL embedded in QR code. |
     | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 erase [-h] --targets TARGETS [TARGETS ...] [--passes PASSES]
+                    [--pattern {zero,random}] [--out-dir OUT_DIR]
+                    [--operator OPERATOR] [--organization ORGANIZATION]
+                    [--key KEY] [--no-certificate] [--no-pdf]
+                    [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
+
+    options:
+      -h, --help            show this help message and exit
+      --targets TARGETS [TARGETS ...]
+                            paths to files or directories to sanitize
+      --passes PASSES       number of overwrite passes
+      --pattern {zero,random}
+      --out-dir OUT_DIR
+      --operator OPERATOR
+      --organization ORGANIZATION
+      --key KEY             signing key path
+      --no-certificate      explicitly run without generating an Ed25519
+                            compliance certificate
+      --no-pdf              skip rendering PDF certificate
+      --portal-url PORTAL_URL
+                            verification portal base URL
+      --qr-url-template QR_URL_TEMPLATE
+                            URL template for verification QR
+    ```
+
+=== "Recommendations"
+
+    - **Filesystem Context**:
+        - **Standard Filesystems (ext4, NTFS, FAT32)**: `s0 erase` performs direct in-place inode/cluster overwrites with hardware flush (`fsync()` / `FlushFileBuffers()`). Highly effective.
+        - **Copy-on-Write Filesystems (Btrfs, ZFS, APFS, ReFS)**: Operating system CoW mechanics allocate new blocks on write, leaving prior block allocations in storage until garbage collection. When sanitizing files on CoW filesystems, whole-disk/partition wiping (`s0 wipe`) is strongly recommended.
+    - **Compliance Records**: Keep certificate generation enabled unless running automated tests or batch unlinking temporary staging directories.
+
 === "Examples"
 
     **Erase a single sensitive file**
     ```bash
+    # Securely overwrite and unlink a classified report
     s0 erase --targets /home/user/secret_report.pdf
     ```
 
     **Erase multiple files and an entire directory**
     ```bash
+    # Batch sanitize directories and keys with 3 passes
     s0 erase \
         --targets /tmp/staging/ /var/log/audit.log /home/user/.ssh/id_rsa \
         --passes 3 \
@@ -381,11 +537,13 @@ Securely erase individual files and directories with full metadata scrubbing. Un
 
     **Erase without generating a certificate (quick cleanup)**
     ```bash
+    # Unlink temporary scratch folder without signing overhead
     s0 erase --targets /tmp/scratch/ --no-certificate
     ```
 
     **Use random pattern and save cert to evidence folder**
     ```bash
+    # Execute random pattern wipe and export cert to case evidence
     s0 erase \
         --targets /data/case_work/temp/ \
         --pattern random \
@@ -394,7 +552,122 @@ Securely erase individual files and directories with full metadata scrubbing. Un
     ```
 
 !!! warning "Filesystem and OS limitations"
-    On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 erase` documents this limitation explicitly in its output. See [`LIMITATIONS.md`](LIMITATIONS.md) for the full boundary specification.
+    On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 erase` documents this limitation explicitly in its output. See [`secure-erasure-guide.md`](secure-erasure-guide.md) for the full deep-dive.
+
+---
+
+## s0 image
+
+Forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition following NIST SP 800-86 and ISO/IEC 27037 standards. `s0 image` streams physical sectors from source devices into raw forensic image containers or direct physical clone disks, computes simultaneous SHA-256 and MD5 hashes, recovers gracefully from bad sectors, and produces an **Ed25519-signed acquisition certificate and manifest**.
+
+!!! info "Alias"
+    `s0 image` and `s0 clone` are identical entrypoints. Use `s0 clone` when duplicating directly to a target physical disk.
+
+=== "Synopsis"
+
+    ```bash
+    # Bit-stream forensic disk acquisition and duplication
+    s0 image --source SOURCE --destination DESTINATION \
+             [--block-size BYTES] [--no-recovery] [--out-dir DIR] \
+             [--operator ID] [--organization NAME] [--key PEM] \
+             [--no-certificate] [--yes]
+    ```
+
+=== "Flags"
+
+    | Flag | Type | Default | Required | Description |
+    |------|------|---------|----------|-------------|
+    | `--source` | path | — | **yes** | Source block device (e.g. `/dev/sdb`, `\\.\PhysicalDrive1`) or raw image file. |
+    | `--destination`, `--dest` | path | — | **yes** | Destination raw image file (`.raw`, `.img`, `.dd`) or target physical clone block device. |
+    | `--block-size` | integer | `1048576` (1MB) | no | I/O buffer block size in bytes. |
+    | `--no-recovery` | flag | off | no | Abort acquisition immediately on first I/O read error instead of zero-filling bad sectors. |
+    | `--out-dir` | path | `.` | no | Directory to store acquisition manifest and signed certificate. |
+    | `--operator` | string | `op-forensic` | no | Operator identity recorded in the forensic acquisition manifest. |
+    | `--organization` | string | `Digital Forensics & Incident Response Lab` | no | Issuing organization name. |
+    | `--key` | path | auto | no | Path to Ed25519 issuer private key PEM. |
+    | `--no-certificate` | flag | off | no | Skip generating signed Ed25519 acquisition certificate and manifest. |
+    | `--yes` | flag | off | no | Skip interactive confirmation when cloning to a physical disk. |
+
+    **Output files**
+
+    | File | Description |
+    |------|-------------|
+    | `<out-dir>/acquisition_manifest_<UUID8>.json` | Signed forensic acquisition manifest containing source metadata, dual hashes (SHA-256 and MD5), throughput, and bad sector logs. |
+    | `<out-dir>/certificate_<UUID8>.json` | Signed Ed25519 compliance certificate. |
+    | `<out-dir>/certificate_<UUID8>.pdf` | Printable PDF certificate with embedded QR verification. |
+
+=== "Help Screen"
+
+    ```text
+    usage: s0 image [-h] --source SOURCE --destination DESTINATION
+                    [--block-size BLOCK_SIZE] [--no-recovery] [--out-dir OUT_DIR]
+                    [--operator OPERATOR] [--organization ORGANIZATION]
+                    [--key KEY] [--no-certificate] [--yes]
+
+    options:
+      -h, --help            show this help message and exit
+      --source SOURCE       path to source block device or raw image file
+      --destination, --dest DESTINATION
+                            path to destination image file or block device
+      --block-size BLOCK_SIZE
+                            buffer block size in bytes (default: 1048576 / 1MB)
+      --no-recovery         abort on I/O read error instead of zero-filling bad
+                            sectors
+      --out-dir OUT_DIR     directory to store acquisition manifest and
+                            certificate
+      --operator OPERATOR   operator ID
+      --organization ORGANIZATION
+                            organization name
+      --key KEY             path to Ed25519 issuer private key PEM
+      --no-certificate      skip generating signed Ed25519 acquisition certificate
+      --yes                 skip interactive confirmation when cloning to a
+                            physical disk
+    ```
+
+=== "Recommendations"
+
+    - **I/O Buffer Size (`--block-size 1048576`)**:
+        - **`1048576` (1MB, Default / Recommended)**: Optimal sequential throughput across USB 3.0, SATA III, and NVMe interfaces while avoiding excessive kernel cache pressure.
+        - **`4194304` (4MB, Recommended for High-Speed NVMe-to-NVMe)**: Reduces syscall overhead on PCIe Gen4/Gen5 solid-state media.
+    - **Error Recovery Mode (`--no-recovery`)**:
+        - **Omit `--no-recovery` (Default / Recommended for Incident Response)**: Aging or seized physical drives frequently possess bad sectors. `s0 image` uses ddrescue-style recovery: bad sectors are replaced with zeros, their precise byte offset and length are recorded in the manifest, and imaging proceeds to recover all surviving evidence.
+        - **`--no-recovery` (Recommended for Clean Master Media)**: Aborts on read failure. Use when duplicating pristine reference drives where any physical error requires immediate clean-room escalation.
+    - **Acquisition Target Selection**:
+        - **Raw File Destination (`.raw`)**: Recommended for forensic preservation. Mountable read-only by tools like Autopsy, FTK, or `s0 carve`.
+        - **Physical Disk Destination (`/dev/sdX`)**: Recommended for rapid hardware swap. Always verify destination size is $\ge$ source.
+
+=== "Examples"
+
+    **Acquire evidence drive to raw image with full cryptographic verification**
+    ```bash
+    # Acquire bit-stream image of seized drive with dual hashing
+    sudo s0 image \
+        --source /dev/sdb \
+        --destination /evidence/case_889/suspect_drive.raw \
+        --operator "det.morales@dfir.gov" \
+        --organization "State Cyber Crime Unit" \
+        --out-dir /evidence/case_889/
+    ```
+
+    **Physical disk clone (drive duplication)**
+    ```bash
+    # Duplicate physical drive to forensic clone drive with confirmation bypass
+    sudo s0 clone \
+        --source /dev/sdb \
+        --destination /dev/sdc \
+        --yes \
+        --operator "tech-04"
+    ```
+
+    **Forensic acquisition from aging disk with 4MB buffer**
+    ```bash
+    # Fault-tolerant acquisition of degraded disk with bad sector logging
+    sudo s0 image \
+        --source /dev/sda \
+        --destination /mnt/san/evidence/degraded.raw \
+        --block-size 4194304 \
+        --out-dir /mnt/san/evidence/
+    ```
 
 ---
 
@@ -404,7 +677,8 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Recover deleted evidence from raw images or physical media
     s0 carve --target PATH \
              --out-dir DIR \
              [--extensions EXT,...] \
@@ -451,10 +725,44 @@ Forensic file carving and recovery from raw disk images or live block devices. `
     | `<out-dir>/recovery_index.json` | Machine-readable index of all recovered files with confidence scores and offsets |
     | `<out-dir>/carving_manifest_<UUID8>.json` | Signed carving manifest certificate |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR
+                    [--extensions EXTENSIONS] [--min-confidence MIN_CONFIDENCE]
+                    [--operator OPERATOR] [--organization ORGANIZATION]
+                    [--key KEY] [--no-certificate]
+
+    options:
+      -h, --help            show this help message and exit
+      --target TARGET       raw disk image or block device to scan
+      --out-dir OUT_DIR     directory to store carved files
+      --extensions EXTENSIONS
+                            comma-separated file extensions to carve (e.g.
+                            jpg,png,pdf,zip)
+      --min-confidence MIN_CONFIDENCE
+                            minimum confidence score (0-100)
+      --operator OPERATOR
+      --organization ORGANIZATION
+      --key KEY             signing key path
+      --no-certificate      explicitly run without generating an Ed25519 forensic
+                            manifest certificate
+    ```
+
+=== "Recommendations"
+
+    - **Confidence Scoring Threshold (`--min-confidence 50`)**:
+        - **`50` (Default / Recommended)**: Balances recall and precision. Discards random data blocks while retaining files that may lack clean closing footers (such as unfinalized JPEGs or truncated PDFs).
+        - **`25`–`35` (Recommended for Deep Forensic Carving)**: Maximizes recovery of damaged, partial, or fragmented media where footers were destroyed.
+        - **`75`–`90` (Recommended for Automated Triage)**: Only extracts candidates with intact magic headers, verified footers, matching length fields, and plausible Shannon entropy profiles.
+    - **Target Extensions (`--extensions`)**:
+        - **Filter by Case Scope (Recommended)**: For incident response or document leaks, set `--extensions pdf,sqlite,zip` to avoid extracting thousands of cached browser images and thumbnails.
+
 === "Examples"
 
     **Carve all supported types from an image**
     ```bash
+    # Scan raw forensic image across all 10 supported signatures
     s0 carve \
         --target /evidence/seized_disk.raw \
         --out-dir /evidence/recovered/
@@ -462,6 +770,7 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 
     **Carve only JPEGs and PDFs with high confidence**
     ```bash
+    # Extract only high-confidence documents and images from flash media
     s0 carve \
         --target /dev/sdb \
         --out-dir /tmp/carve_out/ \
@@ -471,6 +780,7 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 
     **Full forensic carve with operator identity, skip certificate**
     ```bash
+    # Carve evidence with case examiner metadata
     s0 carve \
         --target /evidence/usb_001.img \
         --out-dir /evidence/case_42/recovered/ \
@@ -481,6 +791,7 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 
     **Inspect the recovery index**
     ```bash
+    # Query carved files with confidence >= 90 using jq
     s0 carve --target disk.raw --out-dir ./out/
     cat ./out/recovery_index.json | jq '.files[] | select(.confidence >= 90)'
     ```
@@ -488,14 +799,11 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 !!! info "Filesystem-aware vs. magic carving"
     `s0 carve` first attempts **filesystem-aware traversal**: it reads the ext4 inode table, NTFS `$MFT`, FAT32 directory entries, or exFAT Cluster Heap to reconstruct fragmented deleted files. Only when no recognizable filesystem superblock is found does it fall back to sequential magic-byte header/footer scanning. Both paths record LBA offsets in `recovery_index.json`.
 
-!!! tip "Confidence scoring"
-    The confidence score (0–100) is a composite of: header/footer match quality, entropy profile (compressed/encrypted data scores lower for typed formats), cross-validated length fields, and whether a complete footer was found. A score ≥ 70 generally indicates a complete, intact file.
-
 ---
 
 ## s0 audit
 
-The `audit` namespace exposes the append-only, SHA-256 block-hash-chained audit ledger stored at `~/.s0/s0_audit.db`. Every destructive operation (`wipe`, `erase`) appends a ledger block; `carve` operations append a read-only forensic record.
+The `audit` namespace exposes the append-only, SHA-256 block-hash-chained audit ledger stored at `~/.s0/s0_audit.db`. Every destructive operation (`wipe`, `erase`), bit-stream acquisition (`image`), and forensic session (`carve`) appends an immutable block to the chain.
 
 ### s0 audit list
 
@@ -503,7 +811,8 @@ Display the most recent entries in the audit ledger.
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # View recent cryptographic audit records
     s0 audit list [--limit N]
     ```
 
@@ -519,26 +828,45 @@ Display the most recent entries in the audit ledger.
     |--------|-------------|
     | `IDX` | Sequential block index (0-based, monotonically increasing) |
     | `TIMESTAMP` | ISO 8601 UTC timestamp of the operation |
-    | `OPERATION` | Operation type: `wipe`, `erase`, `carve` |
+    | `OPERATION` | Operation type: `DRIVE_ERASE`, `FILE_ERASE`, `DRIVE_ACQUISITION`, `FILE_CARVE` |
     | `OPERATOR` | Operator identity string recorded at operation time |
     | `TARGET_ID` | Device path, serial number, or file path |
     | `BLOCK_HASH` | SHA-256 of this block's content chained over the previous block hash |
+
+=== "Help Screen"
+
+    ```text
+    usage: s0 audit list [-h] [--limit LIMIT]
+
+    options:
+      -h, --help     show this help message and exit
+      --limit LIMIT  limit number of records displayed
+    ```
+
+=== "Recommendations"
+
+    - **Limit Sizing (`--limit 50`)**:
+        - **`50` (Default / Recommended)**: Provides sufficient immediate context for recent laboratory shifts.
+        - **`500` or `1000`**: Useful when auditing monthly laboratory operations or exporting historical chains for compliance audits.
 
 === "Examples"
 
     **Show last 50 entries**
     ```bash
+    # Enumerate audit history
     s0 audit list
     ```
-    ```
-    IDX  TIMESTAMP                OPERATION  OPERATOR              TARGET_ID         BLOCK_HASH
-    0    2026-09-09T07:12:33Z     wipe       alice@forensics.lab   /dev/sda          a1b2c3d4...
-    1    2026-09-09T08:44:01Z     erase      bob@forensics.lab     /home/bob/sec...  9f8e7d6c...
-    2    2026-09-09T10:03:17Z     carve      alice@forensics.lab   /evidence/01.raw  3b2a1c0d...
+    ```text
+    IDX  TIMESTAMP                OPERATION          OPERATOR              TARGET_ID         BLOCK_HASH
+    0    2026-09-09T07:12:33Z     DRIVE_ERASE        alice@forensics.lab   /dev/sda          a1b2c3d4...
+    1    2026-09-09T08:44:01Z     FILE_ERASE         bob@forensics.lab     /home/bob/sec...  9f8e7d6c...
+    2    2026-09-09T10:03:17Z     DRIVE_ACQUISITION  alice@forensics.lab   /dev/sdb          3b2a1c0d...
+    3    2026-09-09T11:15:22Z     FILE_CARVE         alice@forensics.lab   /evidence/01.raw  8e4f1a2b...
     ```
 
     **Show last 5 entries**
     ```bash
+    # Check the 5 most recent audit records
     s0 audit list --limit 5
     ```
 
@@ -550,7 +878,8 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Verify mathematical continuity of the local blockchain ledger
     s0 audit verify
     ```
 
@@ -558,23 +887,40 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 
     *No flags. Operates on the full chain in `~/.s0/s0_audit.db`.*
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 audit verify [-h]
+
+    options:
+      -h, --help  show this help message and exit
+    ```
+
+=== "Recommendations"
+
+    - **Operational Verification**:
+        - Run `s0 audit verify` daily in cron or before presenting evidence certificates in legal proceedings.
+        - Any verification failure (`BROKEN / TAMPER DETECTED`) indicates unauthorized database modification, physical sector corruption, or deliberate tampering.
+
 === "Examples"
 
     **Verify chain integrity**
     ```bash
+    # Execute full blockchain ledger verification
     s0 audit verify
     ```
-    ```
-    Verifying 3 audit blocks...
-    ✅ VALID & CONTINUOUS — all 3 blocks intact, chain unbroken.
+    ```text
+    Verifying 4 audit blocks...
+    ✅ VALID & CONTINUOUS — all 4 blocks intact, chain unbroken.
     ```
 
     **Detect tampering**
     ```bash
+    # Tamper detection output when a database record was altered
     s0 audit verify
     ```
-    ```
-    Verifying 3 audit blocks...
+    ```text
+    Verifying 4 audit blocks...
     ❌ BROKEN / TAMPER DETECTED — block 1 hash mismatch.
        Expected : 9f8e7d6c...
        Got      : 00000000...
@@ -582,6 +928,7 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 
     **Use in shell scripts**
     ```bash
+    # Automated chain health check gate
     if s0 audit verify; then
         echo "Chain intact — proceeding."
     else
@@ -598,17 +945,18 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 | `1` | One or more blocks fail hash verification or chain linkage is broken. |
 
 !!! danger "Tamper indication is definitive"
-    A non-zero exit from `s0 audit verify` means at minimum one audit record has been modified after it was written. This may indicate database tampering, filesystem corruption, or an unauthorized edit. Treat all subsequent certificates from that host as untrustworthy until the incident is investigated.
+    A non-zero exit from `s0 audit verify` means at minimum one audit record has been modified after it was written. Treat all subsequent certificates from that host as untrustworthy until the incident is investigated.
 
 ---
 
 ## s0 verify
 
-Offline verification of a signed sanitization or carving certificate. No network connection is required. The signature is verified against a trusted Ed25519 public key, and the certificate payload is re-canonicalized to confirm the signature covers the exact bytes on disk.
+Offline verification of a signed sanitization, acquisition, or carving certificate. No network connection is required. The signature is verified against a trusted Ed25519 public key, and the certificate payload is re-canonicalized to confirm the signature covers the exact bytes on disk.
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Offline verification of signed Ed25519 certificates
     s0 verify CERTIFICATE [--key PEM]
     ```
 
@@ -616,7 +964,7 @@ Offline verification of a signed sanitization or carving certificate. No network
 
     | Argument / Flag | Type | Default | Required | Description |
     |-----------------|------|---------|----------|-------------|
-    | `CERTIFICATE` | path | — | **yes** | Path to the `certificate_<UUID8>.json` file to verify. |
+    | `CERTIFICATE` | path | — | **yes** | Path to the `certificate_<UUID8>.json` or `acquisition_manifest_<UUID8>.json` to verify. |
     | `--key` | path | demo key | no | Path to a trusted Ed25519 public key PEM. If omitted, the bundled demo public key from `core/keys/` is used. |
 
     **Output on success**
@@ -630,13 +978,32 @@ Offline verification of a signed sanitization or carving certificate. No network
     | `Issuer` | Operator and organization |
     | `Fingerprint` | SHA-256 fingerprint of the signing public key |
 
+=== "Help Screen"
+
+    ```text
+    usage: s0 verify [-h] [--key KEY] certificate
+
+    positional arguments:
+      certificate  path to certificate JSON
+
+    options:
+      -h, --help   show this help message and exit
+      --key KEY    path to trusted public key PEM
+    ```
+
+=== "Recommendations"
+
+    - **Public Key Authority Verification**:
+        - **Specify Trusted Lab Public Key (`--key`, Strongly Recommended)**: Verifying with `--key /path/to/authority_public.pem` guarantees that the certificate was signed by your accredited facility rather than an arbitrary party using the default demo key.
+
 === "Examples"
 
     **Verify with bundled demo key**
     ```bash
+    # Offline verification with default public key
     s0 verify certificate_a1b2c3d4.json
     ```
-    ```
+    ```text
     UUID         : a1b2c3d4-e5f6-7890-abcd-ef1234567890
     Status       : ✅ VALID
     NIST tier    : PURGE
@@ -647,20 +1014,19 @@ Offline verification of a signed sanitization or carving certificate. No network
 
     **Verify with a custom authority public key**
     ```bash
+    # Offline verification using an accredited institutional authority key
     s0 verify certificate_a1b2c3d4.json --key /etc/s0/authority_public.pem
     ```
 
     **Batch-verify all certificates in a directory**
     ```bash
+    # Automated batch verification of all certificates in evidence folder
     for cert in /evidence/certs/*.json; do
         echo -n "$cert: "
         s0 verify "$cert" --key /etc/s0/authority_public.pem \
             | grep "Status" || echo "FAILED"
     done
     ```
-
-!!! note "What 'valid' actually means"
-    `✅ VALID` means: (1) the Ed25519 signature bytes are cryptographically correct for the given public key, (2) the payload re-canonicalized to s0 Canonical JSON v1 is byte-for-byte identical to what was signed, and (3) the certificate schema version is recognized. It does **not** attest to the physical condition of the drive — only that the certificate was not tampered with after issuance.
 
 ---
 
@@ -670,7 +1036,8 @@ Generate an Ed25519 keypair for use as a signing authority or per-operator key. 
 
 === "Synopsis"
 
-    ```
+    ```bash
+    # Generate cryptographic Ed25519 keypair
     s0 keygen [--out-dir DIR] [--name PREFIX]
     ```
 
@@ -688,12 +1055,28 @@ Generate an Ed25519 keypair for use as a signing authority or per-operator key. 
     | `<name>_private.pem` | Ed25519 private key in PEM format (`mode 0600`) |
     | `<name>_public.pem` | Ed25519 public key in PEM format (`mode 0644`) |
 
-    Additionally prints the **SHA-256 fingerprint** of the public key to stdout for out-of-band distribution.
+=== "Help Screen"
+
+    ```text
+    usage: s0 keygen [-h] [--out-dir OUT_DIR] [--name NAME]
+
+    options:
+      -h, --help         show this help message and exit
+      --out-dir OUT_DIR  directory to store private and public keys
+      --name NAME        key filename prefix
+    ```
+
+=== "Recommendations"
+
+    - **Key Protection**:
+        - Store `_private.pem` strictly on air-gapped workstations or dedicated hardware security tokens.
+        - Name keys descriptively with `--name` (e.g. `dfir_lab_certifier_2026`) so public keys can be catalogued cleanly in the Verification Portal's `keys.json`.
 
 === "Examples"
 
     **Generate a default keypair in the current directory**
     ```bash
+    # Generate default operator keypair
     s0 keygen
     # → operator_key_private.pem  (0600)
     # → operator_key_public.pem   (0644)
@@ -702,15 +1085,15 @@ Generate an Ed25519 keypair for use as a signing authority or per-operator key. 
 
     **Generate a named authority keypair**
     ```bash
+    # Generate named organizational keypair
     s0 keygen \
         --out-dir /etc/s0/keys/ \
         --name acme_forensics_authority
-    # → /etc/s0/keys/acme_forensics_authority_private.pem
-    # → /etc/s0/keys/acme_forensics_authority_public.pem
     ```
 
     **Generate a per-operator key and use it immediately**
     ```bash
+    # Generate per-operator key and sanitize device
     s0 keygen --out-dir ~/.s0/ --name jane_doe
     sudo s0 wipe \
         --target /dev/sdb \
@@ -719,8 +1102,69 @@ Generate an Ed25519 keypair for use as a signing authority or per-operator key. 
         --yes
     ```
 
-!!! warning "Protect private keys"
-    Anyone with access to `_private.pem` can issue certificates that will verify as valid under the corresponding public key. Store private keys in a hardware token (YubiKey, TPM) for production use. Never commit private keys to version control.
+---
+
+## s0 upgrade
+
+Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies source integrity, refreshes Python dependencies, updates editable packages (`s0_core` and `s0_cli`), and asserts version parity.
+
+=== "Synopsis"
+
+    ```bash
+    # Update s0 suite to latest GitHub release
+    s0 upgrade [--force]
+    ```
+
+=== "Flags"
+
+    | Flag | Type | Default | Description |
+    |------|------|---------|-------------|
+    | `--force` | flag | off | Force re-installation of dependencies and packages even if local repository is already on the latest upstream commit. |
+
+=== "Help Screen"
+
+    ```text
+    usage: s0 upgrade [-h] [--force]
+
+    options:
+      -h, --help  show this help message and exit
+      --force     force re-installation of dependencies even if up to date
+    ```
+
+=== "Recommendations"
+
+    - **Standard Upgrade (`s0 upgrade`)**:
+        - **Recommended**: Queries `git rev-parse HEAD` against `origin/master`. If new commits exist, pulls via `--ff-only`, updates dependencies, and prints the updated version and commit hash. Exits quickly if already up to date.
+    - **Force Rebuild (`s0 upgrade --force`)**:
+        - **Recommended for Troubleshooting**: Use `--force` if virtual environment packages or dependencies become corrupted, or when testing freshly modified local source branches.
+
+=== "Examples"
+
+    **Check and upgrade to latest release**
+    ```bash
+    # Upgrade local s0 suite to latest upstream release
+    s0 upgrade
+    ```
+    ```text
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║      S0 (Sector Zero) — Suite Upgrade & Maintenance Tool         ║
+    ╚══════════════════════════════════════════════════════════════════╝
+
+    [*] Found S0 installation at: /home/kartik/s0
+    [*] Current commit: abbc07d
+    [*] Pulling latest changes from GitHub origin/master...
+    [✓] Source updated: abbc07d → 4a9f12c
+    [*] Refreshing dependencies...
+    [✓] Dependencies refreshed.
+
+    ✅ S0 upgraded successfully to 2.1.0 (4a9f12c)
+    ```
+
+    **Force reinstall dependencies**
+    ```bash
+    # Force rebuild and refresh all core packages
+    s0 upgrade --force
+    ```
 
 ---
 
@@ -800,6 +1244,7 @@ s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (e
 | `<out-dir>/certificate_<UUID8>.json` | Signed certificate output from `s0 wipe` and `s0 erase`. |
 | `<out-dir>/certificate_<UUID8>.pdf` | PDF certificate with embedded QR code. |
 | `<out-dir>/certificate_<UUID8>.qr.png` | Standalone QR code PNG. |
+| `<out-dir>/acquisition_manifest_<UUID8>.json` | Signed acquisition manifest (from `s0 image`). |
 | `<out-dir>/recovery_index.json` | Carving session index (from `s0 carve`). |
 | `<out-dir>/carving_manifest_<UUID8>.json` | Signed carving manifest certificate. |
 
@@ -836,6 +1281,7 @@ s0 list --output-format json \
 ### Validate every certificate after issuance
 
 ```bash
+# Verify integrity of all issued certificates in directory
 CERT_DIR="/var/lib/s0/certs/$(date +%F)"
 PUB_KEY="/etc/s0/authority_public.pem"
 FAIL=0
@@ -869,6 +1315,7 @@ fi
 ### Forensic carve + immediate index query
 
 ```bash
+# Carve files and query extracted SQLite databases
 s0 carve \
     --target /evidence/seized.raw \
     --out-dir /evidence/recovered/ \
@@ -898,7 +1345,7 @@ When `--json` is passed to `s0 wipe`, each event is a newline-delimited JSON obj
 | `"error"` | `code`, `message` | Emitted on any failure; exit code will be non-zero. |
 
 ```bash
-# Extract the certificate path from a completed wipe log
+# Extract certificate path from completed NDJSON wipe log
 grep '"event":"complete"' wipe.log | jq -r '.cert_path'
 ```
 

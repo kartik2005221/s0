@@ -187,6 +187,7 @@ uv run --with "mkdocs-material>=9.5.0" mkdocs serve
 
 To compile static HTML files into `public/`:
 ```bash
+# Build complete documentation site to public/ directory
 bash build-docs.sh
 ```
 

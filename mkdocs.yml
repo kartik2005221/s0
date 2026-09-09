@@ -122,6 +122,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Core Modules & Guides:
+      - Secure Erasure Guide: secure-erasure-guide.md
       - User Manual: USER_MANUAL.md
       - CLI Reference: cli-reference.md
       - Web Dashboard: web-dashboard.md
@@ -140,6 +141,7 @@ nav:
   - Developer & Defense:
       - Contributing Guide: contributing.md
       - Forensic Test Plan & QA: TEST_PLAN.md
+      - Agentic AI & High-Risk Safety: agentic-ai.md
       - Evaluator Handover: HANDOVER.md
       - Pitch & Defense Outline: PITCH_OUTLINE.md
       - Changelog & Releases: changelog.md

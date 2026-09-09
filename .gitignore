@@ -32,7 +32,10 @@ tmp/
 *.db
 
 # Agent tools
-.agents/
+.agents/**
+!.agents/skills/
+!.agents/skills/s0-forensics/
+!.agents/skills/s0-forensics/**
 skills-lock.json
 
 

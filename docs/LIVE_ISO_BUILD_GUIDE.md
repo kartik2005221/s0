@@ -125,6 +125,7 @@ cd s0/linux/iso
 ### Step 2: Run the Build
 
 ```bash
+# Execute Debian live-build pipeline with root privileges
 sudo ./build.sh
 ```
 
@@ -143,7 +144,8 @@ The build script runs through five stages:
 
 ### Output Location
 
-```
+```text
+# Target hybrid ISO artifact
 linux/iso/live-image-amd64.hybrid.iso
 ```
 
@@ -162,6 +164,7 @@ S0 provides automated solutions for Windows developers and field operators:
 The script automatically detects if **Docker Desktop** or **WSL2** is running and executes the build inside an isolated Debian container:
 
 ```powershell
+# Run the automated Windows live-build orchestrator
 .\scripts\build_iso.ps1
 ```
 
@@ -184,6 +187,7 @@ The resulting `s0-live-amd64.hybrid.iso` will be generated directly into your cu
 If you do not have Docker or WSL2 installed on Windows, you can download the latest official release directly with automatic SHA-256 integrity verification:
 
 ```powershell
+# Download official verified release with SHA-256 integrity check
 irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex
 ```
 
@@ -207,13 +211,15 @@ An accredited lab must provision their own Ed25519 private key.
 
 1. Generate an Ed25519 key pair on a secure, air-gapped machine:
    ```bash
+   # Generate authority keypair on offline workstation
    s0 keygen --out-dir /secure/keys --name lab_issuer
    ```
 
 2. Place `lab_issuer_private.pem` onto an encrypted USB drive or persistent partition.
 
 3. When booted into the live station, the wipe daemon looks for the private key at:
-   ```
+   ```text
+   # Standard path scanned by live wipe daemon
    /opt/s0/keys/issuer_private.pem
    ```
    If no key is present, wiping still works — but the certificate's status will report `NO_PRIVATE_KEY` rather than forging a mock signature.
@@ -243,6 +249,7 @@ Before burning to physical USB, always verify that the ISO boots cleanly in a vi
 ### Automated Headless Smoke Test
 
 ```bash
+# Run headless QEMU boot test and inspect console log
 ./qemu-test.sh live-image-amd64.hybrid.iso
 ```
 

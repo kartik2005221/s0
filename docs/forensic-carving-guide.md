@@ -85,6 +85,7 @@ This is the most common workflow. You have a `.dd`, `.raw`, `.img`, or `.E01` im
 ### 1. Verify the image integrity first
 
 ```bash
+# Compute SHA-256 integrity hash of forensic image
 sha256sum suspect_drive.dd
 ```
 
@@ -93,12 +94,13 @@ Compare against the acquisition hash. Never carve from an unverified image — a
 ### 2. Run s0 carve
 
 ```bash
-s0 carve suspect_drive.dd --out-dir ./recovered/
+# Carve deleted files with auto-detected filesystem parsing
+s0 carve --target suspect_drive.dd --out-dir ./recovered/
 ```
 
 s0 auto-detects the filesystem and selects the appropriate engine. Output:
 
-```
+```text
 [s0] Probing filesystem...
 [s0] Detected: NTFS (OEM ID at offset 3)
 [s0] Engine: NTFS Structure + Signature fallback
@@ -110,26 +112,30 @@ s0 auto-detects the filesystem and selects the appropriate engine. Output:
 [s0] Manifest: carving_manifest_a3f2bc91.json
 ```
 
-### 3. Force a specific engine (optional)
+### 3. Restrict target file extensions (optional)
 
-=== "ext4"
+=== "Office & Archives"
     ```bash
-    s0 carve image.dd --engine ext4 --out-dir ./recovered/
+    # Focus acquisition on documents, spreadsheets, and archives
+    s0 carve --target image.dd --extensions zip,pdf,sqlite --out-dir ./recovered/
     ```
 
-=== "NTFS"
+=== "Images & Media"
     ```bash
-    s0 carve image.dd --engine ntfs --out-dir ./recovered/
+    # Extract photographic and audio evidence
+    s0 carve --target image.dd --extensions jpg,png,gif,bmp,mp3 --out-dir ./recovered/
     ```
 
-=== "FAT32"
+=== "Executables & Binaries"
     ```bash
-    s0 carve image.dd --engine fat32 --out-dir ./recovered/
+    # Extract ELF executables and compressed packages
+    s0 carve --target image.dd --extensions elf,gz --out-dir ./recovered/
     ```
 
-=== "Signature only"
+=== "All Signatures"
     ```bash
-    s0 carve image.dd --engine signature --out-dir ./recovered/
+    # Scan for all 10 supported forensic formats
+    s0 carve --target image.dd --out-dir ./recovered/
     ```
 
 ### 4. Adjust confidence threshold
@@ -137,18 +143,20 @@ s0 auto-detects the filesystem and selects the appropriate engine. Output:
 By default, s0 saves any file scoring ≥ 50 confidence points. For court-quality evidence, raise this:
 
 ```bash
-s0 carve image.dd --out-dir ./recovered/ --min-confidence 75
+# Carve with high confidence threshold for court-admissible evidence
+s0 carve --target image.dd --out-dir ./recovered/ --min-confidence 75
 ```
 
 For maximum recovery at the cost of more false positives (e.g., exploring an unknown image):
 
 ```bash
-s0 carve image.dd --out-dir ./recovered/ --min-confidence 30
+# Carve with lowered threshold to maximize recovery of damaged media
+s0 carve --target image.dd --out-dir ./recovered/ --min-confidence 30
 ```
 
 ### 5. Review the output table
 
-```
+```text
 ID      EXT     SIZE        CONF%   SHA256          FILENAME
 0001    jpg     2.4 MB      94%     a3f2bc91...     file_0001.jpg
 0002    pdf     512 KB      87%     d94e1200...     file_0002.pdf
@@ -166,11 +174,12 @@ ID      EXT     SIZE        CONF%   SHA256          FILENAME
 ### 1. Identify the device node
 
 ```bash
+# Enumerate storage devices, sizes, filesystems, and mountpoints
 lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT
 ```
 
 Example output:
-```
+```text
 NAME   SIZE  FSTYPE   LABEL       MOUNTPOINT
 sda    1.0T  ext4     system      /
 sdb    64G   vfat     EVIDENCE
@@ -181,7 +190,8 @@ Here `sdb` is the target.
 ### 2. Carve directly from the block device
 
 ```bash
-sudo s0 carve /dev/sdb --out-dir ./usb_recovery/
+# Carve deleted files directly from unmounted block device
+sudo s0 carve --target /dev/sdb --out-dir ./usb_recovery/
 ```
 
 !!! danger "Do not mount the device"
@@ -304,7 +314,8 @@ Every carving session produces a `recovery_index.json` in the output directory. 
 Office Open XML formats (`.docx`, `.xlsx`, `.pptx`) use the ZIP container. s0 carves them as `.zip` files.
 
 ```bash
-s0 carve ntfs_image.dd --out-dir ./office_recovery/ --min-confidence 65
+# Carve ZIP containers (including Word/Excel/PowerPoint) with confidence >= 65
+s0 carve --target ntfs_image.dd --out-dir ./office_recovery/ --extensions zip --min-confidence 65
 ```
 
 After recovery:

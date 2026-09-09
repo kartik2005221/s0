@@ -1,68 +1,78 @@
 # s0 — User & Forensic Operator Manual
 
-> **Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, Field Decommissioning Engineers, Compliance Auditors  
-> **Version:** 2.0.0 (Unified Forensic Suite)  
-> **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)
+> [!IMPORTANT] **Document Scope: Comprehensive Operator & Field Reference Manual**  
+> This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, blockchain ledger continuity audits, and regulatory sign-offs.  
+> If you only need to perform a quick 5-minute setup and test run on an image file, refer to the **[Getting Started Guide](getting-started.md)**. For in-depth sanitization physics and firmware mechanics, see the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
 
 ---
 
 ## 1. Introduction & Operational Philosophy
 
-The **s0 (Sector Zero)** suite unites two traditionally disjoint capabilities:
+The **s0 (Sector Zero)** suite unifies offensive and defensive storage operations into a single open-source platform:
 1. **Defensive Anti-Forensics & Sanitization:** Irreversibly destroying digital data across storage drives, individual files, and directory hierarchies in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**.
 2. **Offensive Digital Forensics & Evidence Recovery:** Reconstructing deleted, concealed, or lost files from formatted media and raw disk images across ext4, NTFS, FAT32, and exFAT without mounting the filesystem.
-3. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local blockchain ledger**.
+3. **Forensic Acquisition & Cloning:** Creating bit-stream disk images with live dual hashing (SHA-256 and MD5) and bad-sector fault tolerance per **ISO/IEC 27037**.
+4. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local blockchain ledger**.
 
 ---
 
-## 2. Installation & Quickstart
+## 2. Installation & Upgrade Workflows
+
+### 2.1 Installation Across Operating Systems
 
 === "Linux & macOS"
     ```bash
-    # Install via one-line installer
+    # Download and execute the universal Linux/macOS installer
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
     
-    # Confirm installation
+    # Confirm installation and print version
     s0 --version
     ```
 
 === "Windows (PowerShell)"
     ```powershell
-    # Install via PowerShell installer
+    # Execute the Windows PowerShell automated bootstrap installer
     irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
     
-    # Confirm installation
+    # Confirm installation and print version
     s0 --version
     ```
 
 === "From Source (All Platforms)"
     ```bash
+    # Clone repository and execute master bootstrap orchestrator
     git clone https://github.com/kartik2005221/s0.git
     cd s0
     bash scripts/build_all.sh
     ```
 
-### 2.1 Upgrading S0
+### 2.2 Upgrading s0 to the Latest Version
 
-To keep S0 updated with the latest forensic capabilities, compliance rules, and patches:
+To keep s0 synchronized with the latest NIST compliance profiles, carving signatures, and patches:
 
 === "Command Line (Universal)"
     ```bash
+    # Check remote repository and upgrade the active installation in-place
     s0 upgrade
+    # Use --force to reinstall all virtual environment dependencies
+    s0 upgrade --force
     ```
 
 === "Linux & macOS"
     ```bash
+    # Re-run the automated upgrade pipeline from GitHub master
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash
     ```
 
 === "Windows (PowerShell)"
     ```powershell
+    # Execute remote PowerShell upgrade script
     irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex
     ```
 
-=== "Windows (CMD)"
+=== "Windows (Command Prompt)"
     ```cmd
+    :: Execute CMD batch upgrade pipeline
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.cmd | cmd
     ```
 
@@ -73,9 +83,10 @@ To keep S0 updated with the latest forensic capabilities, compliance rules, and 
 The Drive Eraser sanitizes whole physical disks (NVMe, SATA HDD/SSD, USB flash drives, SD cards) and forensic disk images (`.raw`, `.img`, `.dd`).
 
 ### 3.1 Device Inventory (`s0 list`)
-Display all attached block devices and their mount states:
+Display all attached block devices, hardware serial numbers, and mount states:
 
 ```bash
+# List all visible block devices in human-readable table format
 s0 list
 ```
 
@@ -91,6 +102,7 @@ Image-file targets work too (no root needed): use --target /path/to/file.img
 
 For JSON output suitable for automated scripts:
 ```bash
+# Query storage devices in machine-readable JSON format
 s0 list --output-format json
 ```
 
@@ -98,6 +110,7 @@ s0 list --output-format json
 Before executing an irreversible wipe, run `s0 plan` to inspect which sanitization method will be selected, its NIST tier, and any safety warnings:
 
 ```bash
+# Simulate sanitization strategy without writing a single byte
 s0 plan --target /dev/sdb
 ```
 
@@ -116,10 +129,14 @@ alternatives    :
   - [available] OVERWRITE_ZERO_1PASS (Clear)
 ```
 
+> [!TIP] **Method Recommendation**  
+> For **NVMe SSDs**, allow s0 to execute controller-level firmware purges (default). This achieves NIST **Purge**, completes in under 30 seconds for 1 TB, and prevents NAND write cycle degradation. For **HDDs**, standard `OVERWRITE_ZERO_1PASS` satisfies NIST **Clear** and runs 3× faster than pseudo-random overwriting.
+
 ### 3.3 Executing Sanitization (`s0 wipe`)
 Perform certified sanitization:
 
 ```bash
+# Execute physical drive wipe with operator attribution
 sudo s0 wipe \
     --target /dev/sdb \
     --operator "analyst-42" \
@@ -127,8 +144,9 @@ sudo s0 wipe \
     --out-dir ./certificates
 ```
 
-To skip the interactive `WIPE` confirmation prompt (e.g. in automated lab pipelines):
+To skip the interactive `WIPE` confirmation prompt in automated pipelines:
 ```bash
+# Non-interactive wipe with explicit override flag
 sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
 ```
 
@@ -136,6 +154,7 @@ sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
 During operation, s0 renders an ANSI progress bar displaying real-time I/O throughput, elapsed time, ETA, and thermal sensor telemetry (queried every 2 seconds):
 
 ```
+# Terminal status line output
 [s0 wipe] ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  482 MB/s  ETA 00m 14s  Temp: 44°C
 ```
 
@@ -150,11 +169,13 @@ Module 2 provides selective, in-place cluster sanitization for sensitive files a
 
 ### 4.1 Basic File Erasure (`s0 erase`)
 ```bash
+# Securely erase specific target files and directory trees
 s0 erase --targets /evidence/confidential_memo.pdf /evidence/financial_records/
 ```
 
 ### 4.2 Multi-Pass Random Overwrite
 ```bash
+# Multi-pass random sanitization for defense contract compliance
 s0 erase \
     --targets /evidence/suspect_payload.bin \
     --passes 3 \
@@ -163,13 +184,8 @@ s0 erase \
     --out-dir ./reports
 ```
 
-### 4.3 What Module 2 Executes Under the Hood:
-1. **Extent Mapping:** Resolves physical file extents via `filefrag` or direct extent diagnostics.
-2. **In-Place Cluster Overwrite:** Overwrites allocated clusters directly using unbuffered I/O with hardware cache synchronization (`fsync()`, `F_FULLFSYNC`, or `FlushFileBuffers`).
-3. **Metadata Cleansing:** Truncates file size to 0 bytes.
-4. **Timestamp Zeroing:** Resets inode `atime` and `mtime` timestamps to Unix epoch zero (`1970-01-01T00:00:00Z`).
-5. **Filename Scrambling:** Renames the directory entry to a randomized alphanumeric string before unlinking, preventing forensic undelete tools from discovering the original filename in directory leaf nodes.
-6. **Alternate Data Stream (ADS) Scrubbing:** On Windows, discovers and overwrites named streams (such as `:Zone.Identifier`).
+> [!TIP] **Pattern Recommendation**  
+> Unless external regulations (such as legacy DoD 5220.22-M mandates) require multiple random passes, choose `--pattern zero --passes 1`. A single pass completely zeros physical file extents and runs significantly faster.
 
 ---
 
@@ -179,12 +195,18 @@ Module 3 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or unmo
 
 ### 5.1 Basic Carving Operation
 ```bash
+# Carve deleted documents and images from raw disk image
 s0 carve \
     --target /evidence/seized_drive.raw \
     --out-dir ./recovered_evidence \
     --extensions jpg,png,pdf,zip \
     --min-confidence 60
 ```
+
+> [!TIP] **Confidence Score Recommendation**  
+> - **Threshold 50% (Default):** Optimal for general triage and initial incident surveys.  
+> - **Threshold 75%+:** Recommended when generating court-ready exhibits to eliminate partial fragments.  
+> - **Threshold 25–40%:** Recommended for heavily damaged or partially overwritten storage media to maximize recovery chances.
 
 ### 5.2 Supported File Formats
 - **Images:** JPEG (`FF D8 FF`), PNG (`89 50 4E 47`), GIF (`GIF8`), BMP (`BM`)
@@ -200,6 +222,7 @@ When carving from raw media, s0 automatically detects filesystem signatures:
 
 ### 5.4 Carving Output Structure
 ```
+# Layout of recovered evidence directory
 recovered_evidence/
 ├── CRV_0001.pdf
 ├── CRV_0002.jpg
@@ -220,17 +243,23 @@ The `s0 image` and `s0 clone` commands create an exact, bit-for-bit physical rep
 To acquire a complete raw image (`.raw` / `.img` / `.dd`) of a physical drive or flash media:
 
 ```bash
+# Acquire bit-stream raw image with live dual hashing and bad-sector recovery
 s0 image \
     --source /dev/sdb \
     --destination /evidence/suspect_drive.raw \
+    --block-size 1048576 \
     --operator "analyst-01" \
     --organization "Forensic Lab"
 ```
+
+> [!TIP] **Block Size Recommendation**  
+> The default block size `--block-size 1048576` (1 MiB) delivers maximum sequential streaming throughput on modern PCIe and SATA controllers. Use smaller blocks (e.g. 64 KiB) only when imaging legacy USB 1.1/2.0 thumb drives.
 
 ### 6.2 Cloning a Drive (1:1 Disk Duplication)
 To duplicate a source drive directly to a clean target drive:
 
 ```bash
+# Clone source disk directly to target physical drive
 s0 clone \
     --source /dev/sdb \
     --destination /dev/sdc \
@@ -246,12 +275,6 @@ Degraded or failing drives with unreadable magnetic sectors or worn NAND blocks 
 - Logs bad block offsets in a forensic error map within the acquisition manifest
 - Completes acquisition without aborting
 
-### 6.4 Simultaneous Cryptographic Hashing
-During acquisition, s0 streams data through live SHA-256 and MD5 hashers. The hashes are computed dynamically without requiring a separate, time-consuming second read pass.
-
-### 6.5 Output Manifest & Audit Ledger Integration
-Each imaging operation produces an acquisition manifest JSON file and appends the event to the blockchain audit ledger.
-
 ---
 
 ## 7. Module 5: Blockchain Cryptographic Audit Ledger
@@ -260,6 +283,7 @@ Every wipe, file erasure, carving session, and drive acquisition is appended as 
 
 ### 7.1 Inspecting Audit Blocks (`s0 audit list`)
 ```bash
+# Display the 20 most recent blocks in the audit ledger
 s0 audit list --limit 20
 ```
 
@@ -276,6 +300,7 @@ IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BL
 Audit the cryptographic continuity from Genesis to Tip:
 
 ```bash
+# Verify mathematical SHA-256 hash continuity of the audit chain
 s0 audit verify
 ```
 
@@ -287,19 +312,13 @@ Blocks Tested: 24
 Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
 ```
 
-If any database row has been altered, the verification engine detects the discrepancy immediately:
-```
-Chain Status : ❌ BROKEN / TAMPER DETECTED
-Blocks Tested: 14
-Details      : Block #14 prev_hash does not match Block #13 block_hash. Tamper detected at index 14.
-```
-
 ---
 
 ## 8. Offline Certificate Verification
 
 ### 8.1 Command-Line Verification (`s0 verify`)
 ```bash
+# Verify an issued certificate against trusted public authority key
 s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_public.pem
 ```
 
@@ -326,6 +345,7 @@ Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e33
 To establish an accredited signing authority:
 
 ```bash
+# Generate a new Ed25519 signing keypair for an accredited lab
 s0 keygen --out-dir /secure/keys --name lab_authority
 ```
 

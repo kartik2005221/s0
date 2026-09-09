@@ -77,6 +77,7 @@ graph TD
 To execute the complete QA verification pipeline:
 
 ```bash
+# Execute master build, venv setup, and comprehensive test suite
 bash scripts/build_all.sh
 ```
 

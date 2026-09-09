@@ -1,5 +1,11 @@
 # Getting Started with s0
 
+> [!NOTE] **Document Scope: 5-Minute Quickstart & Installation Guide**  
+> This guide is intended for new users and evaluators who need to install s0, verify toolchain prerequisites, and execute their first safe dry-run in under 5 minutes.  
+> For certified field sanitization procedures, bad-sector fault recovery, live bit-stream imaging, batch enterprise destruction, and legal audit chain management, consult the **[User & Forensic Operator Manual](USER_MANUAL.md)** or the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
+
+---
+
 **s0 (Sector Zero)** is a command-line suite that unifies two capabilities rarely found in a single open-source tool: *forensic-grade drive and file sanitization* and *deleted-file recovery from raw disk images*. Every operation it performs — wipe, erase, or carve — is automatically recorded into a SHA-256 block-chained audit ledger and sealed with an Ed25519 digital signature, giving you a tamper-evident chain of custody that holds up to forensic scrutiny.
 
 This page takes you from a bare machine to completing your first wipe, erasure, and carve operation — in under ten minutes.
@@ -9,7 +15,7 @@ This page takes you from a bare machine to completing your first wipe, erasure, 
 ## Workflow at a Glance
 
 ```mermaid
-flowchart LR
+flowchart TD
     A(["Install s0"]) --> B["s0 list\nDiscover devices"]
     B --> C["s0 plan\nDry run — nothing written"]
     C --> D["s0 wipe\nSanitize target"]
@@ -54,6 +60,7 @@ Before installing, confirm that the following are present on your system.
     Run the one-liner installer. It clones the repository, creates a Python virtual environment, installs all dependencies, and adds `s0` to your `PATH` automatically.
 
     ```bash
+    # Execute universal Linux installer
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
     ```
 
@@ -65,6 +72,7 @@ Before installing, confirm that the following are present on your system.
     The same installer script works unchanged on macOS (Apple Silicon and Intel):
 
     ```bash
+    # Execute universal macOS installer
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
     ```
 
@@ -76,12 +84,14 @@ Before installing, confirm that the following are present on your system.
     Open **PowerShell as Administrator** (right-click → *Run as administrator*) and run:
 
     ```powershell
+    # Execute automated Windows PowerShell installer
     irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
     ```
 
     !!! warning "Execution policy"
         If you receive a `cannot be loaded because running scripts is disabled` error, temporarily allow remote scripts:
         ```powershell
+        # Temporarily enable execution of signed remote scripts
         Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
         ```
         Restore it after install with `Set-ExecutionPolicy -Scope CurrentUser Restricted`.
@@ -91,6 +101,7 @@ Before installing, confirm that the following are present on your system.
     Open **CMD as Administrator** and run:
 
     ```cmd
+    :: Execute automated Windows CMD installer
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
     ```
 
@@ -99,6 +110,7 @@ Before installing, confirm that the following are present on your system.
     Use this approach when you need offline installation, want to audit the install script first, or intend to contribute to the codebase.
 
     ```bash
+    # Clone repository and execute master bootstrap orchestrator
     git clone https://github.com/kartik2005221/s0.git
     cd s0
     bash scripts/build_all.sh   # (1)
@@ -109,12 +121,14 @@ Before installing, confirm that the following are present on your system.
     After `build_all.sh` completes, invoke s0 directly through the virtual environment:
 
     ```bash
+    # Verify installation directly via virtualenv binary
     .venv/bin/s0 --version
     ```
 
     !!! tip "Add to PATH manually"
         To use `s0` without the `.venv/bin/` prefix, add the following to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
         ```bash
+        # Export s0 binary directory to PATH
         export PATH="/path/to/s0/.venv/bin:$PATH"
         ```
 
@@ -125,18 +139,21 @@ Before installing, confirm that the following are present on your system.
 Confirm the installation completed successfully:
 
 ```bash
+# Print installed version string
 s0 --version
 ```
 
 Expected output (version numbers may differ):
 
 ```
+# Output verification string
 s0 version 2.0.0
 ```
 
 !!! tip "Shell not finding s0?"
     If your shell reports `command not found`, open a **new terminal window** first — the installer modifies `PATH` in your shell profile, which only takes effect in new sessions. If the issue persists, check that the install location (e.g. `/usr/local/bin`) is in your `PATH`:
     ```bash
+    # Inspect PATH entries for s0 binaries
     echo $PATH | tr ':' '\n' | grep -E "local/bin|s0"
     ```
 
@@ -152,6 +169,7 @@ This walkthrough sanitizes a USB drive or block device. Follow the three steps i
 ### Step 1 — Discover attached devices
 
 ```bash
+# List all attached storage devices
 s0 list
 ```
 
@@ -184,6 +202,7 @@ This command enumerates all block devices visible to the operating system and pr
 Before writing a single byte, run `plan` to see exactly which sanitization method s0 will apply:
 
 ```bash
+# Dry run: view selected sanitization strategy without modifying data
 s0 plan --target /dev/sdb
 ```
 
@@ -207,6 +226,7 @@ Sample output:
 ### Step 3 — Execute the wipe
 
 ```bash
+# Execute certified physical media sanitization
 sudo s0 wipe --target /dev/sdb --yes \
     --operator "analyst-01" \
     --organization "Forensic Lab"
@@ -218,12 +238,14 @@ sudo s0 wipe --target /dev/sdb --yes \
 A live progress bar streams to the terminal throughout the operation:
 
 ```
+# Real-time ANSI progress stream
 [s0 wipe]  ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  18.4 MB/s  ETA 05m 42s  44°C
 ```
 
 When complete:
 
 ```
+# Sanitization completion summary
 [s0 wipe]  ✔  Sanitization complete
 [s0 wipe]  Method   : OVERWRITE_ZERO_1PASS (NIST SP 800-88 Clear)
 [s0 wipe]  Verified : 64-block sampled readback — PASS
@@ -241,6 +263,7 @@ When complete:
 `s0 erase` operates on individual files and directories — no root access needed. It overwrites data in-place at the cluster level, zeroes filesystem timestamps, and scrambles directory entry names before unlinking.
 
 ```bash
+# Execute in-place cluster sanitization on target files and directories
 s0 erase \
     --targets /path/to/classified_report.pdf /path/to/sensitive_folder/ \
     --passes 1
@@ -257,6 +280,7 @@ s0 erase \
 Sample output:
 
 ```
+# File erasure progress output
 [s0 erase]  Processing 2 target(s)...
 [s0 erase]  ✔  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
 [s0 erase]  ✔  sensitive_folder/       — 23 files / 81.4 MB  overwritten (1 pass), metadata scrubbed
@@ -275,9 +299,10 @@ Sample output:
 The carver recovers deleted files from raw disk images — no root access needed, and it works entirely on image files, so your original evidence drive is never touched.
 
 !!! info "What is a disk image?"
-    A disk image (`.raw`, `.img`, `.dd`) is a byte-for-byte copy of a storage device. You can create one from a physical drive with standard forensic tools (`dd`, `dcfldd`, `FTK Imager`). s0's carver then operates on this image without any risk of modifying the original evidence.
+    A disk image (`.raw`, `.img`, `.dd`) is a byte-for-byte copy of a storage device. You can create one from a physical drive with standard forensic tools (`s0 image`, `dd`, `dcfldd`). s0's carver then operates on this image without any risk of modifying the original evidence.
 
 ```bash
+# Extract deleted forensic evidence from raw image file
 s0 carve \
     --target /evidence/suspect_drive.raw \
     --out-dir ./recovered_evidence \
@@ -299,12 +324,14 @@ s0 carve \
 Live output streams a progress bar and a rolling found-file counter:
 
 ```
+# Terminal status line output
 [s0 carve]  ████████░░░░░░░░░░░░  35.4%  10.2 GiB / 28.9 GiB  142 MB/s   ETA 02m 10s  Found: 36,790
 ```
 
 When complete:
 
 ```
+# Evidence recovery completion summary
 [s0 carve]  ✔  Carving complete
 [s0 carve]  Files recovered : 1,247  (above 50% confidence)
 [s0 carve]  Output          : ./recovered_evidence/
@@ -331,9 +358,10 @@ When complete:
 Every `s0 wipe` and `s0 erase` operation produces a **certificate bundle** — three files tied to a single UUID:
 
 ```
-certificate_a3f19c22.json      # (1)
-certificate_a3f19c22.pdf       # (2)
-certificate_a3f19c22.qr.png    # (3)
+# Certificate bundle files
+certificate_a3f19c22.json      # (1) Machine-readable canonical payload
+certificate_a3f19c22.pdf       # (2) Official printable PDF with QR
+certificate_a3f19c22.qr.png    # (3) Standalone verification QR code
 ```
 
 1. **Machine-readable** — Canonical JSON payload with Ed25519 signature. Submit to `s0 verify` or drag-and-drop into the [Verification Portal](https://s0-vp.vercel.app/).
@@ -343,6 +371,7 @@ certificate_a3f19c22.qr.png    # (3)
 The `carve` command produces a **signed manifest** instead:
 
 ```
+# Forensic carving manifest
 carve_manifest_9e4a1b77.json   # Signed list of all recovered files + SHA-256 hashes
 ```
 
@@ -372,12 +401,14 @@ You have three independent ways to verify any s0 certificate, all of which work 
 === "CLI"
 
     ```bash
+    # Verify certificate signature against demo authority key
     s0 verify certificate_a3f19c22.json --key core/keys/demo_issuer_public.pem
     ```
 
     Expected output on a valid certificate:
 
     ```
+    # Cryptographic verification summary
     [s0 verify]  ✔  Signature VALID
     [s0 verify]  Issuer    : s0 Demo Authority
     [s0 verify]  Target    : /dev/sdb  (SanDisk Ultra, 32.0 GB)
@@ -406,6 +437,7 @@ You have three independent ways to verify any s0 certificate, all of which work 
 === "Linux / macOS"
 
     ```bash
+    # Download and run the automated uninstaller
     curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.sh | bash
     ```
 
@@ -414,6 +446,7 @@ You have three independent ways to verify any s0 certificate, all of which work 
 === "Windows — PowerShell"
 
     ```powershell
+    # Execute the Windows PowerShell automated uninstaller
     irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.ps1 | iex
     ```
 
@@ -434,7 +467,7 @@ Now that you have s0 installed and have run your first operations, explore the d
 
     Every flag, every subcommand, and every option — with examples covering NVMe Secure Erase, SATA Enhanced Erase, multi-pass patterns, and batch file sanitization.
 
-    [:octicons-arrow-right-24: User Manual](USER_MANUAL.md)
+    [:octicons-arrow-right-24: CLI Reference](cli-reference.md)
 
 -   :material-shield-check: __Compliance & Standards__
 
