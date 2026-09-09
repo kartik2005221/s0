@@ -10,6 +10,9 @@ site_dir: public
 theme:
   name: material
   language: en
+  icon:
+    logo: material/shield-check
+    repo: fontawesome/brands/github
   palette:
     # Slate / Dark Mode (Default)
     - scheme: slate

@@ -1,122 +1,417 @@
-/* 
-   S0 Documentation Custom Theme
-   ColorHunt Palette: https://colorhunt.co/palette/222831393e4600adb5eeeeee
-   - Deep Dark / Base Background: #222831
-   - Surface / Cards / Sidebar:   #393E46
-   - Vibrant Teal / Accents:      #00ADB5
-   - Clean Foreground / Text:     #EEEEEE
-*/
+/* ================================================================
+   S0 Digital Forensic & Sanitization Suite — Documentation Theme
+   Palette:
+     #222831 (Dark Charcoal Base)
+     #282e38 (Elevated Surface / Cards)
+     #393E46 (Secondary Dark / Borders)
+     #00ADB5 (Vibrant Teal / Forensic Accent)
+     #EEEEEE (Crisp High-Contrast Text)
+   ================================================================ */
 
-/* ── Slate / Dark Mode (Default) ────────────────────────── */
+/* ── Slate / Dark Mode (Default) ────────────────────────────── */
 [data-md-color-scheme="slate"] {
-  /* Page Backgrounds */
+  /* Page Base */
   --md-default-bg-color: #222831;
-  --md-default-bg-color--light: #2c323c;
-  --md-default-bg-color--lighter: #393E46;
-  --md-default-bg-color--lightest: #4a505a;
+  --md-default-bg-color--light: #282e38;
+  --md-default-bg-color--lighter: #2f3642;
+  --md-default-bg-color--lightest: #393E46;
 
-  /* Typography / Foreground */
+  /* Typography */
   --md-default-fg-color: #EEEEEE;
   --md-default-fg-color--light: #D6D6D6;
-  --md-default-fg-color--lighter: #A0A5AD;
-  --md-default-fg-color--lightest: #393E46;
+  --md-default-fg-color--lighter: #9ca3af;
+  --md-default-fg-color--lightest: #6b7280;
 
-  /* Brand / Primary */
-  --md-primary-fg-color: #00ADB5;
-  --md-primary-fg-color--light: #33BDC4;
-  --md-primary-fg-color--dark: #00878D;
-  --md-primary-bg-color: #222831;
-  --md-primary-bg-color--light: #393E46;
+  /* Header & Primary */
+  --md-primary-fg-color: #1a1e24;          /* Header bar background */
+  --md-primary-bg-color: #FFFFFF;          /* Header text & icons (100% white) */
+  --md-primary-fg-color--light: #222831;
+  --md-primary-fg-color--dark: #14171c;
 
-  /* Accents & Highlights */
+  /* Accents */
   --md-accent-fg-color: #00ADB5;
   --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.15);
-  --md-accent-bg-color: #222831;
+  --md-accent-bg-color: #FFFFFF;
 
   /* Code Blocks */
-  --md-code-bg-color: #1a1e24;
+  --md-code-bg-color: #16181d;
   --md-code-fg-color: #EEEEEE;
 
-  /* Links */
+  /* Hyperlinks */
   --md-typeset-a-color: #00ADB5;
 
-  /* Admonitions & Borders */
+  /* Borders & Dividers */
   --md-default-border-color: #393E46;
 }
 
-/* ── Default / Light Mode ───────────────────────────────── */
+/* ── Default / Light Mode ───────────────────────────────────── */
 [data-md-color-scheme="default"] {
-  /* Page Backgrounds */
+  /* Page Base */
   --md-default-bg-color: #F8F9FA;
   --md-default-bg-color--light: #EEEEEE;
   --md-default-bg-color--lighter: #E2E4E8;
   --md-default-bg-color--lightest: #D4D7DC;
 
-  /* Typography / Foreground */
+  /* Typography */
   --md-default-fg-color: #222831;
   --md-default-fg-color--light: #393E46;
   --md-default-fg-color--lighter: #555B64;
   --md-default-fg-color--lightest: #CCCCCC;
 
-  /* Brand / Primary */
-  --md-primary-fg-color: #00ADB5;
-  --md-primary-fg-color--light: #33BDC4;
-  --md-primary-fg-color--dark: #00878D;
-  --md-primary-bg-color: #EEEEEE;
-  --md-primary-bg-color--light: #FFFFFF;
+  /* Header & Primary */
+  --md-primary-fg-color: #222831;
+  --md-primary-bg-color: #FFFFFF;
+  --md-primary-fg-color--light: #2d333b;
+  --md-primary-fg-color--dark: #1a1e24;
 
-  /* Accents & Highlights */
+  /* Accents */
   --md-accent-fg-color: #00878D;
   --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.12);
-  --md-accent-bg-color: #EEEEEE;
+  --md-accent-bg-color: #FFFFFF;
 
   /* Code Blocks */
   --md-code-bg-color: #E9ECEF;
   --md-code-fg-color: #222831;
 
-  /* Links */
+  /* Hyperlinks */
   --md-typeset-a-color: #00878D;
 
-  /* Admonitions & Borders */
+  /* Borders & Dividers */
   --md-default-border-color: #E0E0E0;
 }
 
-/* ── Header & Navigation Bar Styling ─────────────────────── */
+/* ================================================================
+   1. HEADER BAR & NAVIGATION
+   ================================================================ */
 .md-header {
-  background-color: #222831 !important;
-  border-bottom: 1px solid #393E46;
-}
-
-.md-tabs {
   background-color: #1a1e24 !important;
   border-bottom: 1px solid #393E46;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
-.md-tabs__link--active,
-.md-tabs__link:hover {
+/* Header Logo */
+.md-header__button.md-logo {
   color: #00ADB5 !important;
 }
 
-/* ── Grid Cards Enhancement ──────────────────────────────── */
-.md-typeset .grid.cards > ul > li {
-  background-color: var(--md-default-bg-color--lighter);
-  border: 1px solid rgba(0, 173, 181, 0.2);
+.md-header__button.md-logo svg {
+  fill: #00ADB5 !important;
+}
+
+/* Header Title */
+.md-header__title {
+  color: #FFFFFF !important;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md-header__topic {
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+.md-header__topic + .md-header__topic {
+  color: #A0A5AD !important;
+  font-weight: 400;
+}
+
+/* Header Action Buttons (Menu toggle, color toggle, repo) */
+.md-header__button {
+  color: #EEEEEE !important;
+  transition: color 0.15s ease;
+}
+
+.md-header__button:hover {
+  color: #00ADB5 !important;
+}
+
+.md-header__button svg {
+  fill: currentColor !important;
+}
+
+/* ================================================================
+   2. SEARCH BOX
+   ================================================================ */
+.md-search__inner {
+  background-color: #282e38 !important;
+  border: 1px solid #393E46;
   border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-search__input {
+  background-color: transparent !important;
+  color: #FFFFFF !important;
+  font-size: 0.85rem;
+}
+
+.md-search__input::placeholder {
+  color: #9ca3af !important;
+}
+
+.md-search__icon {
+  color: #00ADB5 !important;
+}
+
+.md-search__icon svg {
+  fill: currentColor !important;
+}
+
+.md-search__inner:focus-within {
+  border-color: #00ADB5 !important;
+  box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.25) !important;
+}
+
+/* Search Results Popup */
+.md-search-result {
+  background-color: #222831 !important;
+  color: #EEEEEE !important;
+  border: 1px solid #393E46;
+}
+
+.md-search-result__meta {
+  background-color: #1a1e24 !important;
+  color: #9ca3af !important;
+}
+
+.md-search-result__link:hover {
+  background-color: rgba(0, 173, 181, 0.12) !important;
+}
+
+/* ================================================================
+   3. NAVIGATION TABS (TOP BAR)
+   ================================================================ */
+.md-tabs {
+  background-color: #14171d !important;
+  border-bottom: 1px solid #282e38;
+}
+
+.md-tabs__list {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.md-tabs__item {
+  height: 2.75rem;
+}
+
+.md-tabs__link {
+  color: #9ca3af !important;
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 1 !important;
+  padding: 0 0.85rem !important;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.md-tabs__link:hover {
+  color: #FFFFFF !important;
+}
+
+.md-tabs__link--active {
+  color: #00ADB5 !important;
+  font-weight: 600;
+  border-bottom: 2px solid #00ADB5;
+}
+
+/* ================================================================
+   4. SIDEBAR NAVIGATION
+   ================================================================ */
+.md-nav__link {
+  color: #9ca3af !important;
+  transition: color 0.15s ease, padding-left 0.15s ease;
+}
+
+.md-nav__link:hover {
+  color: #00ADB5 !important;
+}
+
+.md-nav__link--active {
+  color: #00ADB5 !important;
+  font-weight: 600;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: #00ADB5 !important;
+  font-weight: 600;
+}
+
+/* ================================================================
+   5. GRID CARDS (HOMEPAGE 4 MODULES)
+   ================================================================ */
+.md-typeset .grid.cards > ul > li {
+  background-color: #282e38;
+  border: 1px solid rgba(0, 173, 181, 0.25);
+  border-radius: 10px;
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .md-typeset .grid.cards > ul > li:hover {
   border-color: #00ADB5;
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 173, 181, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 173, 181, 0.2);
 }
 
-/* ── Admonition & Callout Accents ────────────────────────── */
+.md-typeset .grid.cards > ul > li hr {
+  border-color: rgba(255, 255, 255, 0.08);
+  margin: 0.75rem 0;
+}
+
+.md-typeset .grid.cards > ul > li strong {
+  color: #FFFFFF;
+  font-size: 1.05rem;
+}
+
+.md-typeset .grid.cards > ul > li p {
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.md-typeset .grid.cards > ul > li a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #00ADB5 !important;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  text-decoration: none;
+  transition: gap 0.2s ease, color 0.15s ease;
+}
+
+.md-typeset .grid.cards > ul > li a:hover {
+  color: #33BDC4 !important;
+  gap: 0.55rem;
+}
+
+/* ================================================================
+   6. CODE BLOCKS & SYNTAX HIGHLIGHTING
+   ================================================================ */
+.md-typeset pre {
+  background-color: #16181d !important;
+  border: 1px solid #393E46;
+  border-radius: 8px;
+}
+
+.md-typeset code {
+  background-color: #282e38;
+  color: #33BDC4;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.85em;
+}
+
+.md-typeset pre > code {
+  background-color: transparent;
+  color: #EEEEEE;
+  padding: 0;
+}
+
+/* Copy button on code blocks */
+.md-clipboard {
+  color: #9ca3af !important;
+}
+
+.md-clipboard:hover {
+  color: #00ADB5 !important;
+}
+
+/* ================================================================
+   7. ADMONITIONS & CALLOUT BOXES
+   ================================================================ */
 .md-typeset .admonition {
-  border-left-color: #00ADB5;
+  background-color: #282e38;
+  border-radius: 8px;
+  border-left-width: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .md-typeset .admonition.tip,
 .md-typeset .admonition.note {
   border-left-color: #00ADB5;
+}
+
+.md-typeset .admonition.tip .admonition-title,
+.md-typeset .admonition.note .admonition-title {
+  color: #00ADB5;
+}
+
+.md-typeset .admonition.warning {
+  border-left-color: #f59e0b;
+}
+
+.md-typeset .admonition.warning .admonition-title {
+  color: #f59e0b;
+}
+
+.md-typeset .admonition.danger,
+.md-typeset .admonition.failure {
+  border-left-color: #ef4444;
+}
+
+/* ================================================================
+   8. TABLES
+   ================================================================ */
+.md-typeset table:not([class]) {
+  border: 1px solid #393E46;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: #282e38;
+  color: #FFFFFF;
+  font-weight: 600;
+  border-bottom: 2px solid #393E46;
+}
+
+.md-typeset table:not([class]) td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background-color: rgba(0, 173, 181, 0.05);
+}
+
+/* ================================================================
+   9. CONTENT TYPOGRAPHY ACCENTS
+   ================================================================ */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  color: #FFFFFF;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.md-typeset h2 {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.35rem;
+  margin-top: 2rem;
+}
+
+.md-typeset p,
+.md-typeset li {
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.md-typeset strong {
+  color: #FFFFFF;
+}
+
+/* Footer */
+.md-footer {
+  background-color: #14171d !important;
+  border-top: 1px solid #282e38;
+  color: #9ca3af;
+}
+
+.md-footer-meta {
+  background-color: #101216 !important;
 }
