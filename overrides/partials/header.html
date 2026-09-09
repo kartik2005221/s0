@@ -1,1 +1,10 @@
-<!-- No top header -->
+{#-
+  Minimal hidden header required by Material for MkDocs JS architecture.
+  Material requires [data-md-component="header"] in the DOM to initialize
+  sidebar observers, search, and navigation tracking without ReferenceError.
+-#}
+<header class="md-header s0-hidden-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="{{ lang.t('header') }}">
+    <div class="md-header__title" data-md-component="header-title"></div>
+  </nav>
+</header>

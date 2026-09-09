@@ -83,19 +83,53 @@
 /* ================================================================
    1. REMOVE TOP HEADER & GITBOOK SIDEBAR HEADER
    ================================================================ */
-.md-header {
-  display: none !important;
+.md-header,
+.s0-hidden-header {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  background-color: #222831 !important;
 }
 
-/* Sidebar positioning from top of screen */
+/* Sidebar positioning & full scrollability */
 .md-sidebar {
   top: 0 !important;
   padding-top: 0 !important;
   height: 100vh !important;
+  position: sticky !important;
 }
 
 .md-sidebar__scrollwrap {
   margin: 0 !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: #393E46 transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+  width: 4px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+  background-color: #393E46;
+  border-radius: 4px;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
+  background-color: #00ADB5;
 }
 
 /* Ensure content starts cleanly at top */
@@ -108,9 +142,9 @@
   position: sticky !important;
   top: 0 !important;
   z-index: 20 !important;
-  background-color: #222831 !important;
+  background-color: var(--md-default-bg-color) !important;
   padding: 1.25rem 0.6rem 0.85rem 0.6rem !important;
-  border-bottom: 1px solid #393E46 !important;
+  border-bottom: 1px solid var(--md-default-border-color) !important;
   margin-bottom: 0.85rem !important;
 }
 
@@ -364,6 +398,10 @@
   font-weight: 700;
   font-size: 0.85rem;
   letter-spacing: 0.05em;
+}
+
+.md-nav--primary .md-nav__list {
+  padding-bottom: 4rem !important;
 }
 
 /* ================================================================
