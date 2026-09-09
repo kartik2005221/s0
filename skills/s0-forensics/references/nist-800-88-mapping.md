@@ -47,7 +47,7 @@ Physical destruction of media (incineration, shredding, disintegration, degaussi
 
 ## 3. The BLKDISCARD Purge Criteria
 
-To legally claim **Purge** tier when using `BLKDISCARD`, two hardware prerequisites must be satisfied:
+To validly claim **Purge** tier when using `BLKDISCARD`, two hardware prerequisites must be satisfied:
 
 1. **DRAT (Deterministic Read After Trim)**:
    The drive controller guarantees that every trimmed LBA returns fixed, deterministic data upon subsequent read operations.

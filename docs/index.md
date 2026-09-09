@@ -155,7 +155,7 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 | **NIST SP 800-88 Rev. 1** | **Clear & Purge** | Automated controller firmware purge and multi-pass logical clearing |
 | **IEEE 2883-2022** | **Clear & Purge** | Sanitization method definitions and verification readback standards |
 | **ISO/IEC 27037:2012** | **Evidence Handling** | Cryptographic SHA-256 evidence hashing and immutable audit logging |
-| **DPDPA 2023** | **Data Destruction** | Certified decommissioning of hardware containing personal digital data |
+| **DPDPA 2023** | **Data Destruction** | Verifiable sanitization records of hardware containing personal digital data |
 
 ---
 

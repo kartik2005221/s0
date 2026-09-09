@@ -198,7 +198,7 @@ def cmd_plan(args) -> int:
 
     if sys.platform == "win32" and target.kind == "block":
         print(f"target          : {target.path}")
-        print(f"method          : WIN32_RAW_OVERWRITE")
+        print(f"method          : OVERWRITE_ZERO_1PASS")
         print(f"nist category   : Clear")
         print(f"summary         : Windows raw volume/drive overwriting with volume lock and dismount")
         print("\nDRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
@@ -206,7 +206,7 @@ def cmd_plan(args) -> int:
 
     if sys.platform == "darwin" and target.kind == "block":
         print(f"target          : {target.path}")
-        print(f"method          : MACOS_RDISK_FULLFSYNC")
+        print(f"method          : OVERWRITE_ZERO_1PASS")
         print(f"nist category   : Clear")
         print(f"summary         : macOS raw character device (/dev/rdisk) overwriting with fcntl(F_FULLFSYNC)")
         print("\nDRY RUN — nothing was written. Run `s0 wipe` when satisfied.")

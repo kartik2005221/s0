@@ -1,2 +1,18 @@
-# Documentation Site Dependencies (MkDocs Material)
-mkdocs-material>=9.5.0
+# Core cryptographic, certification, and forensic dependencies
+cryptography>=42.0.0
+reportlab>=4.0.0
+qrcode[pil]>=7.4.2
+Pillow>=10.0.0
+
+# Web Dashboard GUI & API dependencies
+fastapi>=0.110.0
+uvicorn>=0.28.0
+starlette>=0.36.0
+
+# Local package development installs
+-e ./core/python
+-e ./linux/cli
+
+# Testing & Verification dependencies
+pytest>=8.0.0
+httpx>=0.27.0

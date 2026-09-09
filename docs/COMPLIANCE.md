@@ -1,6 +1,20 @@
 # NIST SP 800-88 & Legal Compliance
 
-s0 (Sector Zero) is designed from the ground up to produce **legally defensible, standards-compliant data sanitization records**. Whether you are a compliance officer preparing for a regulatory audit, an IT administrator decommissioning a fleet of drives, or a digital forensics investigator establishing chain of custody, this page gives you the complete technical and procedural picture.
+s0 (Sector Zero) is designed from the ground up to produce **cryptographically verifiable, standards-aligned data sanitization records**. Whether you are a compliance officer preparing for a regulatory audit, an IT administrator decommissioning a fleet of drives, or a digital forensics investigator establishing chain of custody, this page gives you the complete technical and procedural picture.
+
+---
+
+## Executive Summary: What s0 Delivers for Compliance
+
+| Regulatory Framework | What s0 Provides |
+|---|---|
+| **NIST SP 800-88 Rev. 1** | Automated method selection, honest Clear vs Purge categorization, signed certificate |
+| **DoD 5220.22-M** | 3-pass overwrite pattern support (`OVERWRITE_RANDOM_3PASS`) |
+| **ISO/IEC 27001 / 27040** | Audit trail, cryptographic proof of sanitization, tamper-evident certificate chain |
+| **HIPAA Security Rule § 164.310(d)(2)(i)** | Media disposal verification with operator identity and hardware serial numbers |
+| **PCI DSS v4.0 Requirement 9.4.6** | Hardcopy/electronic certificate of media destruction with Ed25519 digital signature |
+| **GDPR Article 17 / Article 32** | Proof of data erasure (Right to Erasure compliance) with SHA-256 pre/post verification |
+| **DPDPA 2023 (India)** | Verifiable sanitization records for personal data storage media |
 
 Data sanitization compliance has two interlocking concerns: **what you did** (the sanitization method) and **how you can prove it** (the certificate and audit trail). s0 addresses both — every supported method maps to a published NIST tier, and every operation produces an Ed25519-signed certificate that is mathematically tamper-evident.
 
@@ -13,7 +27,7 @@ Data sanitization compliance has two interlocking concerns: **what you did** (th
 | **NIST SP 800-88 Rev. 1** | Tier classification of every sanitization method |
 | **IEEE 2883-2022** | Aligns Sanitize / Clear / Purge definitions |
 | **ISO/IEC 27037:2012** | Forensic evidence handling and chain-of-custody integrity |
-| **DPDPA 2023 (India)** | Certified destruction records for personal data storage media |
+| **DPDPA 2023 (India)** | Verifiable sanitization records for personal data storage media |
 
 ---
 

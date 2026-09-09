@@ -3,7 +3,7 @@
 > **Compliance Reference:** NIST SP 800-88 Rev. 1 §2.4 — Independent Sanitization Environments
 > **Target Architecture:** x86_64 (amd64) Hybrid ISO (UEFI + Legacy BIOS)
 > **Base Distribution:** Debian 12 (Bookworm) Minimal Live System
-> **Interface:** Automated Chromium Kiosk UI → local root-privileged sanitization daemon (`127.0.0.1:8080`)
+> **Interface:** Automated Chromium Kiosk UI → local root-privileged sanitization daemon (`127.0.0.1:8000`)
 
 ---
 
@@ -32,7 +32,7 @@ The ISO uses a deliberate privilege separation model:
 ├─────────────────────────────────────────────────────────────────────────┤
 │ [User Space — Unprivileged: 's0' user]                                  │
 │   Chromium Kiosk (Wayland/X11) ──────────────┐                          │
-│   Fullscreen, no address bar, no shell        │ HTTP (127.0.0.1:8080)   │
+│   Fullscreen, no address bar, no shell        │ HTTP (127.0.0.1:8000)   │
 │                                               ▼                          │
 │ [Daemon Space — Loopback Root: 'root']                                  │
 │   s0-gui.service (Uvicorn / FastAPI)                                    │
@@ -47,7 +47,7 @@ The ISO uses a deliberate privilege separation model:
 
 **Key design decisions:**
 
-- **Loopback isolation:** The REST backend binds exclusively to `127.0.0.1:8080`. No external network exposure.
+- **Loopback isolation:** The REST backend binds exclusively to `127.0.0.1:8000`. No external network exposure.
 - **Privilege separation:** The Chromium kiosk runs as the unprivileged `s0` user. The wipe daemon runs as `root` to issue hardware ioctls and open raw block devices (`/dev/sd*`, `/dev/nvme*`).
 - **Fully offline:** All UI assets, fonts (Fira Sans / Fira Code), and cryptographic libraries are pre-packaged. No internet connection is required or used at runtime.
 

@@ -55,7 +55,7 @@ Execute the launcher script from the root of the repository:
 
 ---
 
-## 3. The Four Forensic Modules
+## 3. The Forensic Operating Modules
 
 ### Tab 1: Secure Drive Eraser
 
@@ -70,7 +70,7 @@ The Drive Eraser tab automates whole-media sanitization:
 │ Overwrite Passes: [1]   Pattern: [Zero Overwrite (0x00)]               │
 │ Operator Identity: [analyst-07]  Organization: [Cyber Crime Cell]      │
 │                                                                        │
-│ Safety Confirmation: Type "WIPE" to proceed: [ WIPE        ]           │
+│ Safety Confirmation: Type exact target path: [ /dev/sdb     ]          │
 │                                                                        │
 │ [ ■ START PERMANENT SANITIZATION ]                                     │
 ├────────────────────────────────────────────────────────────────────────┤
@@ -83,7 +83,7 @@ The Drive Eraser tab automates whole-media sanitization:
 1. **Select Target Device:** Choose from the auto-detected list of non-root block devices. Any mounted partitions are flagged with a prominent warning badge.
 2. **Review Recommended Tier:** The system analyzes device geometry and controller bus (NVMe vs SATA vs USB) to recommend the highest applicable NIST SP 800-88 tier (`Purge` or `Clear`).
 3. **Configure Operator Metadata:** Enter your forensic operator ID and organization name for inclusion in the tamper-evident certificate.
-4. **Safety Confirmation Gate:** To prevent accidental destruction of secondary evidence drives, the `Start Sanitization` button remains locked until the operator explicitly types the confirmation phrase `WIPE`.
+4. **Safety Confirmation Gate:** To prevent accidental destruction of secondary evidence drives, the `Start Sanitization` button remains locked until the operator explicitly types the exact target device path (e.g. `/dev/sdb`).
 5. **Real-Time Telemetry Stream:** Monitor the live SVG progress bar, real-time read/write throughput, estimated time remaining, and real-time controller thermal telemetry (queried every 2 seconds via Linux `hwmon` or SMART).
 6. **Certificate Receipt:** Upon completion, the dashboard renders direct download buttons for the signed `.json` certificate and the official printable `.pdf` report.
 
@@ -152,13 +152,45 @@ The Carver tab recovers deleted artifacts from disk images (`.raw`, `.img`, `.dd
 
 ---
 
-### Tab 4: Blockchain Audit Ledger
+### Tab 4: Forensic Imager & Cloner
 
-The Audit Ledger tab provides visual verification of forensic chain of custody:
+Module 4 provides bit-stream forensic acquisition (raw `.dd` image creation) and physical disk-to-disk bit-stream cloning with real-time SHA-256 verification:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ [TAB 4: BLOCKCHAIN AUDIT LEDGER]                                       │
+│ [TAB 4: FORENSIC IMAGER & CLONER]                                      │
+├────────────────────────────────────────────────────────────────────────┤
+│ Operation Mode: (●) Bit-Stream Image (.dd)   ( ) Disk-to-Disk Clone    │
+│ Source Block / Image: [/dev/sdb - Crucial CT500MX (465.8 GiB)]       ▼ │
+│ Destination Target:   [/evidence/seized_drive_sdb.dd]                  │
+│ Block Size: [1M]   Fault Policy: [Zero-Fill Bad Sectors (Forensic dd)] │
+│                                                                        │
+│ [ 💽 START FORENSIC ACQUISITION ]                                      │
+├────────────────────────────────────────────────────────────────────────┤
+│ PROGRESS: [████████████████████████████████] 100.0%                    │
+│ Telemetry: Copied 500.1 GB | Speed: 320 MB/s | Bad Sectors: 0          │
+│ Source SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49... │
+│ Destination SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b...  │
+│ [ 📥 DOWNLOAD MANIFEST (JSON) ]  [ 📥 DOWNLOAD CERTIFICATE (JSON) ]     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Imager & Cloner Capabilities:
+- **Bit-Stream DD Imaging:** Byte-level read-only bit-stream extraction directly to raw forensic image files with real-time telemetry streaming.
+- **Disk-to-Disk Physical Cloning:** Clones physical media directly to secondary target drives, guarded by an interactive confirmation safety gate requiring typing the destination drive path.
+- **SHA-256 Integrity Verification:** Computes the streaming SHA-256 hash of both source and destination simultaneously, guaranteeing identical forensic images.
+- **Resilient Bad Sector Handling:** Configurable fault tolerance allowing non-stop acquisition through failing hardware with automatic bad sector logging and zero-filling.
+- **Tamper-Evident Manifests:** Generates structured JSON acquisition manifests and Ed25519-signed forensic certificates.
+
+---
+
+### Tab 5: Cryptographic Audit Ledger
+
+The Audit Ledger tab provides visual verification of the forensic chain of custody:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ [TAB 5: CRYPTOGRAPHIC AUDIT LEDGER]                                    │
 ├────────────────────────────────────────────────────────────────────────┤
 │ Ledger Status:  [ ✅ VALID & CONTINUOUS (42 Blocks Verified) ]          │
 │ [ 🔄 VERIFY CHAIN CONTINUITY ]  [ 📥 EXPORT AUDIT LOG (JSON) ]         │
@@ -166,9 +198,11 @@ The Audit Ledger tab provides visual verification of forensic chain of custody:
 │ Timeline:                                                              │
 │ • Block #42 | DRIVE_ERASE  | 2026-09-09 14:22:15 UTC | analyst-07     │
 │   Hash: 4b227777d4dd1fc6... | Prev: 88c019a2e41bf901... | Target: sdb │
+│   Signature: 9a2f4c1e... [Ed25519 Valid]                              │
 │                                                                        │
 │ • Block #41 | FILE_CARVE   | 2026-09-09 11:05:40 UTC | investigator-4 │
 │   Hash: 88c019a2e41bf901... | Prev: f100e49ab88190c3... | Target: raw │
+│   Signature: 1c33b00e... [Ed25519 Valid]                              │
 │                                                                        │
 │ • Block #00 | GENESIS      | 2026-09-01 09:00:00 UTC | system-init    │
 │   Hash: 0000000000000000... | Prev: 0000000000000000... | Initialized │
@@ -176,6 +210,14 @@ The Audit Ledger tab provides visual verification of forensic chain of custody:
 ```
 
 #### Auditor Functions:
-- **One-Click Hash Chain Verification:** Computes the mathematical SHA-256 continuity from the genesis block to the tip in under 20 milliseconds.
-- **Tamper Simulation & Detection:** If any actor manually edits an entry in the SQLite database file, clicking `Verify Chain Continuity` immediately flags the exact index where the hash chain severed.
+- **One-Click Hash Chain Verification:** Computes the mathematical SHA-256 continuity and Ed25519 block signature verification from the genesis block to the tip in under 20 milliseconds.
+- **Tamper Simulation & Detection:** If any actor manually edits or removes an entry in the SQLite database file, clicking `Verify Chain Continuity` immediately flags the exact block index where hash continuity or cryptographic signatures broke.
 - **Inspect Block Payloads:** Click on any block to expand the raw signed canonical JSON payload, certificate UUID, and operator attribution.
+
+---
+
+### Tab 6: Forensic Certificate Portal
+
+The Certificate Portal allows instant, offline, zero-trust verification of signed certificates issued by s0:
+- **Air-Gapped Operation:** Pure client-side Web Crypto verification with zero network dependencies.
+- **Drag-and-Drop Ingestion:** Drop any `.json` certificate issued by s0 or scan an evidentiary QR code to view validated metadata, sanitization method, NIST 800-88 compliance tier, and Ed25519 signature validity.

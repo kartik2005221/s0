@@ -22,7 +22,7 @@ timeline
 ### Added
 - **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs-ten.vercel.app](https://s0-docs-ten.vercel.app/) with automated Vercel CI/CD via standalone `uv` runner.
 - **Forensic Color Theme:** Integrated the ColorHunt `#222831` `#393E46` `#00ADB5` `#EEEEEE` palette with customized code blocks, admonitions, and typography.
-- **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8080`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
+- **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.
 - **One-Line Cross-Platform Installers & Uninstallers:** Added streamlined `install.sh`, `install.ps1`, `install.cmd`, `uninstall.sh`, and `uninstall.ps1` scripts with PATH registration and virtualenv bootstrapping.
 

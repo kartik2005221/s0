@@ -329,7 +329,7 @@ bash linux/cli/demo_e2e_ntfs.sh
 | **NIST SP 800-88 Rev. 1** | Purge (NVMe/ATA firmware), Clear (overwrite, file erase) |
 | **IEEE 2883-2022** | Sanitization method classification |
 | **ISO/IEC 27037** | Evidence SHA-256 hashing at extraction, operator audit logging, Ed25519 non-repudiation |
-| **DPDPA 2023** | Certified destruction of personal data on retired media |
+| **DPDPA 2023** | Verifiable sanitization records of personal data on retired media |
 
 See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
 
