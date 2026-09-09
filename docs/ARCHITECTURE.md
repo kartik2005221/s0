@@ -484,23 +484,24 @@ block-beta
 
 ### Block Hash Formula
 
-Every block's hash is computed over the concatenation of **all semantically significant fields** from that block:
+Every block's hash is computed over the pipe (`|`) concatenation of **all semantically significant fields** from that block:
 
 ```
 block_hash = SHA256(
-    index        ||   # Block sequence number (integer as string)
-    timestamp    ||   # ISO 8601 UTC timestamp
-    op_type      ||   # DRIVE_ERASE | FILE_ERASE | FILE_CARVE
-    target_id    ||   # Device serial / file path hash
-    operator_id  ||   # Operator identity string
-    cert_uuid    ||   # Certificate UUID (links to signed cert)
-    payload_hash ||   # SHA-256 of the full operation payload JSON
-    signature    ||   # Ed25519 signature (base64url) of the certificate
-    prev_hash         # Hash of the immediately preceding block
+    block_index  || "|" ||  # Block sequence number (integer as string)
+    timestamp    || "|" ||  # ISO 8601 UTC timestamp
+    op_type      || "|" ||  # DRIVE_ERASE | FILE_ERASE | FILE_CARVE | FORENSIC_IMAGING
+    target_id    || "|" ||  # Device serial / file path hash
+    operator_id  || "|" ||  # Operator identity string
+    organization || "|" ||  # Organization / issuing authority name
+    cert_uuid    || "|" ||  # Certificate UUID (links to signed cert)
+    payload_hash || "|" ||  # SHA-256 of the full operation payload JSON
+    signature    || "|" ||  # Ed25519 signature (base64url) of the certificate
+    prev_hash               # Hash of the immediately preceding block
 )
 ```
 
-The `||` operator denotes byte-level concatenation of UTF-8 encoded strings. The result is a 64-character lowercase hex digest stored in the `block_hash` column.
+The `||` operator denotes byte-level concatenation of UTF-8 encoded strings separated by `|`. The result is a 64-character lowercase hex digest stored in the `block_hash` column.
 
 ### Tamper Detection Example
 
@@ -526,8 +527,8 @@ s0 audit verify
   Chain integrity: BROKEN at block 1
 ```
 
-!!! danger "No Silent Tampering"
-    Because `prev_hash` is an input to every subsequent block's hash, **it is not possible to surgically alter a single past record** without recomputing every downstream block. And since blocks carry Ed25519 signatures that cannot be forged without the private key, a full chain reconstruction by an adversary is computationally infeasible.
+!!! danger "No Silent Tampering or Deletion"
+    Because `prev_hash` is an input to every subsequent block's hash, **it is not possible to surgically alter a past record** without recomputing every downstream block. Furthermore, each block's `block_hash` is signed with the operator's Ed25519 private key (`block_signature`). An adversary who attempts to delete an intermediate block and recompute subsequent block hashes forward will fail verification because they cannot forge valid Ed25519 block signatures without the authority private key. For maximum security, operators can also periodically export or anchor the tip hash to external, write-once storage.
 
 ### Operation Types
 
@@ -717,7 +718,7 @@ The portal checks the certificate's `public_key_fingerprint` against every entry
 |---|---|---|---|
 | **Incomplete erasure leaving data residue** | Passive recovery, forensic competitor | Module 1 waterfall selects the strongest available hardware-native erase method; post-wipe sampled readback; certificate documents tier explicitly | CoW filesystems; HPA/DCO hidden areas; remapped bad sectors (SMART) — all documented in [Limitations](LIMITATIONS.md) |
 | **Evidence tampering — certificate forgery** | Adversary with file access | Ed25519 signature over Canonical JSON v1; forging requires the private key | If the operator's private key is compromised, certificates can be forged — key management is the operator's responsibility |
-| **Audit ledger falsification** | Insider with DB access | SHA-256 hash chain; modifying any block breaks all downstream hashes; detected by `s0 audit verify` | An adversary who can alter the DB and also rebuild the entire chain forward is not blocked — but cannot produce valid Ed25519 signatures for new blocks without the private key |
+| **Audit ledger falsification** | Insider with DB access | SHA-256 hash chain with Ed25519 block signing; modifying any block breaks downstream hashes; deleting or replacing blocks fails block signature verification against pinned authority keys | An adversary with local root DB access who completely wipes the database file causes a loss of records; rebuilding a valid forward chain is prevented by Ed25519 block signatures; external tip anchoring provides independent verification |
 | **Verification portal compromise (supply chain)** | CDN hijack, MITM | All crypto runs from vendored `crypto-bundle.js` — no CDN, no external fetch; portal is fully auditable static HTML | If the portal files themselves are replaced on disk before use, integrity is broken — verify portal file hashes out-of-band |
 | **CoW filesystem bypass — file data survives** | Forensic examiner on the same volume | Module 2 detects CoW filesystems at runtime and warns; certificate annotates the limitation | Physical CoW snapshots may retain the original data; Module 2 cannot solve this without Module 1 level access |
 | **Directory entry name reconstruction** | Filesystem journal / log analysis | Filename scrambled to random string before unlink; timestamps zeroed to epoch 0 | Journal-enabled filesystems (ext4 `data=journal`, NTFS) may retain the original name in journal entries not yet overwritten |

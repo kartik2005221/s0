@@ -11,6 +11,7 @@ from s0_cli.audit import (
     list_audit_blocks,
     verify_audit_ledger,
 )
+from s0_cli.audit.db import compute_block_hash
 from s0_core.certificate import build_certificate, sign_certificate
 from s0_core.crypto import load_private_pem, load_public_pem
 
@@ -109,3 +110,62 @@ def test_detect_broken_chain_hash_link(test_audit_db, sample_cert):
     assert report.is_valid is False
     assert report.broken_block_index == 2
     assert "Hash chain broken" in report.reason
+
+
+def test_detect_block_deletion_and_rehash(test_audit_db, sample_cert):
+    """Verify that deleting an intermediate block and recomputing block_hash is detected by block signatures."""
+    priv = load_private_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem")
+    pub = load_public_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem")
+
+    # Record two valid, signed blocks
+    b1 = record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db, private_key=priv)
+    b2 = record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db, private_key=priv)
+
+    # Sanity check: valid prior to tampering
+    rep_before = verify_audit_ledger(test_audit_db, trusted_public_keys=[pub])
+    assert rep_before.is_valid is True
+    assert rep_before.total_blocks_verified == 3  # Genesis + 2
+
+    # Maliciously delete block #1 (an incriminating event)
+    conn = sqlite3.connect(str(test_audit_db))
+    conn.row_factory = sqlite3.Row
+    conn.execute("DELETE FROM audit_blocks WHERE block_index = 1")
+
+    # Get genesis hash
+    genesis_row = conn.execute("SELECT block_hash FROM audit_blocks WHERE block_index = 0").fetchone()
+    genesis_hash = genesis_row["block_hash"]
+
+    # Read block #2
+    b2_row = conn.execute("SELECT * FROM audit_blocks WHERE block_index = 2").fetchone()
+
+    # Recompute block #2's hash as if it were block #1 linked directly to genesis
+    new_hash = compute_block_hash(
+        1,
+        b2_row["timestamp"],
+        b2_row["operation_type"],
+        b2_row["target_id"],
+        b2_row["operator_id"],
+        b2_row["organization"],
+        b2_row["cert_uuid"],
+        b2_row["payload_hash"],
+        b2_row["signature"],
+        genesis_hash,
+    )
+
+    # Renumber block #2 to #1 and update prev_hash + block_hash
+    conn.execute(
+        "UPDATE audit_blocks SET block_index = 1, prev_hash = ?, block_hash = ? WHERE block_index = 2",
+        (genesis_hash, new_hash),
+    )
+    conn.commit()
+    conn.close()
+
+    # Verification must detect that block #1's block_signature does NOT match the recomputed block_hash!
+    rep_after = verify_audit_ledger(test_audit_db)
+    assert rep_after.is_valid is False
+    assert "signature" in rep_after.reason.lower()
+
+    # Verification with trusted public keys must also fail
+    rep_after_trusted = verify_audit_ledger(test_audit_db, trusted_public_keys=[pub])
+    assert rep_after_trusted.is_valid is False
+    assert "signature" in rep_after_trusted.reason.lower()

@@ -319,7 +319,7 @@ def acquire_image(
         key_file = Path(options.key_path) if options.key_path else Path("core/keys/demo_issuer_private.pem")
         if not key_file.is_file():
             # Check installed location or repo root
-            cand = Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_private.pem"
+            cand = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
             if cand.is_file():
                 key_file = cand
 
@@ -339,7 +339,7 @@ def acquire_image(
         cert_dict = cert_mod.build_certificate(
             organization=options.organization,
             operator_id=options.operator,
-            tool_name="s0-image",
+            tool_name="s0-imager",
             tool_version="2.0.0",
             platform="linux" if sys.platform.startswith("linux") else ("windows" if sys.platform == "win32" else "macos"),
             device_id=f"drive-{hashlib.sha256(src_path.encode()).hexdigest()[:16]}",
@@ -368,7 +368,7 @@ def acquire_image(
                 cert_file.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
                 # Record to blockchain audit ledger
                 try:
-                    record_audit_event(signed_cert, operation_type=method_name)
+                    record_audit_event(signed_cert, operation_type=method_name, private_key=key_file)
                 except Exception:
                     pass
             except Exception:

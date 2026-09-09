@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from s0_core import crypto
+
 
 GENESIS_PREV_HASH = "0" * 64
 DEFAULT_AUDIT_DB = Path.home() / ".s0" / "s0_audit.db"
@@ -32,6 +34,7 @@ class AuditBlock:
     prev_hash: str
     block_hash: str
     certificate_json: Optional[str] = None
+    block_signature: str = ""
 
 
 def compute_block_hash(
@@ -78,10 +81,15 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                 prev_hash TEXT NOT NULL,
                 block_hash TEXT NOT NULL,
                 certificate_json TEXT,
+                block_signature TEXT DEFAULT '',
                 UNIQUE(cert_uuid, operation_type)
             );
             """
         )
+
+        cols = [col["name"] for col in conn.execute("PRAGMA table_info(audit_blocks)").fetchall()]
+        if "block_signature" not in cols:
+            conn.execute("ALTER TABLE audit_blocks ADD COLUMN block_signature TEXT DEFAULT ''")
 
         # Check if genesis block exists
         cur = conn.execute("SELECT COUNT(*) as count FROM audit_blocks")
@@ -103,8 +111,8 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                 """
                 INSERT INTO audit_blocks (
                     block_index, timestamp, operation_type, target_id, operator_id,
-                    organization, cert_uuid, payload_hash, signature, prev_hash, block_hash, certificate_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    organization, cert_uuid, payload_hash, signature, prev_hash, block_hash, certificate_json, block_signature
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """,
                 (
                     0,
@@ -119,6 +127,7 @@ def init_audit_db(db_path: str | Path = DEFAULT_AUDIT_DB) -> Path:
                     GENESIS_PREV_HASH,
                     genesis_hash,
                     json.dumps({"info": "s0 Cryptographic Audit Ledger Genesis Block"}),
+                    "GENESIS_BLOCK_SIGNATURE",
                 ),
             )
     conn.close()
@@ -129,6 +138,7 @@ def record_audit_event(
     certificate: Dict[str, Any],
     operation_type: str = "DRIVE_ERASE",
     db_path: str | Path = DEFAULT_AUDIT_DB,
+    private_key: Any = None,
 ) -> AuditBlock:
     """Append a new verified transaction block to the hash-chained audit ledger."""
     init_audit_db(db_path)
@@ -164,14 +174,34 @@ def record_audit_event(
             prev_hash,
         )
 
+        block_signature = ""
+        key_to_use = private_key
+        if key_to_use is None:
+            # Fall back to default repo demo key if available
+            cand = Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_private.pem"
+            if not cand.is_file():
+                cand = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
+            if cand.is_file():
+                key_to_use = cand
+
+        if key_to_use is not None:
+            try:
+                if isinstance(key_to_use, (str, Path)):
+                    priv_obj = crypto.load_private_pem(key_to_use)
+                else:
+                    priv_obj = key_to_use
+                block_signature = crypto.sign_payload(priv_obj, block_hash.encode("utf-8"))
+            except Exception:
+                block_signature = ""
+
         cert_json = json.dumps(certificate)
 
         conn.execute(
             """
             INSERT INTO audit_blocks (
                 block_index, timestamp, operation_type, target_id, operator_id,
-                organization, cert_uuid, payload_hash, signature, prev_hash, block_hash, certificate_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                organization, cert_uuid, payload_hash, signature, prev_hash, block_hash, certificate_json, block_signature
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """,
             (
                 new_index,
@@ -186,6 +216,7 @@ def record_audit_event(
                 prev_hash,
                 block_hash,
                 cert_json,
+                block_signature,
             ),
         )
 
@@ -204,6 +235,7 @@ def record_audit_event(
         prev_hash=prev_hash,
         block_hash=block_hash,
         certificate_json=cert_json,
+        block_signature=block_signature,
     )
 
 
@@ -231,6 +263,8 @@ def list_audit_blocks(
 
     blocks = []
     for r in rows:
+        keys = r.keys() if hasattr(r, "keys") else []
+        block_sig = r["block_signature"] if "block_signature" in keys else ""
         blocks.append(
             AuditBlock(
                 block_index=r["block_index"],
@@ -245,6 +279,7 @@ def list_audit_blocks(
                 prev_hash=r["prev_hash"],
                 block_hash=r["block_hash"],
                 certificate_json=r["certificate_json"],
+                block_signature=block_sig or "",
             )
         )
     return blocks

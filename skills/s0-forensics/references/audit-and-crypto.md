@@ -37,22 +37,24 @@ Every certificate emitted by `s0` is signed using Ed25519:
 
 ## 3. Blockchain Audit Ledger Hash Formula
 
-Every operation appends an immutable block to `~/.s0/s0_audit.db`. The `block_hash` is computed as:
+Every operation appends a cryptographically chained block to `~/.s0/s0_audit.db`. The `block_hash` is computed as:
 
 ```text
 block_hash = SHA256(
-    index            || ":" ||
-    timestamp        || ":" ||
-    operation_type   || ":" ||
-    target_id        || ":" ||
-    operator_id      || ":" ||
-    cert_uuid        || ":" ||
-    payload_hash     || ":" ||
-    signature        || ":" ||
-    previous_hash
+    block_index      || "|" ||
+    timestamp        || "|" ||
+    operation_type   || "|" ||
+    target_id        || "|" ||
+    operator_id      || "|" ||
+    organization     || "|" ||
+    cert_uuid        || "|" ||
+    payload_hash     || "|" ||
+    signature        || "|" ||
+    prev_hash
 )
 ```
 
-### Tamper-Evidence Invariant:
-If an attacker modifies a database record in row $N$, its recomputed `block_hash` will fail to match. Furthermore, because block $N+1$ incorporates block $N$'s hash into its own digest, the hash continuity of every subsequent block in the chain breaks simultaneously.
-`s0 audit verify` recomputes the entire chain from genesis (block 0) and asserts mathematical continuity.
+### Tamper-Evidence & Block Signing Invariants:
+1. **In-Place Modification Detection:** If an attacker modifies any field in block $N$, its recomputed `block_hash` fails to match the stored digest. Furthermore, because block $N+1$ incorporates block $N$'s hash into its own digest via `prev_hash`, the hash continuity of every subsequent block breaks simultaneously.
+2. **Deletion & Replacement Defense:** Each block's `block_hash` is signed with the authority's Ed25519 private key (`block_signature`). An attacker with local database access who deletes an incriminating block and renumbers/recomputes downstream hashes cannot generate valid block signatures without possessing the Ed25519 private key.
+3. `s0 audit verify [--key <path>]` traverses genesis→tip, asserting hash continuity, canonical certificate payload integrity, and Ed25519 block signature authenticity against pinned authority keys.

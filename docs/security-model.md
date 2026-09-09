@@ -295,4 +295,4 @@ s0's audit verifier reports:
 [FAIL] Ledger integrity: COMPROMISED — entries 2 onward are untrustworthy
 ```
 
-Even if the attacker updates Entry 2's stored hash, Entry 3's `prev_hash` still references the original value — the cascade forces a full rewrite of every subsequent entry. Producing a validly chained replacement ledger requires the Ed25519 private key, which the attacker does not possess.
+Even if the attacker updates Entry 2's stored hash, Entry 3's `prev_hash` still references the original value — the cascade forces a full rewrite of every subsequent entry. Furthermore, because each block's hash is signed with the operator's Ed25519 private key (`block_signature`), rebuilding a valid replacement chain forward fails verification because producing valid block signatures requires the Ed25519 private key, which the attacker does not possess. For additional defense against total local file deletion, operators can periodically anchor or publish the ledger tip hash to external, write-once media.

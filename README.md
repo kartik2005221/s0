@@ -214,12 +214,12 @@ Complies with **NIST SP 800-86** and **ISO/IEC 27037** for digital evidence acqu
 
 Every operation — wipe, file erasure, carving, drive imaging — is appended to a local SQLite ledger as a cryptographic block:
 
-$$\text{block\_hash} = \text{SHA256}(\text{index} \| \text{timestamp} \| \text{op\_type} \| \text{target\_id} \| \text{cert\_uuid} \| \text{payload\_hash} \| \text{signature} \| \text{prev\_hash})$$
+$$\text{block\_hash} = \text{SHA256}(\text{index} \| \text{timestamp} \| \text{op\_type} \| \text{target\_id} \| \text{operator\_id} \| \text{organization} \| \text{cert\_uuid} \| \text{payload\_hash} \| \text{signature} \| \text{prev\_hash})$$
 
-- **Append-only:** No row can be deleted or modified
-- **Tamper-evident:** Altering any past block invalidates every subsequent hash
-- **Instant verification:** `s0 audit verify` traverses genesis→tip in milliseconds
-- **Shared by CLI and Web GUI:** One unified ledger regardless of how an operation was initiated
+- **Hash-Chained & Ed25519 Signed:** Every block is linked by `prev_hash` and its `block_hash` is signed with the operator's Ed25519 authority key. In-place alteration breaks the hash chain; deleting blocks and re-chaining forward fails verification without the private key.
+- **Append-only architecture:** Local SQLite storage (`~/.s0/s0_audit.db`) initialized with a deterministic Genesis Block.
+- **Instant verification:** `s0 audit verify [--key <path>]` traverses genesis→tip in milliseconds, recomputing digests and validating signatures.
+- **Shared by CLI and Web GUI:** One unified ledger regardless of how an operation was initiated.
 
 ---
 

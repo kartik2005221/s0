@@ -276,7 +276,7 @@ def cmd_wipe(args) -> int:
             return 1
 
         try:
-            blk = record_audit_event(cert, operation_type="DRIVE_ERASE")
+            blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
             if not getattr(args, "json", False):
                 print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
@@ -335,7 +335,7 @@ def cmd_wipe(args) -> int:
             return 1
 
         try:
-            blk = record_audit_event(cert, operation_type="DRIVE_ERASE")
+            blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
             if not getattr(args, "json", False):
                 print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
@@ -501,7 +501,7 @@ def cmd_wipe(args) -> int:
 
     # Record in local blockchain audit ledger
     try:
-        blk = record_audit_event(cert, operation_type="DRIVE_ERASE")
+        blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
         if not getattr(args, "json", False):
             print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
     except Exception as exc:
@@ -600,7 +600,7 @@ def cmd_erase_files(args) -> int:
 
     if summary.certificate:
         try:
-            blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE")
+            blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key_path)
             print(f"Audit Ledger   : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
@@ -715,7 +715,7 @@ def cmd_carve(args) -> int:
 
     if summary.manifest_certificate:
         try:
-            blk = record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE")
+            blk = record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key_path)
             print(f"Audit Ledger              : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
@@ -750,7 +750,12 @@ def cmd_audit(args) -> int:
 
     elif args.audit_action == "verify":
         print("==> Auditing Blockchain Cryptographic Hash Chain...")
-        report = verify_audit_ledger()
+        trusted_keys = None
+        if getattr(args, "key", None):
+            from s0_core.crypto import load_public_pem
+
+            trusted_keys = [load_public_pem(args.key)]
+        report = verify_audit_ledger(trusted_public_keys=trusted_keys)
         print(f"Chain Status : {'✅ VALID & CONTINUOUS' if report.is_valid else '❌ BROKEN / TAMPER DETECTED'}")
         print(f"Blocks Tested: {report.total_blocks_verified}")
         print(f"Details      : {report.reason}")
@@ -1105,6 +1110,7 @@ def build_parser() -> argparse.ArgumentParser:
     aud = sub.add_parser("audit", help="cryptographic audit ledger and blockchain continuity management")
     aud.add_argument("audit_action", choices=["list", "verify"], help="list audit blocks or verify hash chain")
     aud.add_argument("--limit", type=int, default=50, help="limit number of records displayed")
+    aud.add_argument("--key", help="path to trusted public key PEM for strict signature verification")
     aud.set_defaults(func=cmd_audit)
 
     # 5. Offline Verification Subcommand
