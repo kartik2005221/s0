@@ -1,0 +1,58 @@
+name: Build Bootable Live ISO
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Debian live-build & ISO tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            live-build \
+            xorriso \
+            squashfs-tools \
+            debootstrap \
+            isolinux \
+            syslinux-common \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools
+
+      - name: Build s0 Live ISO
+        run: |
+          cd linux/iso
+          chmod +x build.sh auto/build.sh
+          ./build.sh
+
+      - name: Prepare Artifacts & Checksums
+        run: |
+          mv linux/iso/live-image-amd64.hybrid.iso s0-live-amd64.hybrid.iso
+          sha256sum s0-live-amd64.hybrid.iso > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: s0-live-amd64.hybrid.iso
+          path: |
+            s0-live-amd64.hybrid.iso
+            SHA256SUMS.txt
+
+      - name: Attach ISO to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            s0-live-amd64.hybrid.iso
+            SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

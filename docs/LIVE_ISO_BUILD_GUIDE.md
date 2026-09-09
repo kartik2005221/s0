@@ -61,14 +61,12 @@ To build the ISO, you need a machine with **root/sudo access** and an internet c
 
 | Host OS | Status |
 |---|---|
-| Debian 12 (Bookworm) | ✅ Recommended |
+| Debian 12 (Bookworm) | ✅ Recommended (Native) |
 | Debian 11 (Bullseye) | ✅ Supported |
-| Ubuntu 22.04 LTS | ✅ Supported |
-| Ubuntu 24.04 LTS | ✅ Supported |
-| Kali Linux / Linux Mint | ✅ Supported |
-| Debian-based VM (VMware, VirtualBox, QEMU/KVM) | ✅ Supported |
-| Non-Debian Linux | ❌ Requires Debian in Docker/VM |
-| Windows / macOS | ❌ Use WSL2 with Debian or a VM |
+| Ubuntu 22.04 / 24.04 LTS | ✅ Supported |
+| Windows 10 & 11 | ✅ Supported via Docker Desktop or WSL2 (`scripts/build_iso.ps1`) |
+| macOS | ✅ Supported via Docker (`linux/iso/Dockerfile`) |
+| Debian-based VM | ✅ Supported |
 
 ### Install Required Toolchain
 
@@ -150,6 +148,52 @@ linux/iso/live-image-amd64.hybrid.iso
 ```
 
 This is a hybrid ISO that boots on both UEFI and Legacy BIOS systems.
+
+---
+
+## Building from Windows (Docker & WSL2 Orchestration)
+
+Because Debian Live systems require Linux kernel features (`debootstrap`, `losetup` loopback devices, and root `chroot`), native Win32 cannot build the ISO directly without a Linux runtime.
+
+S0 provides automated solutions for Windows developers and field operators:
+
+### Option 1: Automated PowerShell Builder (`scripts/build_iso.ps1`)
+
+The script automatically detects if **Docker Desktop** or **WSL2** is running and executes the build inside an isolated Debian container:
+
+```powershell
+.\scripts\build_iso.ps1
+```
+
+1. **If Docker Desktop is running:** Builds the container using `linux/iso/Dockerfile` in privileged mode and outputs `s0-live-amd64.hybrid.iso` to your project root.
+2. **If WSL2 is installed:** Translates Windows paths and invokes Debian live-build inside your WSL environment.
+
+### Option 2: Docker Desktop (Direct Command)
+
+If you prefer running Docker directly without PowerShell scripts:
+
+```cmd
+docker build -t s0-live-builder -f linux/iso/Dockerfile linux/iso
+docker run --rm --privileged -v "%cd%":/workspace s0-live-builder
+```
+
+The resulting `s0-live-amd64.hybrid.iso` will be generated directly into your current directory.
+
+### Option 3: Download Pre-Built Verified ISO (1-Line Command)
+
+If you do not have Docker or WSL2 installed on Windows, you can download the latest official release directly with automatic SHA-256 integrity verification:
+
+```powershell
+irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex
+```
+
+### Flashing from Windows (Rufus)
+
+1. Download **Rufus** (portable executable from [rufus.ie](https://rufus.ie/)).
+2. Connect a USB flash drive (minimum 4 GB).
+3. Select your device and choose `s0-live-amd64.hybrid.iso`.
+4. When prompted, select **Write in DD Image mode** (this preserves the hybrid ISO boot sector and UEFI partition map).
+5. Click **Start**.
 
 ---
 
