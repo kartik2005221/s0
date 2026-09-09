@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>s0 — Cryptographic Certificate Verification Portal</title>
+  <link rel="stylesheet" href="fonts/fonts.css">
   <style>
     :root {
       --bg-canvas: #090d16;
@@ -39,8 +40,8 @@
       --info-border: rgba(59, 130, 246, 0.35);
       
       --code-bg: #090d14;
-      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+      --font-mono: "Fira Code", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --font-sans: "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     *, *::before, *::after {
@@ -698,6 +699,134 @@
     footer a {
       color: var(--primary);
       text-decoration: none;
+    }
+
+    /* ── Responsive Tablet & Mobile Media Queries ── */
+    @media (max-width: 1024px) {
+      .portal-container {
+        padding: 20px 14px 52px;
+      }
+      .portal-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 20px 14px;
+        margin-bottom: 20px;
+        border-radius: 12px;
+      }
+      .brand-title {
+        font-size: clamp(1.4rem, 5vw, 1.85rem);
+      }
+      .subtitle {
+        font-size: 0.9rem;
+      }
+      .trust-meta {
+        gap: 10px;
+        font-size: 0.78rem;
+      }
+      .card {
+        padding: 16px;
+        border-radius: 12px;
+      }
+      .dropzone {
+        padding: 24px 14px;
+      }
+      .metric-ribbon {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .portal-container {
+        padding: 12px 10px 40px;
+      }
+      .brand-badge {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+      }
+      .brand-title {
+        font-size: 1.45rem;
+        gap: 8px;
+      }
+      .subtitle {
+        font-size: 0.82rem;
+      }
+      .trust-meta span {
+        font-size: 0.72rem;
+      }
+      .btn-group {
+        flex-direction: column;
+      }
+      .btn-group button, .btn-group .btn {
+        width: 100%;
+        min-height: 42px;
+        font-size: 0.88rem;
+      }
+      .scenario-btn {
+        min-width: unset !important;
+      }
+      .result-banner {
+        padding: 14px;
+        gap: 12px;
+      }
+      .banner-icon {
+        font-size: 1.7rem;
+      }
+      .banner-text h3 {
+        font-size: 1.05rem;
+      }
+      .banner-text p {
+        font-size: 0.8rem;
+      }
+
+      /* Mobile Cardlet table layout: labels on top, values below */
+      .prop-table, .prop-table tbody, .prop-table tr, .prop-table th, .prop-table td {
+        display: block;
+        width: 100% !important;
+      }
+      .prop-table tr {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+      .prop-table tr:not(:last-child) th,
+      .prop-table tr:not(:last-child) td {
+        border-bottom: none;
+      }
+      .prop-table th {
+        padding: 0 0 3px 0 !important;
+        font-size: 0.72rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        background: transparent !important;
+      }
+      .prop-table td {
+        padding: 0 !important;
+        font-size: 0.82rem !important;
+        word-break: break-all;
+      }
+
+      /* Mobile tabs */
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+        gap: 2px;
+        padding-bottom: 2px;
+      }
+      .tab-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+      }
+      
+      textarea {
+        font-size: 16px; /* Prevents iOS auto-zoom on input focus */
+      }
     }
   </style>
 </head>

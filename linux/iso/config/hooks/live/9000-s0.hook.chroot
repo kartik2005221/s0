@@ -28,8 +28,8 @@ exec python3 -m s0_core.cli verify "$@"
 EOF
 chmod 0755 /usr/local/bin/s0 /usr/local/bin/s0-verify
 
-echo "==> kiosk user (no password, no sudo)"
-useradd -m -s /bin/bash -G video,input s0 || true
+echo "==> kiosk user (no password, member of video, input, disk)"
+useradd -m -s /bin/bash -G video,input,disk s0 || true
 
 echo "==> systemd services: local GUI server + chromium kiosk autostart"
 # (unit files ship via config/includes.chroot)

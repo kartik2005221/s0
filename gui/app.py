@@ -54,6 +54,10 @@ app = FastAPI(title="s0 Forensic & Sanitization Dashboard", docs_url=None, redoc
 PORTAL_DIR = REPO / "verification-portal"
 if PORTAL_DIR.is_dir():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
+
+STATIC_DIR = REPO / "gui" / "static"
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 

@@ -23,7 +23,6 @@ lb config noauto \
     --mode debian \
     --binary-images iso-hybrid \
     --bootappend-live "boot=live components quiet splash hostname=s0" \
-    --packages-lists "s0" \
     --debian-installer false \
     --iso-volume "S0" \
     "${@}"

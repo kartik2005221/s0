@@ -9,8 +9,7 @@
 | Module | Development Status | Real Hardware Behavior & Requirements |
 |---|---|---|
 | Module | Development Status | Real Hardware Behavior & Requirements |
-|---|---|---|
-| **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). Bootable Live ISO (`linux/iso/`) for unmounted drive sanitization. |
+| **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** (CLI) / ⚠️ **Unverified** (Live ISO) | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). Bootable Live ISO (`linux/iso/`) is scaffolded via Debian `live-build` recipes but remains unverified on physical hardware (see §4.2). |
 | **Module 2: File/Folder Eraser** | ✅ **Fully Real & Cross-Platform** | Overwrites allocated clusters, zeros inode/file timestamps, cleanses attributes/ADS, renames directory entries. Natively implemented and verified across Linux (Btrfs/ZFS CoW warnings, extents), Windows (`windows/` with Win32 FlushFileBuffers, ADS scrubbing, ReFS CoW warnings), and macOS (`macos/` with `fcntl(F_FULLFSYNC)`, APFS CoW warnings, and xattr stripping). |
 | **Module 3: File Carver (ext4, NTFS, FAT32, exFAT, & Fragmentation)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP, BMP, ELF, SQLite3, MP3) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT multi-run fragmented recovery; FAT32 directory entry recovery; exFAT directory entry set parsing (SD cards/USB); and multi-fragment/bifragment heuristic reassembly. |
 | **Module 4: Cryptographic Hash Ledger** | ✅ **Fully Real & Validated** | SQLite append-only ledger with SHA-256 block hash chaining and Ed25519 digital signature verification. (Tamper-evident hash chain designed for single-authority forensic integrity rather than multi-node distributed consensus). |
@@ -58,14 +57,15 @@ Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/
    - **macOS (`macos/s0_eraser.py`, `.sh`):** Apple Darwin hardware flush via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) cleansing, APFS CoW detection and Time Machine snapshot warnings.
 2. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
    - In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
-   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). s0 packages a minimal Debian-based Live ISO (`linux/iso/`) specifically for this purpose.
+   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). s0 packages a minimal Debian-based Live ISO recipe (`linux/iso/`) specifically for this purpose.
+   - **Development Status & Boundary Disclosure:** Because development environments lack root/sudo privileges to run `debootstrap` and `live-build`, this ISO configuration has not been built or boot-tested on physical machines. The build scripts (`linux/iso/auto/build.sh`), package lists (`config/package-lists/`), and systemd unit recipes (`s0-gui.service` running loopback root, `s0-kiosk.service` running unprivileged kiosk) are fully specified and verified against live-build syntax, but treat the bare-metal artifact itself as UNVERIFIED until built and smoke-tested on real hardware.
 
 ---
 
 ## 5. Cryptographic Hash Chain vs. Distributed Blockchain
 
 1. **Architecture Rationale:**
-   - s0 implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical RFC 8785 payload digest, and RFC 8032 Ed25519 signature.
+   - s0 implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical s0 Canonical JSON v1 payload digest (RFC 8785-inspired, schema-level float avoidance), and RFC 8032 Ed25519 signature.
    - In forensic and law-enforcement compliance architectures, there is a single accredited issuing authority.
    - Distributed consensus mechanisms (Proof of Work / Proof of Stake) require multi-node peer networks and introduce latency and overhead without adding security value to a local, air-gapped forensic workstation.
    - The hash chain delivers mathematical tamper-evidence: any modification to an existing block invalidates the entire subsequent chain.

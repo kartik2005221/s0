@@ -127,8 +127,10 @@ phase_ok
 
 # ── Phase 6: Optional Toolchain Probes ────────────────────────────────────────
 phase_start "Probing Optional Toolchains"
+ISO_STATUS="${_gray}⊘ UNVERIFIED${_reset}  "
 if command -v lb >/dev/null 2>&1 && command -v xorriso >/dev/null 2>&1; then
     step_ok "live-build & xorriso detected — ISO build available"
+    ISO_STATUS="${_green}✅ READY${_reset}     "
 else
     step_skip "live-build / xorriso not installed (see docs/HANDOVER.md)"
 fi
@@ -152,7 +154,7 @@ printf "${_bold}  ├───────────────────�
 printf "  │ Phase 1: Core Crypto, Canonical JSON, PDF Engine             │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 2: Linux CLI, Unified Web GUI, e2e Test Suite          │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 3: Cross-Platform Sanitizers (Windows & macOS Native)  │ ${_green}✅ PASSED${_reset}     │\n"
-printf "  │ Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)    │ ${_green}✅ READY${_reset}      │\n"
+printf "  │ Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)    │ %b │\n" "$ISO_STATUS"
 printf "  │ Phase 5: Multi-FS Carver (ext4 + NTFS + exFAT + FAT32)      │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 6: Verification Portal (Static Web, Pure WebCrypto)    │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 7: Hash-Chained Audit Ledger & Chain Integrity         │ ${_green}✅ PASSED${_reset}     │\n"

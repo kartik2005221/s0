@@ -126,7 +126,7 @@ echo   +---------------------------------------------------------------+--------
 echo   ^| Phase 1: Core Crypto, Canonical JSON, PDF Engine              ^| PASSED        ^|
 echo   ^| Phase 2: Linux CLI, Unified Web GUI, e2e Test Suite           ^| PASSED        ^|
 echo   ^| Phase 3: Cross-Platform Sanitizers (Windows ^& macOS Native)   ^| PASSED        ^|
-echo   ^| Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)     ^| READY         ^|
+echo   ^| Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)     ^| UNVERIFIED    ^|
 echo   ^| Phase 5: Multi-FS Carver (ext4 + NTFS + exFAT + FAT32)       ^| PASSED        ^|
 echo   ^| Phase 6: Verification Portal (Static Web, Pure WebCrypto)     ^| PASSED        ^|
 echo   ^| Phase 7: Hash-Chained Audit Ledger ^& Chain Integrity          ^| PASSED        ^|
