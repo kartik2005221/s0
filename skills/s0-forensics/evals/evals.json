@@ -1,0 +1,29 @@
+{
+  "skill_name": "s0-forensics",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have an old NVMe SSD at /dev/nvme0n1 that I need to wipe before donating the machine. Please inspect it and securely sanitize it following NIST SP 800-88 Purge standards.",
+      "expected_output": "The agent must first run s0 list and s0 plan --target /dev/nvme0n1, check for mounted partitions, report the drive model/serial/capacity to the user, warn about irreversible destruction, patiently execute s0 wipe, and verify the resulting Ed25519 certificate.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We seized a suspect drive image at /evidence/suspect.dd. Can you extract any deleted PDF invoices or SQLite databases from it without altering the original file?",
+      "expected_output": "The agent must run s0 carve --target /evidence/suspect.dd --out-dir ./recovered --extensions pdf,sqlite --min-confidence 50, explain the confidence scores, and inspect recovery_index.json without executing any destructive commands.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "A client sent us a sanitization certificate certificate_98f12a34.json. How do I mathematically verify if this certificate is authentic or if someone tampered with the wiping dates?",
+      "expected_output": "The agent must recommend running s0 verify certificate_98f12a34.json with the authority public key or python skills/s0-forensics/scripts/verify_cert.py, explaining that Ed25519 signatures cover the canonical JSON payload and detect any single-byte alteration.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We need to acquire a bit-stream forensic image of /dev/sdb before doing any analysis. Make sure bad sectors don't cause the capture to fail halfway.",
+      "expected_output": "The agent must recommend s0 image --source /dev/sdb --destination /evidence/drive.raw, explain the 1MB buffer size, note that fault-tolerant zero-filling is enabled by default, and verify the generated acquisition manifest.",
+      "files": []
+    }
+  ]
+}

@@ -63,12 +63,31 @@ s0 verify ./certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
 
 ---
 
-## 3. Integrating the Agent Skill
+## 3. Integrating the Agent Skill (`skills/s0-forensics/`)
 
-`s0` provides a native agentic skill definition located at:
+`s0` provides a native, first-class agentic skill specification adhering to the **Skill Creator** progressive disclosure standard, located in the repository root at:
+
 ```text
-# Agentic forensic skill specification
-.agents/skills/s0-forensics/SKILL.md
+# Main agentic skill definition
+skills/s0-forensics/SKILL.md
 ```
 
-When invoking subagents or utilizing agentic pairing tools, agents can reference this skill to inherit high-assurance forensic safety procedures, automatic error recovery strategies, and post-operation verification checks.
+### Skill Architecture & Bundled Resources
+
+The skill is modularized into specialized domain references, executable scripts, and evaluation test cases:
+
+```text
+skills/s0-forensics/
+├── SKILL.md                          # Primary operating instructions & safety invariants
+├── references/
+│   ├── nist-800-88-mapping.md        # Exact method-to-tier mappings & DRAT/RZAT rules
+│   ├── device-safety-rules.md        # Mount guards, OS device paths, and HPA/DCO handling
+│   ├── carving-signatures.md         # Magic bytes, headers, footers & entropy scoring
+│   └── audit-and-crypto.md           # Canonical JSON v1, Ed25519 signing & hash chain formulas
+├── scripts/
+│   └── verify_cert.py                # Standalone certificate verification helper
+└── evals/
+    └── evals.json                    # Benchmark evaluation prompts & expected agent behavior
+```
+
+When invoking subagents or utilizing AI coding assistants (such as Antigravity, Claude Code, or custom forensic agents), point the agent directly to `skills/s0-forensics/SKILL.md`. The agent will automatically load the critical patience directives, execute dry-runs before destructive operations, select optimal parameters, and verify issued certificates.

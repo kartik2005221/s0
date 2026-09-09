@@ -501,6 +501,14 @@ Now that you have s0 installed and have run your first operations, explore the d
 
     [:octicons-arrow-right-24: Limitations](LIMITATIONS.md)
 
+-   :material-robot: __Agentic AI Skill__
+
+    ---
+
+    Equip AI coding agents with the official `s0-forensics` skill (`skills/s0-forensics/SKILL.md`) for high-assurance, patient autonomous forensic operations.
+
+    [:octicons-arrow-right-24: Agentic AI Guide](agentic-ai.md)
+
 -   :material-web: __Verification Portal__
 
     ---
@@ -510,3 +518,4 @@ Now that you have s0 installed and have run your first operations, explore the d
     [:octicons-arrow-right-24: Verification & Deployment](VERIFICATION_AND_DEPLOYMENT.md)
 
 </div>
+

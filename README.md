@@ -271,6 +271,11 @@ s0/
 │   ├── carver/               # Module 3: Signature, ext4, NTFS, FAT32, exFAT, entropy engines
 │   ├── imager.py             # Module 4: Forensic drive bit-stream imaging & cloning
 │   └── audit/                # Module 5: SHA-256 blockchain audit ledger (SQLite)
+├── skills/s0-forensics/      # Native Agentic AI Skill (Skill Creator standard)
+│   ├── SKILL.md              # Instructions, patience directives, and safety invariants
+│   ├── references/           # NIST 800-88 mapping, safety rules, carving specs, crypto
+│   ├── scripts/              # Standalone verification helper (verify_cert.py)
+│   └── evals/                # Benchmark evaluation prompts and criteria
 ├── windows/                  # Windows-native Module 2 (Win32 API, ADS scrubbing)
 ├── macos/                    # macOS-native Module 2 (F_FULLFSYNC, xattr, APFS)
 ├── gui/                      # FastAPI unified web dashboard (4 forensic tabs)
@@ -328,6 +333,18 @@ bash linux/cli/demo_e2e_ntfs.sh
 
 See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
 
+## Agentic AI Skill (`skills/s0-forensics/`)
+
+`s0` includes a dedicated, high-assurance agentic skill adhering to the **Skill Creator** standard:
+- **Location**: [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md)
+- **Directives**: Enforces critical patience rules, dry-run simulations (`s0 plan`), target confirmation, and zero-trust verification.
+- **Bundled Resources**:
+  - `references/`: Deep dives on NIST/IEEE mappings, hardware safety rules, magic byte signatures, and Canonical JSON v1.
+  - `scripts/verify_cert.py`: Standalone certificate verification utility.
+  - `evals/evals.json`: Benchmark evaluation suite for automated agent validation.
+
+For complete agent safety protocols and integration examples, see [docs/agentic-ai.md](docs/agentic-ai.md).
+
 ---
 
 ## Documentation
@@ -337,6 +354,7 @@ See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Subsystem design, threat model, cryptographic flow |
 | [USER_MANUAL.md](docs/USER_MANUAL.md) | Complete CLI reference, web dashboard guide |
 | [COMPLIANCE.md](docs/COMPLIANCE.md) | NIST / IEEE / ISO / DPDPA standards matrix |
+| [agentic-ai.md](docs/agentic-ai.md) | Agentic AI guardrails, skill architecture, and prompt protocols |
 | [PERFORMANCE.md](docs/PERFORMANCE.md) | Throughput benchmarks, scaling projections |
 | [LIMITATIONS.md](docs/LIMITATIONS.md) | Honest scope: SSD FTL, CoW filesystems, journal remnants |
 | [VERIFICATION_AND_DEPLOYMENT.md](docs/VERIFICATION_AND_DEPLOYMENT.md) | Air-gapped verification, key pinning, portal deployment |

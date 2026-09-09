@@ -353,3 +353,17 @@ Outputs:
 - `lab_authority_private.pem`: Keep secret and offline.
 - `lab_authority_public.pem`: Distribute to auditors or register in `keys.json`.
 - Prints the SHA-256 SubjectPublicKeyInfo fingerprint.
+
+---
+
+## 10. Automated Agentic Operations (`skills/s0-forensics/`)
+
+In automated laboratory triage pipelines or headless decommissioning stations driven by autonomous agents (such as Antigravity, Claude Code, or custom forensic agents), operators should equip the agent with the official **s0 Forensics Skill**:
+
+- **Location**: [`skills/s0-forensics/SKILL.md`](https://github.com/kartik2005221/s0/tree/master/skills/s0-forensics/SKILL.md)
+- **Role**: Guides autonomous agents through high-risk media sanitization, bit-stream acquisition, and deleted file carving while strictly enforcing patience, pre-wipe dry runs (`s0 plan`), and post-operation cryptographic verification.
+- **Reference Manuals**: Includes bundled specifications for NIST mappings, device safety rules, and carving signatures.
+- **Evaluation Suite**: Validated against real-world test scenarios in `skills/s0-forensics/evals/evals.json`.
+
+For detailed agent safety guardrails and prompt protocols, see the [Agentic AI Guide](agentic-ai.md).
+
