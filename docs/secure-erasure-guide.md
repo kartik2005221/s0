@@ -1,8 +1,9 @@
 # Secure Data Erasure Guide
 
-> **Primary Focus:** In-depth technical guide to storage sanitization, controller firmware commands, file cluster overwriting, and metadata destruction.  
-> **Applicable Standards:** NIST SP 800-88 Rev. 1, IEEE 2883-2022, DoD 5220.22-M  
-> **Modules Covered:** Module 1 (Secure Drive Eraser) & Module 2 (Secure File & Folder Eraser)
+!!! info "Document Scope & Standards"
+    - **Primary Focus:** In-depth technical guide to storage sanitization, controller firmware commands, file cluster overwriting, and metadata destruction.
+    - **Applicable Standards:** NIST SP 800-88 Rev. 1, IEEE 2883-2022, DoD 5220.22-M
+    - **Modules Covered:** Module 1 (Secure Drive Eraser) & Module 2 (Secure File & Folder Eraser)
 
 ---
 
@@ -80,9 +81,10 @@ Traditional SATA hard drives and older SATA SSDs support ATA Security commands m
 ### 3.3 Kernel BLKDISCARD (TRIM / UNMAP)
 On modern Linux kernels, the `BLKDISCARD` ioctl commands the flash controller to mark LBA ranges as unmapped.
 
-> [!WARNING] **The BLKDISCARD Purge Condition**  
-> `BLKDISCARD` qualifies for the NIST **Purge** tier *only* if the drive controller supports **DRAT** (Deterministic Read After Trim) and **RZAT** (Return Zeros After Trim). If the controller returns stale data or random noise upon reading trimmed LBAs, `BLKDISCARD` is classified strictly as **Clear**.  
-> Use `--discard-purge-justification "Vendor Spec DRAT/RZAT verified"` to record drive-spec evidence in the certificate.
+!!! warning "The BLKDISCARD Purge Condition"
+    `BLKDISCARD` qualifies for the NIST **Purge** tier *only* if the drive controller supports **DRAT** (Deterministic Read After Trim) and **RZAT** (Return Zeros After Trim). If the controller returns stale data or random noise upon reading trimmed LBAs, `BLKDISCARD` is classified strictly as **Clear**.
+
+    Use `--discard-purge-justification "Vendor Spec DRAT/RZAT verified"` to record drive-spec evidence in the certificate.
 
 ### 3.4 Logical Overwrite Engine (Zero vs. Random)
 
@@ -151,9 +153,10 @@ On NTFS volumes, files can contain hidden named data streams (e.g. `file.pdf:Zon
 ### Copy-on-Write (CoW) Filesystems
 On Btrfs, ZFS, APFS, and ReFS volumes, overwriting an existing file causes the filesystem to allocate **new** physical blocks elsewhere on the drive to receive the updated data. The original physical clusters remain intact until reclaimed by filesystem garbage collection or snapshot pruning.
 
-> [!CAUTION] **CoW Advisory Warning**  
-> `s0` inspects `/proc/mounts` and volume flags. When target files reside on CoW storage, s0 automatically attaches a signed **CoW Warning** to the certificate notes.  
-> **Recommendation:** For 100% data destruction certainty on CoW filesystems, sanitize the entire volume or block device rather than individual files.
+!!! danger "CoW Advisory Warning"
+    `s0` inspects `/proc/mounts` and volume flags. When target files reside on CoW storage, s0 automatically attaches a signed **CoW Warning** to the certificate notes.
+
+    **Recommendation:** For 100% data destruction certainty on CoW filesystems, sanitize the entire volume or block device rather than individual files.
 
 ---
 

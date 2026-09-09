@@ -1,8 +1,9 @@
 # s0 — User & Forensic Operator Manual
 
-> [!IMPORTANT] **Document Scope: Comprehensive Operator & Field Reference Manual**  
-> This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, blockchain ledger continuity audits, and regulatory sign-offs.  
-> If you only need to perform a quick 5-minute setup and test run on an image file, refer to the **[Getting Started Guide](getting-started.md)**. For in-depth sanitization physics and firmware mechanics, see the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
+!!! info "Document Scope: Comprehensive Operator & Field Reference Manual"
+    This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, blockchain ledger continuity audits, and regulatory sign-offs.
+
+    If you only need to perform a quick 5-minute setup and test run on an image file, refer to the **[Getting Started Guide](getting-started.md)**. For in-depth sanitization physics and firmware mechanics, see the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
 
 ---
 
@@ -129,8 +130,8 @@ alternatives    :
   - [available] OVERWRITE_ZERO_1PASS (Clear)
 ```
 
-> [!TIP] **Method Recommendation**  
-> For **NVMe SSDs**, allow s0 to execute controller-level firmware purges (default). This achieves NIST **Purge**, completes in under 30 seconds for 1 TB, and prevents NAND write cycle degradation. For **HDDs**, standard `OVERWRITE_ZERO_1PASS` satisfies NIST **Clear** and runs 3× faster than pseudo-random overwriting.
+!!! tip "Method Recommendation"
+    For **NVMe SSDs**, allow s0 to execute controller-level firmware purges (default). This achieves NIST **Purge**, completes in under 30 seconds for 1 TB, and prevents NAND write cycle degradation. For **HDDs**, standard `OVERWRITE_ZERO_1PASS` satisfies NIST **Clear** and runs 3× faster than pseudo-random overwriting.
 
 ### 3.3 Executing Sanitization (`s0 wipe`)
 Perform certified sanitization:
@@ -184,8 +185,8 @@ s0 erase \
     --out-dir ./reports
 ```
 
-> [!TIP] **Pattern Recommendation**  
-> Unless external regulations (such as legacy DoD 5220.22-M mandates) require multiple random passes, choose `--pattern zero --passes 1`. A single pass completely zeros physical file extents and runs significantly faster.
+!!! tip "Pattern Recommendation"
+    Unless external regulations (such as legacy DoD 5220.22-M mandates) require multiple random passes, choose `--pattern zero --passes 1`. A single pass completely zeros physical file extents and runs significantly faster.
 
 ---
 
@@ -203,10 +204,10 @@ s0 carve \
     --min-confidence 60
 ```
 
-> [!TIP] **Confidence Score Recommendation**  
-> - **Threshold 50% (Default):** Optimal for general triage and initial incident surveys.  
-> - **Threshold 75%+:** Recommended when generating court-ready exhibits to eliminate partial fragments.  
-> - **Threshold 25–40%:** Recommended for heavily damaged or partially overwritten storage media to maximize recovery chances.
+!!! tip "Confidence Score Recommendation"
+    - **Threshold 50% (Default):** Optimal for general triage and initial incident surveys.
+    - **Threshold 75%+:** Recommended when generating court-ready exhibits to eliminate partial fragments.
+    - **Threshold 25–40%:** Recommended for heavily damaged or partially overwritten storage media to maximize recovery chances.
 
 ### 5.2 Supported File Formats
 - **Images:** JPEG (`FF D8 FF`), PNG (`89 50 4E 47`), GIF (`GIF8`), BMP (`BM`)
@@ -252,8 +253,8 @@ s0 image \
     --organization "Forensic Lab"
 ```
 
-> [!TIP] **Block Size Recommendation**  
-> The default block size `--block-size 1048576` (1 MiB) delivers maximum sequential streaming throughput on modern PCIe and SATA controllers. Use smaller blocks (e.g. 64 KiB) only when imaging legacy USB 1.1/2.0 thumb drives.
+!!! tip "Block Size Recommendation"
+    The default block size `--block-size 1048576` (1 MiB) delivers maximum sequential streaming throughput on modern PCIe and SATA controllers. Use smaller blocks (e.g. 64 KiB) only when imaging legacy USB 1.1/2.0 thumb drives.
 
 ### 6.2 Cloning a Drive (1:1 Disk Duplication)
 To duplicate a source drive directly to a clean target drive:

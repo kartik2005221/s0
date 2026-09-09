@@ -1,8 +1,9 @@
 # Getting Started with s0
 
-> [!NOTE] **Document Scope: 5-Minute Quickstart & Installation Guide**  
-> This guide is intended for new users and evaluators who need to install s0, verify toolchain prerequisites, and execute their first safe dry-run in under 5 minutes.  
-> For certified field sanitization procedures, bad-sector fault recovery, live bit-stream imaging, batch enterprise destruction, and legal audit chain management, consult the **[User & Forensic Operator Manual](USER_MANUAL.md)** or the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
+!!! note "Document Scope: 5-Minute Quickstart & Installation Guide"
+    This guide is intended for new users and evaluators who need to install s0, verify toolchain prerequisites, and execute their first safe dry-run in under 5 minutes.
+
+    For certified field sanitization procedures, bad-sector fault recovery, live bit-stream imaging, batch enterprise destruction, and legal audit chain management, consult the **[User & Forensic Operator Manual](USER_MANUAL.md)** or the **[Secure Data Erasure Guide](secure-erasure-guide.md)**.
 
 ---
 

@@ -11,12 +11,13 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 
 ## CRITICAL SAFETY & PATIENCE DIRECTIVE: HIGH-RISK OPERATIONS
 
-> [!CAUTION] **Irreversible Destruction & Hardware Locking Risk**  
-> Operations executed by `s0` involve **permanent, non-recoverable destruction of digital storage media** or long-running forensic acquisitions. Adhere strictly to the four non-negotiable invariants:  
-> 1. **Patience is mandatory.** Never terminate, abort, or send `SIGKILL` / `SIGINT` to a running `s0 wipe` or `s0 image` process. Interrupting a controller-level firmware erase (`NVME_SANITIZE` or `ATA_SECURE_ERASE`) can lock the drive into a permanently bricked or frozen state. Always wait for completion.  
-> 2. **Never wipe without a dry-run.** ALWAYS run `s0 plan --target <path>` first. Inspect the chosen method and warnings before taking any destructive action.  
-> 3. **Identify the device explicitly.** Run `s0 list` and report the drive **Model**, **Serial Number**, and **Capacity** to the user. Demand explicit user confirmation of the target before executing destructive commands.  
-> 4. **Verify certificates immediately.** After any destructive wipe, file erase, or image acquisition, execute `s0 verify` on the emitted certificate to confirm cryptographic non-repudiation.
+!!! danger "Irreversible Destruction & Hardware Locking Risk"
+    Operations executed by `s0` involve **permanent, non-recoverable destruction of digital storage media** or long-running forensic acquisitions. Adhere strictly to the four non-negotiable invariants:
+
+    1. **Patience is mandatory.** Never terminate, abort, or send `SIGKILL` / `SIGINT` to a running `s0 wipe` or `s0 image` process. Interrupting a controller-level firmware erase (`NVME_SANITIZE` or `ATA_SECURE_ERASE`) can lock the drive into a permanently bricked or frozen state. Always wait for completion.
+    2. **Never wipe without a dry-run.** ALWAYS run `s0 plan --target <path>` first. Inspect the chosen method and warnings before taking any destructive action.
+    3. **Identify the device explicitly.** Run `s0 list` and report the drive **Model**, **Serial Number**, and **Capacity** to the user. Demand explicit user confirmation of the target before executing destructive commands.
+    4. **Verify certificates immediately.** After any destructive wipe, file erase, or image acquisition, execute `s0 verify` on the emitted certificate to confirm cryptographic non-repudiation.
 
 ---
 

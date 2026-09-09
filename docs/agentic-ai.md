@@ -1,8 +1,9 @@
 # Agentic AI & High-Risk Safety Guide
 
-> **Scope:** Guidelines, Prompt Engineering, and Safety Guardrails for Autonomous Agentic AI Assistants executing `s0`.  
-> **Skill Location:** `.agents/skills/s0-forensics/SKILL.md`  
-> **Core Operating Principle:** *Patience & Irreversible Risk Awareness*
+!!! info "Agentic Safety Specification"
+    - **Scope:** Guidelines, Prompt Engineering, and Safety Guardrails for Autonomous Agentic AI Assistants executing `s0`.
+    - **Skill Location:** [`skills/s0-forensics/SKILL.md`](https://github.com/kartik2005221/s0/tree/master/skills/s0-forensics)
+    - **Core Operating Principle:** *Patience & Irreversible Risk Awareness*
 
 ---
 

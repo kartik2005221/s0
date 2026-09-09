@@ -19,8 +19,8 @@ This reference specifies the 10 magic-byte signatures, filesystem structure engi
 | `sqlite` | Database | `SQLite format 3\0` | B-tree page size validation | 100 MB | 4.5 bits/byte |
 | `mp3` | Audio | `49 44 33` (ID3v2) / `FF FB` | Frame header sync | 15 MB | 7.0 bits/byte |
 
-> [!NOTE]
-> The `zip` signature also natively extracts Microsoft Office Open XML (`.docx`, `.xlsx`, `.pptx`), Java archives (`.jar`), and Android packages (`.apk`), which are packaged inside standard ZIP containers.
+!!! note "Office OpenXML & Compressed Archives"
+    The `zip` signature also natively extracts Microsoft Office Open XML (`.docx`, `.xlsx`, `.pptx`), Java archives (`.jar`), and Android packages (`.apk`), which are packaged inside standard ZIP containers.
 
 ---
 
