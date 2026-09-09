@@ -493,7 +493,14 @@ def carve_image(
                                 is_bifragmented = True
                                 frag_count = 2
                     else:
-                        end_pos = min(len(data) - idx, sig.max_size)
+                        if sig.extension == "wav":
+                            if len(data) - idx < 12 or data[idx + 8 : idx + 12] != b"WAVE":
+                                pos = idx + 1
+                                continue
+                            riff_len = int.from_bytes(data[idx + 4 : idx + 8], "little") + 8
+                            end_pos = min(len(data) - idx, riff_len, sig.max_size)
+                        else:
+                            end_pos = min(len(data) - idx, sig.max_size)
                         candidate_bytes = data[idx : idx + end_pos]
                         if len(candidate_bytes) >= sig.min_size:
                             carved_data = candidate_bytes

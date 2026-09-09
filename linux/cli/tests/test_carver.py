@@ -187,3 +187,57 @@ def test_adversarial_carving_zero_and_empty_images(tmp_path):
     idx_content = json.loads(rec_idx.read_text())
     assert idx_content["files_recovered"] == 0
     assert "recovered_files" in idx_content
+
+
+def test_carve_mp3_sync_frames_and_new_formats(tmp_path):
+    """Verify carving of MP3 without ID3 tag (MPEG sync frames), WAV, FLAC, 7z, and PCAP."""
+    disk_img = tmp_path / "extended_media.raw"
+    out_dir = tmp_path / "extended_out"
+
+    # 1. MP3 without ID3 tag (starting directly with MPEG-1 Layer 3 frame sync 0xFFFB)
+    # High entropy payload representing audio bitstream
+    import secrets
+    mp3_frame_header = b"\xff\xfb\x90\x64"  # Sync 0xFFE0, MPEG-1, Layer 3, 128 kbps, 44.1 kHz
+    mp3_data = mp3_frame_header + secrets.token_bytes(2048)
+
+    # 2. WAV Audio (RIFF ... WAVE)
+    wav_header = b"RIFF" + (100).to_bytes(4, "little") + b"WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00" + b"\x00" * 80
+
+    # 3. FLAC Lossless Audio
+    flac_data = b"fLaC\x00\x00\x00\x22" + secrets.token_bytes(512)
+
+    # 4. 7-Zip Archive
+    sevenz_data = b"7z\xbc\xaf'\x1c\x00\x04" + secrets.token_bytes(256)
+
+    # 5. PCAP Packet Capture
+    pcap_data = b"\xd4\xc3\xb2\xa1\x02\x00\x04\x00\x00\x00\x00\x00" + secrets.token_bytes(256)
+
+    junk = b"\x00" * 4096
+
+    with open(disk_img, "wb") as f:
+        f.write(junk)
+        f.write(mp3_data)
+        f.write(junk)
+        f.write(wav_header)
+        f.write(junk)
+        f.write(flac_data)
+        f.write(junk)
+        f.write(sevenz_data)
+        f.write(junk)
+        f.write(pcap_data)
+        f.write(junk)
+
+    summary = carve_image(
+        disk_img,
+        out_dir,
+        min_confidence=50,
+        operator_id="op-test",
+    )
+
+    rec_exts = {c.extension for c in summary.carved_files}
+    assert "mp3" in rec_exts, "MP3 with MPEG sync frame was not carved"
+    assert "wav" in rec_exts, "WAV audio was not carved"
+    assert "flac" in rec_exts, "FLAC audio was not carved"
+    assert "7z" in rec_exts, "7z archive was not carved"
+    assert "pcap" in rec_exts, "PCAP capture was not carved"
+

@@ -17,10 +17,19 @@ This reference specifies the 10 magic-byte signatures, filesystem structure engi
 | `bmp` | Image | `BM` (`42 4D`) | Bi-level length field check | 30 MB | 4.0 bits/byte |
 | `elf` | Executable | `7F 45 4C 46` (`\x7fELF`) | Section Header Table | 50 MB | 5.8 bits/byte |
 | `sqlite` | Database | `SQLite format 3\0` | B-tree page size validation | 100 MB | 4.5 bits/byte |
-| `mp3` | Audio | `49 44 33` (ID3v2) / `FF FB` | Frame header sync | 15 MB | 7.0 bits/byte |
+| `mp3` | Audio | `49 44 33` (ID3v2) / `FF FB` / `FF F3` / `FF FA` | Frame header sync | 30 MB | 7.0 bits/byte |
+| `wav` | Audio | `52 49 46 46` (`RIFF`) ... `WAVE` | RIFF length bound | 50 MB | 5.0 bits/byte |
+| `flac` | Audio | `66 4C 61 43` (`fLaC`) | STREAMINFO metadata | 50 MB | 7.2 bits/byte |
+| `ogg` | Audio | `4F 67 67 53` (`OggS`) | Ogg page sequence | 50 MB | 7.2 bits/byte |
+| `7z` | Archive | `37 7A BC AF 27 1C` (`7z\xbc\xaf'\x1c`) | Header size bound | 100 MB | 7.8 bits/byte |
+| `pcap` | Document | `D4 C3 B2 A1` | Global header structure | 100 MB | 4.0 bits/byte |
+| `pcapng` | Document | `0A 0D 0D 0A` (`\n\r\r\n`) | Section Header Block | 100 MB | 4.0 bits/byte |
 
 !!! note "Office OpenXML & Compressed Archives"
     The `zip` signature also natively extracts Microsoft Office Open XML (`.docx`, `.xlsx`, `.pptx`), Java archives (`.jar`), and Android packages (`.apk`), which are packaged inside standard ZIP containers.
+
+!!! tip "MP3 Sync Frame Detection"
+    In addition to `ID3` tag containers, `s0 carve` detects raw MPEG audio frames (`0xFFFB`, `0xFFF3`, `0xFFFA`), enabling recovery of audio streams that lack ID3 metadata headers.
 
 ---
 
