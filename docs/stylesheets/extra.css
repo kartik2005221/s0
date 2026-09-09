@@ -81,50 +81,84 @@
 }
 
 /* ================================================================
-   1. HEADER BAR & NAVIGATION
+   1. REMOVE TOP HEADER (GitBook-style Layout)
    ================================================================ */
 .md-header {
-  background-color: #1a1e24 !important;
-  border-bottom: 1px solid #393E46;
-  color: #FFFFFF !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  display: none !important;
 }
 
-.md-header__button.md-logo {
+/* Sidebar positioning from top of screen */
+.md-sidebar {
+  top: 0 !important;
+  padding-top: 1.25rem !important;
+  height: 100vh !important;
+}
+
+.md-sidebar__scrollwrap {
+  margin: 0 !important;
+}
+
+/* Ensure content starts cleanly at top */
+.md-main__inner {
+  margin-top: 1rem !important;
+}
+
+/* Show Logo and Title at the top of the left sidebar like GitBook */
+.md-nav--primary > .md-nav__title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #FFFFFF !important;
+  padding: 0.5rem 0.6rem 1rem 0.6rem !important;
+  margin-bottom: 0.75rem !important;
+  border-bottom: 1px solid #393E46 !important;
+  height: auto !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: default !important;
+}
+
+.md-nav--primary > .md-nav__title .md-nav__button.md-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 0 !important;
   color: #00ADB5 !important;
 }
 
-.md-header__button.md-logo svg {
+.md-nav--primary > .md-nav__title .md-nav__button.md-logo svg {
+  width: 1.6rem !important;
+  height: 1.6rem !important;
   fill: #00ADB5 !important;
 }
 
-.md-header__title {
+/* GitHub repo button inside left sidebar */
+.md-nav--primary > .md-nav__source {
+  display: block !important;
+  padding: 0 0.6rem 0.85rem 0.6rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  margin-bottom: 0.85rem !important;
+}
+
+.md-nav--primary > .md-nav__source .md-source {
+  background-color: #282e38 !important;
+  border: 1px solid #393E46 !important;
+  border-radius: 6px !important;
+  padding: 0.4rem 0.75rem !important;
+  color: #cbd5e1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.md-nav--primary > .md-nav__source .md-source:hover {
+  border-color: #00ADB5 !important;
   color: #FFFFFF !important;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.md-header__topic {
-  color: #FFFFFF !important;
-  font-weight: 600;
-}
-
-.md-header__topic + .md-header__topic {
-  color: #A0A5AD !important;
-  font-weight: 400;
-}
-
-.md-header__button {
-  color: #EEEEEE !important;
-  transition: color 0.15s ease;
-}
-
-.md-header__button:hover {
-  color: #00ADB5 !important;
-}
-
-.md-header__button svg {
-  fill: currentColor !important;
+  background-color: rgba(0, 173, 181, 0.1) !important;
 }
 
 /* ================================================================
