@@ -1,0 +1,122 @@
+/* 
+   S0 Documentation Custom Theme
+   ColorHunt Palette: https://colorhunt.co/palette/222831393e4600adb5eeeeee
+   - Deep Dark / Base Background: #222831
+   - Surface / Cards / Sidebar:   #393E46
+   - Vibrant Teal / Accents:      #00ADB5
+   - Clean Foreground / Text:     #EEEEEE
+*/
+
+/* ── Slate / Dark Mode (Default) ────────────────────────── */
+[data-md-color-scheme="slate"] {
+  /* Page Backgrounds */
+  --md-default-bg-color: #222831;
+  --md-default-bg-color--light: #2c323c;
+  --md-default-bg-color--lighter: #393E46;
+  --md-default-bg-color--lightest: #4a505a;
+
+  /* Typography / Foreground */
+  --md-default-fg-color: #EEEEEE;
+  --md-default-fg-color--light: #D6D6D6;
+  --md-default-fg-color--lighter: #A0A5AD;
+  --md-default-fg-color--lightest: #393E46;
+
+  /* Brand / Primary */
+  --md-primary-fg-color: #00ADB5;
+  --md-primary-fg-color--light: #33BDC4;
+  --md-primary-fg-color--dark: #00878D;
+  --md-primary-bg-color: #222831;
+  --md-primary-bg-color--light: #393E46;
+
+  /* Accents & Highlights */
+  --md-accent-fg-color: #00ADB5;
+  --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.15);
+  --md-accent-bg-color: #222831;
+
+  /* Code Blocks */
+  --md-code-bg-color: #1a1e24;
+  --md-code-fg-color: #EEEEEE;
+
+  /* Links */
+  --md-typeset-a-color: #00ADB5;
+
+  /* Admonitions & Borders */
+  --md-default-border-color: #393E46;
+}
+
+/* ── Default / Light Mode ───────────────────────────────── */
+[data-md-color-scheme="default"] {
+  /* Page Backgrounds */
+  --md-default-bg-color: #F8F9FA;
+  --md-default-bg-color--light: #EEEEEE;
+  --md-default-bg-color--lighter: #E2E4E8;
+  --md-default-bg-color--lightest: #D4D7DC;
+
+  /* Typography / Foreground */
+  --md-default-fg-color: #222831;
+  --md-default-fg-color--light: #393E46;
+  --md-default-fg-color--lighter: #555B64;
+  --md-default-fg-color--lightest: #CCCCCC;
+
+  /* Brand / Primary */
+  --md-primary-fg-color: #00ADB5;
+  --md-primary-fg-color--light: #33BDC4;
+  --md-primary-fg-color--dark: #00878D;
+  --md-primary-bg-color: #EEEEEE;
+  --md-primary-bg-color--light: #FFFFFF;
+
+  /* Accents & Highlights */
+  --md-accent-fg-color: #00878D;
+  --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.12);
+  --md-accent-bg-color: #EEEEEE;
+
+  /* Code Blocks */
+  --md-code-bg-color: #E9ECEF;
+  --md-code-fg-color: #222831;
+
+  /* Links */
+  --md-typeset-a-color: #00878D;
+
+  /* Admonitions & Borders */
+  --md-default-border-color: #E0E0E0;
+}
+
+/* ── Header & Navigation Bar Styling ─────────────────────── */
+.md-header {
+  background-color: #222831 !important;
+  border-bottom: 1px solid #393E46;
+}
+
+.md-tabs {
+  background-color: #1a1e24 !important;
+  border-bottom: 1px solid #393E46;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: #00ADB5 !important;
+}
+
+/* ── Grid Cards Enhancement ──────────────────────────────── */
+.md-typeset .grid.cards > ul > li {
+  background-color: var(--md-default-bg-color--lighter);
+  border: 1px solid rgba(0, 173, 181, 0.2);
+  border-radius: 8px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: #00ADB5;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 173, 181, 0.15);
+}
+
+/* ── Admonition & Callout Accents ────────────────────────── */
+.md-typeset .admonition {
+  border-left-color: #00ADB5;
+}
+
+.md-typeset .admonition.tip,
+.md-typeset .admonition.note {
+  border-left-color: #00ADB5;
+}

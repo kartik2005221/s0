@@ -13,15 +13,15 @@ theme:
   palette:
     # Slate / Dark Mode (Default)
     - scheme: slate
-      primary: teal
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
     # Light Mode
     - scheme: default
-      primary: teal
-      accent: cyan
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -38,6 +38,9 @@ theme:
     - search.share
     - content.code.copy
     - content.code.annotate
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
@@ -56,6 +59,7 @@ markdown_extensions:
       alternate_style: true
   - tables
   - attr_list
+  - md_in_html
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.emoji:

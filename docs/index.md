@@ -18,7 +18,7 @@ Welcome to the official technical documentation for **s0 (Sector Zero)** — an 
 
     NIST SP 800-88 *Clear* & *Purge* sanitization for physical media. Automates `NVMe Sanitize`, `NVMe Format (Crypto Erase)`, `ATA Secure Erase`, `BLKDISCARD` ioctls, and multi-pass pattern overwriting. Includes bare-metal Debian Live ISO recipes.
 
-    [:octicons-arrow-right-24: Read Drive Eraser Manual](USER_MANUAL.md#module-1-drive-eraser)
+    [:octicons-arrow-right-24: Read Drive Eraser Manual](USER_MANUAL.md#21-module-1-secure-drive-eraser)
 
 -   :material-file-lock: __Module 2: File & Folder Eraser__
 
@@ -26,7 +26,7 @@ Welcome to the official technical documentation for **s0 (Sector Zero)** — an 
 
     Native cross-platform selective data destruction. Overwrites cluster runs in-place, zeroes filesystem timestamps, purges Alternate Data Streams (Windows ADS), flushes hardware caches via `F_FULLFSYNC` (macOS), and scrambles directory entries before unlinking.
 
-    [:octicons-arrow-right-24: Read File Eraser Docs](USER_MANUAL.md#module-2-secure-file--folder-eraser)
+    [:octicons-arrow-right-24: Read File Eraser Docs](USER_MANUAL.md#22-module-2-secure-file-folder-eraser)
 
 -   :material-magnify-scan: __Module 3: Multi-FS File Carver__
 
@@ -34,7 +34,7 @@ Welcome to the official technical documentation for **s0 (Sector Zero)** — an 
 
     Forensic deleted file recovery engine. Features direct filesystem structure traversal for **ext4** (inode extents), **NTFS** ($MFT non-resident multi-fragment runlists), **FAT32** (BPB directory entries), and **exFAT** (Cluster Heap allocation sets) alongside header/footer magic carving with Shannon entropy filtering.
 
-    [:octicons-arrow-right-24: Explore Carver Specs](USER_MANUAL.md#module-3-file-carver)
+    [:octicons-arrow-right-24: Explore Carver Specs](USER_MANUAL.md#23-module-3-advanced-file-carving-recovery)
 
 -   :material-shield-check: __Module 4: Cryptographic Ledger & Audit__
 
