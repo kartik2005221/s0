@@ -84,6 +84,8 @@ def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_
     key = crypto.load_public_pem(REPO / "core" / "keys" / "demo_issuer_public.pem")
     ok, reason = certificate.verify_certificate(cert, [key])
     assert ok, reason
+    assert result.get("cert_filename") is not None
+    assert result.get("pdf_filename") is not None
 
 
 def test_erase_files_api(client, tmp_path):
@@ -201,5 +203,39 @@ def test_index_html_safe_rendering():
     assert "${b.target}" not in index_html
     assert "tdOpId.textContent = b.operator" in index_html
     assert "tdTarget.textContent = b.target" in index_html
+
+
+def test_image_api(client, small_image, tmp_path):
+    dst = tmp_path / "cloned.img"
+    r = client.post("/api/image", json={
+        "source": small_image,
+        "destination": str(dst),
+        "block_size": 65536,
+        "no_recovery": False,
+        "is_clone": False,
+    })
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+
+    result = None
+    for _ in range(60):
+        j = client.get(f"/api/job/{job_id}").json()
+        if j["status"] in ("done", "error"):
+            result = j.get("result")
+            break
+        time.sleep(0.1)
+
+    assert result is not None and result["returncode"] == 0, f"imager failed: {result}"
+    assert result["bytes_copied"] == 4 * 1024 * 1024
+    assert result["manifest_filename"] is not None
+    assert result["cert_filename"] is not None
+    assert dst.exists()
+    assert dst.stat().st_size == 4 * 1024 * 1024
+
+    # Verify download of manifest and certificate works
+    r_dl1 = client.get(f"/api/download/{job_id}/{result['manifest_filename']}")
+    assert r_dl1.status_code == 200
+    r_dl2 = client.get(f"/api/download/{job_id}/{result['cert_filename']}")
+    assert r_dl2.status_code == 200
 
 

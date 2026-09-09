@@ -19,18 +19,31 @@ import json
 import os
 import shutil
 import subprocess
+import sys as _sys
 import threading
 import time
 import uuid
 from pathlib import Path
 from typing import List, Optional
 
+REPO = Path(__file__).resolve().parents[1]
+_sys.path.insert(0, str(REPO / "linux" / "cli"))
+_sys.path.insert(0, str(REPO / "core" / "python"))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
-REPO = Path(__file__).resolve().parents[1]
+from s0_core.temperature import read_temperature  # noqa: E402
+from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
+from s0_cli.carver import carve_image  # noqa: E402
+from s0_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
+from s0_cli.file_eraser import erase_batch  # noqa: E402
+from s0_cli.imager import ImagingOptions, acquire_image  # noqa: E402
+from s0_cli.methods.ata import hpa_dco_report  # noqa: E402
+from s0_cli.wipe import select_method  # noqa: E402
+
 VENV_BIN = REPO / ".venv" / "bin"
 
 
@@ -60,17 +73,6 @@ if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
-
-import sys as _sys
-_sys.path.insert(0, str(REPO / "linux" / "cli"))
-_sys.path.insert(0, str(REPO / "core" / "python"))
-from s0_core.temperature import read_temperature  # noqa: E402
-from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
-from s0_cli.carver import carve_image  # noqa: E402
-from s0_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
-from s0_cli.file_eraser import erase_batch  # noqa: E402
-from s0_cli.methods.ata import hpa_dco_report  # noqa: E402
-from s0_cli.wipe import select_method  # noqa: E402
 
 
 class WipeRequest(BaseModel):
@@ -103,6 +105,28 @@ class CarveRequest(BaseModel):
     target: str
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
+    operator_id: str = Field(default="op-forensic")
+
+    @field_validator("operator_id")
+    @classmethod
+    def validate_operator_id(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("operator_id cannot be empty")
+        if any(c in v for c in "<>&\"'\\"):
+            raise ValueError("operator_id contains forbidden characters")
+        if len(v) > 64:
+            raise ValueError("operator_id exceeds maximum length of 64 characters")
+        return v
+
+
+class ImageRequest(BaseModel):
+    source: str
+    destination: str
+    block_size: int = 1024 * 1024
+    no_recovery: bool = False
+    is_clone: bool = False
+    confirm_text: str = ""
     operator_id: str = Field(default="op-forensic")
 
     @field_validator("operator_id")
@@ -245,10 +269,14 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                 if out.strip():
                     parsed = json.loads(out.strip())
                     result.update(parsed)
-                    if "certificate_path" in parsed and parsed["certificate_path"]:
-                        result["cert_filename"] = Path(parsed["certificate_path"]).name
-                    if "pdf_path" in parsed and parsed["pdf_path"]:
-                        result["pdf_filename"] = Path(parsed["pdf_path"]).name
+                    cert_p = parsed.get("certificate") or parsed.get("certificate_path")
+                    pdf_p = parsed.get("pdf") or parsed.get("pdf_path")
+                    if cert_p:
+                        result["cert_filename"] = Path(cert_p).name
+                        result["certificate_path"] = str(cert_p)
+                    if pdf_p:
+                        result["pdf_filename"] = Path(pdf_p).name
+                        result["pdf_path"] = str(pdf_p)
             else:
                 result["stdout_tail"] = out.strip()[-2000:]
             with _lock:
@@ -440,6 +468,101 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                             }
                             for c in summary.carved_files
                         ],
+                    },
+                )
+        except Exception as exc:
+            with _lock:
+                _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
+
+    threading.Thread(target=run, daemon=True).start()
+    return JSONResponse({"job_id": job_id})
+
+
+@app.post("/api/image")
+def start_image(req: ImageRequest) -> JSONResponse:
+    if not req.source:
+        raise HTTPException(400, "source path required")
+    if not req.destination:
+        raise HTTPException(400, "destination path required")
+    if req.source == req.destination:
+        raise HTTPException(400, "source and destination cannot be the same path")
+
+    src_p = Path(req.source)
+    if not src_p.exists():
+        raise HTTPException(404, f"source does not exist: {req.source}")
+
+    dst_p = Path(req.destination)
+    is_blk = False
+    try:
+        is_blk = dst_p.is_block_device() or (_sys.platform == "darwin" and dst_p.is_char_device())
+    except Exception:
+        pass
+    if _sys.platform == "win32" and ("physicaldrive" in req.destination.lower() or req.destination.startswith(r"\\.\\")):
+        is_blk = True
+
+    if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
+        raise HTTPException(400, f"Cloning to target block device requires typing exact destination: '{req.destination}'")
+
+    job_id = uuid.uuid4().hex[:12]
+    out_dir = REPO / "demo-out" / f"gui-image-{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    with _lock:
+        _jobs[job_id] = {
+            "status": "running",
+            "log": [f"Acquiring forensic bit-stream from {req.source} to {req.destination}..."],
+            "out_dir": str(out_dir),
+        }
+
+    def run() -> None:
+        try:
+            def _progress(bytes_copied, total_bytes, speed, bad_sectors):
+                pct = int((bytes_copied / total_bytes) * 100) if total_bytes > 0 else 0
+                msg = f"[s0 image] | {pct:3d}% | {bytes_copied / (1024 * 1024):.1f} MiB / {total_bytes / (1024 * 1024):.1f} MiB | {speed:.1f} MB/s | Bad Sectors: {bad_sectors}"
+                with _lock:
+                    if not _jobs[job_id]["log"] or not _jobs[job_id]["log"][-1].startswith("[s0 image]"):
+                        _jobs[job_id]["log"].append(msg)
+                    else:
+                        _jobs[job_id]["log"][-1] = msg
+
+            key = REPO / "core" / "keys" / "demo_issuer_private.pem"
+            options = ImagingOptions(
+                source=req.source,
+                destination=req.destination,
+                block_size=req.block_size,
+                error_recovery=not req.no_recovery,
+                operator=req.operator_id,
+                organization="Digital Forensics & Incident Response Lab",
+                key_path=key if key.exists() else None,
+                no_certificate=False,
+                out_dir=str(out_dir),
+            )
+            img_result = acquire_image(options, progress_callback=_progress)
+
+            manifest_fn = Path(img_result.manifest_path).name if img_result.manifest_path else None
+            cert_fn = None
+            if img_result.manifest_certificate and "cert_uuid" in img_result.manifest_certificate:
+                cert_fn = f"certificate_{img_result.manifest_certificate['cert_uuid']}.json"
+
+            with _lock:
+                _jobs[job_id].update(
+                    status="done" if img_result.success else "error",
+                    result={
+                        "returncode": 0 if img_result.success else 1,
+                        "success": img_result.success,
+                        "source": img_result.source,
+                        "destination": img_result.destination,
+                        "is_clone": img_result.is_clone,
+                        "bytes_copied": img_result.bytes_copied,
+                        "duration_seconds": img_result.duration_seconds,
+                        "speed_mbps": img_result.speed_mbps,
+                        "bad_sectors_count": img_result.bad_sectors_count,
+                        "bad_bytes_count": img_result.bad_bytes_count,
+                        "source_sha256": img_result.source_sha256,
+                        "source_md5": img_result.source_md5,
+                        "manifest_filename": manifest_fn,
+                        "cert_filename": cert_fn,
+                        "error": img_result.error,
                     },
                 )
         except Exception as exc:

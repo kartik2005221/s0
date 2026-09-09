@@ -574,11 +574,14 @@
     <button class="nav-tab" onclick="switchNav('carve', this)">
       <span class="tab-num">[ 03 ]</span> 🔍 Forensic File Carver
     </button>
+    <button class="nav-tab" onclick="switchNav('image', this)">
+      <span class="tab-num">[ 04 ]</span> 💽 Forensic Imager &amp; Cloner
+    </button>
     <button class="nav-tab" onclick="switchNav('audit', this)">
-      <span class="tab-num">[ 04 ]</span> ⛓️ Audit Chain Ledger
+      <span class="tab-num">[ 05 ]</span> ⛓️ Audit Chain Ledger
     </button>
     <a href="/portal/" target="_blank" class="nav-tab portal-link">
-      <span class="tab-num">[ 05 ]</span> 🔐 Verification Portal ↗
+      <span class="tab-num">[ 06 ]</span> 🔐 Verification Portal ↗
     </a>
   </nav>
 
@@ -838,7 +841,119 @@
   </main>
 
   <!-- ===================================================================== -->
-  <!-- TAB 4: BLOCKCHAIN AUDIT LEDGER                                        -->
+  <!-- TAB 4: FORENSIC IMAGER & CLONER                                       -->
+  <!-- ===================================================================== -->
+  <main id="tab-image" class="tab-content">
+    <div class="grid-2col">
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Forensic Acquisition &amp; Bit-Stream Duplication</h2>
+          <span class="badge badge-purple">NIST SP 800-86 • ISO/IEC 27037</span>
+        </div>
+        <p class="panel-subtitle">Fault-tolerant raw image acquisition (.raw/.dd/.img) and forensic device-to-device bit-stream cloning.</p>
+
+        <div class="form-group">
+          <label for="imageSourceSelect">Source Drive or Forensic Image:</label>
+          <select id="imageSourceSelect">
+            <option value="">Scanning media...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="imageDestInput">Destination Image File or Target Block Device:</label>
+          <input type="text" id="imageDestInput" placeholder="/path/to/evidence.raw or /dev/sdX">
+        </div>
+
+        <div class="form-group">
+          <label for="imageBlockSize">I/O Block Transfer Size:</label>
+          <select id="imageBlockSize">
+            <option value="65536">64 KiB (Low-latency / Sensitive media)</option>
+            <option value="262144">256 KiB</option>
+            <option value="1048576" selected>1 MiB (Default — High sequential throughput)</option>
+            <option value="4194304">4 MiB (High performance NVMe/SSD)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="imageFaultTol" checked>
+            <span>Fault Tolerance: Zero-fill damaged sectors &amp; log bad LBA ranges (ddrescue mode)</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="imageIsClone" onchange="toggleCloneWarning()">
+            <span>Physical Drive-to-Drive Clone Mode</span>
+          </label>
+        </div>
+
+        <div id="cloneWarningBox" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+          <div style="color: var(--accent-red); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">
+            ⚠️ CAUTION: BIT-STREAM CLONING OVERWRITES DESTINATION MEDIA
+          </div>
+          <div style="font-size: 0.78rem; color: var(--text-dim); margin-bottom: 8px;">
+            All existing partitions and data on the destination device will be permanently replaced. To confirm, type the exact destination path below:
+          </div>
+          <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" style="border-color: rgba(239, 68, 68, 0.5);">
+        </div>
+
+        <button class="btn btn-primary" onclick="startImaging()">
+          💽 Start Bit-Stream Acquisition
+        </button>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Acquisition Telemetry &amp; Evidence Manifest</h2>
+          <span class="badge badge-amber" id="imageStatusBadge">STATUS: IDLE</span>
+        </div>
+
+        <div class="terminal-container">
+          <div class="terminal-bar">
+            <span>BIT-STREAM ACQUISITION LOG</span>
+            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('imageLog')">Clear</button>
+          </div>
+          <div class="terminal-output" id="imageLog">Awaiting acquisition command...</div>
+        </div>
+
+        <div class="result-showcase" id="imageResultCard">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.2rem;">🛡️</span>
+              <strong style="color: #34d399;" id="imageResultTitle">ACQUISITION COMPLETE</strong>
+            </div>
+            <div id="imageActionButtons" style="display: flex; gap: 8px;"></div>
+          </div>
+          <div class="telemetry-card">
+            <div class="telemetry-row">
+              <span class="telemetry-label">Bytes Copied:</span>
+              <span class="telemetry-val" id="imageBytesCopiedVal">—</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="telemetry-label">Transfer Speed / Time:</span>
+              <span class="telemetry-val" id="imageSpeedTimeVal">—</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="telemetry-label">Bad Sectors (Zero-filled):</span>
+              <span class="telemetry-val" id="imageBadSectorsVal">0</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="telemetry-label">Source SHA-256:</span>
+              <span class="telemetry-val code-cell" id="imageSha256Val" style="font-size: 0.72rem;">—</span>
+            </div>
+            <div class="telemetry-row">
+              <span class="telemetry-label">Source MD5:</span>
+              <span class="telemetry-val code-cell" id="imageMd5Val" style="font-size: 0.72rem;">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- TAB 5: BLOCKCHAIN AUDIT LEDGER                                        -->
   <!-- ===================================================================== -->
   <main id="tab-audit" class="tab-content">
     <section class="panel">
@@ -950,8 +1065,10 @@
         const data = await res.json();
         const driveSel = document.getElementById("driveSelect");
         const carveSel = document.getElementById("carveTargetSelect");
+        const imageSel = document.getElementById("imageSourceSelect");
         driveSel.innerHTML = "";
         carveSel.innerHTML = "";
+        if (imageSel) imageSel.innerHTML = "";
 
         const all = [...(data.block || []), ...(data.images || [])];
         if (all.length === 0) {
@@ -960,6 +1077,7 @@
           opt.textContent = "No storage devices or images found";
           driveSel.appendChild(opt);
           carveSel.appendChild(opt.cloneNode(true));
+          if (imageSel) imageSel.appendChild(opt.cloneNode(true));
           return;
         }
 
@@ -971,6 +1089,7 @@
           opt.textContent = `${d.path} (${mb} MB)${modelStr}`;
           driveSel.appendChild(opt);
           carveSel.appendChild(opt.cloneNode(true));
+          if (imageSel) imageSel.appendChild(opt.cloneNode(true));
         });
 
         onDriveSelected();
@@ -1279,7 +1398,102 @@
       }, 600);
     }
 
-    // --- Module 4: Blockchain Audit Ledger ---
+    // --- Module 4: Forensic Imager & Cloner ---
+    function toggleCloneWarning() {
+      const isClone = document.getElementById("imageIsClone").checked;
+      document.getElementById("cloneWarningBox").style.display = isClone ? "block" : "none";
+    }
+
+    async function startImaging() {
+      const source = document.getElementById("imageSourceSelect").value.trim();
+      const destination = document.getElementById("imageDestInput").value.trim();
+      const block_size = parseInt(document.getElementById("imageBlockSize").value, 10) || 1048576;
+      const no_recovery = !document.getElementById("imageFaultTol").checked;
+      const is_clone = document.getElementById("imageIsClone").checked;
+      const confirm_text = document.getElementById("cloneConfirmInput").value.trim();
+
+      if (!source) {
+        alert("Please select a source drive or forensic image.");
+        return;
+      }
+      if (!destination) {
+        alert("Please enter a destination image file or block device.");
+        return;
+      }
+      if (source === destination) {
+        alert("Source and destination cannot be the same path.");
+        return;
+      }
+      if (is_clone && confirm_text !== destination) {
+        alert(`Safety check: Please type the exact destination path "${destination}" to confirm cloning.`);
+        return;
+      }
+
+      document.getElementById("imageResultCard").classList.remove("active");
+      document.getElementById("imageStatusBadge").className = "badge badge-cyan";
+      document.getElementById("imageStatusBadge").textContent = "STATUS: RUNNING";
+
+      try {
+        const res = await fetch("/api/image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source,
+            destination,
+            block_size,
+            no_recovery,
+            is_clone,
+            confirm_text
+          })
+        });
+        const data = await res.json();
+        if (data.job_id) {
+          trackJob(data.job_id, "imageStatusBadge", "imageLog", onImagingDone);
+        } else {
+          alert(data.detail || "Error starting acquisition");
+          document.getElementById("imageStatusBadge").className = "badge badge-red";
+          document.getElementById("imageStatusBadge").textContent = "STATUS: ERROR";
+        }
+      } catch (err) {
+        alert("Failed to communicate with imager engine: " + err);
+      }
+    }
+
+    function onImagingDone(job) {
+      const resCard = document.getElementById("imageResultCard");
+      const actionBox = document.getElementById("imageActionButtons");
+      resCard.classList.add("active");
+      actionBox.innerHTML = "";
+
+      if (job.result) {
+        const r = job.result;
+        const mbCopied = ((r.bytes_copied || 0) / (1024 * 1024)).toFixed(1);
+        document.getElementById("imageBytesCopiedVal").textContent = `${mbCopied} MiB (${(r.bytes_copied || 0).toLocaleString()} bytes)`;
+        const speed = (r.speed_mbps || 0).toFixed(1);
+        const dur = (r.duration_seconds || 0).toFixed(2);
+        document.getElementById("imageSpeedTimeVal").textContent = `${speed} MB/s • ${dur}s elapsed`;
+        document.getElementById("imageBadSectorsVal").textContent = r.bad_sectors_count || 0;
+        document.getElementById("imageSha256Val").textContent = r.source_sha256 || "—";
+        document.getElementById("imageMd5Val").textContent = r.source_md5 || "—";
+
+        if (r.manifest_filename) {
+          const btnManifest = document.createElement("a");
+          btnManifest.className = "btn btn-secondary btn-sm";
+          btnManifest.href = `/api/download/${job.id}/${r.manifest_filename}`;
+          btnManifest.textContent = "📋 Download Manifest";
+          actionBox.appendChild(btnManifest);
+        }
+        if (r.cert_filename) {
+          const btnCert = document.createElement("a");
+          btnCert.className = "btn btn-primary btn-sm";
+          btnCert.href = `/api/download/${job.id}/${r.cert_filename}`;
+          btnCert.textContent = "📜 Download Certificate";
+          actionBox.appendChild(btnCert);
+        }
+      }
+    }
+
+    // --- Module 5: Blockchain Audit Ledger ---
     async function loadAuditBlocks() {
       try {
         const res = await fetch("/api/audit/blocks?limit=150");
