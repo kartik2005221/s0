@@ -215,7 +215,7 @@ s0 verify certificate_12345678.json --key core/keys/issuer_public_key.pem
 
 ```
 s0/
-├── core/python/s0_core/      # Ed25519 signing, canonical JSON (RFC 8785), PDF/QR generation
+├── core/python/s0_core/      # Ed25519 signing, s0 Canonical JSON v1, PDF/QR generation
 ├── linux/cli/s0_cli/
 │   ├── methods/              # Module 1: NVMe, ATA, BLKDISCARD, Overwrite engines
 │   ├── wipe.py               # Module 1: Drive erasure orchestrator
@@ -225,7 +225,7 @@ s0/
 ├── windows/                  # Windows-native Module 2 (Win32 API, ADS scrubbing)
 ├── macos/                    # macOS-native Module 2 (F_FULLFSYNC, xattr, APFS)
 ├── gui/                      # FastAPI unified web dashboard (4 forensic tabs)
-├── linux/iso/                # Debian Live bootable ISO for unmounted drive sanitization
+├── linux/iso/                # Debian Live bootable ISO (see docs/LIVE_ISO_BUILD_GUIDE.md)
 ├── verification-portal/      # Zero-backend static web certificate verifier
 └── scripts/                  # Install, uninstall, build & test orchestrators
 ```

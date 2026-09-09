@@ -46,3 +46,11 @@ S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 bash gui/run.sh
 # Open http://127.0.0.1:8000
 ```
+
+### Build & Deploy Bare-Metal Live ISO:
+For offline drive decommissioning per NIST SP 800-88, refer to the complete zero-to-one guide:
+```bash
+# Full build and deployment documentation
+cat docs/LIVE_ISO_BUILD_GUIDE.md
+```
+See [docs/LIVE_ISO_BUILD_GUIDE.md](LIVE_ISO_BUILD_GUIDE.md) for build toolchains, QEMU test commands, and USB flashing instructions.

@@ -19,8 +19,11 @@ and confirms a clean QEMU boot, treat this component as UNVERIFIED. It is
 listed that way in docs/LIMITATIONS.md and scripts/build_all.sh skips it
 with an explanatory log line rather than pretending.
 
+> 📖 **Complete Step-by-Step Guide:** For a full, zero-to-one walkthrough covering prerequisites, Debian live-build staging, key provisioning, QEMU smoke-testing, USB flashing, and BIOS/UEFI deployment, read [docs/LIVE_ISO_BUILD_GUIDE.md](../../docs/LIVE_ISO_BUILD_GUIDE.md).
+
 ## Layout
 
+- `build.sh`           top-level build executable (calls `auto/build.sh`)
 - `auto/build.sh`      wrapper invoking `lb config`/`lb build` reproducibly
 - `config/package-lists/s0.list.chroot`  everything the station needs
 - `config/hooks/live/9000-s0.hook.chroot`  installs s0 code,
