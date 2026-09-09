@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pip install -r requirements-docs.txt && mkdocs build -d public",
+  "buildCommand": "bash build-docs.sh",
   "outputDirectory": "public",
   "framework": null,
   "cleanUrls": true,
