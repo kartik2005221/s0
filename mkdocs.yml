@@ -1,8 +1,14 @@
-site_name: s0 Documentation
-site_description: Digital Forensic & Sanitization Suite — NIST SP 800-88 Compliant Architecture
+site_name: s0 — Sector Zero
+site_description: >-
+  Forensic-grade drive sanitization, file recovery, and cryptographic audit suite.
+  NIST SP 800-88 compliant. Ed25519 signed certificates. Zero-trust verification.
 site_author: Kartik & s0 Contributors
+site_url: https://s0-docs-ten.vercel.app/
 repo_url: https://github.com/kartik2005221/s0
 repo_name: kartik2005221/s0
+copyright: >-
+  Copyright &copy; 2025 Kartik & s0 Contributors &mdash;
+  <a href="https://github.com/kartik2005221/s0/blob/master/LICENSE">MIT License</a>
 
 docs_dir: docs
 site_dir: public
@@ -33,20 +39,50 @@ theme:
     code: Fira Code
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - navigation.top
     - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.path
+    - navigation.indexes
     - search.suggest
     - search.highlight
     - search.share
     - content.code.copy
     - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/kartik2005221/s0
+      name: s0 on GitHub
+  status:
+    new: Recently added
+    deprecated: Deprecated
+  version:
+    provider: mike
+    default: stable
 
 extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
+  - abbr
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link to this section
+      toc_depth: 3
   - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
@@ -57,32 +93,55 @@ markdown_extensions:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+      use_pygments: true
   - pymdownx.inlinehilite
+  - pymdownx.snippets
   - pymdownx.tabbed:
       alternate_style: true
-  - tables
-  - attr_list
-  - md_in_html
+      combine_header_slug: true
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.tilde
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+      lang: en
 
 nav:
-  - Overview: index.md
-  - User Guides:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Core Modules & Guides:
       - User Manual: USER_MANUAL.md
+      - CLI Reference: cli-reference.md
+      - Web Dashboard: web-dashboard.md
+      - Forensic File Carver: forensic-carving-guide.md
       - Bare-Metal Live ISO: LIVE_ISO_BUILD_GUIDE.md
-      - Verification & Deployment: VERIFICATION_AND_DEPLOYMENT.md
+      - Verification & Air-Gapped Trust: VERIFICATION_AND_DEPLOYMENT.md
   - Architecture & Engineering:
       - System Architecture: ARCHITECTURE.md
-      - Canonical JSON v1 Specification: CANONICAL_JSON.md
-      - Evaluator Handover: HANDOVER.md
+      - Security Model: security-model.md
+      - Certificate & Schema Spec: certificate-format.md
+      - Canonical JSON v1 Contract: CANONICAL_JSON.md
       - Performance Benchmarks: PERFORMANCE.md
-  - Forensic & Compliance:
+  - Compliance & Standards:
       - NIST SP 800-88 Compliance: COMPLIANCE.md
-      - Limitations & Boundaries: LIMITATIONS.md
-      - Forensic Test Plan: TEST_PLAN.md
+      - Technical Limitations & Scope: LIMITATIONS.md
+  - Developer & Defense:
+      - Contributing Guide: contributing.md
+      - Forensic Test Plan & QA: TEST_PLAN.md
+      - Evaluator Handover: HANDOVER.md
       - Pitch & Defense Outline: PITCH_OUTLINE.md
+      - Changelog & Releases: changelog.md
+      - FAQ: faq.md
   - Verification Portal ↗: https://s0-vp.vercel.app/

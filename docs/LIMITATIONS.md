@@ -1,85 +1,252 @@
-# s0 — Technical Limitations & Forensic Boundaries
+# Technical Limitations & Boundaries
 
-**Commitment:** Absolute engineering honesty. We document every technical boundary across sanitization and forensic recovery.
+!!! quote "Engineering Philosophy"
+    **Honest tools build trusted outcomes.** A forensic instrument that overpromises is not merely useless — it is actively dangerous. If a court or an investigator relies on a guarantee that the underlying hardware silently violates, the entire chain of custody collapses. s0 is built to be precise about what it can and cannot accomplish. Every limitation documented here is a constraint of the physical world, the filesystem layer, or the current development state — not a gap to be papered over with marketing language.
 
 ---
 
-## 1. Module-by-Module Capabilities & Hardware Status
+## Module Status at a Glance
 
-| Module | Development Status | Real Hardware Behavior & Requirements |
+| Module | Status | Notes |
 |---|---|---|
-| Module | Development Status | Real Hardware Behavior & Requirements |
-| **Module 1: Drive Eraser** | ✅ **Fully Real & Validated** (CLI) / ⚠️ **Unverified** (Live ISO) | Full overwrite on disk images & block devices. ATA/NVMe firmware paths coded & fixture-tested (real ATA/NVMe controllers required for firmware purge). Bootable Live ISO (`linux/iso/`) is scaffolded via Debian `live-build` recipes but remains unverified on physical hardware (see §4.2). |
-| **Module 2: File/Folder Eraser** | ✅ **Fully Real & Cross-Platform** | Overwrites allocated clusters, zeros inode/file timestamps, cleanses attributes/ADS, renames directory entries. Natively implemented and verified across Linux (Btrfs/ZFS CoW warnings, extents), Windows (`windows/` with Win32 FlushFileBuffers, ADS scrubbing, ReFS CoW warnings), and macOS (`macos/` with `fcntl(F_FULLFSYNC)`, APFS CoW warnings, and xattr stripping). |
-| **Module 3: File Carver (ext4, NTFS, FAT32, exFAT, & Fragmentation)** | ✅ **Fully Real & Validated** | Multi-format signature carving (JPEG, PNG, PDF, ZIP, GIF, GZIP, BMP, ELF, SQLite3, MP3) with Shannon entropy scoring; ext4 inode extent recovery; NTFS $MFT multi-run fragmented recovery; FAT32 directory entry recovery; exFAT directory entry set parsing (SD cards/USB); and multi-fragment/bifragment heuristic reassembly. |
-| **Module 4: Cryptographic Hash Ledger** | ✅ **Fully Real & Validated** | SQLite append-only ledger with SHA-256 block hash chaining and Ed25519 digital signature verification. (Tamper-evident hash chain designed for single-authority forensic integrity rather than multi-node distributed consensus). |
+| **Module 1 — Drive Eraser (CLI)** | ✅ Fully real & validated | Full overwrite on images & block devices; ATA/NVMe coded & fixture-tested |
+| **Module 1 — Live ISO (Bootable USB)** | 🟡 Scaffolded, unverified on bare metal | Build scripts complete; not boot-tested on physical hardware |
+| **Module 2 — File/Folder Eraser** | ✅ Fully real & cross-platform | Linux, Windows, macOS all implemented and exercised |
+| **Module 3 — File Carver** | ✅ Fully real & validated | Multi-format header/footer + multi-filesystem structure carving |
+| **Module 4 — Audit Ledger** | ✅ Fully real & validated | Single-authority hash chain (not distributed consensus — see §9) |
+
+!!! info "Reading the Status Column"
+    "Fully real & validated" means the code path has been exercised against real or simulated block devices and the outputs have been verified. "Scaffolded, unverified on bare metal" means the code is complete and syntactically correct but has not been run in its intended hardware environment.
 
 ---
 
-## 2. NTFS Structure-Based Carving & Fragmented Reconstruction
+## 1. Flash Translation Layer (FTL) — The Fundamental SSD Constraint
 
-The NTFS structure carver (`linux/cli/s0_cli/carver/ntfs_carver.py`) directly parses NTFS boot sectors and the Master File Table ($MFT) without mounting the filesystem:
+### What It Is
 
-1. **Supported NTFS Features:**
-   - **Boot Sector Parsing:** Detects `NTFS    ` OEM identifier, cluster sizes, sector geometry, and $MFT starting cluster offset.
-   - **Resident Attributes:** Full extraction of `$FILE_NAME` (UTF-16LE file naming) and resident `$DATA` attributes stored directly within the 1024-byte MFT record.
-   - **Multi-Fragment Non-Resident Runlists:** Fully reassembles files scattered across multiple discontiguous cluster runs by traversing the entire runlist sequence, accumulating relative LCN deltas, and reconstructing disjoint cluster fragments.
-   - **Sparse Run Handling:** Accommodates sparse cluster runs (`offset_bytes_count == 0`) with zero-fill padding.
-   - **Unallocated Record Discovery:** Identifies MFT records whose `InUse` flag is cleared (representing deleted files whose MFT slot has not been overwritten).
-2. **Documented NTFS Boundaries:**
-   - **Transaction Log Replay ($LogFile):** NTFS metadata changes recorded in `$LogFile` are not replayed during raw carving.
-   - **USN Journal ($UsnJrnl):** Update Sequence Number journal parsing is omitted.
-   - **Alternate Data Streams (ADS):** Default unnamed primary `$DATA` streams are extracted; secondary named streams are bypassed during carver recovery.
+When you issue a write to logical sector 0 of an SSD, you are communicating with the drive's **Flash Translation Layer** — a firmware-level indirection table that maps logical block addresses (LBAs) to physical NAND flash pages. The FTL is free to satisfy your write by allocating a **fresh physical block**, marking your data as committed to the new block, and leaving the old physical block in a "stale" state until the drive's internal garbage collector reclaims it.
 
----
+From the operating system's perspective, the write succeeded. From a forensic perspective, the original data still exists at a physical location the host operating system has no visibility into.
 
-## 3. FAT32 & exFAT Structure-Based Carving Scope
+### Why It Exists
 
-Targeted at removable media, USB flash drives, and high-capacity SD cards (SDXC/SDUC):
+NAND flash cells degrade with each program/erase cycle. The FTL exists to distribute write load across all physical cells (wear leveling), absorb bursty writes (write buffering), and extend the operational life of the device. These are correct engineering tradeoffs — but they make host-level overwrite semantically unreliable for secure erasure.
 
-1. **FAT32 Carving (`fat_carver.py`):**
-   - **BPB Boot Sector Parsing:** Detects BIOS Parameter Block, sector size, cluster geometry, reserved sectors, and root cluster index.
-   - **Deleted Directory Entry Scanning:** Identifies 32-byte directory entries marked with the `0xE5` leading deleted marker.
-   - **Metadata Extraction:** Reconstructs 8.3 filenames, file sizes, and starting cluster addresses.
-   - **Contiguous Cluster Data Recovery:** Recovers raw data streams starting from the unallocated cluster location.
-2. **exFAT Carving (`exfat_carver.py`):**
-   - **VBR Boot Sector Parsing:** Detects `EXFAT   ` OEM magic, sector/cluster bit-shifts, Cluster Heap offset, and root directory cluster.
-   - **Directory Entry Set Reconstruction:** Parses 32-byte directory entry sets: File Directory Entry (`0x05` deleted / `0x85` active), Stream Extension (`0x40` deleted / `0xC0` active), and multi-entry UTF-16LE File Names (`0x41` deleted / `0xC1` active).
-   - **Cluster Heap Recovery:** Accurately extracts file data clusters from the Cluster Heap, following FAT chains or contiguous cluster allocations up to logical file length.
+### Impact on s0
+
+`OVERWRITE_ZERO_1PASS`, `OVERWRITE_RANDOM_1PASS`, and all multi-pass DOD/Gutmann patterns executed at the **host level** operate against logical addresses only. The SSD firmware decides where the actual bits land physically.
+
+!!! danger "Host-Level Overwrite Cannot Guarantee SSD Erasure"
+    Writing zeros or random data to every logical sector of an SSD does **not** guarantee that all physical NAND pages have been zeroed. Overprovisioned zones, wear-leveled blocks, and recently-written stale pages are entirely outside host-level visibility.
+
+### What to Do Instead
+
+s0 explicitly detects NVMe and SATA SSD targets and prefers firmware-level commands:
+
+- **`NVME_SANITIZE` (NVMe Sanitize Block Erase / Crypto Erase)** — issued via `ioctl(fd, NVME_IOCTL_ADMIN_CMD, ...)`, instructs the controller to erase all physical blocks including overprovisioned areas.
+- **`ATA_SECURE_ERASE` (ATA Security Erase Unit)** — issued via `hdparm --security-erase`, resets all user data including HPA/DCO-hidden zones.
+
+These commands operate at the **controller firmware level**, resetting the FTL map and all physical blocks. They are the only host-accessible mechanisms that provide high-assurance erasure for SSDs.
 
 ---
 
-## 4. Operating System Scope & Cross-Platform Architecture
+## 2. Copy-on-Write Filesystems
 
-1. **Cross-Platform File & Folder Erasure (Module 2):**
-   - **Linux (`linux/cli/s0_cli/file_eraser.py`):** POSIX in-place overwrite, `fsync()`, `filefrag -v` extent inspection, `/proc/mounts` Btrfs/ZFS CoW warnings, timestamp zeroing, directory scrambling.
-   - **Windows (`windows/s0_eraser.py`, `.bat`, `.ps1`):** Native Win32 direct file IO with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery & destruction, Read-Only/Hidden attribute stripping via `SetFileAttributesW`, ReFS CoW detection via `GetVolumeInformationW`.
-   - **macOS (`macos/s0_eraser.py`, `.sh`):** Apple Darwin hardware flush via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) cleansing, APFS CoW detection and Time Machine snapshot warnings.
-2. **Bare-Metal Bootable Live ISO (`linux/iso/`):**
-   - In forensic data sanitization, physical drives (particularly Windows OS system disks) cannot be safely, reliably, or verifiably purged from within the running Windows operating system due to OS file locks, virtual memory paging, Volume Shadow Copies (VSS), and kernel memory protections.
-   - True whole-drive data sanitization mandates booting into an independent, unmounted live environment (standard industry practice per DBAN, ShredOS, and NIST SP 800-88). s0 packages a minimal Debian-based Live ISO recipe (`linux/iso/`) specifically for this purpose.
-   - **Development Status & Boundary Disclosure:** Because development environments lack root/sudo privileges to run `debootstrap` and `live-build`, this ISO configuration has not been built or boot-tested on physical machines. The build scripts (`linux/iso/auto/build.sh`), package lists (`config/package-lists/`), and systemd unit recipes (`s0-gui.service` running loopback root, `s0-kiosk.service` running unprivileged kiosk) are fully specified and verified against live-build syntax, but treat the bare-metal artifact itself as UNVERIFIED until built and smoke-tested on real hardware.
+### Affected Filesystems
+
+| Filesystem | Platforms | CoW Behavior |
+|---|---|---|
+| **Btrfs** | Linux | Always CoW on file writes |
+| **ZFS** | Linux (OpenZFS) | Always CoW |
+| **APFS** | macOS | Always CoW |
+| **ReFS** | Windows Server | Always CoW |
+
+### What Happens During File Overwrite
+
+When s0's Module 2 (File Eraser) opens a file on a CoW filesystem and writes overwrite passes, the filesystem does **not** modify the original data blocks in place. Instead it:
+
+1. Allocates new blocks for the new (overwritten) content.
+2. Updates the B-tree or extent tree to point the file's inode to the new blocks.
+3. Marks the old blocks as free — but does not immediately zero them.
+4. Schedules the old blocks for reclamation during the next garbage collection pass.
+
+The original file content remains physically intact until the garbage collector runs — which may not happen for seconds, minutes, or never if the volume is unmounted first.
+
+### How s0 Handles This
+
+s0 detects CoW filesystems at runtime:
+
+- **Btrfs / ZFS**: Parsed from `/proc/mounts` (Linux).
+- **APFS**: Detected via platform check (`sys.platform == 'darwin'`).
+- **ReFS**: Detected via `GetVolumeInformationW` (Windows).
+
+When a CoW filesystem is detected, s0 **emits an explicit signed warning** in the operation certificate's `notes` field. The certificate is cryptographically signed, so this warning cannot be silently removed downstream.
+
+!!! warning "File-Level Overwrite Is Ineffective on CoW Filesystems"
+    On Btrfs, ZFS, APFS, and ReFS, overwriting a file's content does not overwrite the original data blocks. The certificate will carry a `cow_filesystem_warning` note. **Treat this as informational, not as a guarantee of erasure.**
+
+### What to Do Instead
+
+For maximum assurance on CoW volumes:
+
+- Use `NVME_SANITIZE` or `ATA_SECURE_ERASE` to wipe the entire physical device.
+- For software RAID / ZFS pools: issue a `zpool destroy` followed by a block-level device wipe.
+- Accept that file-level erasure on CoW is a best-effort operation and document this in your chain of custody.
 
 ---
 
-## 5. Cryptographic Hash Chain vs. Distributed Blockchain
+## 3. Journaling Filesystems
 
-1. **Architecture Rationale:**
-   - s0 implements an immutable, append-only hash-chained ledger where each block contains the SHA-256 hash of the preceding block (`prev_hash`), canonical s0 Canonical JSON v1 payload digest (RFC 8785-inspired, schema-level float avoidance), and RFC 8032 Ed25519 signature.
-   - In forensic and law-enforcement compliance architectures, there is a single accredited issuing authority.
-   - Distributed consensus mechanisms (Proof of Work / Proof of Stake) require multi-node peer networks and introduce latency and overhead without adding security value to a local, air-gapped forensic workstation.
-   - The hash chain delivers mathematical tamper-evidence: any modification to an existing block invalidates the entire subsequent chain.
+### Affected Filesystems
+
+| Filesystem | Journal Type | Scope |
+|---|---|---|
+| **ext4** (with `has_journal`) | Circular journal (`journal_data_writeback` default) | Metadata journal by default |
+| **NTFS** | `$LogFile` + `$UsnJrnl` | Metadata + change journal |
+| **HFS+** | Journal | Metadata |
+
+### The Journal Retention Window
+
+Journaling filesystems maintain a circular log of metadata changes. When s0 deletes a file and overwrites its directory entry, the journal may still contain records that prove the file existed: its name, size, allocation timestamp, and inode number.
+
+The journal overwrites itself as new operations fill the circular buffer — but there is a **window** between the s0 operation and the journal recycling that window. On a lightly-used forensic workstation in airplane mode, this window could persist indefinitely.
+
+!!! warning "Journal May Retain File Existence Records"
+    After secure deletion with s0 on ext4 or NTFS, the filesystem journal may temporarily (or permanently, on a static volume) retain metadata entries that prove the file existed. s0 discloses this in the `operation_notes` field of the audit certificate.
+
+### What to Do Instead
+
+- For ext4: mount with `data=journal` to journal data in addition to metadata, then wipe the journal (`tune2fs -O ^has_journal` + surface wipe) — or wipe the entire volume.
+- For NTFS: a full volume wipe is the only reliable option for clearing `$LogFile` and `$UsnJrnl`.
+- Accept journal residue as a known, documented limitation when file-level erasure is the only option.
 
 ---
 
-## 6. Inherent Storage & Filesystem Limitations
+## 4. NTFS Carving Limitations
 
-1. **Flash Translation Layer (FTL) on Solid-State Media:**
-   - Host-level file or logical sector writes cannot overwrite retired bad blocks or overprovisioned flash memory.
-   - For complete purge on solid-state drives, controller-level `NVME_SANITIZE` or `ATA_SECURE_ERASE` must be used.
-2. **Journaling Remnants:**
-   - On ext4/ext3 or NTFS, metadata changes (file names, sizes, prior timestamps) may remain recorded in the filesystem journal until overwritten by subsequent operations.
-3. **Fragmented File Reconstruction Limits:**
-   - Signature carvers reconstruct contiguous files reliably. Non-contiguous fragmented files with scattered clusters require structure-based parsing or format-specific stream validation.
-4. **Copy-on-Write (CoW) Filesystems (Btrfs, ZFS, APFS):**
-   - File-level overwriting via POSIX file descriptors (`open("r+b")`) allocates new storage blocks on CoW filesystems rather than overwriting physical sectors in-place. The pre-wipe data clusters remain intact until reclaimed. s0 detects Btrfs/ZFS mounts and includes an explicit warning in certificate notes. Complete sanitization on CoW storage requires volume or whole-device sanitization.
+Module 3's NTFS structure-based carver operates on raw images and block devices. The following constraints apply:
+
+### No Transaction Log Replay
+
+s0 does **not** replay `$LogFile` journal entries. This means:
+
+- File metadata states visible only in uncommitted or rolled-back journal transactions are not recovered.
+- Fragmented MFT entries that were in-flight during a crash may not be reassembled.
+
+This is a deliberate choice: journal replay requires understanding the exact transaction state at crash time, which is unverifiable without the original NTFS driver state machine.
+
+### USN Journal (`$UsnJrnl`) Not Parsed
+
+The NTFS Update Sequence Number Journal records every file operation but is not currently parsed by the carver. File names and operation timestamps embedded in `$UsnJrnl` are not surfaced in s0 recovery output.
+
+### Alternate Data Streams (ADS)
+
+Only the **primary unnamed `$DATA` stream** is extracted per MFT entry. Secondary named streams (e.g., `file.txt:Zone.Identifier`) are bypassed. If your investigation targets ADS content specifically, use a dedicated NTFS ADS enumeration tool.
+
+!!! info "ADS Enumeration on Live Systems"
+    s0 Module 2's Windows implementation **does** enumerate ADS on live files during secure deletion (to ensure named streams are overwritten). The carver limitation applies only to post-mortem image analysis.
+
+---
+
+## 5. FAT32 / exFAT Carving Limitations
+
+### No FAT Chain Following
+
+The FAT (File Allocation Table) chain defines how clusters are linked for fragmented files. s0's FAT32/exFAT carver does **not** follow FAT chain entries. Recovery is limited to:
+
+- **Contiguous cluster runs**: Files whose data occupies sequentially allocated clusters.
+- **Header/footer signature matching**: Files identifiable by magic bytes at their start (and optionally their end).
+
+### Fragmented Files May Be Incomplete
+
+If a file's clusters are scattered non-contiguously and the FAT chain has been zeroed or overwritten, s0 cannot reassemble the complete file. The carver will return what it can find at the first contiguous run, which may be a partial (and therefore corrupt) file.
+
+!!! warning "Fragmentation Means Partial Recovery"
+    On heavily fragmented FAT32/exFAT volumes, recovered files may be truncated or corrupt. Confidence scores in the recovery index reflect structural validity of what was found, not completeness of the original file.
+
+---
+
+## 6. Live ISO — Bare Metal Status
+
+The Live ISO build infrastructure (`linux/iso/`) is fully specified against `live-build` syntax, including:
+
+- Preseed configuration for unattended boot.
+- systemd unit files for privilege-separated GUI launch.
+- Package lists for forensic dependencies.
+
+!!! warning "ISO Has Not Been Boot-Tested on Physical Hardware"
+    The development environment lacks `sudo` and `debootstrap`, which are required to run `lb build`. The ISO build scripts are complete and syntactically correct, but the resulting image has not been verified to boot on real hardware or in a Type-1 hypervisor.
+
+**Treat the Live ISO as: scaffolded, specified, and unverified on bare metal.**
+
+This does not affect Modules 1–4 on installed systems. Only the ISO deployment path carries this caveat.
+
+---
+
+## 7. What the File Carver Cannot Recover
+
+Regardless of filesystem or image type, the following categories of data are unrecoverable by design or by physics:
+
+| Scenario | Why It Cannot Be Recovered |
+|---|---|
+| **Encrypted volumes** (VeraCrypt, BitLocker, LUKS) | Encrypted blocks are computationally indistinguishable from random noise; no header signatures are present |
+| **Physically overwritten data** | If sectors have been written with zeros or random data after original content, the original is gone |
+| **Heavily fragmented files (no FAT chain)** | Without the allocation chain, clusters cannot be logically reassembled |
+| **Bad sectors covering the target data** | Unreadable sectors produce I/O errors; data in those sectors is inaccessible |
+| **FTL-managed overprovisioned blocks** | These zones are below the host-visible LBA address space |
+| **Data inside compressed NTFS streams** | Compression context is partially available but full reassembly is not currently implemented |
+
+---
+
+## 8. When to Use Firmware Erase vs. File-Level Erase
+
+Use this decision guide before selecting an erasure method:
+
+```
+Is the target a solid-state device (SSD, NVMe, eMMC, SD card)?
+├── YES → Does the drive support NVMe Sanitize or ATA Secure Erase?
+│         ├── YES → Use NVME_SANITIZE or ATA_SECURE_ERASE
+│         │         (firmware-level, covers all physical blocks)
+│         └── NO  → Use OVERWRITE_ZERO_1PASS + document the limitation
+│                   (best effort; FTL residue is possible)
+└── NO (HDD / spinning disk)
+    ├── Is the data on a CoW filesystem (Btrfs, ZFS, APFS, ReFS)?
+    │   ├── YES → Wipe the entire volume at block device level.
+    │   │         File-level overwrite is ineffective on CoW.
+    │   └── NO  (ext4, NTFS, FAT32, XFS, etc.)
+    │       ├── Single file? → Use Module 2 (File Eraser)
+    │       │   Note: journal residue window applies on ext4/NTFS
+    │       └── Entire drive? → Use Module 1 (Drive Eraser)
+    │           Select OVERWRITE_ZERO_1PASS (NIST 800-88 Clear) or
+    │           OVERWRITE_RANDOM_3PASS (NIST 800-88 Purge for HDDs)
+```
+
+---
+
+## 9. Hash Chain vs. Distributed Blockchain
+
+s0's Audit Ledger (Module 4) is sometimes described as a "blockchain." This requires precise clarification.
+
+### What s0 Has
+
+A **local, single-authority hash chain** stored in SQLite:
+
+- Each audit record includes the SHA-256 hash of the previous record.
+- Any modification to any SQLite row breaks the hash chain continuity from that point forward.
+- Chain integrity is verifiable with a single deterministic pass: `s0 verify-chain`.
+
+### What s0 Does Not Have
+
+- **No proof-of-work** (no mining, no computational puzzle).
+- **No peer-to-peer network** (no nodes, no gossip protocol).
+- **No distributed consensus** (no Nakamoto consensus, no PoS validators).
+- **No integration with Ethereum, Solana, or any public blockchain**.
+
+### Why This Is the Right Design
+
+!!! info "Air-Gap Context Changes the Threat Model"
+    Forensic workstations operate on air-gapped networks by design. Distributed consensus requires network connectivity and introduces latency, third-party dependencies, and transaction fees — none of which add security value when the threat is local record tampering by a single actor.
+
+The tamper-evidence guarantee of a hash chain is **mathematically equivalent** to a blockchain for single-authority forensic use: if anyone modifies a historical record, the chain breaks and `s0 verify-chain` reports `BROKEN` at the exact record where tampering occurred.
+
+Distributed consensus solves the **Byzantine generals problem** — coordinating agreement among mutually distrusting parties across a network. That problem does not exist on an air-gapped forensic workstation. The simpler, faster, auditable local hash chain is the correct tool.

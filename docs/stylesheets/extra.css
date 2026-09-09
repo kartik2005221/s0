@@ -1,11 +1,11 @@
 /* ================================================================
-   S0 Digital Forensic & Sanitization Suite — Documentation Theme
-   Palette:
-     #222831 (Dark Charcoal Base)
-     #282e38 (Elevated Surface / Cards)
-     #393E46 (Secondary Dark / Borders)
-     #00ADB5 (Vibrant Teal / Forensic Accent)
-     #EEEEEE (Crisp High-Contrast Text)
+   S0 — Sector Zero Documentation Theme
+   ColorHunt Palette: https://colorhunt.co/palette/222831393e4600adb5eeeeee
+   #222831  Dark Charcoal Base
+   #282e38  Elevated Surface / Cards (derived)
+   #393E46  Secondary Dark / Borders
+   #00ADB5  Vibrant Teal / Forensic Accent
+   #EEEEEE  Crisp High-Contrast Text
    ================================================================ */
 
 /* ── Slate / Dark Mode (Default) ────────────────────────────── */
@@ -23,8 +23,8 @@
   --md-default-fg-color--lightest: #6b7280;
 
   /* Header & Primary */
-  --md-primary-fg-color: #1a1e24;          /* Header bar background */
-  --md-primary-bg-color: #FFFFFF;          /* Header text & icons (100% white) */
+  --md-primary-fg-color: #1a1e24;
+  --md-primary-bg-color: #FFFFFF;
   --md-primary-fg-color--light: #222831;
   --md-primary-fg-color--dark: #14171c;
 
@@ -90,7 +90,6 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
-/* Header Logo */
 .md-header__button.md-logo {
   color: #00ADB5 !important;
 }
@@ -99,7 +98,6 @@
   fill: #00ADB5 !important;
 }
 
-/* Header Title */
 .md-header__title {
   color: #FFFFFF !important;
   font-weight: 600;
@@ -116,7 +114,6 @@
   font-weight: 400;
 }
 
-/* Header Action Buttons (Menu toggle, color toggle, repo) */
 .md-header__button {
   color: #EEEEEE !important;
   transition: color 0.15s ease;
@@ -163,7 +160,6 @@
   box-shadow: 0 0 0 3px rgba(0, 173, 181, 0.25) !important;
 }
 
-/* Search Results Popup */
 .md-search-result {
   background-color: #222831 !important;
   color: #EEEEEE !important;
@@ -238,8 +234,16 @@
   font-weight: 600;
 }
 
+.md-nav__title {
+  color: #EEEEEE !important;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* ================================================================
-   5. GRID CARDS (HOMEPAGE 4 MODULES)
+   5. GRID CARDS (HOMEPAGE & SECTION PAGES)
    ================================================================ */
 .md-typeset .grid.cards > ul > li {
   background-color: #282e38;
@@ -311,7 +315,6 @@
   padding: 0;
 }
 
-/* Copy button on code blocks */
 .md-clipboard {
   color: #9ca3af !important;
 }
@@ -331,12 +334,15 @@
 }
 
 .md-typeset .admonition.tip,
-.md-typeset .admonition.note {
+.md-typeset .admonition.note,
+.md-typeset .admonition.info {
   border-left-color: #00ADB5;
 }
 
 .md-typeset .admonition.tip .admonition-title,
-.md-typeset .admonition.note .admonition-title {
+.md-typeset .admonition.note .admonition-title,
+.md-typeset .admonition.info .admonition-title {
+  background-color: rgba(0, 173, 181, 0.1) !important;
   color: #00ADB5;
 }
 
@@ -345,12 +351,42 @@
 }
 
 .md-typeset .admonition.warning .admonition-title {
+  background-color: rgba(245, 158, 11, 0.1) !important;
   color: #f59e0b;
 }
 
 .md-typeset .admonition.danger,
 .md-typeset .admonition.failure {
   border-left-color: #ef4444;
+}
+
+.md-typeset .admonition.danger .admonition-title,
+.md-typeset .admonition.failure .admonition-title {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444;
+}
+
+.md-typeset .admonition.success,
+.md-typeset .admonition.check {
+  border-left-color: #22c55e;
+}
+
+.md-typeset .admonition.success .admonition-title,
+.md-typeset .admonition.check .admonition-title {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  color: #22c55e;
+}
+
+/* Details (collapsible) */
+.md-typeset details {
+  background-color: #282e38;
+  border: 1px solid #393E46;
+  border-radius: 8px;
+}
+
+.md-typeset details summary {
+  color: #00ADB5;
+  font-weight: 600;
 }
 
 /* ================================================================
@@ -395,6 +431,13 @@
   margin-top: 2rem;
 }
 
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  color: #EEEEEE;
+  font-weight: 600;
+}
+
 .md-typeset p,
 .md-typeset li {
   color: #cbd5e1;
@@ -405,7 +448,192 @@
   color: #FFFFFF;
 }
 
-/* Footer */
+.md-typeset blockquote {
+  border-left: 4px solid #393E46;
+  color: #9ca3af;
+}
+
+/* Keyboard key styling */
+.md-typeset kbd {
+  background-color: #282e38;
+  border: 1px solid #393E46;
+  border-radius: 4px;
+  color: #00ADB5;
+  font-size: 0.8em;
+  padding: 0.1rem 0.4rem;
+}
+
+/* ================================================================
+   10. TABS (content.tabs.link)
+   ================================================================ */
+.md-typeset .tabbed-labels > label {
+  color: #9ca3af;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.md-typeset .tabbed-labels > label:hover {
+  color: #00ADB5;
+}
+
+.md-typeset .tabbed-labels > .tabbed-label--active {
+  color: #00ADB5;
+  border-bottom-color: #00ADB5;
+}
+
+.md-typeset .tabbed-content {
+  border: 1px solid #393E46;
+  border-radius: 0 8px 8px 8px;
+  background-color: #282e38;
+}
+
+/* ================================================================
+   11. HERO SECTION (Landing Page)
+   ================================================================ */
+.s0-hero {
+  text-align: center;
+  padding: 2rem 0 3rem;
+}
+
+.s0-hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #00ADB5 0%, #33BDC4 50%, #EEEEEE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+.s0-hero .s0-tagline {
+  color: #9ca3af;
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin-bottom: 1.5rem;
+}
+
+.s0-hero .s0-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+/* ================================================================
+   12. PROGRESS BAR / TERMINAL DISPLAY
+   ================================================================ */
+.terminal-demo {
+  background-color: #0d0f12;
+  border: 1px solid #393E46;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.terminal-demo .t-prompt {
+  color: #00ADB5;
+}
+
+.terminal-demo .t-output {
+  color: #cbd5e1;
+}
+
+.terminal-demo .t-success {
+  color: #22c55e;
+}
+
+.terminal-demo .t-warn {
+  color: #f59e0b;
+}
+
+.terminal-demo .t-error {
+  color: #ef4444;
+}
+
+/* ================================================================
+   13. STATUS BADGES (inline)
+   ================================================================ */
+.badge-purge {
+  display: inline-block;
+  background-color: rgba(0, 173, 181, 0.15);
+  color: #00ADB5;
+  border: 1px solid rgba(0, 173, 181, 0.4);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge-clear {
+  display: inline-block;
+  background-color: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge-na {
+  display: inline-block;
+  background-color: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ================================================================
+   14. MERMAID DIAGRAMS
+   ================================================================ */
+.mermaid {
+  text-align: center;
+  background-color: #1a1e24 !important;
+  border: 1px solid #393E46;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* ================================================================
+   15. CONTENT ACTION BUTTONS
+   ================================================================ */
+.md-typeset .md-button {
+  border-radius: 6px;
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-typeset .md-button--primary {
+  background-color: #00ADB5;
+  border-color: #00ADB5;
+  color: #FFFFFF !important;
+}
+
+.md-typeset .md-button--primary:hover {
+  background-color: #00969d;
+  border-color: #00969d;
+  box-shadow: 0 4px 12px rgba(0, 173, 181, 0.3);
+}
+
+/* ================================================================
+   16. FOOTER
+   ================================================================ */
 .md-footer {
   background-color: #14171d !important;
   border-top: 1px solid #282e38;
@@ -414,4 +642,73 @@
 
 .md-footer-meta {
   background-color: #101216 !important;
+}
+
+.md-footer__link {
+  color: #9ca3af !important;
+}
+
+.md-footer__link:hover {
+  color: #00ADB5 !important;
+}
+
+/* ================================================================
+   17. TABLE OF CONTENTS (TOC)
+   ================================================================ */
+.md-nav--secondary .md-nav__link {
+  font-size: 0.78rem;
+}
+
+.md-nav--secondary .md-nav__link--active {
+  color: #00ADB5 !important;
+  border-left: 2px solid #00ADB5;
+  padding-left: 0.5rem;
+}
+
+/* ================================================================
+   18. LIGHT MODE OVERRIDES
+   ================================================================ */
+[data-md-color-scheme="default"] .md-typeset table:not([class]) th {
+  background-color: #EEEEEE;
+  color: #222831;
+}
+
+[data-md-color-scheme="default"] .md-typeset table:not([class]) td {
+  color: #393E46;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+[data-md-color-scheme="default"] .md-typeset .admonition {
+  background-color: #F8F9FA;
+}
+
+[data-md-color-scheme="default"] .md-typeset pre {
+  background-color: #E9ECEF !important;
+  border-color: #E0E0E0;
+}
+
+[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li {
+  background-color: #FFFFFF;
+  border-color: rgba(0, 135, 141, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li:hover {
+  border-color: #00878D;
+  box-shadow: 0 6px 20px rgba(0, 135, 141, 0.15);
+}
+
+[data-md-color-scheme="default"] .md-typeset h1,
+[data-md-color-scheme="default"] .md-typeset h2,
+[data-md-color-scheme="default"] .md-typeset h3 {
+  color: #222831;
+}
+
+[data-md-color-scheme="default"] .md-typeset p,
+[data-md-color-scheme="default"] .md-typeset li {
+  color: #393E46;
+}
+
+[data-md-color-scheme="default"] .md-typeset strong {
+  color: #222831;
 }

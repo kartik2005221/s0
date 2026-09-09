@@ -1,64 +1,76 @@
-# s0 Bare-Metal Bootable Live ISO — Build & Deployment Guide
+# Bare-Metal Live ISO — Build & Deployment Guide
 
-> **Compliance Reference:** NIST SP 800-88 Rev. 1 §2.4 (Independent Sanitization Environments)  
-> **Target Architecture:** x86_64 (amd64) Hybrid ISO (UEFI + Legacy BIOS)  
-> **Base Distribution:** Debian 12 (Bookworm) Minimal Live System  
-> **Interface:** Automated Chromium Kiosk UI pointed at local root-privileged sanitization daemon (`127.0.0.1:8080`)
-
----
-
-## 1. Why a Bootable Live ISO is Required
-
-Under NIST SP 800-88 Rev. 1 and DoD 5220.22-M, **in-place software sanitization of an active operating system's boot drive is forensically impossible** from within that running operating system:
-1. **Kernel & Memory Protections:** The operating system locks critical disk blocks containing virtual memory pagefiles (`pagefile.sys`, swap partitions), kernel hibernation files, and system registries.
-2. **Volume Shadow Copies & CoW:** Filesystem-level overwrite tools cannot touch unallocated sectors, Volume Shadow Copies (VSS), or retired flash blocks managed by the OS driver stack.
-3. **Firmware Command Access:** Modern purge methods—such as `ATA SECURE ERASE`, `NVMe SANITIZE`, and `NVMe FORMAT (Crypto Erase)`—require direct, exclusive hardware ioctl access that host operating systems (especially Windows and macOS) refuse to grant to user-space software on active system disks.
-
-The **s0 Live ISO** solves this by booting the computer from a dedicated, self-contained USB flash drive into an independent Linux environment. The internal drives remain completely unmounted, allowing direct block-level and firmware-level cryptographic sanitization.
+> **Compliance Reference:** NIST SP 800-88 Rev. 1 §2.4 — Independent Sanitization Environments
+> **Target Architecture:** x86_64 (amd64) Hybrid ISO (UEFI + Legacy BIOS)
+> **Base Distribution:** Debian 12 (Bookworm) Minimal Live System
+> **Interface:** Automated Chromium Kiosk UI → local root-privileged sanitization daemon (`127.0.0.1:8080`)
 
 ---
 
-## 2. Architecture & Privilege Posture
+## Why You Need a Bootable USB
 
-The ISO image is constructed using Debian's native `live-build` framework:
+When you need to wipe the system drive of a running computer — whether a Windows laptop, a Linux server, or a macOS machine being decommissioned — you face a fundamental problem: **the operating system is using that drive right now**.
+
+File locks, pagefile/swap usage, Volume Shadow Copies (Windows), kernel hibernation files, and OS-enforced disk access restrictions all prevent thorough sanitization from within the running OS. This isn't a software limitation of s0 — it's an architectural reality of every operating system.
+
+The industry-standard solution is to boot from a separate USB drive into an independent environment where the internal drives are **unmounted and fully accessible** for direct block-level and firmware-level sanitization. This is how tools like DBAN, ShredOS, and enterprise erasure appliances work.
+
+s0 provides a complete Debian-based Live ISO recipe that boots into an automatic Chromium kiosk displaying the s0 web dashboard — ready to wipe.
+
+!!! warning "Development Status"
+    The ISO build scripts (`linux/iso/`) are fully specified and verified against live-build syntax. However, because development environments lack root/sudo privileges for `debootstrap` and `live-build`, **the ISO has not been built or boot-tested on physical hardware**. Treat the bare-metal artifact as unverified until built and smoke-tested on real hardware. The build scripts and configuration are production-ready for organizations with appropriate build environments.
+
+---
+
+## Architecture & Privilege Model
+
+The ISO uses a deliberate privilege separation model:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        s0 Bare-Metal Appliance                          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [User Space - Unprivileged: 's0']                                      │
-│   Chromium Kiosk (Wayland/X11) ───────────┐                             │
-│   (Fullscreen, no address bar, no shell)   │ HTTP (127.0.0.1:8080)       │
-│                                           ▼                             │
-│ [Daemon Space - Loopback Root: 'root']                                  │
+│ [User Space — Unprivileged: 's0' user]                                  │
+│   Chromium Kiosk (Wayland/X11) ──────────────┐                          │
+│   Fullscreen, no address bar, no shell        │ HTTP (127.0.0.1:8080)   │
+│                                               ▼                          │
+│ [Daemon Space — Loopback Root: 'root']                                  │
 │   s0-gui.service (Uvicorn / FastAPI)                                    │
-│   ├── s0_cli (Device discovery, partition unmounting)                  │
-│   ├── s0_core (Canonical JSON v1, Ed25519 signing, PDF generation)     │
+│   ├── s0_cli (Device discovery, partition unmounting)                   │
+│   ├── s0_core (Canonical JSON v1, Ed25519 signing, PDF generation)      │
 │   └── Kernel Block & Firmware Access:                                   │
-│       ├── ioctl(BLKDISCARD) ────────────────► Raw SSD Discard          │
-│       ├── hdparm --security-erase ──────────► ATA Controller Purge     │
-│       └── nvme sanitize / format ───────────► NVMe Controller Purge    │
+│       ├── ioctl(BLKDISCARD) ────────────────► Raw SSD Discard           │
+│       ├── hdparm --security-erase ──────────► ATA Controller Purge      │
+│       └── nvme sanitize / format ───────────► NVMe Controller Purge     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Loopback Isolation:** The REST backend binds exclusively to `127.0.0.1:8080`. It never listens on external network interfaces.
-- **Privilege Separation:** The browser kiosk runs under the unprivileged `s0` user. The wipe daemon runs as `root` so it can issue hardware ioctls and open raw block devices (`/dev/sd*`, `/dev/nvme*`).
-- **Air-Gapped & Offline:** All UI assets, fonts (Fira Sans / Fira Code), and cryptographic libraries are pre-packaged. No internet connection is needed or used at runtime.
+**Key design decisions:**
+
+- **Loopback isolation:** The REST backend binds exclusively to `127.0.0.1:8080`. No external network exposure.
+- **Privilege separation:** The Chromium kiosk runs as the unprivileged `s0` user. The wipe daemon runs as `root` to issue hardware ioctls and open raw block devices (`/dev/sd*`, `/dev/nvme*`).
+- **Fully offline:** All UI assets, fonts (Fira Sans / Fira Code), and cryptographic libraries are pre-packaged. No internet connection is required or used at runtime.
 
 ---
 
-## 3. Host System Prerequisites
+## Host System Prerequisites
 
-To build the ISO, you need a machine with root/sudo access and an active internet connection (to download Debian packages during staging).
+To build the ISO, you need a machine with **root/sudo access** and an internet connection (to download Debian packages during staging).
 
 ### Supported Build Hosts
-- Debian 12 (Bookworm) / Debian 11 (Bullseye)
-- Ubuntu 22.04 LTS / 24.04 LTS
-- Kali Linux / Linux Mint
-- Any Debian-based VM (e.g. VMware, VirtualBox, Proxmox, QEMU/KVM)
 
-### Required Toolchain Packages
-Install the required build utilities:
+| Host OS | Status |
+|---|---|
+| Debian 12 (Bookworm) | ✅ Recommended |
+| Debian 11 (Bullseye) | ✅ Supported |
+| Ubuntu 22.04 LTS | ✅ Supported |
+| Ubuntu 24.04 LTS | ✅ Supported |
+| Kali Linux / Linux Mint | ✅ Supported |
+| Debian-based VM (VMware, VirtualBox, QEMU/KVM) | ✅ Supported |
+| Non-Debian Linux | ❌ Requires Debian in Docker/VM |
+| Windows / macOS | ❌ Use WSL2 with Debian or a VM |
+
+### Install Required Toolchain
 
 ```bash
 sudo apt update
@@ -75,116 +87,130 @@ sudo apt install -y \
     qemu-system-x86_64
 ```
 
-> **Note on Storage Space:** The build process downloads ~1 GB of Debian `.deb` packages and requires approximately **6 GB to 8 GB** of free space during temporary chroot creation.
+!!! note "Disk Space Requirement"
+    The build process downloads approximately 1 GB of Debian packages and requires **6–8 GB** of free disk space for the temporary chroot environment.
 
 ---
 
-## 4. Step-by-Step Build Instructions
+## Directory Structure
 
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/kartik2005221/s0.git
-cd s0
-```
-
-### Step 2: Navigate to the ISO Directory
-```bash
-cd linux/iso
-```
-
-The directory structure is organized as follows:
 ```
 linux/iso/
 ├── build.sh                                    # Top-level executable build wrapper
 ├── auto/
-│   └── build.sh                                # live-build invocation script
+│   └── build.sh                                # live-build invocation script (lb config)
 ├── qemu-test.sh                                # Automated headless smoke test
 ├── config/
 │   ├── package-lists/
 │   │   └── s0.list.chroot                      # Required packages (Python, Chromium, hdparm, etc.)
 │   ├── hooks/
 │   │   └── live/
-│   │       └── 9000-s0.hook.chroot             # Code snapshot installation & service hooks
+│   │       └── 9000-s0.hook.chroot             # Code snapshot install & systemd service hooks
 │   └── includes.chroot/
 │       └── etc/systemd/system/
-│           ├── s0-gui.service                  # Loopback backend wipe daemon
-│           └── s0-kiosk.service                # Auto-starting Chromium kiosk
+│           ├── s0-gui.service                  # Loopback backend wipe daemon (runs as root)
+│           └── s0-kiosk.service                # Auto-starting Chromium kiosk (runs as s0 user)
 └── README.md
 ```
 
-### Step 3: Run the Build
-Run the build script with root privileges:
+---
+
+## Step-by-Step Build
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/kartik2005221/s0.git
+cd s0/linux/iso
+```
+
+### Step 2: Run the Build
 
 ```bash
 sudo ./build.sh
 ```
 
-### What Happens During the Build:
-1. **Repository Snapshot:** Copies the clean `core/` and `linux/` codebase into a temporary build staging path.
-2. **Configuration (`lb config`):** Configures Debian Bookworm `amd64`, hybrid ISO mode, and live bootloader parameters.
-3. **Debootstrap (`lb bootstrap`):** Fetches the minimal Debian base system.
-4. **Chroot Staging (`lb chroot`):**
-   - Installs system dependencies from `config/package-lists/s0.list.chroot` (e.g. `python3`, `chromium`, `hdparm`, `nvme-cli`, `util-linux`, `parted`).
-   - Executes `config/hooks/live/9000-s0.hook.chroot` to copy the `s0` code into `/opt/s0`, sets up the `s0` CLI wrapper on `/usr/local/bin/s0`, and configures the `s0` user.
-   - Registers `s0-gui.service` and `s0-kiosk.service` in systemd.
-5. **Binary Packaging (`lb binary`):** Compresses the root filesystem into a SquashFS image and packages it into a bootable hybrid ISO (`live-image-amd64.hybrid.iso`).
+### What Happens During the Build
 
-The completed image will be saved at:
+The build script runs through five stages:
+
+1. **Repository Snapshot** — Copies the clean `core/` and `linux/` codebase into a temporary staging path
+2. **Configuration (`lb config`)** — Configures Debian Bookworm `amd64`, hybrid ISO mode, and live bootloader parameters
+3. **Debootstrap (`lb bootstrap`)** — Fetches the minimal Debian base system from the internet
+4. **Chroot Staging (`lb chroot`)**:
+    - Installs system dependencies from `config/package-lists/s0.list.chroot` (Python 3, Chromium, hdparm, nvme-cli, util-linux, parted)
+    - Executes `config/hooks/live/9000-s0.hook.chroot` — copies s0 code to `/opt/s0`, sets up `/usr/local/bin/s0` wrapper, configures `s0` user
+    - Registers `s0-gui.service` and `s0-kiosk.service` in systemd
+5. **Binary Packaging (`lb binary`)** — Compresses root filesystem into SquashFS, packages into bootable hybrid ISO
+
+### Output Location
+
 ```
 linux/iso/live-image-amd64.hybrid.iso
 ```
 
+This is a hybrid ISO that boots on both UEFI and Legacy BIOS systems.
+
 ---
 
-## 5. Provisioning Forensic Signing Keys
+## Provisioning Signing Keys
 
-To prevent unauthorized parties from forging certificates, **s0 images ship with no private signing keys by default**.
+s0 ISO images ship with **no private signing keys** by default. This is intentional — pre-baking unknown keys would create certificates from an untrusted authority.
 
-An accredited lab or enterprise auditor must provision their accredited Ed25519 private key.
+An accredited lab must provision their own Ed25519 private key.
 
 ### Option A: Out-of-Band Key Provisioning (Recommended)
+
 1. Generate an Ed25519 key pair on a secure, air-gapped machine:
    ```bash
-   python3 -m s0_core.cli keygen --out-dir /secure/keys
+   s0 keygen --out-dir /secure/keys --name lab_issuer
    ```
-2. Place the generated `issuer_private.pem` onto a secondary encrypted USB drive or persistent partition.
-3. Once booted into the live station, the wipe daemon looks for the private key at:
+
+2. Place `lab_issuer_private.pem` onto an encrypted USB drive or persistent partition.
+
+3. When booted into the live station, the wipe daemon looks for the private key at:
    ```
    /opt/s0/keys/issuer_private.pem
    ```
-   If no key is provisioned, wipes can still be performed, but cryptographic certificate issuance will clearly report `NO_PRIVATE_KEY` rather than forging a mock signature.
+   If no key is present, wiping still works — but the certificate's status will report `NO_PRIVATE_KEY` rather than forging a mock signature.
 
-### Option B: Build-Time Key Baking (For Lab-Internal Media)
-If you are producing physical USB sticks exclusively for your own accredited facility:
-1. Copy your lab's `issuer_private.pem` into:
-   ```bash
-   mkdir -p config/includes.chroot/opt/s0/keys/
-   cp /secure/keys/issuer_private.pem config/includes.chroot/opt/s0/keys/
-   chmod 600 config/includes.chroot/opt/s0/keys/issuer_private.pem
-   ```
-2. Re-run `sudo ./build.sh`. The ISO will now contain your lab's key locked with read-only root permissions.
+4. Register the corresponding `lab_issuer_public.pem` in the verification portal's `keys.json` to enable green "Accredited Authority" verification.
+
+### Option B: Build-Time Key Baking (Lab-Internal Media Only)
+
+If producing USB sticks exclusively for your own accredited facility:
+
+```bash
+mkdir -p config/includes.chroot/opt/s0/keys/
+cp /secure/keys/lab_issuer_private.pem config/includes.chroot/opt/s0/keys/issuer_private.pem
+chmod 600 config/includes.chroot/opt/s0/keys/issuer_private.pem
+sudo ./build.sh
+```
+
+!!! danger "Security Warning"
+    Build-time key baking embeds the private key in the ISO. This is only appropriate for physically controlled, single-organization deployments. Never distribute such an ISO publicly.
 
 ---
 
-## 6. Testing the ISO (QEMU Virtual Machine)
+## Testing the ISO (QEMU)
 
-Before burning to physical USB, always verify that the ISO boots cleanly.
+Before burning to physical USB, always verify that the ISO boots cleanly in a virtual machine.
 
 ### Automated Headless Smoke Test
-Run the included smoke test script:
+
 ```bash
 ./qemu-test.sh live-image-amd64.hybrid.iso
 ```
-This boots the ISO in headless mode via QEMU, captures the serial console log, and asserts that systemd reaches userspace with zero kernel panics.
+
+This boots the ISO headlessly via QEMU, captures the serial console log, and asserts that systemd reaches userspace with zero kernel panics.
 
 ### Interactive GUI Test with a Virtual Target Drive
-To test the full user experience, create a dummy 1 GB virtual drive and boot the ISO interactively:
 
 ```bash
-# 1. Create a virtual target disk to test wiping
+# Create a 1 GB virtual target drive for testing
 qemu-img create -f raw test_drive.img 1G
 
-# 2. Boot the ISO with QEMU (KVM hardware acceleration enabled)
+# Boot the ISO with QEMU (KVM acceleration)
 qemu-system-x86_64 \
     -enable-kvm \
     -m 2048 \
@@ -197,77 +223,102 @@ qemu-system-x86_64 \
 ```
 
 When the VM starts:
-1. The Debian boot menu appears. Select `Live System (amd64)` or wait 5 seconds.
-2. The operating system boots silently into userspace.
-3. The Chromium kiosk opens automatically in fullscreen, displaying the **s0 Forensic & Sanitization Workstation** dashboard.
-4. The test drive (`test_drive.img` / `/dev/vda`) will appear in the target drive selector, ready for testing.
+
+1. The Debian boot menu appears — select **Live System (amd64)** or wait 5 seconds
+2. The OS boots silently into userspace
+3. Chromium opens automatically in fullscreen, displaying the **s0 Forensic & Sanitization Workstation** dashboard
+4. The test drive (`/dev/vda`) appears in the device selector — ready for testing
 
 ---
 
-## 7. Flashing the ISO to a USB Drive
+## Flashing to USB
 
-Once verified, write the ISO to a physical USB thumb drive (minimum 4 GB capacity).
+Once verified, write the ISO to a physical USB drive (minimum **4 GB** capacity).
 
-### On Linux
-Identify your USB device using `lsblk` (e.g. `/dev/sdb` — **do NOT select your system drive**):
-```bash
-# Ensure drive is unmounted
-sudo umount /dev/sdb* 2>/dev/null || true
+=== "Linux"
 
-# Write raw hybrid ISO
-sudo dd if=live-image-amd64.hybrid.iso of=/dev/sdb bs=4M status=progress oflag=sync
-```
+    Identify your USB device with `lsblk` first — **do NOT select your system drive**.
 
-### On Windows
-1. Download **Rufus** (https://rufus.ie/) or **Ventoy** (https://www.ventoy.net/).
-2. Select your USB flash drive.
-3. Select `live-image-amd64.hybrid.iso`.
-4. When prompted by Rufus, select **Write in DD Image mode** to preserve the hybrid partition table and dual UEFI/BIOS bootloaders.
+    ```bash
+    # Unmount if currently mounted
+    sudo umount /dev/sdb* 2>/dev/null || true
 
-### On macOS
-Identify the disk number with `diskutil list` (e.g. `/dev/disk2`):
-```bash
-diskutil unmountDisk /dev/disk2
-sudo dd if=live-image-amd64.hybrid.iso of=/dev/rdisk2 bs=4m status=progress
-diskutil eject /dev/disk2
-```
+    # Write the hybrid ISO (raw mode — preserves UEFI/BIOS boot sectors)
+    sudo dd if=live-image-amd64.hybrid.iso of=/dev/sdb bs=4M status=progress oflag=sync
+    ```
 
----
+=== "Windows"
 
-## 8. Booting on Target Hardware & Performing a Wipe
+    Use **Rufus** (https://rufus.ie/) or **Ventoy** (https://www.ventoy.net/):
 
-1. **Insert USB:** Plug the prepared USB drive into the laptop or desktop to be decommissioned.
-2. **Open Boot Menu:** Power on the machine and press the boot key:
-   - **Dell:** `F12`
-   - **HP:** `F9` or `Esc`
-   - **Lenovo / ThinkPad:** `F12` or `Enter`
-   - **Apple Mac (Intel):** Hold `Option / Alt` at startup
-   - **ASUS / Acer:** `F8` or `F12`
-3. **Select USB:** Choose `UEFI: USB Flash Drive` or `Legacy USB`.
-4. **Wipe Station Operations:**
-   - The station automatically loads the s0 dashboard.
-   - Select the target drive (e.g. `NVMe SSD 512 GB` or `Hitachi 1 TB HDD`).
-   - Choose the sanitization profile:
-     - **Clear (NIST SP 800-88):** 1-pass zero or pseudo-random overwrite.
-     - **Purge (NIST SP 800-88):** Firmware cryptographic erase (`NVME_FORMAT_CRYPTO_ERASE`) or block sanitize (`ATA_SECURE_ERASE`).
-   - Confirm by typing the safety phrase (`CONFIRM-WIPE`).
-   - Monitor real-time progress, read/write throughput, and drive temperature.
-   - Upon completion, the tool issues an **Ed25519-signed sanitization certificate** and generates a tamper-evident PDF with QR code verification.
-   - Save the certificate to an external USB or scan the on-screen QR code using any smartphone or the offline [Verification Portal](VERIFICATION_AND_DEPLOYMENT.md#3-how-offline-verification-is-performed).
+    1. Select your USB flash drive
+    2. Select `live-image-amd64.hybrid.iso`
+    3. When prompted by Rufus: select **Write in DD Image mode** — this is critical to preserve the hybrid partition table and dual UEFI/BIOS bootloaders. The default ISO mode will NOT work correctly.
+
+=== "macOS"
+
+    Identify the disk number with `diskutil list` (e.g. `/dev/disk2`):
+
+    ```bash
+    diskutil unmountDisk /dev/disk2
+    sudo dd if=live-image-amd64.hybrid.iso of=/dev/rdisk2 bs=4m status=progress
+    diskutil eject /dev/disk2
+    ```
+
+    !!! tip
+        Use `/dev/rdisk2` (raw device, not `/dev/disk2`) for significantly faster write speeds on macOS.
 
 ---
 
-## 9. Troubleshooting & Build Maintenance
+## Booting on Target Hardware
 
-### Cleaning Build State
-If a previous build failed due to network interruption or missing dependencies, clean the staging tree thoroughly before rebuilding:
+### BIOS Boot Key Reference
+
+| Manufacturer | Boot Key |
+|---|---|
+| Dell | `F12` |
+| HP | `F9` or `Esc` |
+| Lenovo / ThinkPad | `F12` or `Enter` |
+| ASUS / Acer | `F8` or `F12` |
+| Apple Mac (Intel) | Hold `Option` / `Alt` at startup |
+| Gigabyte | `F12` |
+| MSI | `F11` |
+
+### Wipe Procedure
+
+1. Insert the prepared USB drive into the machine to be decommissioned
+2. Power on and press the boot key above
+3. Select **UEFI: USB Flash Drive** (or Legacy USB if UEFI is unavailable)
+4. Wait for the kiosk to load (30–60 seconds on first boot)
+5. In the dashboard:
+    - Select the target drive (e.g. `NVMe SSD 512 GB`)
+    - Choose sanitization profile:
+        - **Clear (NIST SP 800-88):** 1-pass zero or pseudo-random overwrite
+        - **Purge (NIST SP 800-88):** Firmware cryptographic erase (`NVME_FORMAT_CRYPTO_ERASE`) or block sanitize (`ATA_SECURE_ERASE`)
+    - Enter operator ID and organization name
+    - Type `WIPE` to confirm
+6. Monitor real-time progress (throughput + temperature)
+7. Download the Ed25519-signed certificate + PDF when complete
+8. Scan the QR code to verify offline
+
+---
+
+## Troubleshooting
+
+### Clean Build State After Failure
+
+If a previous build failed due to network interruption or missing dependencies:
+
 ```bash
 cd linux/iso
 sudo lb clean --purge
+sudo ./build.sh
 ```
 
-### Debian Mirror Selection
-If you experience slow package downloads or network timeout errors during `debootstrap`, specify a regional mirror in `auto/build.sh`:
+### Slow Package Downloads / Mirror Timeout
+
+Specify a regional Debian mirror in `auto/build.sh`:
+
 ```bash
 lb config noauto \
     --mirror-bootstrap "http://deb.debian.org/debian" \
@@ -275,10 +326,24 @@ lb config noauto \
     ...
 ```
 
-### Missing Non-Free Hardware Firmware
-If the target computer has specialized network or disk controller chipsets, include Debian's non-free firmware package in `config/package-lists/s0.list.chroot`:
-```
-firmware-linux-free
-firmware-misc-nonfree
-```
-And ensure `--archive-areas "main contrib non-free non-free-firmware"` is set in `auto/build.sh`.
+Replace with a geographically closer mirror for faster builds.
+
+### Missing Hardware Firmware
+
+If the target machine has specialized network or disk controller chipsets not covered by Debian's `firmware-linux-free` package:
+
+1. Add to `config/package-lists/s0.list.chroot`:
+   ```
+   firmware-linux-free
+   firmware-misc-nonfree
+   ```
+
+2. Ensure `--archive-areas "main contrib non-free non-free-firmware"` is set in `auto/build.sh`
+
+### UEFI Secure Boot
+
+The current ISO recipe does **not** support UEFI Secure Boot. If the target machine has Secure Boot enabled:
+
+1. Temporarily disable Secure Boot in BIOS/UEFI settings
+2. Boot the ISO
+3. After wiping, you may re-enable Secure Boot before installing the new OS

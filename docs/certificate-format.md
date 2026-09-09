@@ -1,0 +1,257 @@
+# Certificate Schema & Canonical JSON v1 Specification
+
+> **Standard Identifier:** `s0-cert-v1.0.0`  
+> **Signature Algorithm:** Pure Ed25519 (RFC 8032)  
+> **Payload Serialization:** s0 Canonical JSON v1 (Deterministic UTF-8)  
+> **Schema Definition:** [`core/cert_schema.json`](https://github.com/kartik2005221/s0/blob/master/core/cert_schema.json)
+
+---
+
+## 1. Executive Overview
+
+Every sanitization, file erasure, and forensic recovery action executed by s0 culminates in the issuance of a **tamper-evident, mathematically non-repudiable certificate**. 
+
+Unlike conventional PDF or CSV wipe reports that can be edited in any text or document editor without detection, an s0 certificate binds the hardware identity, operator identity, method applied, NIST sanitization tier, and post-operation verification telemetry into an asymmetric cryptographic signature.
+
+```mermaid
+flowchart TD
+    subgraph Operation ["1. Operation Execution"]
+        OP[Wipe / Erase / Carve Complete] --> TELEM[Collect Hardware & Verification Telemetry]
+    end
+
+    subgraph Serialization ["2. Canonical Serialization"]
+        TELEM --> BUILD[Construct Raw Certificate Object]
+        BUILD --> CANON[Strip Signature & Apply s0 Canonical JSON v1]
+        CANON --> BYTES[Deterministic UTF-8 Byte Stream]
+    end
+
+    subgraph Cryptography ["3. Ed25519 Signing"]
+        BYTES --> SHA[Compute SHA-256 Digest]
+        SHA --> ED[Sign with Authority Private Key RFC 8032]
+        ED --> EMBED[Embed Signature Block into Final Certificate]
+    end
+
+    subgraph Artifacts ["4. Multi-Format Output"]
+        EMBED --> JSON[certificate_UUID.json]
+        EMBED --> PDF[certificate_UUID.pdf with QR]
+        EMBED --> QR[certificate_UUID.qr.png]
+        EMBED --> LEDGER[Append Block to s0_audit.db]
+    end
+```
+
+Any modification to a single character in the certificate payload — such as modifying the sanitized byte count, altering the timestamp, or changing `OVERWRITE_ZERO_1PASS` to `NVME_SANITIZE_BLOCK_ERASE` — alters the SHA-256 digest and renders the Ed25519 signature mathematically invalid.
+
+---
+
+## 2. s0 Canonical JSON v1 Specification
+
+### The Canonicalization Challenge
+In digital signatures, two logically identical JSON payloads can produce completely different byte streams due to:
+1. Object key ordering (`{"a": 1, "b": 2}` vs `{"b": 2, "a": 1}`)
+2. Whitespace variation (spaces after colons, newlines, indentation)
+3. Floating-point number representations (`1.0` vs `1` vs `1.0000000000000001`)
+4. Unicode character escaping (`\u00e9` vs `é`)
+
+If the verifier and signer disagree on a single byte of serialization, the signature check fails even if the data is genuine.
+
+### The Seven Rules of s0 Canonical JSON v1
+The s0 Canonical JSON v1 contract (`core/CANONICAL_JSON.md`, implemented in `core/python/s0_core/canonical.py` and `verification-portal/verify.js`) defines strict serialization rules:
+
+1. **UTF-8 Encoding:** Pure UTF-8 without Byte Order Mark (BOM).
+2. **Lexicographical Key Sorting:** Object keys are sorted by Unicode code point recursively at all nesting depths.
+3. **Zero Superfluous Whitespace:** Colon `:` separates key and value; comma `,` separates elements. No spaces, tabs, or newlines outside string literals.
+4. **Minimal Escaping:** Only quotation marks `\"`, backslashes `\\`, and control characters U+0000 through U+001F are escaped (using `\b`, `\f`, `\n`, `\r`, `\t` and `\u00XX`). All standard Unicode code points are encoded directly.
+5. **Integer-Only Number Discipline (No Floats):** 
+   !!! important "Schema-Level Float Prohibition"
+       **Schema v1 contains zero float fields.** All file sizes and capacities are integer bytes; durations are integer seconds; timestamps are ISO-8601 strings. If a canonicalizer encounters a floating-point value, it **must reject the payload** rather than guess language-specific float formatting. This deliberately avoids the complex ES6 float stringification rules of RFC 8785/JCS.
+6. **Strict Literals:** Lowercase `true`, `false`, and `null`.
+7. **Array Order Preservation:** Arrays maintain their sequence as ordered collections.
+
+---
+
+## 3. Annotated JSON Schema Reference
+
+Every certificate validates strictly against `core/cert_schema.json`.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "s0 Wipe Certificate",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "cert_uuid",
+    "issued_at",
+    "issuer",
+    "tool",
+    "device",
+    "wipe",
+    "result",
+    "signature"
+  ],
+  "additionalProperties": false
+}
+```
+
+### Field-by-Field Breakdown
+
+| JSON Pointer | Type | Required | Description & Constraints |
+|---|---|---|---|
+| `/schema_version` | String | **Yes** | Constant `"1.0.0"`. |
+| `/cert_uuid` | String | **Yes** | Unique UUID v4 identifier for the certificate. |
+| `/issued_at` | String | **Yes** | RFC 3339 / ISO 8601 UTC timestamp (`YYYY-MM-DDTHH:MM:SSZ`). |
+| `/issuer/organization` | String | **Yes** | Identity of the accredited organization or forensics lab. |
+| `/issuer/operator_id` | String | **Yes** | ID or badge number of the operating engineer. |
+| `/tool/name` | String | **Yes** | Tool identifier, e.g. `"s0"` or `"s0-cli"`. |
+| `/tool/version` | String | **Yes** | Semantic version of the s0 suite. |
+| `/tool/platform` | String | **Yes** | One of `["linux", "windows", "macos", "android"]`. |
+| `/tool/os_kernel` | String | No | OS kernel release string (e.g. `Linux 6.8.0-45-generic`). |
+| `/device/device_id` | String | **Yes** | Primary physical ID: Drive Serial Number, WWN, IMEI, or SHA-256 of image. |
+| `/device/device_type` | String | **Yes** | `["internal_disk", "removable_disk", "image_file", "phone"]`. |
+| `/device/storage_type` | String | **Yes** | `["NVMe", "SSD", "HDD", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"]`. |
+| `/device/model` | String | No | Hardware device model string reported by controller. |
+| `/device/serial_number` | String | No | Hardware serial number extracted from controller. |
+| `/device/capacity_bytes` | Integer | **Yes** | Total storage capacity in integer bytes. |
+| `/device/sector_size` | Integer | No | Logical sector size in bytes (typically 512 or 4096). |
+| `/wipe/method` | String | **Yes** | Recognized s0 method identifier (see Section 4). |
+| `/wipe/nist_category` | String | **Yes** | `["Clear", "Purge", "Destroy", "N/A"]`. |
+| `/wipe/passes` | Integer | No | Number of overwrite passes executed (minimum 1). |
+| `/wipe/pattern` | String | No | `["zero", "random", "firmware", "key_destruction", "carving"]`. |
+| `/wipe/start_time` | String | **Yes** | UTC start timestamp. |
+| `/wipe/end_time` | String | **Yes** | UTC completion timestamp. |
+| `/wipe/bytes_processed` | Integer | **Yes** | Total bytes addressed during sanitization. |
+| `/result/status` | String | **Yes** | `["success", "failure", "partial", "reset_triggered"]`. |
+| `/result/errors` | Array[String]| No | Array of error messages if status is not success. |
+| `/result/verification` | Object | No | Post-wipe sampled readback telemetry (see Section 5). |
+| `/notes` | Array[String]| No | Signed notes (CoW warnings, HPA/DCO findings, elapsed time). |
+| `/signature` | Object | **Yes** | Ed25519 signature envelope. |
+
+---
+
+## 4. Production Certificate Example
+
+Below is an authentic certificate issued following an NVMe Purge operation:
+
+```json
+{
+  "schema_version": "1.0.0",
+  "cert_uuid": "a8f3b201-9c42-4f1e-8e77-5d2a938c110e",
+  "issued_at": "2026-09-09T14:22:15Z",
+  "issuer": {
+    "organization": "National Cyber Forensics Laboratory",
+    "operator_id": "investigator-409"
+  },
+  "tool": {
+    "name": "s0",
+    "version": "2.0.0",
+    "platform": "linux",
+    "os_kernel": "Linux 6.8.0-generic x86_64"
+  },
+  "device": {
+    "device_id": "S464NX0M123456K",
+    "device_type": "internal_disk",
+    "storage_type": "NVMe",
+    "model": "Samsung SSD 980 PRO 1TB",
+    "serial_number": "S464NX0M123456K",
+    "capacity_bytes": 1000204886016,
+    "sector_size": 512
+  },
+  "wipe": {
+    "method": "NVME_SANITIZE_BLOCK_ERASE",
+    "nist_category": "Purge",
+    "passes": 1,
+    "pattern": "firmware",
+    "start_time": "2026-09-09T14:21:40Z",
+    "end_time": "2026-09-09T14:22:10Z",
+    "bytes_processed": 1000204886016
+  },
+  "result": {
+    "status": "success",
+    "errors": [],
+    "verification": {
+      "method": "sampled_readback_64_blocks",
+      "samples_checked": 64,
+      "sample_bytes_each": 4096,
+      "all_samples_match_wipe_pattern": true,
+      "pre_wipe_sample_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "notes": [
+    "Firmware sanitize command completed with status 0x00 (SUCCESS)",
+    "HPA/DCO probe: Not detected on NVMe controller",
+    "Elapsed execution time: 30.2 seconds"
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "public_key_fingerprint": "sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e339d251a",
+    "signature_base64url": "cQ7aH9_N6rYvP0-3E7yZ9M81XwK5dF3sA2qR1jL0tV-8uY5wP3mN9bV8cX1zQ4eR",
+    "signed_payload_hash": "sha256:4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a"
+  }
+}
+```
+
+---
+
+## 5. Signature Computation & Verification Algorithm
+
+### The Signing Procedure
+```python
+import hashlib
+import json
+from base64 import urlsafe_b64encode
+from s0_core.canonical import canonicalize
+
+# 1. Prepare raw certificate without the signature block
+cert_dict = { ... }  # full certificate object
+cert_payload = {k: v for k, v in cert_dict.items() if k != "signature"}
+
+# 2. Canonicalize to UTF-8 bytes
+canonical_bytes = canonicalize(cert_payload)
+
+# 3. Compute SHA-256 hash (for display reference)
+payload_hash = "sha256:" + hashlib.sha256(canonical_bytes).hexdigest()
+
+# 4. Sign canonical bytes using private Ed25519 key (RFC 8032)
+raw_signature = private_key.sign(canonical_bytes)
+sig_b64url = urlsafe_b64encode(raw_signature).decode("ascii").rstrip("=")
+
+# 5. Attach signature block
+cert_dict["signature"] = {
+    "algorithm": "Ed25519",
+    "public_key_fingerprint": "sha256:" + hashlib.sha256(der_public_key).hexdigest(),
+    "signature_base64url": sig_b64url,
+    "signed_payload_hash": payload_hash
+}
+```
+
+### The Verification Procedure
+```python
+# 1. Extract signature block
+sig_block = cert_dict.get("signature")
+raw_sig = urlsafe_b64decode(sig_block["signature_base64url"] + "==")
+
+# 2. Recreate unsigned payload
+unsigned_dict = {k: v for k, v in cert_dict.items() if k != "signature"}
+
+# 3. Re-canonicalize using the identical canonicalization algorithm
+recomputed_canonical_bytes = canonicalize(unsigned_dict)
+
+# 4. Mathematically verify signature against trusted public key
+public_key.verify(raw_sig, recomputed_canonical_bytes)
+```
+
+!!! note "Display Annotation vs Evidence"
+    The field `signature.signed_payload_hash` is strictly a human-readable display convenience. Verifiers **must never** verify the signature against `signed_payload_hash`. Verifiers must recompute `canonicalize(unsigned_dict)` directly from the certificate body.
+
+---
+
+## 6. Output Artifact Formats
+
+Every completed operation creates three linked artifacts in the specified `--out-dir`:
+
+1. **Machine-Readable JSON (`certificate_<uuid8>.json`):**  
+   The primary forensic record suitable for programmatic parsing, automated SIEM ingestion, or offline audit via the Verification Portal.
+2. **Human-Readable PDF (`certificate_<uuid8>.pdf`):**  
+   An official sanitization certificate rendered using ReportLab with the forensic color theme, device metadata tables, operator signatures, NIST compliance declaration, and an embedded optical QR code.
+3. **Standalone QR Code (`certificate_<uuid8>.qr.png`):**  
+   A high-density QR code encoding the verification portal URL with the certificate UUID preloaded (`https://s0-vp.vercel.app/?cert=<uuid>`), allowing instant optical verification via a mobile camera.

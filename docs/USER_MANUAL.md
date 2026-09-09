@@ -1,74 +1,267 @@
 # s0 — User & Forensic Operator Manual
 
-**Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, Field Technicians, and System Evaluators.  
-**Version:** 2.0.0
+> **Target Audience:** Digital Forensic Investigators, Cybersecurity Incident Responders, Field Decommissioning Engineers, Compliance Auditors  
+> **Version:** 2.0.0 (Unified Forensic Suite)  
+> **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)
 
 ---
 
-## 1. Quickstart & Installation
+## 1. Introduction & Operational Philosophy
+
+The **s0 (Sector Zero)** suite unites two traditionally disjoint capabilities:
+1. **Defensive Anti-Forensics & Sanitization:** Irreversibly destroying digital data across storage drives, individual files, and directory hierarchies in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**.
+2. **Offensive Digital Forensics & Evidence Recovery:** Reconstructing deleted, concealed, or lost files from formatted media and raw disk images across ext4, NTFS, FAT32, and exFAT without mounting the filesystem.
+3. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local blockchain ledger**.
+
+---
+
+## 2. Installation & Quickstart
+
+=== "Linux & macOS"
+    ```bash
+    # Install via one-line installer
+    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+    
+    # Confirm installation
+    s0 --version
+    ```
+
+=== "Windows (PowerShell)"
+    ```powershell
+    # Install via PowerShell installer
+    irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
+    
+    # Confirm installation
+    s0 --version
+    ```
+
+=== "From Source (All Platforms)"
+    ```bash
+    git clone https://github.com/kartik2005221/s0.git
+    cd s0
+    bash scripts/build_all.sh
+    ```
+
+---
+
+## 3. Module 1: Secure Drive Eraser
+
+The Drive Eraser sanitizes whole physical disks (NVMe, SATA HDD/SSD, USB flash drives, SD cards) and forensic disk images (`.raw`, `.img`, `.dd`).
+
+### 3.1 Device Inventory (`s0 list`)
+Display all attached block devices and their mount states:
 
 ```bash
-# Clone and enter directory
-cd s0
+s0 list
+```
 
-# Run master build orchestrator (automatically sets up .venv and installs dependencies)
-bash scripts/build_all.sh
+Example Output:
+```
+PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL           MOUNTED?
+/dev/sda       disk    SSD           465.8 GiB  Samsung SSD 870 EVO      S5YANG0N123456K  YES
+/dev/sdb       disk    NVMe          931.5 GiB  Samsung SSD 980 PRO 1TB  S464NX0M789012A  -
+/dev/sdc       disk    USB            28.9 GiB  SanDisk Ultra Fit        4C5300012309181  -
+
+Image-file targets work too (no root needed): use --target /path/to/file.img
+```
+
+For JSON output suitable for automated scripts:
+```bash
+s0 list --output-format json
+```
+
+### 3.2 Dry-Run Planning (`s0 plan`)
+Before executing an irreversible wipe, run `s0 plan` to inspect which sanitization method will be selected, its NIST tier, and any safety warnings:
+
+```bash
+s0 plan --target /dev/sdb
+```
+
+Example Output:
+```
+target          : /dev/sdb (Samsung SSD 980 PRO 1TB, 931.5 GiB)
+method          : NVME_SANITIZE_BLOCK_ERASE
+nist category   : Purge
+summary         : NVMe Sanitize Block Erase via controller firmware
+commands        :
+  - nvme sanitize /dev/sdb -a 0x02
+warnings        :
+  ! Target is an NVMe solid-state device. Controller-level purge will be executed.
+alternatives    :
+  - [available] NVME_FORMAT_CRYPTO_ERASE (Purge)
+  - [available] OVERWRITE_ZERO_1PASS (Clear)
+```
+
+### 3.3 Executing Sanitization (`s0 wipe`)
+Perform certified sanitization:
+
+```bash
+sudo s0 wipe \
+    --target /dev/sdb \
+    --operator "analyst-42" \
+    --organization "Digital Forensic Unit" \
+    --out-dir ./certificates
+```
+
+To skip the interactive `WIPE` confirmation prompt (e.g. in automated lab pipelines):
+```bash
+sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
+```
+
+#### Real-Time Telemetry:
+During operation, s0 renders an ANSI progress bar displaying real-time I/O throughput, elapsed time, ETA, and thermal sensor telemetry (queried every 2 seconds):
+
+```
+[s0 wipe] ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  482 MB/s  ETA 00m 14s  Temp: 44°C
+```
+
+#### Post-Wipe Sampling:
+Immediately following the write operation, s0 conducts an automated **64-block sampled readback verification** across the physical address space, asserting that every sampled block matches the expected pattern (e.g. `0x00`).
+
+---
+
+## 4. Module 2: Secure File & Folder Eraser
+
+Module 2 provides selective, in-place cluster sanitization for sensitive files and directories without altering the surrounding filesystem.
+
+### 4.1 Basic File Erasure (`s0 erase`)
+```bash
+s0 erase --targets /evidence/confidential_memo.pdf /evidence/financial_records/
+```
+
+### 4.2 Multi-Pass Random Overwrite
+```bash
+s0 erase \
+    --targets /evidence/suspect_payload.bin \
+    --passes 3 \
+    --pattern random \
+    --operator "investigator-01" \
+    --out-dir ./reports
+```
+
+### 4.3 What Module 2 Executes Under the Hood:
+1. **Extent Mapping:** Resolves physical file extents via `filefrag` or direct extent diagnostics.
+2. **In-Place Cluster Overwrite:** Overwrites allocated clusters directly using unbuffered I/O with hardware cache synchronization (`fsync()`, `F_FULLFSYNC`, or `FlushFileBuffers`).
+3. **Metadata Cleansing:** Truncates file size to 0 bytes.
+4. **Timestamp Zeroing:** Resets inode `atime` and `mtime` timestamps to Unix epoch zero (`1970-01-01T00:00:00Z`).
+5. **Filename Scrambling:** Renames the directory entry to a randomized alphanumeric string before unlinking, preventing forensic undelete tools from discovering the original filename in directory leaf nodes.
+6. **Alternate Data Stream (ADS) Scrubbing:** On Windows, discovers and overwrites named streams (such as `:Zone.Identifier`).
+
+---
+
+## 5. Module 3: Advanced File Carving & Evidence Recovery
+
+Module 3 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or unmounted partitions without relying on intact filesystem tables.
+
+### 5.1 Basic Carving Operation
+```bash
+s0 carve \
+    --target /evidence/seized_drive.raw \
+    --out-dir ./recovered_evidence \
+    --extensions jpg,png,pdf,zip \
+    --min-confidence 60
+```
+
+### 5.2 Supported File Formats
+- **Images:** JPEG (`FF D8 FF`), PNG (`89 50 4E 47`), GIF (`GIF8`), BMP (`BM`)
+- **Documents:** PDF (`%PDF-`), Office OpenXML / ZIP (`PK 03 04` covering `.docx`, `.xlsx`, `.pptx`)
+- **Archives & Databases:** GZIP (`1F 8B 08`), SQLite3 (`SQLite format 3\0`)
+- **Executables & Audio:** ELF (`7F ELF`), MP3 (`ID3`)
+
+### 5.3 Filesystem Structure Acceleration
+When carving from raw media, s0 automatically detects filesystem signatures:
+- **NTFS:** Parses the Master File Table (`$MFT`) directly, extracting resident attributes and reassembling non-resident cluster runlists. Indexes 1 TB in under 15 seconds.
+- **ext4:** Traverses block group descriptors and inode extent trees directly.
+- **FAT32 / exFAT:** Scans deleted directory entries (`0xE5` / `0x05`) and reassembles cluster allocation sets.
+
+### 5.4 Carving Output Structure
+```
+recovered_evidence/
+├── CRV_0001.pdf
+├── CRV_0002.jpg
+├── CRV_0003.zip
+├── recovery_index.json                # Complete machine-readable index
+└── carving_manifest_1092a4bc.json     # Ed25519-signed manifest of all extracted artifacts
 ```
 
 ---
 
-## 2. Command-Line Interface (CLI) Manual
+## 6. Module 4: Blockchain Cryptographic Audit Ledger
 
-All functions are unified under `s0` (or `python -m s0_cli.main`).
+Every wipe, file erasure, and carving session is appended as an immutable block to `~/.s0/s0_audit.db`.
 
-### 2.1 Module 1: Secure Drive Eraser
-- **Inventory Disks:**
-  ```bash
-  s0 list
-  ```
-- **Dry-Run Planning:**
-  ```bash
-  s0 plan --target /dev/sda
-  ```
-- **Execute Drive Sanitization:**
-  ```bash
-  s0 wipe --target /dev/sda --yes --operator "op-forensic-01" --organization "Forensic Sanitization Lab"
-  ```
+### 6.1 Inspecting Audit Blocks (`s0 audit list`)
+```bash
+s0 audit list --limit 20
+```
 
-### 2.2 Module 2: Secure File & Folder Eraser
-- **Sanitize Specific Files / Folders:**
-  ```bash
-  s0 erase       --targets /path/to/classified_doc.pdf /path/to/sensitive_folder/       --passes 1       --pattern zero       --out-dir ./certificates
-  ```
+Output:
+```
+==> S0 Blockchain Cryptographic Audit Ledger (24 blocks)
+IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BLOCK_HASH      
+24    2026-09-09T14:22:15Z DRIVE_ERASE    analyst-42     S464NX0M789012A      4b227777d4dd1fc6...
+23    2026-09-09T12:05:30Z FILE_ERASE     investigator   confidential_memo    88c019a2e41bf901...
+22    2026-09-09T10:14:02Z FILE_CARVE     analyst-42     seized_drive.raw     f100e49ab88190c3...
+```
 
-### 2.3 Module 3: Advanced File Carving & Recovery
-- **Carve Evidence from Formatted Media / Disk Image:**
-  ```bash
-  s0 carve       --target /evidence/suspect_drive.raw       --out-dir ./recovered_evidence       --extensions jpg,png,pdf,zip       --min-confidence 50
-  ```
+### 6.2 Verifying Blockchain Continuity (`s0 audit verify`)
+Audit the cryptographic continuity from Genesis to Tip:
 
-### 2.4 Module 4: Blockchain Cryptographic Audit Ledger
-- **List Audit Blocks:**
-  ```bash
-  s0 audit list --limit 20
-  ```
-- **Verify Blockchain Hash-Chain Continuity:**
-  ```bash
-  s0 audit verify
-  ```
+```bash
+s0 audit verify
+```
+
+Expected Output:
+```
+==> Auditing Blockchain Cryptographic Hash Chain...
+Chain Status : ✅ VALID & CONTINUOUS
+Blocks Tested: 24
+Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
+```
+
+If any database row has been altered, the verification engine detects the discrepancy immediately:
+```
+Chain Status : ❌ BROKEN / TAMPER DETECTED
+Blocks Tested: 14
+Details      : Block #14 prev_hash does not match Block #13 block_hash. Tamper detected at index 14.
+```
 
 ---
 
-## 3. Local Web Dashboard
+## 7. Offline Certificate Verification
 
-Launch the unified 4-module web console:
+### 7.1 Command-Line Verification (`s0 verify`)
 ```bash
-bash gui/run.sh
+s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_public.pem
 ```
-Open `http://127.0.0.1:8000` in your web browser.
 
-**Dashboard Capabilities:**
-1. **Drive Eraser Tab:** Visual device selector, NIST category recommendation, confirmation gate, and real-time progress bar.
-2. **File Eraser Tab:** Batch file path input, pattern selection, and instant sanitization with metadata cleansing.
-3. **Forensic Carver Tab:** Target image selection, file format filters, minimum confidence threshold, and interactive table of carved artifacts.
-4. **Blockchain Audit Ledger Tab:** Live block timeline, block details inspector, and one-click cryptographic hash-chain verification.
+Output:
+```
+✅ CERTIFICATE AUTHENTIC & VERIFIED
+UUID         : a8f3b201-9c42-4f1e-8e77-5d2a938c110e
+Status       : success
+NIST Tier    : Purge
+Device       : S464NX0M123456K
+Issuer       : Digital Forensic Unit
+Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e339d251a
+```
+
+### 7.2 Air-Gapped Web Verification
+1. Double-click `verification-portal/index.html` on any offline computer.
+2. Drag and drop `certificate_a8f3b201.json`.
+3. The portal executes pure WebCrypto validation in browser memory and displays the verified green banner.
+
+---
+
+## 8. Authority Key Generation (`s0 keygen`)
+
+To establish an accredited signing authority:
+
+```bash
+s0 keygen --out-dir /secure/keys --name lab_authority
+```
+
+Outputs:
+- `lab_authority_private.pem`: Keep secret and offline.
+- `lab_authority_public.pem`: Distribute to auditors or register in `keys.json`.
+- Prints the SHA-256 SubjectPublicKeyInfo fingerprint.
