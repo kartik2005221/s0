@@ -8,98 +8,230 @@
    #EEEEEE  Crisp High-Contrast Text
    ================================================================ */
 
-/* ── Slate / Dark Mode (Default) ────────────────────────────── */
-[data-md-color-scheme="slate"] {
-  /* Page Base */
-  --md-default-bg-color: #222831;
-  --md-default-bg-color--light: #282e38;
-  --md-default-bg-color--lighter: #2f3642;
-  --md-default-bg-color--lightest: #393E46;
-
-  /* Typography */
-  --md-default-fg-color: #EEEEEE;
-  --md-default-fg-color--light: #D6D6D6;
-  --md-default-fg-color--lighter: #9ca3af;
-  --md-default-fg-color--lightest: #6b7280;
-
-  /* Header & Primary */
-  --md-primary-fg-color: #1a1e24;
-  --md-primary-bg-color: #FFFFFF;
-  --md-primary-fg-color--light: #222831;
-  --md-primary-fg-color--dark: #14171c;
-
-  /* Accents */
-  --md-accent-fg-color: #00ADB5;
-  --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.15);
-  --md-accent-bg-color: #FFFFFF;
-
-  /* Code Blocks */
-  --md-code-bg-color: #16181d;
-  --md-code-fg-color: #EEEEEE;
-
-  /* Hyperlinks */
-  --md-typeset-a-color: #00ADB5;
-
-  /* Borders & Dividers */
-  --md-default-border-color: #393E46;
+/* ── Font fallback stack (Google Fonts may be blocked in air-gapped envs) ── */
+:root {
+  --s0-font-sans: "Fira Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --s0-font-mono: "Fira Code", ui-monospace, "Cascadia Code", "Source Code Pro",
+    Menlo, Consolas, "Courier New", monospace;
 }
 
-/* ── Default / Light Mode ───────────────────────────────────── */
-[data-md-color-scheme="default"] {
+/* ── Slate / Dark Mode (Default) ─────────────────────────────── */
+[data-md-color-scheme="slate"] {
   /* Page Base */
-  --md-default-bg-color: #F8F9FA;
-  --md-default-bg-color--light: #EEEEEE;
-  --md-default-bg-color--lighter: #E2E4E8;
-  --md-default-bg-color--lightest: #D4D7DC;
+  --md-default-bg-color:          #222831;
+  --md-default-bg-color--light:   #282e38;
+  --md-default-bg-color--lighter: #2f3642;
+  --md-default-bg-color--lightest:#393E46;
 
   /* Typography */
-  --md-default-fg-color: #222831;
-  --md-default-fg-color--light: #393E46;
-  --md-default-fg-color--lighter: #555B64;
-  --md-default-fg-color--lightest: #CCCCCC;
+  --md-default-fg-color:          #EEEEEE;
+  --md-default-fg-color--light:   #D6D6D6;
+  --md-default-fg-color--lighter: #9ca3af;
+  --md-default-fg-color--lightest:#6b7280;
 
   /* Header & Primary */
-  --md-primary-fg-color: #222831;
-  --md-primary-bg-color: #FFFFFF;
-  --md-primary-fg-color--light: #2d333b;
-  --md-primary-fg-color--dark: #1a1e24;
+  --md-primary-fg-color:          #1a1e24;
+  --md-primary-bg-color:          #EEEEEE;
+  --md-primary-fg-color--light:   #222831;
+  --md-primary-fg-color--dark:    #14171c;
 
   /* Accents */
-  --md-accent-fg-color: #00878D;
-  --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.12);
-  --md-accent-bg-color: #FFFFFF;
+  --md-accent-fg-color:           #00ADB5;
+  --md-accent-fg-color--transparent: rgba(0, 173, 181, 0.15);
+  --md-accent-bg-color:           #FFFFFF;
 
   /* Code Blocks */
-  --md-code-bg-color: #E9ECEF;
-  --md-code-fg-color: #222831;
+  --md-code-bg-color:             #16181d;
+  --md-code-fg-color:             #EEEEEE;
 
   /* Hyperlinks */
-  --md-typeset-a-color: #00878D;
+  --md-typeset-a-color:           #00ADB5;
 
   /* Borders & Dividers */
-  --md-default-border-color: #E0E0E0;
+  --md-default-border-color:      #393E46;
+}
+
+/* ── Default / Light Mode ────────────────────────────────────── */
+[data-md-color-scheme="default"] {
+  /* Page Base */
+  --md-default-bg-color:          #F8F9FA;
+  --md-default-bg-color--light:   #EEEEEE;
+  --md-default-bg-color--lighter: #E2E4E8;
+  --md-default-bg-color--lightest:#D4D7DC;
+
+  /* Typography */
+  --md-default-fg-color:          #222831;
+  --md-default-fg-color--light:   #393E46;
+  --md-default-fg-color--lighter: #555B64;
+  --md-default-fg-color--lightest:#9ca3af;
+
+  /* Header & Primary */
+  --md-primary-fg-color:          #222831;
+  --md-primary-bg-color:          #FFFFFF;
+  --md-primary-fg-color--light:   #2d333b;
+  --md-primary-fg-color--dark:    #1a1e24;
+
+  /* Accents */
+  --md-accent-fg-color:           #00878D;
+  --md-accent-fg-color--transparent: rgba(0, 135, 141, 0.12);
+  --md-accent-bg-color:           #FFFFFF;
+
+  /* Code Blocks */
+  --md-code-bg-color:             #E9ECEF;
+  --md-code-fg-color:             #222831;
+
+  /* Hyperlinks */
+  --md-typeset-a-color:           #00878D;
+
+  /* Borders & Dividers */
+  --md-default-border-color:      #D8DADF;
 }
 
 /* ================================================================
-   1. REMOVE TOP HEADER & GITBOOK SIDEBAR HEADER
+   1. TOP HEADER
    ================================================================ */
-.md-header,
-.s0-hidden-header {
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  border: 0 !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  position: absolute !important;
-  top: -9999px !important;
-  background-color: #222831 !important;
+.md-header {
+  background-color: #1a1e24;
+  border-bottom: 1px solid #282e38;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  /* Ensure it renders at a sensible height */
+  height: 2.8rem;
 }
 
-/* Sidebar positioning & full scrollability */
+/* Site name in header */
+.md-header__title {
+  color: #EEEEEE;
+  font-weight: 600;
+}
+
+/* Logo in header */
+.md-header .md-logo svg,
+.md-header .md-logo img {
+  fill: #00ADB5;
+  height: 1.5rem;
+  width: auto;
+  display: block;
+}
+
+/* Hamburger / icon buttons */
+.md-header__button {
+  color: #9ca3af;
+  transition: color 0.15s ease;
+}
+.md-header__button:hover {
+  color: #00ADB5;
+}
+
+/* ── Search bar inside the header ── */
+.md-search__form {
+  background-color: #282e38 !important;
+  border: 1px solid #393E46 !important;
+  border-radius: 6px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+.md-search__form:focus-within {
+  border-color: #00ADB5 !important;
+  box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.22) !important;
+}
+.md-search__input {
+  color: #EEEEEE !important;
+  font-family: var(--s0-font-sans);
+}
+.md-search__input::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+.md-search__icon {
+  color: #9ca3af !important;
+}
+
+/* Search results dropdown */
+.md-search__output {
+  background-color: #1a1e24 !important;
+  border: 1px solid #393E46 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65) !important;
+}
+.md-search-result__meta {
+  background-color: #16181d !important;
+  color: #9ca3af !important;
+  font-size: 0.8rem !important;
+}
+.md-search-result__link:hover,
+.md-search-result__link:focus {
+  background-color: rgba(0, 173, 181, 0.10) !important;
+}
+.md-search-result__article {
+  color: #EEEEEE !important;
+}
+.md-search-result__teaser {
+  color: #9ca3af !important;
+}
+.md-search-result__teaser em {
+  color: #00ADB5 !important;
+  font-weight: 700 !important;
+  font-style: normal !important;
+  background-color: rgba(0, 173, 181, 0.12) !important;
+  padding: 0 0.2rem !important;
+  border-radius: 2px !important;
+}
+
+/* ── Light mode header overrides ── */
+[data-md-color-scheme="default"] .md-header {
+  background-color: #222831;
+  border-bottom-color: #1a1e24;
+}
+[data-md-color-scheme="default"] .md-search__form {
+  background-color: #393E46 !important;
+  border-color: #555B64 !important;
+}
+[data-md-color-scheme="default"] .md-search__input {
+  color: #EEEEEE !important;
+}
+
+/* ================================================================
+   2. NAVIGATION TABS (sticky below header)
+   ================================================================ */
+.md-tabs {
+  background-color: #16181d !important;
+  border-bottom: 1px solid #282e38;
+}
+
+.md-tabs__list {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.md-tabs__item {
+  height: 2.4rem;
+}
+
+.md-tabs__link {
+  color: #9ca3af !important;
+  font-size: 0.84rem;
+  font-weight: 500;
+  opacity: 1 !important;
+  padding: 0 0.9rem !important;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+.md-tabs__link:hover {
+  color: #EEEEEE !important;
+}
+.md-tabs__link--active {
+  color: #00ADB5 !important;
+  font-weight: 600;
+  border-bottom: 2px solid #00ADB5;
+}
+
+[data-md-color-scheme="default"] .md-tabs {
+  background-color: #1a1e24 !important;
+}
+
+/* ================================================================
+   3. SIDEBAR LAYOUT
+   ================================================================ */
 .md-sidebar {
   top: 0 !important;
   padding-top: 0 !important;
@@ -109,8 +241,8 @@
 
 .md-sidebar__scrollwrap {
   margin: 0 !important;
-  height: 100vh !important;
-  max-height: 100vh !important;
+  height: 100% !important;
+  max-height: 100% !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin;
@@ -122,363 +254,68 @@
 .md-sidebar__scrollwrap::-webkit-scrollbar {
   width: 4px;
 }
-
 .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
   background-color: #393E46;
   border-radius: 4px;
 }
-
 .md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
   background-color: #00ADB5;
 }
 
-/* Ensure content starts cleanly at top */
-.md-main__inner {
-  margin-top: 1rem !important;
-}
-
-/* Solid Opaque Sticky Sidebar Header (Prevents scroll bleed) */
-.s0-sidebar-header {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 20 !important;
-  background-color: var(--md-default-bg-color) !important;
-  padding: 1.25rem 0.6rem 0.85rem 0.6rem !important;
-  border-bottom: 1px solid var(--md-default-border-color) !important;
-  margin-bottom: 0.85rem !important;
-}
-
-.s0-brand-row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-  margin-bottom: 0.75rem !important;
-  text-decoration: none !important;
-}
-
-.s0-brand-logo svg {
-  width: 1.85rem !important;
-  height: 1.85rem !important;
-  fill: #00ADB5 !important;
-  display: block !important;
-}
-
-.s0-brand-text {
-  font-size: 1.15rem !important;
-  font-weight: 700 !important;
-  color: #FFFFFF !important;
-  letter-spacing: -0.01em !important;
-  text-decoration: none !important;
-}
-
-.s0-brand-text:hover {
-  color: #00ADB5 !important;
-}
-
-/* GitHub repo button in sidebar */
-.s0-repo-link {
-  display: block !important;
-  margin-bottom: 0.75rem !important;
-}
-
-.s0-repo-link .md-source {
-  background-color: #282e38 !important;
-  border: 1px solid #393E46 !important;
-  border-radius: 6px !important;
-  padding: 0.35rem 0.65rem !important;
-  color: #cbd5e1 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-  font-size: 0.82rem !important;
-  text-decoration: none !important;
-  transition: all 0.15s ease !important;
-}
-
-.s0-repo-link .md-source:hover {
-  border-color: #00ADB5 !important;
-  color: #FFFFFF !important;
-  background-color: rgba(0, 173, 181, 0.1) !important;
-}
-
-/* Sidebar Search Bar (GitBook Style) */
-.s0-search-container {
-  display: block !important;
-  width: 100% !important;
-}
-
-.s0-search-container .md-search {
-  display: block !important;
-  position: relative !important;
-  width: 100% !important;
-  padding: 0 !important;
-}
-
-.s0-search-container .md-search__inner {
-  position: relative !important;
-  width: 100% !important;
-  opacity: 1 !important;
-  height: auto !important;
-  transform: none !important;
-  float: none !important;
-  padding: 0 !important;
-}
-
-.s0-search-container .md-search__form {
-  background-color: #1a1e24 !important;
-  border: 1px solid #393E46 !important;
-  border-radius: 6px !important;
-  height: 2.2rem !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.s0-search-container .md-search__form:focus-within {
-  border-color: #00ADB5 !important;
-  box-shadow: 0 0 0 2px rgba(0, 173, 181, 0.25) !important;
-}
-
-.s0-search-container .md-search__input {
-  color: #FFFFFF !important;
-  font-size: 0.82rem !important;
-  height: 2.2rem !important;
-  padding-left: 2.2rem !important;
-  padding-right: 2rem !important;
-}
-
-.s0-search-container .md-search__input::placeholder {
-  color: #9ca3af !important;
-  opacity: 1 !important;
-}
-
-.s0-search-container .md-search__icon[for="__search"] {
-  color: #00ADB5 !important;
-  left: 0.6rem !important;
-  top: 0.5rem !important;
-}
-
-.s0-search-container .md-search__icon[for="__search"] svg {
-  fill: #00ADB5 !important;
-  width: 1rem !important;
-  height: 1rem !important;
-}
-
-/* Backdrop overlay when search is active */
-.s0-search-container .md-search__overlay {
-  display: none !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background-color: rgba(0, 0, 0, 0.6) !important;
-  backdrop-filter: blur(2px) !important;
-  -webkit-backdrop-filter: blur(2px) !important;
-  z-index: 90 !important;
-  cursor: pointer !important;
-}
-
-[data-md-toggle="search"]:checked ~ .md-container .s0-search-container .md-search__overlay {
-  display: block !important;
-}
-
-/* Search results popup modal */
-.s0-search-container .md-search__output {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  position: fixed !important;
-  left: 17rem !important;
-  top: 3.5rem !important;
-  width: 36rem !important;
-  max-width: calc(100vw - 20rem) !important;
-  max-height: 75vh !important;
-  z-index: 100 !important;
-  background-color: #1a1e24 !important;
-  border: 1px solid #393E46 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75) !important;
-  overflow: hidden !important;
-  transition: opacity 0.2s ease !important;
-}
-
-/* Show search popup when search toggle is active */
-[data-md-toggle="search"]:checked ~ .md-container .s0-search-container .md-search__output {
-  display: block !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
-
-@media screen and (max-width: 59.99em) {
-  .s0-search-container .md-search__output {
-    left: 1rem !important;
-    right: 1rem !important;
-    top: 4rem !important;
-    width: auto !important;
-    max-width: calc(100vw - 2rem) !important;
-    max-height: 80vh !important;
-  }
-}
-
-.s0-search-container .md-search__scrollwrap {
-  max-height: 70vh !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain !important;
-  scrollbar-width: thin;
-  scrollbar-color: #393E46 transparent;
-}
-
-.s0-search-container .md-search__options {
-  position: absolute !important;
-  right: 0.5rem !important;
-  top: 0.35rem !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.25rem !important;
-}
-
-.s0-search-container .md-search__options .md-search__icon {
-  color: #9ca3af !important;
-  cursor: pointer !important;
-}
-
-.s0-search-container .md-search__options .md-search__icon:hover {
-  color: #00ADB5 !important;
-}
-
-.s0-search-container .md-search-result {
-  background-color: #1a1e24 !important;
-  color: #EEEEEE !important;
-  border: none !important;
-}
-
-.s0-search-container .md-search-result__meta {
-  background-color: #16181d !important;
-  color: #9ca3af !important;
-  font-size: 0.8rem !important;
-  font-weight: 600 !important;
-  padding: 0.6rem 0.85rem !important;
-  border-bottom: 1px solid #282e38 !important;
-}
-
-.s0-search-container .md-search-result__item {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-}
-
-.s0-search-container .md-search-result__link {
-  padding: 0.7rem 0.9rem !important;
-  display: block !important;
-  text-decoration: none !important;
-  transition: background-color 0.15s ease !important;
-}
-
-.s0-search-container .md-search-result__link:hover,
-.s0-search-container .md-search-result__link:focus {
-  background-color: rgba(0, 173, 181, 0.12) !important;
-}
-
-.s0-search-container .md-search-result__article {
-  color: #EEEEEE !important;
-}
-
-.s0-search-container .md-search-result__teaser {
-  color: #9ca3af !important;
-  font-size: 0.82rem !important;
-  line-height: 1.5 !important;
-}
-
-.s0-search-container .md-search-result__teaser em {
-  color: #00ADB5 !important;
-  font-weight: 700 !important;
-  font-style: normal !important;
-  background-color: rgba(0, 173, 181, 0.15) !important;
-  padding: 0 0.2rem !important;
-  border-radius: 2px !important;
-}
-
-/* ================================================================
-   3. NAVIGATION TABS (TOP BAR)
-   ================================================================ */
-.md-tabs {
-  background-color: #14171d !important;
-  border-bottom: 1px solid #282e38;
-}
-
-.md-tabs__list {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.md-tabs__item {
-  height: 2.75rem;
-}
-
-.md-tabs__link {
-  color: #9ca3af !important;
-  font-size: 0.85rem;
-  font-weight: 500;
-  opacity: 1 !important;
-  padding: 0 0.85rem !important;
-  transition: color 0.15s ease, border-color 0.15s ease;
-  border-bottom: 2px solid transparent;
-}
-
-.md-tabs__link:hover {
-  color: #FFFFFF !important;
-}
-
-.md-tabs__link--active {
-  color: #00ADB5 !important;
-  font-weight: 600;
-  border-bottom: 2px solid #00ADB5;
-}
-
-/* ================================================================
-   4. SIDEBAR NAVIGATION (GitBook Style)
-   ================================================================ */
 .md-sidebar--primary {
-  border-right: 1px solid #393E46;
+  border-right: 1px solid #282e38;
 }
 
+/* Content area top margin */
+.md-main__inner {
+  margin-top: 1.2rem !important;
+}
+
+/* ================================================================
+   4. SIDEBAR NAVIGATION (primary nav tree)
+   ================================================================ */
+
+/* Section headings */
 .md-nav--primary .md-nav__item--section > .md-nav__link {
   color: #EEEEEE !important;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-top: 1.25rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1.1rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Nav items */
 .md-nav__link {
   color: #9ca3af !important;
-  font-size: 0.88rem;
-  border-radius: 6px;
-  padding: 0.35rem 0.6rem !important;
+  font-size: 0.87rem;
+  border-radius: 5px;
+  padding: 0.3rem 0.6rem !important;
   transition: all 0.15s ease;
+  margin-bottom: 0.05rem;
 }
-
 .md-nav__link:hover {
   color: #00ADB5 !important;
-  background-color: rgba(0, 173, 181, 0.08);
+  background-color: rgba(0, 173, 181, 0.07);
 }
 
-.md-nav__link--active {
-  color: #00ADB5 !important;
-  font-weight: 600;
-  background-color: rgba(0, 173, 181, 0.12);
-  border-left: 3px solid #00ADB5;
-}
-
+/* Active nav item — border-left with compensated padding so text doesn't shift */
+.md-nav__link--active,
 .md-nav__item--active > .md-nav__link {
   color: #00ADB5 !important;
   font-weight: 600;
+  background-color: rgba(0, 173, 181, 0.10);
+  border-left: 3px solid #00ADB5;
+  padding-left: calc(0.6rem - 3px) !important;
 }
 
 .md-nav__title {
   color: #EEEEEE !important;
   font-weight: 700;
   font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .md-nav--primary .md-nav__list {
@@ -486,53 +323,58 @@
 }
 
 /* ================================================================
-   5. GRID CARDS (HOMEPAGE & SECTION PAGES)
+   5. GRID CARDS (Homepage & section pages)
    ================================================================ */
 .md-typeset .grid.cards > ul > li {
   background-color: #282e38;
-  border: 1px solid rgba(0, 173, 181, 0.25);
+  border: 1px solid rgba(0, 173, 181, 0.22);
   border-radius: 10px;
-  padding: 1.25rem 1.4rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  padding: 1.2rem 1.35rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 .md-typeset .grid.cards > ul > li:hover {
   border-color: #00ADB5;
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 173, 181, 0.2);
+  box-shadow: 0 8px 22px rgba(0, 173, 181, 0.18);
 }
-
 .md-typeset .grid.cards > ul > li hr {
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.07);
   margin: 0.75rem 0;
 }
-
 .md-typeset .grid.cards > ul > li strong {
   color: #FFFFFF;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
 }
-
 .md-typeset .grid.cards > ul > li p {
   color: #cbd5e1;
   font-size: 0.9rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
-
 .md-typeset .grid.cards > ul > li a {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   color: #00ADB5 !important;
   font-weight: 600;
   margin-top: 0.5rem;
   text-decoration: none;
-  transition: gap 0.2s ease, color 0.15s ease;
+  transition: gap 0.2s ease;
 }
-
 .md-typeset .grid.cards > ul > li a:hover {
   color: #33BDC4 !important;
-  gap: 0.55rem;
+  gap: 0.5rem;
+}
+
+/* Light mode cards */
+[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li {
+  background-color: #FFFFFF;
+  border-color: rgba(0, 135, 141, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li:hover {
+  border-color: #00878D;
+  box-shadow: 0 6px 18px rgba(0, 135, 141, 0.15);
 }
 
 /* ================================================================
@@ -540,16 +382,18 @@
    ================================================================ */
 .md-typeset pre {
   background-color: #16181d !important;
-  border: 1px solid #393E46;
+  border: 1px solid #2f3642;
   border-radius: 8px;
+  font-family: var(--s0-font-mono);
 }
 
 .md-typeset code {
   background-color: #282e38;
   color: #33BDC4;
   border-radius: 4px;
-  padding: 0.15rem 0.35rem;
+  padding: 0.12rem 0.35rem;
   font-size: 0.85em;
+  font-family: var(--s0-font-mono);
 }
 
 .md-typeset pre > code {
@@ -558,12 +402,36 @@
   padding: 0;
 }
 
+/* Copy button */
 .md-clipboard {
-  color: #9ca3af !important;
+  color: #6b7280 !important;
+  transition: color 0.15s ease;
 }
-
 .md-clipboard:hover {
   color: #00ADB5 !important;
+}
+
+/* Language label chip */
+.md-typeset .highlight span.filename {
+  background-color: #282e38;
+  border-bottom: 1px solid #393E46;
+  color: #9ca3af;
+  font-family: var(--s0-font-mono);
+  font-size: 0.78rem;
+}
+
+/* Light mode code */
+[data-md-color-scheme="default"] .md-typeset pre {
+  background-color: #F0F1F3 !important;
+  border-color: #D8DADF;
+}
+[data-md-color-scheme="default"] .md-typeset code {
+  background-color: #E2E4E8;
+  color: #00696E;
+}
+[data-md-color-scheme="default"] .md-typeset pre > code {
+  background-color: transparent;
+  color: #222831;
 }
 
 /* ================================================================
@@ -573,50 +441,54 @@
   background-color: #282e38;
   border-radius: 8px;
   border-left-width: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .md-typeset .admonition.tip,
 .md-typeset .admonition.note,
-.md-typeset .admonition.info {
+.md-typeset .admonition.info,
+.md-typeset .admonition.abstract {
   border-left-color: #00ADB5;
 }
-
-.md-typeset .admonition.tip .admonition-title,
-.md-typeset .admonition.note .admonition-title,
-.md-typeset .admonition.info .admonition-title {
-  background-color: rgba(0, 173, 181, 0.1) !important;
+.md-typeset .admonition.tip    .admonition-title,
+.md-typeset .admonition.note   .admonition-title,
+.md-typeset .admonition.info   .admonition-title,
+.md-typeset .admonition.abstract .admonition-title {
+  background-color: rgba(0, 173, 181, 0.10) !important;
   color: #00ADB5;
 }
 
-.md-typeset .admonition.warning {
+.md-typeset .admonition.warning,
+.md-typeset .admonition.caution {
   border-left-color: #f59e0b;
 }
-
-.md-typeset .admonition.warning .admonition-title {
-  background-color: rgba(245, 158, 11, 0.1) !important;
+.md-typeset .admonition.warning .admonition-title,
+.md-typeset .admonition.caution .admonition-title {
+  background-color: rgba(245, 158, 11, 0.10) !important;
   color: #f59e0b;
 }
 
 .md-typeset .admonition.danger,
-.md-typeset .admonition.failure {
+.md-typeset .admonition.failure,
+.md-typeset .admonition.error {
   border-left-color: #ef4444;
 }
-
-.md-typeset .admonition.danger .admonition-title,
-.md-typeset .admonition.failure .admonition-title {
-  background-color: rgba(239, 68, 68, 0.1) !important;
+.md-typeset .admonition.danger  .admonition-title,
+.md-typeset .admonition.failure .admonition-title,
+.md-typeset .admonition.error   .admonition-title {
+  background-color: rgba(239, 68, 68, 0.10) !important;
   color: #ef4444;
 }
 
 .md-typeset .admonition.success,
-.md-typeset .admonition.check {
+.md-typeset .admonition.check,
+.md-typeset .admonition.done {
   border-left-color: #22c55e;
 }
-
 .md-typeset .admonition.success .admonition-title,
-.md-typeset .admonition.check .admonition-title {
-  background-color: rgba(34, 197, 94, 0.1) !important;
+.md-typeset .admonition.check   .admonition-title,
+.md-typeset .admonition.done    .admonition-title {
+  background-color: rgba(34, 197, 94, 0.10) !important;
   color: #22c55e;
 }
 
@@ -626,54 +498,98 @@
   border: 1px solid #393E46;
   border-radius: 8px;
 }
-
 .md-typeset details summary {
   color: #00ADB5;
   font-weight: 600;
 }
 
+/* Light mode admonitions */
+[data-md-color-scheme="default"] .md-typeset .admonition {
+  background-color: #F8F9FA;
+}
+[data-md-color-scheme="default"] .md-typeset details {
+  background-color: #F8F9FA;
+  border-color: #D8DADF;
+}
+
 /* ================================================================
-   8. TABLES
+   8. TABLES  (with responsive horizontal scroll)
    ================================================================ */
+
+/* Scroll wrapper — prevents clipping on mobile */
+.md-typeset .md-typeset__scrollwrap,
+.md-typeset table:not([class]) {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .md-typeset table:not([class]) {
   border: 1px solid #393E46;
   border-radius: 8px;
-  overflow: hidden;
+  border-spacing: 0;
+  min-width: 480px; /* tables need minimum width to stay readable when scrolled */
+  overflow: visible; /* let the display:block wrapper handle the scroll */
 }
 
 .md-typeset table:not([class]) th {
   background-color: #282e38;
-  color: #FFFFFF;
+  color: #EEEEEE;
   font-weight: 600;
   border-bottom: 2px solid #393E46;
+  white-space: nowrap;
+  padding: 0.6rem 0.85rem;
 }
 
 .md-typeset table:not([class]) td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: #cbd5e1;
+  padding: 0.5rem 0.85rem;
+}
+
+.md-typeset table:not([class]) tr:last-child td {
+  border-bottom: none;
 }
 
 .md-typeset table:not([class]) tr:hover {
   background-color: rgba(0, 173, 181, 0.05);
 }
 
+/* Light mode tables */
+[data-md-color-scheme="default"] .md-typeset table:not([class]) th {
+  background-color: #EEEEEE;
+  color: #222831;
+  border-bottom-color: #D8DADF;
+}
+[data-md-color-scheme="default"] .md-typeset table:not([class]) td {
+  color: #393E46;
+  border-bottom: 1px solid #E8EAED;
+}
+[data-md-color-scheme="default"] .md-typeset table:not([class]) tr:hover {
+  background-color: rgba(0, 135, 141, 0.04);
+}
+
 /* ================================================================
-   9. CONTENT TYPOGRAPHY ACCENTS
+   9. CONTENT TYPOGRAPHY
    ================================================================ */
-.md-typeset h1,
-.md-typeset h2,
-.md-typeset h3 {
+.md-typeset h1 {
+  color: #FFFFFF;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.md-typeset h2 {
   color: #FFFFFF;
   font-weight: 700;
   letter-spacing: -0.015em;
-}
-
-.md-typeset h2 {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 0.35rem;
   margin-top: 2rem;
 }
-
+.md-typeset h3 {
+  color: #FFFFFF;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
 .md-typeset h4,
 .md-typeset h5,
 .md-typeset h6 {
@@ -684,16 +600,20 @@
 .md-typeset p,
 .md-typeset li {
   color: #cbd5e1;
-  line-height: 1.7;
+  line-height: 1.75;
 }
 
 .md-typeset strong {
   color: #FFFFFF;
 }
 
+/* Blockquote — improved contrast (was #9ca3af, too dim) */
 .md-typeset blockquote {
-  border-left: 4px solid #393E46;
-  color: #9ca3af;
+  border-left: 4px solid rgba(0, 173, 181, 0.4);
+  background-color: rgba(0, 173, 181, 0.05);
+  border-radius: 0 6px 6px 0;
+  padding: 0.6rem 1rem;
+  color: #D6D6D6;
 }
 
 /* Keyboard key styling */
@@ -702,12 +622,53 @@
   border: 1px solid #393E46;
   border-radius: 4px;
   color: #00ADB5;
-  font-size: 0.8em;
+  font-size: 0.78em;
   padding: 0.1rem 0.4rem;
+  font-family: var(--s0-font-mono);
+}
+
+/* Horizontal rule */
+.md-typeset hr {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Light mode typography */
+[data-md-color-scheme="default"] .md-typeset h1,
+[data-md-color-scheme="default"] .md-typeset h2,
+[data-md-color-scheme="default"] .md-typeset h3 {
+  color: #222831;
+}
+[data-md-color-scheme="default"] .md-typeset h2 {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+[data-md-color-scheme="default"] .md-typeset h4,
+[data-md-color-scheme="default"] .md-typeset h5,
+[data-md-color-scheme="default"] .md-typeset h6 {
+  color: #393E46;
+}
+[data-md-color-scheme="default"] .md-typeset p,
+[data-md-color-scheme="default"] .md-typeset li {
+  color: #393E46;
+}
+[data-md-color-scheme="default"] .md-typeset strong {
+  color: #222831;
+}
+[data-md-color-scheme="default"] .md-typeset blockquote {
+  border-left-color: rgba(0, 135, 141, 0.5);
+  background-color: rgba(0, 135, 141, 0.05);
+  color: #393E46;
+}
+[data-md-color-scheme="default"] .md-typeset hr {
+  border-color: #D8DADF;
+}
+[data-md-color-scheme="default"] .md-typeset kbd {
+  background-color: #EEEEEE;
+  border-color: #D8DADF;
+  color: #00696E;
 }
 
 /* ================================================================
-   10. TABS (content.tabs.link)
+   10. CONTENT TABS
    ================================================================ */
 .md-typeset .tabbed-labels > label {
   color: #9ca3af;
@@ -715,48 +676,57 @@
   border-bottom: 2px solid transparent;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
-
 .md-typeset .tabbed-labels > label:hover {
   color: #00ADB5;
 }
-
 .md-typeset .tabbed-labels > .tabbed-label--active {
   color: #00ADB5;
   border-bottom-color: #00ADB5;
 }
-
 .md-typeset .tabbed-content {
   border: 1px solid #393E46;
   border-radius: 0 8px 8px 8px;
   background-color: #282e38;
 }
 
+[data-md-color-scheme="default"] .md-typeset .tabbed-content {
+  background-color: #F8F9FA;
+  border-color: #D8DADF;
+}
+
 /* ================================================================
-   11. HERO SECTION (Landing Page)
+   11. HERO SECTION (Landing page)
    ================================================================ */
 .s0-hero {
   text-align: center;
   padding: 2rem 0 3rem;
 }
 
+/* Dark mode: gradient text */
 .s0-hero h1 {
-  font-size: 3rem;
+  font-size: clamp(2.2rem, 5vw, 3rem);
   font-weight: 800;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #00ADB5 0%, #33BDC4 50%, #EEEEEE 100%);
+  background: linear-gradient(135deg, #00ADB5 0%, #33BDC4 55%, #EEEEEE 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 0.5rem;
 }
 
+/* Light mode: solid dark color (gradient would wash out on white) */
+[data-md-color-scheme="default"] .s0-hero h1 {
+  background: none;
+  -webkit-text-fill-color: unset;
+  color: #222831;
+}
+
 .s0-hero .s0-tagline {
   color: #9ca3af;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 400;
   margin-bottom: 1.5rem;
 }
-
 .s0-hero .s0-badges {
   display: flex;
   flex-wrap: wrap;
@@ -765,39 +735,28 @@
   margin-bottom: 2rem;
 }
 
+[data-md-color-scheme="default"] .s0-hero .s0-tagline {
+  color: #555B64;
+}
+
 /* ================================================================
-   12. PROGRESS BAR / TERMINAL DISPLAY
+   12. TERMINAL / PROGRESS DEMO BLOCK
    ================================================================ */
 .terminal-demo {
   background-color: #0d0f12;
   border: 1px solid #393E46;
   border-radius: 8px;
   padding: 1rem 1.25rem;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--s0-font-mono);
   font-size: 0.8rem;
-  line-height: 1.6;
+  line-height: 1.65;
   overflow-x: auto;
 }
-
-.terminal-demo .t-prompt {
-  color: #00ADB5;
-}
-
-.terminal-demo .t-output {
-  color: #cbd5e1;
-}
-
-.terminal-demo .t-success {
-  color: #22c55e;
-}
-
-.terminal-demo .t-warn {
-  color: #f59e0b;
-}
-
-.terminal-demo .t-error {
-  color: #ef4444;
-}
+.terminal-demo .t-prompt  { color: #00ADB5; }
+.terminal-demo .t-output  { color: #cbd5e1; }
+.terminal-demo .t-success { color: #22c55e; }
+.terminal-demo .t-warn    { color: #f59e0b; }
+.terminal-demo .t-error   { color: #ef4444; }
 
 /* ================================================================
    13. STATUS BADGES (inline)
@@ -814,7 +773,6 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
-
 .badge-clear {
   display: inline-block;
   background-color: rgba(34, 197, 94, 0.12);
@@ -827,7 +785,6 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
-
 .badge-na {
   display: inline-block;
   background-color: rgba(107, 114, 128, 0.15);
@@ -842,7 +799,7 @@
 }
 
 /* ================================================================
-   14. MERMAID DIAGRAMS (Readable Sizing & Smooth Scroll)
+   14. MERMAID DIAGRAMS (responsive — no fixed min-width breakage)
    ================================================================ */
 .mermaid {
   text-align: center;
@@ -852,21 +809,20 @@
   padding: 1.25rem 1rem;
   overflow-x: auto !important;
   margin: 1.5rem 0;
-  display: flex !important;
-  justify-content: center;
+  display: block !important;
 }
 
 .mermaid svg {
-  min-width: 600px !important;
+  /* Fluid: fill the container but never stretch beyond natural width */
   max-width: 100% !important;
+  width: 100% !important;
   height: auto !important;
   font-size: 14px !important;
 }
 
-@media screen and (max-width: 45em) {
-  .mermaid svg {
-    min-width: 480px !important;
-  }
+[data-md-color-scheme="default"] .mermaid {
+  background-color: #F0F1F3 !important;
+  border-color: #D8DADF;
 }
 
 /* ================================================================
@@ -876,99 +832,150 @@
   border-radius: 6px;
   font-weight: 600;
   padding: 0.5rem 1.25rem;
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+              box-shadow 0.2s ease;
 }
-
 .md-typeset .md-button--primary {
   background-color: #00ADB5;
   border-color: #00ADB5;
   color: #FFFFFF !important;
 }
-
 .md-typeset .md-button--primary:hover {
   background-color: #00969d;
   border-color: #00969d;
-  box-shadow: 0 4px 12px rgba(0, 173, 181, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 173, 181, 0.35);
 }
 
 /* ================================================================
    16. FOOTER
    ================================================================ */
 .md-footer {
-  background-color: #14171d !important;
+  background-color: #16181d !important;
   border-top: 1px solid #282e38;
-  color: #9ca3af;
 }
-
 .md-footer-meta {
-  background-color: #101216 !important;
+  background-color: #0f1115 !important;
 }
-
+/* Improved contrast on footer links (was #9ca3af — too dim on #16181d) */
 .md-footer__link {
-  color: #9ca3af !important;
+  color: #D6D6D6 !important;
+  transition: color 0.15s ease;
 }
-
 .md-footer__link:hover {
   color: #00ADB5 !important;
 }
-
-/* ================================================================
-   17. TABLE OF CONTENTS (TOC)
-   ================================================================ */
-.md-nav--secondary .md-nav__link {
+.md-footer__title {
+  color: #9ca3af;
   font-size: 0.78rem;
 }
 
-.md-nav--secondary .md-nav__link--active {
-  color: #00ADB5 !important;
-  border-left: 2px solid #00ADB5;
-  padding-left: 0.5rem;
+/* Prev/next nav added by navigation.footer */
+.md-footer__inner {
+  padding: 0.6rem 0;
 }
 
 /* ================================================================
-   18. LIGHT MODE OVERRIDES
+   17. TABLE OF CONTENTS (right sidebar)
    ================================================================ */
-[data-md-color-scheme="default"] .md-typeset table:not([class]) th {
-  background-color: #EEEEEE;
-  color: #222831;
+.md-nav--secondary .md-nav__link {
+  font-size: 0.8rem;
+  color: #6b7280 !important;
+  padding: 0.25rem 0.6rem !important;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.md-nav--secondary .md-nav__link:hover {
+  color: #EEEEEE !important;
+  background-color: rgba(255, 255, 255, 0.04);
+}
+.md-nav--secondary .md-nav__link--active {
+  color: #00ADB5 !important;
+  border-left: 2px solid #00ADB5;
+  padding-left: calc(0.6rem - 2px) !important;
 }
 
-[data-md-color-scheme="default"] .md-typeset table:not([class]) td {
-  color: #393E46;
-  border-bottom: 1px solid #E0E0E0;
+[data-md-color-scheme="default"] .md-nav--secondary .md-nav__link {
+  color: #555B64 !important;
+}
+[data-md-color-scheme="default"] .md-nav--secondary .md-nav__link--active {
+  color: #00696E !important;
+  border-left-color: #00696E;
 }
 
-[data-md-color-scheme="default"] .md-typeset .admonition {
-  background-color: #F8F9FA;
+/* ================================================================
+   18. SOURCE (GitHub) REPO CHIP IN HEADER
+   ================================================================ */
+.md-source {
+  color: #9ca3af !important;
+  transition: color 0.15s ease;
+}
+.md-source:hover {
+  color: #EEEEEE !important;
+}
+.md-source__icon svg {
+  fill: currentColor;
+}
+.md-source__facts {
+  color: #6b7280;
+  font-size: 0.72rem;
 }
 
-[data-md-color-scheme="default"] .md-typeset pre {
-  background-color: #E9ECEF !important;
-  border-color: #E0E0E0;
+/* ================================================================
+   19. MOBILE RESPONSIVE FIXES
+   ================================================================ */
+
+/* On narrow viewports the drawer overlays; restore sensible defaults */
+@media screen and (max-width: 76.1875em) {
+  /* Sidebar becomes drawer; no sticky needed */
+  .md-sidebar--primary {
+    height: 100% !important;
+    position: fixed !important;
+    border-right: 1px solid #282e38;
+  }
 }
 
-[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li {
-  background-color: #FFFFFF;
-  border-color: rgba(0, 135, 141, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+@media screen and (max-width: 59.9375em) {
+  /* Stack main content full width on mobile */
+  .md-main__inner {
+    margin-top: 0.75rem !important;
+  }
+
+  /* Search results on mobile: full width */
+  .md-search__output {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
-[data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li:hover {
-  border-color: #00878D;
-  box-shadow: 0 6px 20px rgba(0, 135, 141, 0.15);
+/* Prevent horizontal scroll from very long inline code or URLs */
+.md-content {
+  overflow-x: hidden;
+}
+.md-typeset pre {
+  overflow-x: auto;
 }
 
-[data-md-color-scheme="default"] .md-typeset h1,
-[data-md-color-scheme="default"] .md-typeset h2,
-[data-md-color-scheme="default"] .md-typeset h3 {
-  color: #222831;
-}
-
-[data-md-color-scheme="default"] .md-typeset p,
-[data-md-color-scheme="default"] .md-typeset li {
-  color: #393E46;
-}
-
-[data-md-color-scheme="default"] .md-typeset strong {
-  color: #222831;
+/* ================================================================
+   20. PRINT STYLES  (minimal clean output)
+   ================================================================ */
+@media print {
+  .md-header,
+  .md-sidebar,
+  .md-tabs,
+  .md-footer {
+    display: none !important;
+  }
+  .md-main__inner {
+    margin-top: 0 !important;
+  }
+  .md-typeset h1,
+  .md-typeset h2,
+  .md-typeset h3 {
+    color: #000 !important;
+  }
+  .md-typeset p,
+  .md-typeset li,
+  .md-typeset td {
+    color: #111 !important;
+  }
 }
