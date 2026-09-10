@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s0 // Forensic &amp; Sanitization Workstation</title>
+  <title>s0 — Sector Zero — Forensic Workstation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -286,18 +286,6 @@
       font-family: var(--font-mono);
       font-size: 0.72rem;
       opacity: 0.65;
-    }
-
-    .portal-link {
-      margin-left: auto;
-      background: rgba(139, 92, 246, 0.1);
-      border: 1px solid rgba(139, 92, 246, 0.35);
-      color: #c4b5fd !important;
-    }
-
-    .portal-link:hover {
-      background: rgba(139, 92, 246, 0.2) !important;
-      border-color: #a78bfa !important;
     }
 
     /* Tab Content Layouts */
@@ -659,40 +647,6 @@
       min-height: 290px;
     }
 
-    .terminal-bar {
-      background: #0d131f;
-      padding: 9px 14px;
-      font-size: 0.74rem;
-      font-family: var(--font-mono);
-      color: var(--text-dim);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-    }
-
-    .terminal-title-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .terminal-dots {
-      display: flex;
-      gap: 6px;
-    }
-
-    .dot-term {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .dot-term.dot-red { background: #ef4444; opacity: 0.8; }
-    .dot-term.dot-amber { background: #f59e0b; opacity: 0.8; }
-    .dot-term.dot-green { background: #10b981; opacity: 0.8; }
-
     .terminal-output {
       padding: 14px 16px;
       font-family: var(--font-mono);
@@ -954,10 +908,6 @@
       <span class="tab-num">[ 05 ]</span>
       <span>Audit Chain Ledger</span>
     </button>
-    <a href="/portal/" target="_blank" class="nav-tab portal-link">
-      <span class="tab-num">[ 06 ]</span>
-      <span>Verification Portal</span>
-    </a>
   </nav>
 
   <!-- ===================================================================== -->
@@ -1036,17 +986,10 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Execution Console &amp; Certificate Manifest</h2>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog('driveLog')">Clear</button>
         </div>
 
         <div class="terminal-container">
-          <div class="terminal-bar">
-            <div class="terminal-dots">
-              <span class="dot-term dot-red"></span>
-              <span class="dot-term dot-amber"></span>
-              <span class="dot-term dot-green"></span>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('driveLog')">Clear</button>
-          </div>
           <div class="terminal-output" id="driveLog">Awaiting drive sanitization command...</div>
         </div>
 
@@ -1114,17 +1057,10 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Batch Erasure Status &amp; Compliance Record</h2>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog('fileLog')">Clear</button>
         </div>
 
         <div class="terminal-container">
-          <div class="terminal-bar">
-            <div class="terminal-dots">
-              <span class="dot-term dot-red"></span>
-              <span class="dot-term dot-amber"></span>
-              <span class="dot-term dot-green"></span>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('fileLog')">Clear</button>
-          </div>
           <div class="terminal-output" id="fileLog">Awaiting file erasure task...</div>
         </div>
 
@@ -1154,7 +1090,6 @@
       <section class="panel">
         <div class="panel-header">
           <h2 class="panel-title">Forensic Carving Scan Parameters</h2>
-          <span class="badge badge-purple">ext4 + NTFS + FAT32</span>
         </div>
         <p class="panel-subtitle">Signature &amp; structure parsing with Shannon entropy multi-point confidence scoring.</p>
 
@@ -1202,17 +1137,10 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Carving Execution &amp; Evidence Manifest</h2>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog('carveLog')">Clear</button>
         </div>
 
         <div class="terminal-container">
-          <div class="terminal-bar">
-            <div class="terminal-dots">
-              <span class="dot-term dot-red"></span>
-              <span class="dot-term dot-amber"></span>
-              <span class="dot-term dot-green"></span>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('carveLog')">Clear</button>
-          </div>
           <div class="terminal-output" id="carveLog">Awaiting carving scan command...</div>
         </div>
 
@@ -1256,7 +1184,6 @@
       <section class="panel">
         <div class="panel-header">
           <h2 class="panel-title">Forensic Acquisition &amp; Bit-Stream Duplication</h2>
-          <span class="badge badge-purple">NIST SP 800-86 • ISO/IEC 27037</span>
         </div>
         <p class="panel-subtitle">Fault-tolerant raw image acquisition (.raw/.dd/.img) and forensic device-to-device bit-stream cloning.</p>
 
@@ -1320,17 +1247,10 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Acquisition Telemetry &amp; Evidence Manifest</h2>
+          <button class="btn btn-secondary btn-sm" onclick="clearLog('imageLog')">Clear</button>
         </div>
 
         <div class="terminal-container">
-          <div class="terminal-bar">
-            <div class="terminal-dots">
-              <span class="dot-term dot-red"></span>
-              <span class="dot-term dot-amber"></span>
-              <span class="dot-term dot-green"></span>
-            </div>
-            <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('imageLog')">Clear</button>
-          </div>
           <div class="terminal-output" id="imageLog">Awaiting acquisition command...</div>
         </div>
 
