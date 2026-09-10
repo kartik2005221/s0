@@ -24,18 +24,18 @@ When preparing to sanitize media, operators face multiple choices. The following
 
 ```mermaid
 flowchart TD
-    START([Target Media Identified]) --> IS_FILE{File or Full Drive?}
+    START(["Target Media Identified"]) --> IS_FILE{"File or Full Drive?"}
     
-    IS_FILE -->|Individual Files| FILE_COW{Is Filesystem CoW?<br>Btrfs / ZFS / APFS}
-    FILE_COW -->|Yes| COW_WARN[s0 erase with CoW Advisory Warning<br>Recommendation: Volume Wipe for 100% Assurance]
-    FILE_COW -->|No| FILE_STD[s0 erase: In-place cluster overwrite<br>+ Metadata Scrubbing + Epoch Zero]
+    IS_FILE -->|Individual Files| FILE_COW{"Is Filesystem CoW?<br/>Btrfs / ZFS / APFS"}
+    FILE_COW -->|Yes| COW_WARN["s0 erase with CoW Advisory Warning<br/>Recommendation: Volume Wipe for 100% Assurance"]
+    FILE_COW -->|No| FILE_STD["s0 erase: In-place cluster overwrite<br/>+ Metadata Scrubbing + Epoch Zero"]
     
-    IS_FILE -->|Whole Physical Drive| DEV_TYPE{Drive Architecture?}
+    IS_FILE -->|Whole Physical Drive| DEV_TYPE{"Drive Architecture?"}
     
-    DEV_TYPE -->|NVMe PCIe SSD| NVME_REC[Recommendation: NVME_SANITIZE_BLOCK_ERASE<br>NIST Tier: Purge | Duration: < 30 sec]
-    DEV_TYPE -->|SATA SSD / HDD| SATA_REC[Recommendation: ATA_SECURE_ERASE_ENHANCED<br>NIST Tier: Purge | Clears HPA/DCO Sectors]
-    DEV_TYPE -->|USB Flash / SD Card| USB_REC[Recommendation: OVERWRITE_ZERO_1PASS<br>NIST Tier: Clear | Direct Linear Bus Overwrite]
-    DEV_TYPE -->|Forensic Disk Image| IMG_REC[Recommendation: OVERWRITE_ZERO_1PASS<br>NIST Tier: Clear | Bounded File Scrub]
+    DEV_TYPE -->|NVMe PCIe SSD| NVME_REC["Recommendation: NVME_SANITIZE_BLOCK_ERASE<br/>NIST Tier: Purge &bull; Duration: &lt; 30 sec"]
+    DEV_TYPE -->|SATA SSD / HDD| SATA_REC["Recommendation: ATA_SECURE_ERASE_ENHANCED<br/>NIST Tier: Purge &bull; Clears HPA/DCO Sectors"]
+    DEV_TYPE -->|USB Flash / SD Card| USB_REC["Recommendation: OVERWRITE_ZERO_1PASS<br/>NIST Tier: Clear &bull; Direct Linear Bus Overwrite"]
+    DEV_TYPE -->|Forensic Disk Image| IMG_REC["Recommendation: OVERWRITE_ZERO_1PASS<br/>NIST Tier: Clear &bull; Bounded File Scrub"]
 ```
 
 ### Recommendation Reference Table
@@ -137,7 +137,7 @@ sequenceDiagram
     FE->>Disk: Hardware cache flush (fsync / F_FULLFSYNC)
     FE->>FS: Truncate file length to 0 bytes
     FE->>FS: Reset timestamps (atime/mtime) to 1970-01-01T00:00:00Z
-    FE->>FS: Rename directory entry to random string (e.g. "x8F2kL1m")
+    FE->>FS: Rename directory entry to random string (e.g. 'x8F2kL1m')
     FE->>FS: Unlink / delete scrambled entry
     FE-->>Op: Batch Certificate & Audit Block Issued
 ```
