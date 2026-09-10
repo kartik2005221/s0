@@ -3,40 +3,70 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s0 // Forensic & Sanitization Workstation</title>
+  <title>s0 // Forensic &amp; Sanitization Workstation</title>
   <link rel="stylesheet" href="/static/fonts/fonts.css">
   <style>
     :root {
-      --bg-base: #222831;
-      --bg-surface: #2d333b;
-      --bg-panel: #393E46;
-      --bg-elevated: #444b54;
-      --border: #4d5765;
-      --border-focus: #00ADB5;
-      --text-main: #EEEEEE;
-      --text-muted: #c5cbd3;
-      --text-dim: #9aa5b1;
-      
-      --accent-cyan: #00ADB5;
-      --accent-blue: #00ADB5;
+      --bg-base: #090d16;
+      --bg-surface: #0f172a;
+      --bg-panel: #131d31;
+      --bg-elevated: #1a2742;
+      --bg-input: #0a0f1d;
+      --bg-terminal: #070a10;
+
+      --border: #1e293b;
+      --border-subtle: rgba(255, 255, 255, 0.05);
+      --border-hover: #334155;
+      --border-focus: #00adb5;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --accent-cyan: #00adb5;
+      --accent-cyan-hover: #00c4ce;
+      --accent-cyan-glow: rgba(0, 173, 181, 0.25);
+      --accent-blue: #3b82f6;
       --accent-emerald: #10b981;
       --accent-crimson: #ef4444;
+      --accent-red: #ef4444;
       --accent-amber: #f59e0b;
-      --accent-purple: #a855f7;
+      --accent-purple: #8b5cf6;
 
       --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --font-sans: "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
     body {
-      background: var(--bg-base);
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 173, 181, 0.08), transparent 70%),
+        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.03), transparent 40%);
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.5;
-      padding: 18px 24px 40px;
+      padding: 20px 28px 48px;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
     }
 
     /* Top Bar Header */
@@ -44,9 +74,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 16px;
+      padding-bottom: 18px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 20px;
+      margin-bottom: 22px;
     }
 
     .brand-section {
@@ -58,17 +88,18 @@
     .brand-logo {
       width: 44px;
       height: 44px;
-      background: linear-gradient(135deg, #00ADB5, #393E46);
+      background: linear-gradient(135deg, rgba(0, 173, 181, 0.2), #111827);
+      border: 1px solid rgba(0, 173, 181, 0.4);
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
-      box-shadow: 0 0 15px rgba(0, 173, 181, 0.35);
+      box-shadow: 0 0 20px rgba(0, 173, 181, 0.2);
+      color: var(--accent-cyan);
     }
 
     .brand-title h1 {
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: var(--text-main);
@@ -79,20 +110,22 @@
 
     .brand-title .version-badge {
       font-family: var(--font-mono);
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      background: rgba(0, 173, 181, 0.15);
+      background: rgba(0, 173, 181, 0.12);
       color: var(--accent-cyan);
-      border: 1px solid rgba(0, 173, 181, 0.4);
+      border: 1px solid rgba(0, 173, 181, 0.35);
       padding: 2px 8px;
       border-radius: 4px;
+      letter-spacing: 0.04em;
     }
 
     .brand-subtitle {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      margin-top: 2px;
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      margin-top: 3px;
       font-family: var(--font-mono);
+      letter-spacing: 0.05em;
     }
 
     .header-status {
@@ -103,14 +136,16 @@
 
     .sys-pill {
       font-family: var(--font-mono);
-      font-size: 0.75rem;
-      padding: 5px 12px;
+      font-size: 0.74rem;
+      padding: 6px 14px;
       border-radius: 6px;
       background: var(--bg-surface);
       border: 1px solid var(--border);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
     }
 
     .dot-live {
@@ -130,10 +165,11 @@
     /* Navigation Tabs */
     .nav-bar {
       display: flex;
-      gap: 6px;
-      margin-bottom: 22px;
+      gap: 8px;
+      margin-bottom: 24px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 10px;
+      padding-bottom: 12px;
+      overflow-x: auto;
     }
 
     .nav-tab {
@@ -141,47 +177,61 @@
       border: 1px solid var(--border);
       color: var(--text-muted);
       padding: 10px 18px;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 9px;
       transition: all 0.15s ease;
       font-family: var(--font-sans);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .nav-tab svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 2;
+      stroke: currentColor;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
     }
 
     .nav-tab:hover {
       color: #fff;
       background: var(--bg-elevated);
-      border-color: #5d6778;
+      border-color: var(--border-hover);
+    }
+
+    .nav-tab:hover svg {
+      transform: scale(1.08);
     }
 
     .nav-tab.active {
-      background: rgba(0, 173, 181, 0.15);
+      background: rgba(0, 173, 181, 0.12);
       color: var(--accent-cyan);
       border-color: var(--accent-cyan);
-      box-shadow: 0 0 10px rgba(0, 173, 181, 0.25);
+      box-shadow: 0 0 12px rgba(0, 173, 181, 0.2);
     }
 
     .nav-tab .tab-num {
       font-family: var(--font-mono);
       font-size: 0.72rem;
-      opacity: 0.7;
+      opacity: 0.65;
     }
 
     .portal-link {
       margin-left: auto;
-      background: rgba(168, 85, 247, 0.1);
-      border: 1px solid rgba(168, 85, 247, 0.35);
-      color: #d8b4fe !important;
-      text-decoration: none;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      color: #c4b5fd !important;
     }
 
     .portal-link:hover {
-      background: rgba(168, 85, 247, 0.2) !important;
-      border-color: #c084fc !important;
+      background: rgba(139, 92, 246, 0.2) !important;
+      border-color: #a78bfa !important;
     }
 
     /* Tab Content Layouts */
@@ -204,7 +254,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 22px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.45);
     }
 
     .panel-header {
@@ -213,16 +263,17 @@
       align-items: center;
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     .panel-title {
       font-size: 1.05rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 10px;
+      letter-spacing: -0.01em;
     }
 
     .panel-subtitle {
@@ -239,30 +290,30 @@
 
     label {
       display: block;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       color: var(--text-muted);
       margin-bottom: 6px;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
     }
 
     input, select, textarea {
       width: 100%;
-      background: var(--bg-base);
+      background: var(--bg-input);
       border: 1px solid var(--border);
       color: var(--text-main);
       padding: 10px 14px;
       border-radius: 6px;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-family: var(--font-sans);
       outline: none;
-      transition: border-color 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     input:focus, select:focus, textarea:focus {
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 0 2px var(--accent-cyan-glow);
     }
 
     textarea {
@@ -279,7 +330,7 @@
       gap: 8px;
       padding: 10px 18px;
       border-radius: 6px;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
       border: 1px solid transparent;
@@ -287,24 +338,34 @@
       font-family: var(--font-sans);
       width: 100%;
       text-decoration: none;
+      line-height: 1.25;
+    }
+
+    .btn svg {
+      flex-shrink: 0;
     }
 
     .btn-primary {
       background: #00ADB5;
-      color: #222831;
+      color: #070a10;
       font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0, 173, 181, 0.3);
     }
     .btn-primary:hover {
-      background: #008f96;
-      color: #ffffff;
+      background: #00c4ce;
+      color: #070a10;
+      box-shadow: 0 4px 14px rgba(0, 173, 181, 0.45);
     }
 
     .btn-danger {
       background: #dc2626;
       color: #fff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
     }
     .btn-danger:hover {
-      background: #b91c1c;
+      background: #ef4444;
+      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
     }
 
     .btn-secondary {
@@ -314,7 +375,8 @@
     }
     .btn-secondary:hover {
       background: var(--bg-elevated);
-      border-color: #00ADB5;
+      border-color: var(--border-hover);
+      color: #fff;
     }
 
     .btn-sm {
@@ -337,25 +399,26 @@
     .telemetry-row {
       display: flex;
       justify-content: space-between;
-      padding: 4px 0;
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+      padding: 5px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
     }
     .telemetry-row:last-child { border-bottom: none; }
 
     .telemetry-label { color: var(--text-dim); }
-    .telemetry-val { color: #fff; font-weight: 500; }
+    .telemetry-val { color: var(--text-main); font-weight: 500; }
 
     /* Console / Terminal Log */
     .terminal-container {
-      background: #1a1e24;
+      background: var(--bg-terminal);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       overflow: hidden;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
     }
 
     .terminal-bar {
-      background: #222831;
-      padding: 8px 12px;
+      background: #0d131f;
+      padding: 9px 14px;
       font-size: 0.75rem;
       font-family: var(--font-mono);
       color: var(--text-dim);
@@ -365,15 +428,37 @@
       align-items: center;
     }
 
+    .terminal-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot-term {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-term.dot-red { background: #ef4444; opacity: 0.8; }
+    .dot-term.dot-amber { background: #f59e0b; opacity: 0.8; }
+    .dot-term.dot-green { background: #10b981; opacity: 0.8; }
+
     .terminal-output {
-      padding: 12px 14px;
+      padding: 14px 16px;
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: #cbd5e1;
       height: 260px;
       overflow-y: auto;
       white-space: pre-wrap;
-      line-height: 1.45;
+      line-height: 1.5;
+      background: var(--bg-terminal);
     }
 
     /* Status Badges */
@@ -386,19 +471,20 @@
       font-weight: 600;
       padding: 3px 8px;
       border-radius: 4px;
+      letter-spacing: 0.03em;
     }
 
-    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
-    .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-red { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-cyan { background: rgba(0, 173, 181, 0.12); color: #22d3ee; border: 1px solid rgba(0, 173, 181, 0.3); }
+    .badge-green { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-purple { background: rgba(139, 92, 246, 0.12); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
 
     /* Results Showcase Card */
     .result-showcase {
       background: rgba(16, 185, 129, 0.05);
       border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 16px;
       margin-top: 16px;
       display: none;
@@ -414,6 +500,26 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    .showcase-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .showcase-icon-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .showcase-icon-purple {
+      background: rgba(139, 92, 246, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
     /* Filter Chips */
     .chip-group {
       display: flex;
@@ -423,7 +529,7 @@
     }
 
     .chip {
-      background: var(--bg-base);
+      background: var(--bg-input);
       border: 1px solid var(--border);
       color: var(--text-muted);
       font-size: 0.78rem;
@@ -435,12 +541,12 @@
     }
 
     .chip:hover {
-      border-color: #3b82f6;
+      border-color: var(--border-hover);
       color: #fff;
     }
 
     .chip.active {
-      background: rgba(6, 182, 212, 0.15);
+      background: rgba(0, 173, 181, 0.15);
       border-color: var(--accent-cyan);
       color: var(--accent-cyan);
     }
@@ -451,6 +557,7 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       margin-top: 14px;
+      background: var(--bg-surface);
     }
 
     .data-table {
@@ -461,18 +568,19 @@
     }
 
     .data-table th {
-      background: #0c121d;
+      background: #0b0f17;
       color: var(--text-dim);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
-      padding: 10px 14px;
+      letter-spacing: 0.05em;
+      font-size: 0.74rem;
+      padding: 11px 14px;
       border-bottom: 1px solid var(--border);
     }
 
     .data-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       color: var(--text-main);
     }
 
@@ -489,8 +597,8 @@
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(4px);
+      background: rgba(4, 7, 13, 0.8);
+      backdrop-filter: blur(6px);
       display: none;
       justify-content: center;
       align-items: center;
@@ -511,7 +619,7 @@
       max-height: 85vh;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
     }
 
     .modal-header {
@@ -527,16 +635,27 @@
       overflow-y: auto;
       font-family: var(--font-mono);
       font-size: 0.8rem;
+      background: var(--bg-terminal);
     }
 
     .close-btn {
-      background: none;
-      border: none;
+      background: transparent;
+      border: 1px solid transparent;
       color: var(--text-dim);
-      font-size: 1.2rem;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
     }
-    .close-btn:hover { color: #fff; }
+    .close-btn:hover {
+      color: #fff;
+      background: var(--bg-elevated);
+      border-color: var(--border);
+    }
   </style>
 </head>
 <body>
@@ -544,10 +663,15 @@
   <!-- Top Navigation Header -->
   <header class="top-header">
     <div class="brand-section">
-      <div class="brand-logo">🛡️</div>
+      <div class="brand-logo" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
       <div class="brand-title">
         <h1>
-          s0 Forensic & Sanitization Suite
+          s0 Forensic &amp; Sanitization Suite
           <span class="version-badge">v2.0.0-PRO</span>
         </h1>
         <div class="brand-subtitle">
@@ -566,22 +690,35 @@
   <!-- Module Navigation Tabs -->
   <nav class="nav-bar">
     <button class="nav-tab active" onclick="switchNav('drive', this)">
-      <span class="tab-num">[ 01 ]</span> 💾 Drive Sanitizer
+      <span class="tab-num">[ 01 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><line x1="6" y1="16" x2="6.01" y2="16"></line><line x1="10" y1="16" x2="10.01" y2="16"></line></svg>
+      <span>Drive Sanitizer</span>
     </button>
     <button class="nav-tab" onclick="switchNav('file', this)">
-      <span class="tab-num">[ 02 ]</span> 📁 File &amp; Folder Eraser
+      <span class="tab-num">[ 02 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+      <span>File &amp; Folder Eraser</span>
     </button>
     <button class="nav-tab" onclick="switchNav('carve', this)">
-      <span class="tab-num">[ 03 ]</span> 🔍 Forensic File Carver
+      <span class="tab-num">[ 03 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <span>Forensic File Carver</span>
     </button>
     <button class="nav-tab" onclick="switchNav('image', this)">
-      <span class="tab-num">[ 04 ]</span> 💽 Forensic Imager &amp; Cloner
+      <span class="tab-num">[ 04 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+      <span>Forensic Imager &amp; Cloner</span>
     </button>
     <button class="nav-tab" onclick="switchNav('audit', this)">
-      <span class="tab-num">[ 05 ]</span> ⛓️ Audit Chain Ledger
+      <span class="tab-num">[ 05 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+      <span>Audit Chain Ledger</span>
     </button>
     <a href="/portal/" target="_blank" class="nav-tab portal-link">
-      <span class="tab-num">[ 06 ]</span> 🔐 Verification Portal ↗
+      <span class="tab-num">[ 06 ]</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      <span>Verification Portal</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
     </a>
   </nav>
 
@@ -594,7 +731,10 @@
       <section class="panel">
         <div class="panel-header">
           <h2 class="panel-title">Target Media &amp; Sanitization Policy</h2>
-          <button class="btn btn-secondary btn-sm" onclick="loadDevices()">⟳ Refresh Media</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadDevices()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <span>Refresh Media</span>
+          </button>
         </div>
         <p class="panel-subtitle">Select raw block device or forensic image for NIST SP 800-88 sanitization.</p>
 
@@ -648,7 +788,8 @@
         </div>
 
         <button class="btn btn-danger" onclick="startDriveWipe()">
-          ⚡ Execute Secure Drive Wipe
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Execute Secure Drive Wipe</span>
         </button>
       </section>
 
@@ -661,7 +802,14 @@
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <span>LIVE OPERATOR TERMINAL // s0 wipe</span>
+            <div class="terminal-title-group">
+              <div class="terminal-dots">
+                <span class="dot-term dot-red"></span>
+                <span class="dot-term dot-amber"></span>
+                <span class="dot-term dot-green"></span>
+              </div>
+              <span>OPERATOR TERMINAL // s0 wipe</span>
+            </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('driveLog')">Clear</button>
           </div>
           <div class="terminal-output" id="driveLog">Awaiting drive sanitization command...</div>
@@ -669,9 +817,11 @@
 
         <!-- Result Card with Downloads -->
         <div class="result-showcase" id="driveResultCard">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-            <span style="font-size: 1.2rem;">✅</span>
-            <strong style="color: #34d399;">SANITIZATION &amp; READBACK VERIFIED</strong>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div class="showcase-icon showcase-icon-success">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <strong style="color: #34d399; font-size: 0.95rem;">SANITIZATION &amp; READBACK VERIFIED</strong>
           </div>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="driveResultDetails">
             Device wiped cleanly. Sampled readback confirmed 100% overwrite. Planted markers residual: 0 hits.
@@ -731,16 +881,25 @@
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <span>LIVE BATCH EXECUTION LOG</span>
+            <div class="terminal-title-group">
+              <div class="terminal-dots">
+                <span class="dot-term dot-red"></span>
+                <span class="dot-term dot-amber"></span>
+                <span class="dot-term dot-green"></span>
+              </div>
+              <span>BATCH EXECUTION LOG // s0 erase</span>
+            </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('fileLog')">Clear</button>
           </div>
           <div class="terminal-output" id="fileLog">Awaiting file erasure task...</div>
         </div>
 
         <div class="result-showcase" id="fileResultCard">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-            <span style="font-size: 1.2rem;">📑</span>
-            <strong style="color: #34d399;">FILE ERASURE COMPLIANCE ISSUED</strong>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div class="showcase-icon showcase-icon-success">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+            </div>
+            <strong style="color: #34d399; font-size: 0.95rem;">FILE ERASURE COMPLIANCE ISSUED</strong>
           </div>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="fileResultDetails">
             Files shredded and metadata zeroed. Ed25519 compliance certificate issued and anchored to blockchain audit ledger.
@@ -792,7 +951,8 @@
         </div>
 
         <button class="btn btn-primary" onclick="startCarve()">
-          🔍 Start Multi-FS Forensic Carving Scan
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span>Start Forensic Carving Scan</span>
         </button>
       </section>
 
@@ -804,7 +964,14 @@
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <span>FORENSIC CARVER SCAN TELEMETRY</span>
+            <div class="terminal-title-group">
+              <div class="terminal-dots">
+                <span class="dot-term dot-red"></span>
+                <span class="dot-term dot-amber"></span>
+                <span class="dot-term dot-green"></span>
+              </div>
+              <span>FORENSIC CARVER TELEMETRY // s0 carve</span>
+            </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('carveLog')">Clear</button>
           </div>
           <div class="terminal-output" id="carveLog">Awaiting carving scan command...</div>
@@ -812,9 +979,11 @@
 
         <div class="result-showcase" id="carveResultCard">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 1.2rem;">🔬</span>
-              <strong style="color: #34d399;" id="carveSummaryTitle">RECOVERED ARTIFACTS</strong>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="showcase-icon showcase-icon-purple">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </div>
+              <strong style="color: #34d399; font-size: 0.95rem;" id="carveSummaryTitle">RECOVERED ARTIFACTS</strong>
             </div>
             <div id="carveManifestBtnContainer"></div>
           </div>
@@ -889,8 +1058,9 @@
         </div>
 
         <div id="cloneWarningBox" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-          <div style="color: var(--accent-red); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">
-            ⚠️ CAUTION: BIT-STREAM CLONING OVERWRITES DESTINATION MEDIA
+          <div style="color: var(--accent-red); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>CAUTION: BIT-STREAM CLONING OVERWRITES DESTINATION MEDIA</span>
           </div>
           <div style="font-size: 0.78rem; color: var(--text-dim); margin-bottom: 8px;">
             All existing partitions and data on the destination device will be permanently replaced. To confirm, type the exact destination path below:
@@ -899,7 +1069,8 @@
         </div>
 
         <button class="btn btn-primary" onclick="startImaging()">
-          💽 Start Bit-Stream Acquisition
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+          <span>Start Bit-Stream Acquisition</span>
         </button>
       </section>
 
@@ -911,7 +1082,14 @@
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <span>BIT-STREAM ACQUISITION LOG</span>
+            <div class="terminal-title-group">
+              <div class="terminal-dots">
+                <span class="dot-term dot-red"></span>
+                <span class="dot-term dot-amber"></span>
+                <span class="dot-term dot-green"></span>
+              </div>
+              <span>BIT-STREAM ACQUISITION LOG // s0 image</span>
+            </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('imageLog')">Clear</button>
           </div>
           <div class="terminal-output" id="imageLog">Awaiting acquisition command...</div>
@@ -919,9 +1097,11 @@
 
         <div class="result-showcase" id="imageResultCard">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 1.2rem;">🛡️</span>
-              <strong style="color: #34d399;" id="imageResultTitle">ACQUISITION COMPLETE</strong>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="showcase-icon showcase-icon-success">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              </div>
+              <strong style="color: #34d399; font-size: 0.95rem;" id="imageResultTitle">ACQUISITION COMPLETE</strong>
             </div>
             <div id="imageActionButtons" style="display: flex; gap: 8px;"></div>
           </div>
@@ -959,17 +1139,22 @@
     <section class="panel">
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">⛓️ Cryptographic Hash-Chained Audit Ledger</h2>
+          <h2 class="panel-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span>Cryptographic Hash-Chained Audit Ledger</span>
+          </h2>
           <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
             Tamper-evident local blockchain ledger with SHA-256 block chaining and Ed25519 digital signatures.
           </div>
         </div>
         <div style="display: flex; gap: 10px;">
           <button class="btn btn-primary btn-sm" onclick="verifyLedger()">
-            🛡️ Verify Chain Continuity
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+            <span>Verify Chain Continuity</span>
           </button>
           <button class="btn btn-secondary btn-sm" onclick="loadAuditBlocks()">
-            ⟳ Refresh
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -1019,7 +1204,9 @@
     <div class="modal-card">
       <div class="modal-header">
         <h3 style="color: #fff; font-size: 1rem;" id="modalTitle">Block Inspector</h3>
-        <button class="close-btn" onclick="closeInspector()">✕</button>
+        <button class="close-btn" onclick="closeInspector()" aria-label="Close modal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
       <div class="modal-body">
         <pre id="modalContent" style="color: #93c5fd; white-space: pre-wrap;"></pre>
@@ -1111,7 +1298,7 @@
         });
         if (!res.ok) return;
         const plan = await res.json();
-        
+
         const mb = (plan.target.capacity_bytes / (1024 * 1024)).toFixed(1);
         document.getElementById("driveCapVal").textContent = `${mb} MB (${plan.target.storage_type || "UNKNOWN"})`;
         document.getElementById("driveMethodVal").textContent = plan.method_id || "None";
@@ -1171,14 +1358,14 @@
         const btnJson = document.createElement("a");
         btnJson.className = "btn btn-secondary btn-sm";
         btnJson.href = `/api/download/${job.id}/${job.result.cert_filename}`;
-        btnJson.textContent = "📥 Download JSON Certificate";
+        btnJson.textContent = "Download JSON Certificate";
         actionBox.appendChild(btnJson);
       }
       if (job.result && job.result.pdf_filename) {
         const btnPdf = document.createElement("a");
         btnPdf.className = "btn btn-primary btn-sm";
         btnPdf.href = `/api/download/${job.id}/${job.result.pdf_filename}`;
-        btnPdf.textContent = "📄 Download PDF Certificate";
+        btnPdf.textContent = "Download PDF Certificate";
         actionBox.appendChild(btnPdf);
       }
     }
@@ -1239,7 +1426,7 @@
           const btn = document.createElement("a");
           btn.className = "btn btn-primary btn-sm";
           btn.href = `/api/download/${job.id}/${job.result.cert_filename}`;
-          btn.textContent = "📑 Download File Erasure Certificate";
+          btn.textContent = "Download File Erasure Certificate";
           actionBox.appendChild(btn);
         }
       }
@@ -1305,7 +1492,7 @@
           const btn = document.createElement("a");
           btn.className = "btn btn-primary btn-sm";
           btn.href = `/api/download/${job.id}/${job.result.manifest_filename}`;
-          btn.textContent = "📜 Signed Recovery Manifest";
+          btn.textContent = "Download Signed Manifest";
           btnBox.appendChild(btn);
         }
 
@@ -1349,7 +1536,7 @@
             const btnExtract = document.createElement("a");
             btnExtract.className = "btn btn-secondary btn-sm";
             btnExtract.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
-            btnExtract.textContent = "⬇ Extract";
+            btnExtract.textContent = "Extract";
             btnExtract.href = `/api/download/${encodeURIComponent(job.id)}/${encodeURIComponent(f.filename || "")}`;
             tdAction.appendChild(btnExtract);
 
@@ -1482,14 +1669,14 @@
           const btnManifest = document.createElement("a");
           btnManifest.className = "btn btn-secondary btn-sm";
           btnManifest.href = `/api/download/${job.id}/${r.manifest_filename}`;
-          btnManifest.textContent = "📋 Download Manifest";
+          btnManifest.textContent = "Download Manifest";
           actionBox.appendChild(btnManifest);
         }
         if (r.cert_filename) {
           const btnCert = document.createElement("a");
           btnCert.className = "btn btn-primary btn-sm";
           btnCert.href = `/api/download/${job.id}/${r.cert_filename}`;
-          btnCert.textContent = "📜 Download Certificate";
+          btnCert.textContent = "Download Certificate";
           actionBox.appendChild(btnCert);
         }
       }
@@ -1612,12 +1799,12 @@
           banner.style.background = "rgba(16, 185, 129, 0.15)";
           banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
           banner.style.color = "#34d399";
-          banner.innerHTML = `🛡️ <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
+          banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong></span> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
         } else {
           banner.style.background = "rgba(239, 68, 68, 0.15)";
           banner.style.border = "1px solid rgba(239, 68, 68, 0.35)";
           banner.style.color = "#f87171";
-          banner.innerHTML = `⚠️ <strong>INTEGRITY VIOLATION DETECTED:</strong> ${escapeHtml(data.reason)}`;
+          banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> <strong>INTEGRITY VIOLATION DETECTED:</strong></span> ${escapeHtml(data.reason)}`;
         }
       } catch (err) {
         banner.style.color = "#f87171";
