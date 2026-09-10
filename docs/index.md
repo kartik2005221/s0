@@ -217,6 +217,18 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 
     [:octicons-arrow-right-24: Compliance Guide](COMPLIANCE.md)
 
+-   :material-disc: **Bare-Metal Live ISO**
+
+    Debian Live USB creation, Fedora Podman builds, Windows Rufus DD mode, and offline kiosk wiping.
+
+    [:octicons-arrow-right-24: Live ISO Guide](LIVE_ISO_BUILD_GUIDE.md)
+
+-   :material-help-circle: **Frequently Asked Questions**
+
+    NIST standards, device safety refusals, air-gap verification, and forensic carver mechanics.
+
+    [:octicons-arrow-right-24: View FAQ](faq.md)
+
 </div>
 
 ---

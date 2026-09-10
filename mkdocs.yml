@@ -121,13 +121,14 @@ plugins:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Frequently Asked Questions (FAQ): faq.md
   - Core Modules & Guides:
+      - Comprehensive User Manual: USER_MANUAL.md
       - Secure Erasure Guide: secure-erasure-guide.md
-      - User Manual: USER_MANUAL.md
-      - CLI Reference: cli-reference.md
-      - Web Dashboard: web-dashboard.md
+      - Bare-Metal Live ISO (Offline Station): LIVE_ISO_BUILD_GUIDE.md
       - Forensic File Carver: forensic-carving-guide.md
-      - Bare-Metal Live ISO: LIVE_ISO_BUILD_GUIDE.md
+      - Web Dashboard: web-dashboard.md
+      - CLI Reference: cli-reference.md
       - Verification & Air-Gapped Trust: VERIFICATION_AND_DEPLOYMENT.md
   - Architecture & Engineering:
       - System Architecture: ARCHITECTURE.md
@@ -143,11 +144,10 @@ nav:
           - macOS Native APFS: platforms/macos.md
           - Windows Native Storage: platforms/windows.md
   - Developer & Defense:
-      - Contributing Guide: contributing.md
-      - Forensic Test Plan & QA: TEST_PLAN.md
-      - Agentic AI & High-Risk Safety: agentic-ai.md
       - Evaluator Handover: HANDOVER.md
       - Pitch & Defense Outline: PITCH_OUTLINE.md
+      - Forensic Test Plan & QA: TEST_PLAN.md
+      - Agentic AI & High-Risk Safety: agentic-ai.md
+      - Contributing Guide: contributing.md
       - Changelog & Releases: changelog.md
-      - FAQ: faq.md
   - Verification Portal ↗: https://s0-vp.vercel.app/
