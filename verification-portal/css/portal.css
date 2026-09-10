@@ -32,8 +32,8 @@
   --info-border: rgba(59, 130, 246, 0.35);
   
   --code-bg: #04070D;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --font-sans: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Rubik", sans-serif;
 }
 
 *, *::before, *::after {

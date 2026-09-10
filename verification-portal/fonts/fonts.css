@@ -1,43 +1,64 @@
-/* s0 Self-Hosted Offline Fonts: Fira Sans & Fira Code */
+/* s0 Self-Hosted Offline Fonts: Rubik & JetBrains Mono */
 @font-face {
-  font-family: 'Fira Sans';
+  font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('fira-sans-latin-400.woff2') format('woff2');
+  src: url('jetbrains-mono-400.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Fira Sans';
+  font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('fira-sans-latin-500.woff2') format('woff2');
+  src: url('jetbrains-mono-500.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Fira Sans';
+  font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('fira-sans-latin-600.woff2') format('woff2');
+  src: url('jetbrains-mono-600.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Fira Sans';
+  font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('fira-sans-latin-700.woff2') format('woff2');
+  src: url('jetbrains-mono-700.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Fira Code';
+  font-family: 'Rubik';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('fira-code-latin-400.woff2') format('woff2');
+  src: url('rubik-400.woff2') format('woff2');
 }
 @font-face {
-  font-family: 'Fira Code';
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('rubik-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rubik';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('fira-code-latin-600.woff2') format('woff2');
+  src: url('rubik-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('rubik-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('rubik-800.woff2') format('woff2');
 }
