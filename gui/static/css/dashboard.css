@@ -39,8 +39,7 @@ body {
   flex-direction: column;
   background-color: var(--bg-base);
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.08), transparent 70%),
-    radial-gradient(circle at 100% 100%, rgba(30, 62, 98, 0.12), transparent 50%);
+    radial-gradient(ellipse 700px 200px at 50% 0%, rgba(255, 101, 0, 0.05), transparent 100%);
   color: var(--text-main);
   font-family: var(--font-sans);
   line-height: 1.5;

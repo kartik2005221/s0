@@ -54,8 +54,7 @@ body {
   flex-direction: column;
   background-color: var(--bg-canvas);
   background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.10), transparent 70%),
-    radial-gradient(circle at 100% 100%, rgba(30, 62, 98, 0.15), transparent 50%);
+    radial-gradient(ellipse 600px 200px at 50% 0%, rgba(255, 101, 0, 0.05), transparent 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   line-height: 1.5;
