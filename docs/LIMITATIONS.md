@@ -9,11 +9,11 @@
 
 | Module | Status | Notes |
 |---|---|---|
-| **Module 1 — Drive Eraser (CLI)** | ✅ Fully real & validated | Full overwrite on images & block devices; ATA/NVMe coded & fixture-tested |
-| **Module 1 — Live ISO (Bootable USB)** | 🟡 Scaffolded, unverified on bare metal | Build scripts complete; not boot-tested on physical hardware |
-| **Module 2 — File/Folder Eraser** | ✅ Fully real & cross-platform | Linux, Windows, macOS all implemented and exercised |
-| **Module 3 — File Carver** | ✅ Fully real & validated | Multi-format header/footer + multi-filesystem structure carving |
-| **Module 4 — Audit Ledger** | ✅ Fully real & validated | Single-authority hash chain (not distributed consensus — see §9) |
+| **Module 1 — Drive Eraser (CLI)** | Fully validated | Full overwrite on images & block devices; ATA/NVMe coded & fixture-tested |
+| **Module 1 — Live ISO (Bootable USB)** | Scaffolded (bare metal pending) | Build scripts complete; not boot-tested on physical hardware |
+| **Module 2 — File/Folder Eraser** | Fully validated | Linux, Windows, macOS all implemented and exercised |
+| **Module 3 — File Carver** | Fully validated | Multi-format header/footer + multi-filesystem structure carving |
+| **Module 4 — Audit Ledger** | Fully validated | Single-authority hash chain (not distributed consensus — see §9) |
 
 !!! info "Reading the Status Column"
     "Fully real & validated" means the code path has been exercised against real or simulated block devices and the outputs have been verified. "Scaffolded, unverified on bare metal" means the code is complete and syntactically correct but has not been run in its intended hardware environment.

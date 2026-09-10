@@ -73,9 +73,9 @@ sequenceDiagram
 
 | Key Status | Verification Portal Display | Meaning |
 |-----------|---------------------------|---------|
-| In `keys.json` (accredited) | 🟢 Green — Verified issuer | Key belongs to a known accredited lab |
-| Valid signature, not in `keys.json` | 🟡 Amber — Unknown issuer | Mathematically valid but unaccredited; treat with appropriate scrutiny |
-| Invalid or missing signature | 🔴 Red — Signature invalid | Manifest has been tampered with or key mismatch |
+| In `keys.json` (accredited) | [ACCREDITED] Verified issuer | Key belongs to a known accredited lab |
+| Valid signature, not in `keys.json` | [UNVERIFIED] Unknown issuer | Mathematically valid but unaccredited; treat with appropriate scrutiny |
+| Invalid or missing signature | [INVALID] Signature invalid | Manifest has been tampered with or key mismatch |
 
 !!! note "Demo key"
     s0 ships with a demo keypair at `core/keys/demo_issuer_public.pem`. This key is intentionally excluded from `keys.json` — manifests signed with it will always show as amber. Use it only for testing and training.
@@ -215,8 +215,8 @@ graph TD
     C["Public Key\n(from operator / keys.json)"] --> B
     D["vendor/crypto-bundle.js\n(self-hosted, no CDN)"] --> B
     B --> E{Signature valid?}
-    E -- Yes --> F["✅ Manifest verified\nKey trust level displayed"]
-    E -- No --> G["🔴 Tamper detected\nDo not rely on this evidence"]
+    E -- Yes --> F["[OK] Manifest verified\nKey trust level displayed"]
+    E -- No --> G["[FAIL] Tamper detected\nDo not rely on this evidence"]
     H["QR Code\n(payload + sig embedded directly)"] --> B
 ```
 
@@ -254,13 +254,13 @@ The following demonstrates how the SHA-256 hash chain surfaces even a single-cha
 │   event:     "file_carved"                                  │
 │   file_id:   "0001"                                         │
 │   confidence: 94                                            │
-│   prev_hash: "aabbcc1122334455..."  ✅ matches Entry 1      │
+│   prev_hash: "aabbcc1122334455..."  [OK] matches Entry 1    │
 │   hash:      "ddeeff6677889900..."                          │
 ├─────────────────────────────────────────────────────────────┤
 │ Entry 3                                                     │
 │   event:     "carve_complete"                               │
 │   total:     1203                                           │
-│   prev_hash: "ddeeff6677889900..."  ✅ matches Entry 2      │
+│   prev_hash: "ddeeff6677889900..."  [OK] matches Entry 2    │
 │   hash:      "112233aabbccddee..."                          │
 └─────────────────────────────────────────────────────────────┘
 ```

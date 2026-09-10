@@ -308,7 +308,7 @@ s0 audit verify
 Expected Output:
 ```
 ==> Auditing Blockchain Cryptographic Hash Chain...
-Chain Status : ✅ VALID & CONTINUOUS
+Chain Status : [OK] VALID & CONTINUOUS
 Blocks Tested: 24
 Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
 ```
@@ -325,7 +325,7 @@ s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_pub
 
 Output:
 ```
-✅ CERTIFICATE AUTHENTIC & VERIFIED
+[OK] CERTIFICATE AUTHENTIC & VERIFIED
 UUID         : a8f3b201-9c42-4f1e-8e77-5d2a938c110e
 Status       : success
 NIST Tier    : Purge

@@ -256,8 +256,8 @@ sequenceDiagram
 
     User->>FileEraser: s0 file erase /path/to/secret.doc
 
-    FileEraser->>OS: Inspect filesystem type
-    OS-->>FileEraser: ext4 (not CoW) ✓
+    FileEraser->>OS: Stat /target/volume/file.dat (check filesystem type)
+    OS-->>FileEraser: ext4 (not CoW) [OK]
 
     FileEraser->>OS: filefrag -v secret.doc
     OS-->>FileEraser: Extent map [LBA 0x1A3F00 – 0x1A4200]
@@ -517,12 +517,12 @@ Because `target_id` is an input to `SHA256(…)`, the computed hash of Block #1 
 ```
 s0 audit verify
 
-  Block #0 (GENESIS)        ✓ hash verified
-  Block #1 (DRIVE_ERASE)    ✗ INTEGRITY FAILURE
-                              stored   prev_hash: a3f2…9c1e
-                              computed prev_hash: 7b8d…4a02
-  Block #2 (FILE_ERASE)     ✗ skipped (upstream failure)
-  Block #3 (FILE_CARVE)     ✗ skipped (upstream failure)
+  Block #0 (GENESIS)        [OK] hash verified
+  Block #1 (DRIVE_ERASE)    [FAIL] INTEGRITY FAILURE
+                              stored:   9f8e7d...
+                              computed: 000000... (prev_hash mismatch)
+  Block #2 (FILE_ERASE)     [SKIP] skipped (upstream failure)
+  Block #3 (FILE_CARVE)     [SKIP] skipped (upstream failure)
 
   Chain integrity: BROKEN at block 1
 ```
@@ -700,9 +700,9 @@ The portal checks the certificate's `public_key_fingerprint` against every entry
 
 | Condition | Indicator | Meaning |
 |---|:---:|---|
-| Signature valid AND key in `keys.json` | 🟢 Accredited | Certificate is authentic and issued by a recognized operator |
-| Signature valid AND key NOT in `keys.json` | 🟡 Valid | Cryptographically intact but operator is unknown to this portal instance |
-| Signature invalid (any reason) | 🔴 Tampered | Certificate data was modified after signing |
+| Signature valid AND key in `keys.json` | [ACCREDITED] | Certificate is authentic and issued by a recognized operator |
+| Signature valid AND key NOT in `keys.json` | [UNVERIFIED] | Cryptographically intact but operator is unknown to this portal instance |
+| Signature invalid (any reason) | [INVALID] | Certificate data was modified after signing |
 
 !!! info "Adding Custom Authorities"
     Organizations running their own s0 deployments can fork the portal and add their operators' public key fingerprints to `keys.json`. The portal is intentionally static — there is no backend to compromise and no CDN to hijack.

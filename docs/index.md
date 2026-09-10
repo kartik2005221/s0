@@ -82,14 +82,14 @@ Most sanitization tools tell you a drive was wiped. s0 **proves it mathematicall
 
 | Capability | s0 Suite | Conventional Tools (e.g. Blancco / DBAN) |
 |---|:---:|:---:|
-| **NIST SP 800-88 Rev.1 Purge & Clear** | ✅ Automatic selection | Varies |
-| **Ed25519 Asymmetric Digital Signatures** | ✅ Built-in RFC 8032 | ❌ Closed proprietary signatures |
-| **Deterministic s0 Canonical JSON v1** | ✅ Strict integer discipline | ❌ Unstandardized XML/CSV |
-| **SHA-256 Hash-Chained Blockchain Ledger**| ✅ Tamper-evident | ❌ Plain text / mutable logs |
-| **Offline Air-Gapped Verification** | ✅ 100% client-side WebCrypto | ❌ Requires central cloud server |
-| **Offensive Forensics in Same Binary** | ✅ ext4, NTFS, FAT32 carvers | ❌ Separate, costly software needed |
-| **Zero External Network Exfiltration** | ✅ Strict SCIF/air-gap compliant | ❌ Telemetry beacons |
-| **Permissive Open Source License** | ✅ MIT License | ❌ Expensive per-wipe paywalls |
+| **NIST SP 800-88 Rev.1 Purge & Clear** | Yes (Automatic selection) | Varies |
+| **Ed25519 Asymmetric Digital Signatures** | Yes (Built-in RFC 8032) | No (Closed proprietary signatures) |
+| **Deterministic s0 Canonical JSON v1** | Yes (Strict integer discipline) | No (Unstandardized XML/CSV) |
+| **SHA-256 Hash-Chained Blockchain Ledger**| Yes (Tamper-evident) | No (Plain text / mutable logs) |
+| **Offline Air-Gapped Verification** | Yes (100% client-side WebCrypto) | No (Requires central cloud server) |
+| **Offensive Forensics in Same Binary** | Yes (ext4, NTFS, FAT32 carvers) | No (Separate, costly software needed) |
+| **Zero External Network Exfiltration** | Yes (Strict SCIF/air-gap compliant) | No (Telemetry beacons) |
+| **Permissive Open Source License** | Yes (MIT License) | No (Expensive per-wipe paywalls) |
 
 ### Three Architectural Pillars
 
@@ -231,11 +231,3 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 
 </div>
 
----
-
-<div align="center" markdown>
-
-[:fontawesome-brands-github: View Repository on GitHub](https://github.com/kartik2005221/s0){ .md-button .md-button--primary }
-[:material-certificate: Launch Verification Portal](https://s0-vp.vercel.app/){ .md-button }
-
-</div>

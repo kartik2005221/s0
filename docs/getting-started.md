@@ -247,7 +247,7 @@ When complete:
 
 ```
 # Sanitization completion summary
-[s0 wipe]  ✔  Sanitization complete
+[s0 wipe]  [OK]  Sanitization complete
 [s0 wipe]  Method   : OVERWRITE_ZERO_1PASS (NIST SP 800-88 Clear)
 [s0 wipe]  Verified : 64-block sampled readback — PASS
 [s0 wipe]  Duration : 29m 14s
@@ -283,8 +283,8 @@ Sample output:
 ```
 # File erasure progress output
 [s0 erase]  Processing 2 target(s)...
-[s0 erase]  ✔  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
-[s0 erase]  ✔  sensitive_folder/       — 23 files / 81.4 MB  overwritten (1 pass), metadata scrubbed
+[s0 erase]  [OK]  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
+[s0 erase]  [OK]  sensitive_folder/       — 23 files / 81.4 MB  overwritten (1 pass), metadata scrubbed
 [s0 erase]  Certificate → ./certificate_b88f4d01.json
 [s0 erase]              → ./certificate_b88f4d01.pdf
 [s0 erase]              → ./certificate_b88f4d01.qr.png
@@ -333,7 +333,7 @@ When complete:
 
 ```
 # Evidence recovery completion summary
-[s0 carve]  ✔  Carving complete
+[s0 carve]  [OK]  Carving complete
 [s0 carve]  Files recovered : 1,247  (above 50% confidence)
 [s0 carve]  Output          : ./recovered_evidence/
 [s0 carve]  Manifest        : ./recovered_evidence/carve_manifest_9e4a1b77.json  (Ed25519-signed)
@@ -410,7 +410,7 @@ You have three independent ways to verify any s0 certificate, all of which work 
 
     ```
     # Cryptographic verification summary
-    [s0 verify]  ✔  Signature VALID
+    [s0 verify]  [OK]  Signature VALID
     [s0 verify]  Issuer    : s0 Demo Authority
     [s0 verify]  Target    : /dev/sdb  (SanDisk Ultra, 32.0 GB)
     [s0 verify]  Method    : OVERWRITE_ZERO_1PASS

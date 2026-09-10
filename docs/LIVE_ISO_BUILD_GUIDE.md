@@ -61,14 +61,14 @@ To build the ISO, you need a machine with **root/sudo access** and an internet c
 
 | Host OS | Status |
 |---|---|
-| Debian 12 (Bookworm) | ✅ Recommended (Native) |
-| Debian 11 (Bullseye) | ✅ Supported |
-| Ubuntu 22.04 / 24.04 LTS | ✅ Supported |
-| Fedora 38 / 39 / 40+ | ✅ Supported via Podman or Docker (`scripts/build_iso.sh`) |
-| RHEL / CentOS Stream 9+ | ✅ Supported via Podman (`scripts/build_iso.sh`) |
-| Windows 10 & 11 | ✅ Supported via Docker Desktop or WSL2 (`scripts/build_iso.ps1`) |
-| macOS | ✅ Supported via Docker (`linux/iso/Dockerfile` or `scripts/build_iso.sh`) |
-| Debian-based VM | ✅ Supported |
+| Debian 12 (Bookworm) | Recommended (Native) |
+| Debian 11 (Bullseye) | Supported |
+| Ubuntu 22.04 / 24.04 LTS | Supported |
+| Fedora 38 / 39 / 40+ | Supported via Podman or Docker (`scripts/build_iso.sh`) |
+| RHEL / CentOS Stream 9+ | Supported via Podman (`scripts/build_iso.sh`) |
+| Windows 10 & 11 | Supported via Docker Desktop or WSL2 (`scripts/build_iso.ps1`) |
+| macOS | Supported via Docker (`linux/iso/Dockerfile` or `scripts/build_iso.sh`) |
+| Debian-based VM | Supported |
 
 ### Install Required Toolchain
 

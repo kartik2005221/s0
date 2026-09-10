@@ -59,17 +59,17 @@ You can bypass auto-detection and force the Signature engine with `--engine sign
 ```mermaid
 flowchart TD
     A[Start: What is the source?] --> B{Known filesystem?}
-    B -- No / Corrupted / Unknown --> SIG["🔍 Signature Engine\nSlowest — most universal"]
+    B -- No / Corrupted / Unknown --> SIG["Signature Engine\nSlowest — most universal"]
     B -- Yes --> C{Which filesystem?}
-    C -- Linux ext4 --> EXT4["⚡ ext4 Structure Engine\n1.5–2.2 GB/s"]
-    C -- Windows NTFS --> NTFS["⚡ NTFS Structure Engine\n1.8–2.5 GB/s"]
-    C -- "FAT32\nUSB · SD Card" --> FAT["📂 FAT32 Structure Engine\nDeleted directory entries"]
-    C -- "exFAT\nLarge USB · SDXC" --> EXFAT["📂 exFAT Structure Engine\nDirectory entry sets"]
+    C -- Linux ext4 --> EXT4["ext4 Structure Engine\n1.5–2.2 GB/s"]
+    C -- Windows NTFS --> NTFS["NTFS Structure Engine\n1.8–2.5 GB/s"]
+    C -- "FAT32\nUSB · SD Card" --> FAT["FAT32 Structure Engine\nDeleted directory entries"]
+    C -- "exFAT\nLarge USB · SDXC" --> EXFAT["exFAT Structure Engine\nDirectory entry sets"]
     EXT4 --> D{Recovery depth good?}
     NTFS --> D
     FAT --> D
     EXFAT --> D
-    D -- Yes --> DONE[✅ Done]
+    D -- Yes --> DONE[Done]
     D -- No / Missing files --> SIG
 ```
 

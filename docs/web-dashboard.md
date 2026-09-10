@@ -104,7 +104,7 @@ Designed for targeted evidence sanitization, GDPR/DPDPA data destruction request
 │ └────────────────────────────────────────────────────────────────────┘ │
 │ Overwrite Passes: [1]   Fill Pattern: [Crypto Random Overwrite (0x??)] │
 │                                                                        │
-│ [ 🗑 EXECUTE TARGETED SANITIZATION ]                                  │
+│ [ EXECUTE TARGETED SANITIZATION ]                                    │
 ├────────────────────────────────────────────────────────────────────────┤
 │ Status: Processed 48 files (1.2 GiB). All clusters overwritten.        │
 │ Timestamps zeroed (1970-01-01). Directory entries randomized.         │
@@ -133,7 +133,7 @@ The Carver tab recovers deleted artifacts from disk images (`.raw`, `.img`, `.dd
 │ Minimum Confidence Threshold: [ 65% ] ────────────●───────             │
 │ Destination Output Directory: [/home/investigator/recovered_cases]     │
 │                                                                        │
-│ [ 🔍 START EVIDENCE CARVING ]                                          │
+│ [ START EVIDENCE CARVING ]                                           │
 ├────────────────────────────────────────────────────────────────────────┤
 │ Carved Artifacts Table:                                                │
 │ ID       Type   Size       Confidence  SHA-256 (Prefix)  Action        │
@@ -165,13 +165,13 @@ Module 4 provides bit-stream forensic acquisition (raw `.dd` image creation) and
 │ Destination Target:   [/evidence/seized_drive_sdb.dd]                  │
 │ Block Size: [1M]   Fault Policy: [Zero-Fill Bad Sectors (Forensic dd)] │
 │                                                                        │
-│ [ 💽 START FORENSIC ACQUISITION ]                                      │
+│ [ START FORENSIC ACQUISITION ]                                         │
 ├────────────────────────────────────────────────────────────────────────┤
 │ PROGRESS: [████████████████████████████████] 100.0%                    │
 │ Telemetry: Copied 500.1 GB | Speed: 320 MB/s | Bad Sectors: 0          │
 │ Source SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49... │
 │ Destination SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b...  │
-│ [ 📥 DOWNLOAD MANIFEST (JSON) ]  [ 📥 DOWNLOAD CERTIFICATE (JSON) ]     │
+│ [ DOWNLOAD MANIFEST (JSON) ]  [ DOWNLOAD CERTIFICATE (JSON) ]          │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -192,8 +192,8 @@ The Audit Ledger tab provides visual verification of the forensic chain of custo
 ┌────────────────────────────────────────────────────────────────────────┐
 │ [TAB 5: CRYPTOGRAPHIC AUDIT LEDGER]                                    │
 ├────────────────────────────────────────────────────────────────────────┤
-│ Ledger Status:  [ ✅ VALID & CONTINUOUS (42 Blocks Verified) ]          │
-│ [ 🔄 VERIFY CHAIN CONTINUITY ]  [ 📥 EXPORT AUDIT LOG (JSON) ]         │
+│ Ledger Status:  [ VALID & CONTINUOUS (42 Blocks Verified) ]            │
+│ [ VERIFY CHAIN CONTINUITY ]  [ EXPORT AUDIT LOG (JSON) ]               │
 │                                                                        │
 │ Timeline:                                                              │
 │ • Block #42 | DRIVE_ERASE  | 2026-09-09 14:22:15 UTC | analyst-07     │

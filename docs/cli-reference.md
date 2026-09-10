@@ -911,7 +911,7 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
     ```
     ```text
     Verifying 4 audit blocks...
-    ✅ VALID & CONTINUOUS — all 4 blocks intact, chain unbroken.
+    [OK] VALID & CONTINUOUS — all 4 blocks intact, chain unbroken.
     ```
 
     **Detect tampering**
@@ -921,7 +921,7 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
     ```
     ```text
     Verifying 4 audit blocks...
-    ❌ BROKEN / TAMPER DETECTED — block 1 hash mismatch.
+    [FAIL] BROKEN / TAMPER DETECTED — block 1 hash mismatch.
        Expected : 9f8e7d6c...
        Got      : 00000000...
     ```
@@ -972,7 +972,7 @@ Offline verification of a signed sanitization, acquisition, or carving certifica
     | Field | Description |
     |-------|-------------|
     | `UUID` | Certificate UUID |
-    | `Status` | `✅ VALID` or `❌ INVALID` |
+    | `Status` | `[VALID]` or `[INVALID]` |
     | `NIST tier` | `Clear` or `Purge` |
     | `Device` | Target device path and serial |
     | `Issuer` | Operator and organization |
@@ -1005,7 +1005,7 @@ Offline verification of a signed sanitization, acquisition, or carving certifica
     ```
     ```text
     UUID         : a1b2c3d4-e5f6-7890-abcd-ef1234567890
-    Status       : ✅ VALID
+    Status       : [VALID]
     NIST tier    : PURGE
     Device       : /dev/nvme0n1  (S5GXNX0T123456)
     Issuer       : jane.doe@forensics.lab / Acme Forensics Ltd.
@@ -1153,11 +1153,11 @@ Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`),
     [*] Found S0 installation at: /home/kartik/s0
     [*] Current commit: abbc07d
     [*] Pulling latest changes from GitHub origin/master...
-    [✓] Source updated: abbc07d → 4a9f12c
+    [OK] Source updated: abbc07d → 4a9f12c
     [*] Refreshing dependencies...
-    [✓] Dependencies refreshed.
+    [OK] Dependencies refreshed.
 
-    ✅ S0 upgraded successfully to 2.1.0 (4a9f12c)
+    [OK] S0 upgraded successfully to 2.1.0 (4a9f12c)
     ```
 
     **Force reinstall dependencies**
@@ -1203,12 +1203,12 @@ flowchart TD
 
 | Priority | Method | NIST Category | Prerequisite | Covers HPA/DCO |
 |----------|--------|---------------|--------------|----------------|
-| 1 | **NVMe Sanitize** (Crypto Erase) | **Purge** | NVMe drive, Sanitize command supported | ✅ Yes |
-| 2 | **NVMe Format** (Crypto Erase fallback) | **Purge** | NVMe drive, Format NVM with crypto erase | ✅ Yes |
-| 3 | **ATA Secure Erase** (Enhanced) | **Purge** | ATA/SATA drive, Security Feature Set supported | ✅ Yes |
-| 4 | **BLKDISCARD** + justification | **Purge** | Block device with discard support; justification provided | ❌ No |
-| 5 | **BLKDISCARD** (no justification) | **Clear** | Block device with discard support | ❌ No |
-| 6 | **Software Overwrite** | **Clear** | Any writable block device or file | ❌ No |
+| 1 | **NVMe Sanitize** (Crypto Erase) | **Purge** | NVMe drive, Sanitize command supported | Yes |
+| 2 | **NVMe Format** (Crypto Erase fallback) | **Purge** | NVMe drive, Format NVM with crypto erase | Yes |
+| 3 | **ATA Secure Erase** (Enhanced) | **Purge** | ATA/SATA drive, Security Feature Set supported | Yes |
+| 4 | **BLKDISCARD** + justification | **Purge** | Block device with discard support; justification provided | No |
+| 5 | **BLKDISCARD** (no justification) | **Clear** | Block device with discard support | No |
+| 6 | **Software Overwrite** | **Clear** | Any writable block device or file | No |
 
 !!! note "NVMe Format vs. NVMe Sanitize"
     NVMe Sanitize is preferred because it operates in the background on the controller (survives host power cycles) and is the operation explicitly called out in NIST SP 800-88 Rev. 1 §2.4. NVMe Format with Crypto Erase is used when Sanitize is not supported — it is still a Purge-tier operation but must complete in a single controller session.

@@ -261,7 +261,7 @@ The final manifest for every s0 operation is signed with an **Ed25519 private ke
 ```bash
 # Verifying a manifest signature
 s0 verify-cert --cert ./sanitization_cert.json --pubkey operator_public.pem
-# Output: ✓ Signature valid. Certificate unmodified.
+# Output: [OK] Signature valid. Certificate unmodified.
 ```
 
 !!! note "Chain of Custody for Court Proceedings"
