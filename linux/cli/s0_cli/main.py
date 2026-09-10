@@ -1088,6 +1088,12 @@ def build_parser() -> argparse.ArgumentParser:
             default="https://s0-vp.vercel.app/?cert={cert_uuid}",
             help="URL template for verification QR",
         )
+        fe.add_argument(
+            "--verify-samples",
+            type=int,
+            default=64,
+            help="number of readback samples for verification (default: 64)",
+        )
         fe.set_defaults(func=cmd_erase_files)
 
     # 3. File Carving & Recovery Subcommand

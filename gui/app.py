@@ -35,6 +35,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
+from s0_core.config import CONFIG  # noqa: E402
+from s0_core import pdfgen  # noqa: E402
 from s0_core.temperature import read_temperature  # noqa: E402
 from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
 from s0_cli.carver import carve_image  # noqa: E402
@@ -75,11 +77,45 @@ _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 
 
+def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Path) -> Optional[Path]:
+    """Resolve custom signing key from raw PEM content or local file path."""
+    if key_data and key_data.strip():
+        out_dir.mkdir(parents=True, exist_ok=True)
+        custom_key_file = out_dir / "custom_issuer_private.pem"
+        custom_key_file.write_text(key_data.strip() + "\n", encoding="utf-8")
+        try:
+            os.chmod(custom_key_file, 0o600)
+        except Exception:
+            pass
+        return custom_key_file
+
+    if key_path and key_path.strip():
+        kp = Path(key_path.strip())
+        if not kp.is_file():
+            kp = (REPO / key_path.strip()).resolve()
+        if not kp.is_file():
+            raise HTTPException(400, f"Specified signing key not found: {key_path}")
+        return kp
+
+    default_key = REPO / "core" / "keys" / "demo_issuer_private.pem"
+    if default_key.exists():
+        return default_key
+    return None
+
+
 class WipeRequest(BaseModel):
     target: str
     confirm_text: str
     pattern: str = "zero"
     passes: int = 1
+    operator: str = "op-forensic"
+    organization: str = "Digital Forensics & Data Sanitization Lab"
+    key_path: Optional[str] = None
+    key_data: Optional[str] = None
+    out_dir: Optional[str] = None
+    no_pdf: bool = False
+    verify_samples: int = 64
+    portal_url: Optional[str] = None
 
 
 class FileEraseRequest(BaseModel):
@@ -87,6 +123,13 @@ class FileEraseRequest(BaseModel):
     passes: int = 1
     pattern: str = "zero"
     operator_id: str = Field(default="op-forensic")
+    organization: str = "Digital Forensics & Data Sanitization Lab"
+    key_path: Optional[str] = None
+    key_data: Optional[str] = None
+    out_dir: Optional[str] = None
+    no_pdf: bool = False
+    verify_samples: int = 64
+    portal_url: Optional[str] = None
 
     @field_validator("operator_id")
     @classmethod
@@ -106,6 +149,10 @@ class CarveRequest(BaseModel):
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
     operator_id: str = Field(default="op-forensic")
+    organization: str = "Digital Forensics & Data Sanitization Lab"
+    out_dir: Optional[str] = None
+    key_path: Optional[str] = None
+    key_data: Optional[str] = None
 
     @field_validator("operator_id")
     @classmethod
@@ -128,6 +175,10 @@ class ImageRequest(BaseModel):
     is_clone: bool = False
     confirm_text: str = ""
     operator_id: str = Field(default="op-forensic")
+    organization: str = "Digital Forensics & Incident Response Lab"
+    out_dir: Optional[str] = None
+    key_path: Optional[str] = None
+    key_data: Optional[str] = None
 
     @field_validator("operator_id")
     @classmethod
@@ -214,6 +265,34 @@ def plan_payload(target_path: str) -> dict:
     return plan
 
 
+@app.get("/api/config")
+def api_config() -> JSONResponse:
+    return JSONResponse(CONFIG)
+
+
+@app.get("/api/browse")
+def api_browse(path: str = ".") -> JSONResponse:
+    target = Path(path).expanduser().resolve()
+    if not target.exists() or not target.is_dir():
+        target = REPO
+    items = []
+    try:
+        for entry in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+            items.append({
+                "name": entry.name,
+                "path": str(entry.resolve()),
+                "is_dir": entry.is_dir(),
+                "size": entry.stat().st_size if entry.is_file() else 0,
+            })
+    except Exception as exc:
+        return JSONResponse({"error": str(exc), "current": str(target), "items": []})
+    return JSONResponse({
+        "current": str(target),
+        "parent": str(target.parent) if target.parent != target else None,
+        "items": items,
+    })
+
+
 @app.post("/api/plan")
 def api_plan(req: dict) -> JSONResponse:
     return JSONResponse(plan_payload(req["target"]))
@@ -230,15 +309,28 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
         raise HTTPException(422, "no applicable wipe method")
 
     job_id = uuid.uuid4().hex[:12]
-    out_dir = REPO / "demo-out" / f"gui-wipe-{job_id}"
+    if req.out_dir and req.out_dir.strip():
+        out_dir = Path(req.out_dir.strip()).resolve()
+    else:
+        out_dir = REPO / "demo-out" / f"gui-wipe-{job_id}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    key = _resolve_key(req.key_path, req.key_data, out_dir)
+
     cmd = _get_s0_cmd() + [
         "wipe", "--target", req.target, "--yes",
         "--pattern", req.pattern, "--passes", str(req.passes),
+        "--operator", req.operator,
+        "--organization", req.organization,
+        "--verify-samples", str(req.verify_samples),
         "--out-dir", str(out_dir), "--json"
     ]
-    key = REPO / "core" / "keys" / "demo_issuer_private.pem"
-    if key.exists():
+    if key and key.exists():
         cmd += ["--key", str(key)]
+    if req.no_pdf:
+        cmd += ["--no-pdf"]
+    if req.portal_url and req.portal_url.strip():
+        cmd += ["--portal-url", req.portal_url.strip()]
 
     with _lock:
         _jobs[job_id] = {"status": "running", "log": [], "cmd": cmd[1:], "out_dir": str(out_dir)}
@@ -295,8 +387,13 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
         raise HTTPException(400, "no file targets provided")
 
     job_id = uuid.uuid4().hex[:12]
-    out_dir = REPO / "demo-out" / f"gui-filewipe-{job_id}"
+    if req.out_dir and req.out_dir.strip():
+        out_dir = Path(req.out_dir.strip()).resolve()
+    else:
+        out_dir = REPO / "demo-out" / f"gui-filewipe-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    key = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
         _jobs[job_id] = {"status": "running", "log": [f"Sanitizing {len(req.targets)} file/folder targets..."],
@@ -343,18 +440,34 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 passes=req.passes,
                 pattern=req.pattern,
                 operator_id=req.operator_id,
-                organization="Digital Forensics & Data Sanitization Lab",
+                organization=req.organization,
+                signing_key_path=key,
                 progress_callback=file_progress,
             )
             cert_filename = None
+            pdf_filename = None
             if summary.certificate:
                 try:
-                    record_audit_event(summary.certificate, operation_type="FILE_ERASE")
+                    record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key)
                 except Exception:
                     pass
                 cert_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
                 cert_file.write_text(json.dumps(summary.certificate, indent=2))
                 cert_filename = cert_file.name
+
+                if not req.no_pdf:
+                    try:
+                        qr_url_tpl = CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}")
+                        if req.portal_url and req.portal_url.strip():
+                            p_url = req.portal_url.strip()
+                            qr_url_tpl = f"{p_url.rstrip('/')}/?cert={{cert_uuid}}" if "{cert_uuid}" not in p_url else p_url
+                        pdf_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.pdf"
+                        qr_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
+                        pdfgen.generate_pdf(summary.certificate, pdf_file, qr_url_template=qr_url_tpl)
+                        pdfgen.write_qr_file(summary.certificate, qr_file)
+                        pdf_filename = pdf_file.name
+                    except Exception:
+                        pass
 
             with _lock:
                 _jobs[job_id].update(
@@ -366,6 +479,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         "failed_files": summary.failed_files,
                         "total_bytes": summary.total_bytes_processed,
                         "cert_filename": cert_filename,
+                        "pdf_filename": pdf_filename,
                         "warnings": summary.warnings,
                     },
                 )
@@ -384,8 +498,13 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         raise HTTPException(404, "target media does not exist")
 
     job_id = uuid.uuid4().hex[:12]
-    out_dir = REPO / "demo-out" / f"gui-carve-{job_id}"
+    if req.out_dir and req.out_dir.strip():
+        out_dir = Path(req.out_dir.strip()).resolve()
+    else:
+        out_dir = REPO / "demo-out" / f"gui-carve-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    key = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
         _jobs[job_id] = {"status": "running", "log": [f"Scanning {req.target} for carved artifacts..."],
@@ -433,12 +552,14 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 extensions=req.extensions,
                 min_confidence=req.min_confidence,
                 operator_id=req.operator_id,
+                organization=req.organization,
+                signing_key_path=key,
                 progress_callback=carve_progress,
             )
             manifest_filename = None
             if summary.manifest_certificate:
                 try:
-                    record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE")
+                    record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key)
                 except Exception:
                     pass
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
@@ -504,8 +625,13 @@ def start_image(req: ImageRequest) -> JSONResponse:
         raise HTTPException(400, f"Cloning to target block device requires typing exact destination: '{req.destination}'")
 
     job_id = uuid.uuid4().hex[:12]
-    out_dir = REPO / "demo-out" / f"gui-image-{job_id}"
+    if req.out_dir and req.out_dir.strip():
+        out_dir = Path(req.out_dir.strip()).resolve()
+    else:
+        out_dir = REPO / "demo-out" / f"gui-image-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    key = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
         _jobs[job_id] = {
@@ -525,15 +651,14 @@ def start_image(req: ImageRequest) -> JSONResponse:
                     else:
                         _jobs[job_id]["log"][-1] = msg
 
-            key = REPO / "core" / "keys" / "demo_issuer_private.pem"
             options = ImagingOptions(
                 source=req.source,
                 destination=req.destination,
                 block_size=req.block_size,
                 error_recovery=not req.no_recovery,
                 operator=req.operator_id,
-                organization="Digital Forensics & Incident Response Lab",
-                key_path=key if key.exists() else None,
+                organization=req.organization,
+                key_path=key if key and key.exists() else None,
                 no_certificate=False,
                 out_dir=str(out_dir),
             )

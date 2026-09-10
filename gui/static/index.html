@@ -8,858 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/fonts/fonts.css">
-  <style>
-    :root {
-      --bg-base: #000000;
-      --bg-surface: #070D18;
-      --bg-panel: #0B1626;
-      --bg-elevated: #0F1F35;
-      --bg-input: #04070D;
-      --bg-terminal: #000000;
-
-      --border: #142338;
-      --border-subtle: rgba(255, 255, 255, 0.06);
-      --border-hover: #1E3E62;
-      --border-focus: #FF6500;
-
-      --text-main: #FFFFFF;
-      --text-muted: #CBD5E1;
-      --text-dim: #94A3B8;
-
-      --accent-cyan: #FF6500;
-      --accent-cyan-hover: #FF8533;
-      --accent-cyan-glow: rgba(255, 101, 0, 0.25);
-      --accent-blue: #3b82f6;
-      --accent-emerald: #10b981;
-      --accent-crimson: #ef4444;
-      --accent-red: #ef4444;
-      --accent-amber: #f59e0b;
-      --accent-purple: #8b5cf6;
-
-      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      --font-sans: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      width: 100%;
-      max-width: 100vw;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--bg-base);
-      background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.08), transparent 70%),
-        radial-gradient(circle at 100% 100%, rgba(30, 62, 98, 0.12), transparent 50%);
-      color: var(--text-main);
-      font-family: var(--font-sans);
-      line-height: 1.5;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-
-    /* Structured App Container — Prevents content sprawl */
-    .app-container {
-      width: 100%;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px 28px 48px;
-      min-width: 0;
-      flex: 1 0 auto;
-    }
-
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #334155;
-    }
-
-    /* Pinned Top Navigation Header */
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      width: 100%;
-      background: rgba(0, 0, 0, 0.88);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-    }
-    .site-header-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 28px;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .site-logo-link {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      color: #FFFFFF;
-      font-weight: 700;
-      font-size: 0.95rem;
-      letter-spacing: -0.01em;
-    }
-    .site-logo-link:hover .site-logo-title {
-      color: var(--accent-cyan);
-    }
-    .site-logo-badge {
-      font-family: var(--font-mono);
-      font-size: 0.7rem;
-      padding: 2px 7px;
-      border-radius: 4px;
-      background: rgba(255, 101, 0, 0.12);
-      border: 1px solid rgba(255, 101, 0, 0.3);
-      color: var(--accent-cyan);
-      font-weight: 600;
-    }
-    .site-header-nav {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .nav-btn {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.8rem;
-      font-weight: 500;
-      padding: 5px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-surface);
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .nav-btn:hover {
-      color: #FFFFFF;
-      border-color: var(--border-focus);
-      background: var(--bg-panel);
-    }
-    .nav-github {
-      font-family: var(--font-mono);
-      font-size: 0.76rem;
-    }
-    .nav-github:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-
-    .sys-pill {
-      font-family: var(--font-mono);
-      font-size: 0.74rem;
-      padding: 5px 12px;
-      border-radius: 6px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-muted);
-      letter-spacing: 0.04em;
-    }
-    .dot-live {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-emerald);
-      box-shadow: 0 0 8px var(--accent-emerald);
-      animation: pulse-green 2s infinite;
-      flex-shrink: 0;
-    }
-    @keyframes pulse-green {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.9); }
-    }
-
-    /* App Footer */
-    .app-footer {
-      margin-top: auto;
-      padding: 24px 16px;
-      border-top: 1px solid var(--border);
-      text-align: center;
-      font-size: 0.84rem;
-      color: var(--text-dim);
-    }
-    .app-footer .footer-inner {
-      max-width: 1400px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .app-footer a {
-      color: var(--accent-cyan);
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .app-footer a:hover {
-      text-decoration: underline;
-    }
-
-    @media (max-width: 640px) {
-      .site-header-inner {
-        height: auto;
-        padding: 10px 16px;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-      .site-header-nav {
-        width: 100%;
-        justify-content: space-between;
-      }
-    }
-
-    /* Navigation Tabs */
-    .nav-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 14px;
-      overflow-x: auto;
-      align-items: center;
-    }
-
-    .nav-tab {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 9px 16px;
-      font-size: 0.84rem;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      transition: all 0.15s ease;
-      font-family: var(--font-sans);
-      white-space: nowrap;
-      text-decoration: none;
-    }
-
-    .nav-tab svg {
-      width: 15px;
-      height: 15px;
-      stroke-width: 2;
-      stroke: currentColor;
-      flex-shrink: 0;
-      transition: transform 0.15s ease;
-    }
-
-    .nav-tab:hover {
-      color: #fff;
-      background: var(--bg-elevated);
-      border-color: var(--border-hover);
-    }
-
-    .nav-tab:hover svg {
-      transform: scale(1.08);
-    }
-
-    .nav-tab.active {
-      background: rgba(255, 101, 0, 0.12);
-      color: var(--accent-cyan);
-      border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(255, 101, 0, 0.2);
-    }
-
-    .nav-tab .tab-num {
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      opacity: 0.65;
-    }
-
-    /* Tab Content Layouts */
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-    /* Balanced 2-Column Grid with Alignment */
-    .grid-2col {
-      display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap: 22px;
-      align-items: stretch;
-    }
-
-    @media (max-width: 1080px) {
-      .grid-2col {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* Panels & Cards */
-    .panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 22px;
-      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.45);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel-console {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-subtle);
-      gap: 12px;
-    }
-
-    .panel-title {
-      font-size: 1.02rem;
-      font-weight: 700;
-      color: var(--text-main);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      letter-spacing: -0.01em;
-    }
-
-    .panel-subtitle {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: -6px;
-      margin-bottom: 18px;
-      line-height: 1.4;
-    }
-
-    /* Form Layouts & Rows */
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-
-    .form-row-2-1 {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-
-    @media (max-width: 640px) {
-      .form-row, .form-row-2-1 {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    label {
-      display: block;
-      font-size: 0.76rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    input[type="text"], input[type="number"], select, textarea {
-      width: 100%;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 0.88rem;
-      font-family: var(--font-sans);
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
-      border-color: var(--border-focus);
-      box-shadow: 0 0 0 2px var(--accent-cyan-glow);
-    }
-
-    /* Range Slider Styling */
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 6px;
-      background: var(--border);
-      border-radius: 3px;
-      outline: none;
-      margin: 10px 0;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--accent-cyan);
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(255, 101, 0, 0.6);
-      transition: transform 0.1s ease;
-    }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.15);
-    }
-
-    textarea {
-      font-family: var(--font-mono);
-      font-size: 0.82rem;
-      resize: vertical;
-      line-height: 1.45;
-    }
-
-    /* Toggle Option Cards */
-    .toggle-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
-    .toggle-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 11px 14px;
-      cursor: pointer;
-      transition: border-color 0.15s ease, background-color 0.15s ease;
-    }
-
-    .toggle-card:hover {
-      border-color: var(--border-hover);
-      background: var(--bg-elevated);
-    }
-
-    .toggle-card input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      margin-top: 2px;
-      accent-color: var(--accent-cyan);
-      flex-shrink: 0;
-      cursor: pointer;
-    }
-
-    .toggle-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .toggle-title {
-      font-size: 0.83rem;
-      font-weight: 600;
-      color: var(--text-main);
-      text-transform: none;
-      letter-spacing: normal;
-    }
-
-    .toggle-desc {
-      font-size: 0.74rem;
-      color: var(--text-dim);
-      line-height: 1.35;
-    }
-
-    /* Destructive Safety Lock Cards */
-    .safety-guard-card {
-      background: rgba(239, 68, 68, 0.07);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 6px;
-      padding: 14px;
-      margin-bottom: 18px;
-    }
-
-    .safety-guard-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--accent-red);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      margin-bottom: 6px;
-    }
-
-    .safety-guard-text {
-      font-size: 0.78rem;
-      color: #fca5a5;
-      margin-bottom: 8px;
-      line-height: 1.35;
-    }
-
-    .safety-target-highlight {
-      background: rgba(0, 0, 0, 0.35);
-      border: 1px dashed rgba(239, 68, 68, 0.4);
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: #fff;
-      margin-bottom: 10px;
-      word-break: break-all;
-    }
-
-    .safety-guard-input {
-      border-color: rgba(239, 68, 68, 0.5) !important;
-    }
-
-    .safety-guard-input:focus {
-      border-color: #ef4444 !important;
-      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 18px;
-      border-radius: 6px;
-      font-size: 0.86rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.15s ease;
-      font-family: var(--font-sans);
-      width: 100%;
-      text-decoration: none;
-      line-height: 1.25;
-    }
-
-    .btn svg {
-      flex-shrink: 0;
-    }
-
-    .btn-primary {
-      background: #FF6500;
-      color: #000000;
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(255, 101, 0, 0.3);
-    }
-    .btn-primary:hover {
-      background: #FF8533;
-      color: #000000;
-      box-shadow: 0 4px 14px rgba(255, 101, 0, 0.45);
-    }
-
-    .btn-danger {
-      background: #dc2626;
-      color: #fff;
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
-    }
-    .btn-danger:hover {
-      background: #ef4444;
-      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
-    }
-
-    .btn-secondary {
-      background: var(--bg-panel);
-      border-color: var(--border);
-      color: var(--text-main);
-    }
-    .btn-secondary:hover {
-      background: var(--bg-elevated);
-      border-color: var(--border-hover);
-      color: #fff;
-    }
-
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 0.78rem;
-      width: auto;
-    }
-
-    /* Live Telemetry Card */
-    .telemetry-card {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 16px;
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-    }
-
-    .telemetry-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      gap: 12px;
-    }
-    .telemetry-row:last-child { border-bottom: none; }
-
-    .telemetry-label {
-      color: var(--text-dim);
-      flex-shrink: 0;
-    }
-    .telemetry-val {
-      color: var(--text-main);
-      font-weight: 500;
-      text-align: right;
-      word-break: break-all;
-      max-width: 65%;
-    }
-
-    /* Console / Terminal Log */
-    .terminal-container {
-      background: var(--bg-terminal);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 290px;
-    }
-
-    .terminal-output {
-      padding: 14px 16px;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: #cbd5e1;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      line-height: 1.5;
-      background: var(--bg-terminal);
-      flex: 1;
-      min-height: 250px;
-    }
-
-    /* Status Badges */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 4px;
-      letter-spacing: 0.03em;
-      white-space: nowrap;
-    }
-
-    .badge-cyan { background: rgba(255, 101, 0, 0.12); color: #FF8533; border: 1px solid rgba(255, 101, 0, 0.3); }
-    .badge-green { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-amber { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-    .badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .badge-purple { background: rgba(139, 92, 246, 0.12); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
-
-    /* Results Showcase Card */
-    .result-showcase {
-      background: rgba(16, 185, 129, 0.05);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 16px;
-      display: none;
-      flex-shrink: 0;
-    }
-
-    .result-showcase.active {
-      display: block;
-      animation: fadeIn 0.25s ease-in;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .showcase-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .showcase-icon-success {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .showcase-icon-purple {
-      background: rgba(139, 92, 246, 0.15);
-      color: #c084fc;
-      border: 1px solid rgba(139, 92, 246, 0.3);
-    }
-
-    /* Filter Chips */
-    .chip-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-
-    .chip {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.76rem;
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-family: var(--font-mono);
-      transition: all 0.15s ease;
-    }
-
-    .chip:hover {
-      border-color: var(--border-hover);
-      color: #fff;
-    }
-
-    .chip.active {
-      background: rgba(255, 101, 0, 0.15);
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-
-    /* Table Styles */
-    .data-table-container {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-top: 14px;
-      background: var(--bg-surface);
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.81rem;
-      text-align: left;
-    }
-
-    .data-table th {
-      background: #0b0f17;
-      color: var(--text-dim);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.72rem;
-      padding: 11px 14px;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    .data-table td {
-      padding: 11px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-      color: var(--text-main);
-      vertical-align: middle;
-    }
-
-    .data-table tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .code-cell {
-      font-family: var(--font-mono);
-      font-size: 0.78rem;
-    }
-
-    /* Modal / Inspector Drawer */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(4, 7, 13, 0.8);
-      backdrop-filter: blur(6px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      padding: 20px;
-    }
-
-    .modal-overlay.active {
-      display: flex;
-    }
-
-    .modal-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      max-width: 800px;
-      width: 100%;
-      max-height: 85vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-    }
-
-    .modal-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-body {
-      padding: 20px;
-      overflow-y: auto;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      background: var(--bg-terminal);
-    }
-
-    .close-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-dim);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 30px;
-      height: 30px;
-      border-radius: 6px;
-      transition: all 0.15s ease;
-    }
-    .close-btn:hover {
-      color: #fff;
-      background: var(--bg-elevated);
-      border-color: var(--border);
-    }
-  </style>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
 
@@ -870,9 +19,9 @@
       <span class="site-logo-badge">Forensic Workstation</span>
     </a>
     <nav class="site-header-nav">
-      <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-btn">Documentation</a>
-      <a href="/portal/" target="_blank" class="nav-btn">Verification Portal</a>
-      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" aria-label="GitHub Repository">
+      <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-btn" id="navDocLink">Documentation</a>
+      <a href="/portal/" target="_blank" class="nav-btn" id="navPortalLink">Verification Portal</a>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" id="navGithubLink" aria-label="GitHub Repository">
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span>kartik2005221/s0</span>
       </a>
@@ -888,23 +37,23 @@
 
   <!-- Module Navigation Tabs -->
   <nav class="nav-bar">
-    <button class="nav-tab active" onclick="switchNav('drive', this)">
+    <button class="nav-tab active" data-tab="drive" onclick="switchNav('drive', this)">
       <span class="tab-num">[ 01 ]</span>
       <span>Drive Sanitizer</span>
     </button>
-    <button class="nav-tab" onclick="switchNav('file', this)">
+    <button class="nav-tab" data-tab="file" onclick="switchNav('file', this)">
       <span class="tab-num">[ 02 ]</span>
       <span>File &amp; Folder Eraser</span>
     </button>
-    <button class="nav-tab" onclick="switchNav('carve', this)">
+    <button class="nav-tab" data-tab="carve" onclick="switchNav('carve', this)">
       <span class="tab-num">[ 03 ]</span>
       <span>Forensic File Carver</span>
     </button>
-    <button class="nav-tab" onclick="switchNav('image', this)">
+    <button class="nav-tab" data-tab="image" onclick="switchNav('image', this)">
       <span class="tab-num">[ 04 ]</span>
       <span>Forensic Imager &amp; Cloner</span>
     </button>
-    <button class="nav-tab" onclick="switchNav('audit', this)">
+    <button class="nav-tab" data-tab="audit" onclick="switchNav('audit', this)">
       <span class="tab-num">[ 05 ]</span>
       <span>Audit Chain Ledger</span>
     </button>
@@ -948,21 +97,66 @@
           </div>
         </div>
 
-        <!-- Pattern and Passes grouped side-by-side -->
-        <div class="form-row-2-1">
+        <!-- Overwrite Pattern Standard (Self-contained, resolves passes conflict) -->
+        <div class="form-group">
+          <label for="drivePattern">Overwrite Pattern Standard:</label>
+          <select id="drivePattern">
+            <option value="zero_1">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+            <option value="random_3">3-Pass DoD 5220.22-M (Pseudo-Random + Invert + Zero)</option>
+            <option value="random_7">7-Pass High-Security Random Overwrite</option>
+          </select>
+        </div>
+
+        <!-- Operator and Organization Fields -->
+        <div class="form-row">
           <div class="form-group" style="margin-bottom: 0;">
-            <label for="drivePattern">Overwrite Pattern Standard:</label>
-            <select id="drivePattern">
-              <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
-              <option value="random">3-Pass DoD 5220.22-M (Pseudo-Random + Invert + Zero)</option>
-              <option value="random">7-Pass High-Security Random Overwrite</option>
-            </select>
+            <label for="driveOperator">Operator Identifier:</label>
+            <input type="text" id="driveOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label for="drivePasses">Passes:</label>
-            <input type="number" id="drivePasses" value="1" min="1" max="7">
+            <label for="driveOrganization">Organization / Laboratory:</label>
+            <input type="text" id="driveOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
           </div>
         </div>
+
+        <!-- Advanced Options Collapsible -->
+        <details class="advanced-panel" style="margin-top: 14px;">
+          <summary>⚙ Advanced Options &amp; Verification Policy</summary>
+          <div class="advanced-content">
+            <label class="toggle-card" style="margin-bottom: 0;">
+              <input type="checkbox" id="drivePdfToggle" checked>
+              <div class="toggle-info">
+                <span class="toggle-title">Generate PDF Certificate &amp; QR Code</span>
+                <span class="toggle-desc">Render print-ready A4 PDF compliance certificate with optical verification QR</span>
+              </div>
+            </label>
+
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="driveVerifySamples">Readback Verification Samples:</label>
+                <input type="number" id="driveVerifySamples" value="64" min="8" max="512">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="drivePortalUrl">Verification Portal Base URL:</label>
+                <input type="text" id="drivePortalUrl" placeholder="https://s0-vp.vercel.app/">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="driveOutDir">Custom Output Directory (Optional):</label>
+              <input type="text" id="driveOutDir" placeholder="Default: demo-out/gui-wipe-<id>">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="driveKeyPath">Custom Ed25519 Signing Key (Optional):</label>
+              <div class="input-with-button">
+                <input type="text" id="driveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('driveKeyUpload').click()">Upload Key</button>
+                <input type="file" id="driveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('driveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+              </div>
+            </div>
+          </div>
+        </details>
 
         <!-- Destructive Safety Lock Guard -->
         <div class="safety-guard-card">
@@ -1004,7 +198,7 @@
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="driveResultDetails">
             Device wiped cleanly. Sampled readback confirmed 100% overwrite. Planted markers residual: 0 hits.
           </p>
-          <div style="display: flex; gap: 10px;" id="driveActionButtons">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="driveActionButtons">
             <!-- Populated dynamically -->
           </div>
         </div>
@@ -1021,33 +215,82 @@
         <div class="panel-header">
           <h2 class="panel-title">Selective File &amp; Folder Cleansing</h2>
           <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" onclick="triggerFileBrowser()">Browse Files...</button>
             <button class="btn btn-secondary btn-sm" onclick="addSampleFileTarget()">+ Sample Target</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileTargets').value=''">Clear</button>
           </div>
         </div>
         <p class="panel-subtitle">Overwrites allocated clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.</p>
 
+        <!-- Hidden browser file input -->
+        <input type="file" multiple id="fileBrowseInput" style="display:none" onchange="handleFileBrowseSelect(event)">
+
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label for="fileTargets" style="margin-bottom: 0;">Target File or Directory Paths:</label>
             <span style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono);">One path per line</span>
           </div>
-          <textarea id="fileTargets" rows="6" placeholder="/path/to/classified_document.pdf&#10;/path/to/evidence_folder/"></textarea>
+          <textarea id="fileTargets" rows="5" placeholder="/path/to/classified_document.pdf&#10;/path/to/evidence_folder/"></textarea>
         </div>
 
         <div class="form-row">
           <div class="form-group" style="margin-bottom: 0;">
-            <label for="filePattern">Sanitization Pattern:</label>
+            <label for="filePattern">Overwrite Pattern Standard:</label>
             <select id="filePattern">
-              <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
-              <option value="random">3-Pass DoD Pseudo-Random Overwrite</option>
+              <option value="zero_1">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+              <option value="random_3">3-Pass DoD Pseudo-Random Overwrite</option>
+              <option value="random_7">7-Pass High-Security Random Overwrite</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="fileOperator">Operator Identifier:</label>
-            <input type="text" id="fileOperator" value="op-forensic-01">
+            <input type="text" id="fileOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
           </div>
         </div>
+
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="fileOrganization">Organization / Laboratory:</label>
+          <input type="text" id="fileOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
+        </div>
+
+        <!-- Advanced Options Collapsible -->
+        <details class="advanced-panel" style="margin-top: 14px;">
+          <summary>⚙ Advanced Options &amp; Verification Policy</summary>
+          <div class="advanced-content">
+            <label class="toggle-card" style="margin-bottom: 0;">
+              <input type="checkbox" id="filePdfToggle" checked>
+              <div class="toggle-info">
+                <span class="toggle-title">Generate PDF Certificate &amp; QR Code</span>
+                <span class="toggle-desc">Render print-ready A4 PDF compliance certificate with optical verification QR</span>
+              </div>
+            </label>
+
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="fileVerifySamples">Readback Verification Samples:</label>
+                <input type="number" id="fileVerifySamples" value="64" min="8" max="512">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="filePortalUrl">Verification Portal Base URL:</label>
+                <input type="text" id="filePortalUrl" placeholder="https://s0-vp.vercel.app/">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="fileOutDir">Custom Output Directory (Optional):</label>
+              <input type="text" id="fileOutDir" placeholder="Default: demo-out/gui-filewipe-<id>">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="fileKeyPath">Custom Ed25519 Signing Key (Optional):</label>
+              <div class="input-with-button">
+                <input type="text" id="fileKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('fileKeyUpload').click()">Upload Key</button>
+                <input type="file" id="fileKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('fileKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+              </div>
+            </div>
+          </div>
+        </details>
 
         <button class="btn btn-primary" style="margin-top: 10px;" onclick="startFileErase()">
           Scrub Allocated Clusters &amp; Metadata
@@ -1074,7 +317,7 @@
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="fileResultDetails">
             Files shredded and metadata zeroed. Ed25519 compliance certificate issued and anchored to blockchain audit ledger.
           </p>
-          <div style="display: flex; gap: 10px;" id="fileActionButtons">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="fileActionButtons">
             <!-- Populated dynamically -->
           </div>
         </div>
@@ -1107,11 +350,18 @@
             <span class="chip" onclick="setCarvePreset('images', this)">Images</span>
             <span class="chip" onclick="setCarvePreset('docs', this)">Documents</span>
             <span class="chip" onclick="setCarvePreset('archives', this)">Archives</span>
-            <span class="chip" onclick="setCarvePreset('db', this)">DB &amp; Binary</span>
+            <span class="chip" onclick="setCarvePreset('audio', this)">Audio</span>
+            <span class="chip" onclick="setCarvePreset('none', this)">Clear Selection</span>
           </div>
-          <div style="margin-top: 10px;">
-            <label for="carveExts" style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px;">Active Extension Filter (Comma-separated):</label>
-            <input type="text" id="carveExts" value="jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3">
+
+          <label style="font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; margin-bottom: 2px;">Supported Signatures (Check to Toggle):</label>
+          <div class="ext-grid" id="carverExtGrid">
+            <!-- Checkboxes injected by dashboard.js -->
+          </div>
+
+          <div style="margin-top: 6px;">
+            <label for="carveExts" style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px;">Active Extension Filter (Comma-separated, custom extensions allowed):</label>
+            <input type="text" id="carveExts" value="jpg,png,gif,bmp,pdf,sqlite,pcap,pcapng,zip,gz,7z,mp3,wav,flac,ogg,elf" oninput="syncInputToExtCheckboxes()">
           </div>
         </div>
 
@@ -1127,6 +377,39 @@
             <span>95% (Strict)</span>
           </div>
         </div>
+
+        <!-- Optional Output Directory -->
+        <div class="form-group">
+          <label for="carveOutDir">Output Directory for Recovered Files (Optional):</label>
+          <input type="text" id="carveOutDir" placeholder="Default: demo-out/gui-carve-<job_id>">
+        </div>
+
+        <!-- Operator & Organization -->
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="carveOperator">Operator Identifier:</label>
+            <input type="text" id="carveOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="carveOrganization">Organization / Laboratory:</label>
+            <input type="text" id="carveOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
+          </div>
+        </div>
+
+        <!-- Advanced Options Collapsible -->
+        <details class="advanced-panel" style="margin-top: 14px;">
+          <summary>⚙ Advanced Forensic Signing Options</summary>
+          <div class="advanced-content">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="carveKeyPath">Custom Ed25519 Signing Key (Optional):</label>
+              <div class="input-with-button">
+                <input type="text" id="carveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('carveKeyUpload').click()">Upload Key</button>
+                <input type="file" id="carveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('carveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+              </div>
+            </div>
+          </div>
+        </details>
 
         <button class="btn btn-primary" style="margin-top: 8px;" onclick="startCarve()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1238,6 +521,38 @@
           <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" class="safety-guard-input">
         </div>
 
+        <!-- Operator & Organization -->
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="imageOperator">Operator Identifier:</label>
+            <input type="text" id="imageOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="imageOrganization">Organization / Laboratory:</label>
+            <input type="text" id="imageOrganization" value="Digital Forensics & Incident Response Lab" placeholder="Lab Name">
+          </div>
+        </div>
+
+        <!-- Advanced Options Collapsible -->
+        <details class="advanced-panel" style="margin-top: 14px;">
+          <summary>⚙ Advanced Acquisition &amp; Signing Options</summary>
+          <div class="advanced-content">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="imageOutDir">Custom Manifest Output Directory (Optional):</label>
+              <input type="text" id="imageOutDir" placeholder="Default: demo-out/gui-image-<job_id>">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="imageKeyPath">Custom Ed25519 Signing Key (Optional):</label>
+              <div class="input-with-button">
+                <input type="text" id="imageKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('imageKeyUpload').click()">Upload Key</button>
+                <input type="file" id="imageKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('imageKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+              </div>
+            </div>
+          </div>
+        </details>
+
         <button class="btn btn-primary" onclick="startImaging()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
           <span>Start Bit-Stream Acquisition</span>
@@ -1262,7 +577,7 @@
               </div>
               <strong style="color: #34d399; font-size: 0.95rem;" id="imageResultTitle">ACQUISITION COMPLETE</strong>
             </div>
-            <div id="imageActionButtons" style="display: flex; gap: 8px;"></div>
+            <div id="imageActionButtons" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
           </div>
           <div class="telemetry-card" style="margin-bottom: 0;">
             <div class="telemetry-row">
@@ -1387,690 +702,6 @@
   </div>
 </footer>
 
-  <!-- ===================================================================== -->
-  <!-- JAVASCRIPT CONTROLLER                                                 -->
-  <!-- ===================================================================== -->
-  <script>
-    let allBlocksCache = [];
-    let currentJobId = null;
-
-    function escapeHtml(str) {
-      if (str === null || str === undefined) return "";
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function switchNav(tabId, el) {
-      document.querySelectorAll(".nav-tab").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach(p => p.classList.remove("active"));
-      if (el) el.classList.add("active");
-      const target = document.getElementById("tab-" + tabId);
-      if (target) target.classList.add("active");
-      if (tabId === "audit") loadAuditBlocks();
-    }
-
-    function clearLog(logId) {
-      const el = document.getElementById(logId);
-      if (el) el.textContent = "";
-    }
-
-    function setHeaderJobStatus(text, type) {
-      const el = document.getElementById("headerJobStatus");
-      if (!el) return;
-      el.textContent = text;
-      if (type === "running") {
-        el.style.color = "var(--accent-cyan)";
-      } else if (type === "success") {
-        el.style.color = "var(--accent-emerald)";
-      } else if (type === "error") {
-        el.style.color = "var(--accent-crimson)";
-      } else {
-        el.style.color = "";
-      }
-    }
-
-    // --- Device Management & Plan Calculation ---
-    async function loadDevices() {
-      try {
-        const res = await fetch("/api/devices");
-        const data = await res.json();
-        const driveSel = document.getElementById("driveSelect");
-        const carveSel = document.getElementById("carveTargetSelect");
-        const imageSel = document.getElementById("imageSourceSelect");
-        driveSel.innerHTML = "";
-        carveSel.innerHTML = "";
-        if (imageSel) imageSel.innerHTML = "";
-
-        const all = [...(data.block || []), ...(data.images || [])];
-        if (all.length === 0) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "No storage devices or images found";
-          driveSel.appendChild(opt);
-          carveSel.appendChild(opt.cloneNode(true));
-          if (imageSel) imageSel.appendChild(opt.cloneNode(true));
-          return;
-        }
-
-        all.forEach(d => {
-          const opt = document.createElement("option");
-          opt.value = d.path;
-          const mb = (d.capacity_bytes / (1024 * 1024)).toFixed(1);
-          const modelStr = d.model ? ` • ${d.model}` : (d.storage_type ? ` [${d.storage_type}]` : "");
-          opt.textContent = `${d.path} (${mb} MB)${modelStr}`;
-          driveSel.appendChild(opt);
-          carveSel.appendChild(opt.cloneNode(true));
-          if (imageSel) imageSel.appendChild(opt.cloneNode(true));
-        });
-
-        onDriveSelected();
-      } catch (e) {
-        console.error("Failed to load devices", e);
-      }
-    }
-
-    async function onDriveSelected() {
-      const target = document.getElementById("driveSelect").value;
-      const promptEl = document.getElementById("driveConfirmPromptPath");
-      if (promptEl) promptEl.textContent = target || "target device path";
-      if (!target) return;
-      try {
-        const res = await fetch("/api/plan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target })
-        });
-        if (!res.ok) return;
-        const plan = await res.json();
-
-        const mb = (plan.target.capacity_bytes / (1024 * 1024)).toFixed(1);
-        document.getElementById("driveCapVal").textContent = `${mb} MB (${plan.target.storage_type || "UNKNOWN"})`;
-        document.getElementById("driveMethodVal").textContent = plan.method_id || "None";
-        const nistEl = document.getElementById("driveNistVal");
-        if (nistEl) nistEl.innerHTML = `<span class="badge badge-cyan">${plan.nist_category || "Clear"}</span>`;
-        if (plan.hpa_dco) {
-          document.getElementById("driveHpaVal").innerHTML = `<span class="badge badge-amber">${plan.hpa_dco.status || "Check required"}</span>`;
-        } else {
-          document.getElementById("driveHpaVal").textContent = "Normal (No HPA/DCO detected)";
-        }
-      } catch (e) {
-        console.warn("Plan query note:", e);
-      }
-    }
-
-    // --- Module 1: Drive Sanitizer ---
-    async function startDriveWipe() {
-      const target = document.getElementById("driveSelect").value;
-      const confirm_text = document.getElementById("driveConfirm").value.trim();
-      const pattern = document.getElementById("drivePattern").value;
-      const passes = parseInt(document.getElementById("drivePasses").value, 10) || 1;
-
-      if (confirm_text !== target) {
-        alert(`Destructive safety lock: Please type the exact target path "${target}" in the confirmation box.`);
-        return;
-      }
-
-      document.getElementById("driveResultCard").classList.remove("active");
-      const driveBadge = document.getElementById("driveStatusBadge");
-      if (driveBadge) {
-        driveBadge.className = "badge badge-cyan";
-        driveBadge.textContent = "STATUS: RUNNING";
-      }
-      setHeaderJobStatus("RUNNING", "running");
-
-      try {
-        const res = await fetch("/api/wipe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target, confirm_text, pattern, passes })
-        });
-        const data = await res.json();
-        if (data.job_id) {
-          trackJob(data.job_id, "driveStatusBadge", "driveLog", onDriveWipeDone);
-        } else {
-          alert(data.detail || "Error starting wipe");
-          if (driveBadge) {
-            driveBadge.className = "badge badge-red";
-            driveBadge.textContent = "STATUS: ERROR";
-          }
-          setHeaderJobStatus("ERROR", "error");
-        }
-      } catch (err) {
-        alert("Failed to communicate with wipe engine: " + err);
-        setHeaderJobStatus("ERROR", "error");
-      }
-    }
-
-    function onDriveWipeDone(job) {
-      const resCard = document.getElementById("driveResultCard");
-      const actionBox = document.getElementById("driveActionButtons");
-      resCard.classList.add("active");
-      actionBox.innerHTML = "";
-
-      if (job.result && job.result.cert_filename) {
-        const btnJson = document.createElement("a");
-        btnJson.className = "btn btn-secondary btn-sm";
-        btnJson.href = `/api/download/${job.id}/${job.result.cert_filename}`;
-        btnJson.textContent = "Download JSON Certificate";
-        actionBox.appendChild(btnJson);
-      }
-      if (job.result && job.result.pdf_filename) {
-        const btnPdf = document.createElement("a");
-        btnPdf.className = "btn btn-primary btn-sm";
-        btnPdf.href = `/api/download/${job.id}/${job.result.pdf_filename}`;
-        btnPdf.textContent = "Download PDF Certificate";
-        actionBox.appendChild(btnPdf);
-      }
-    }
-
-    // --- Module 2: File & Folder Eraser ---
-    function addSampleFileTarget() {
-      const area = document.getElementById("fileTargets");
-      const sample = "/tmp/confidential_memo_" + Math.floor(Math.random() * 1000) + ".txt";
-      area.value = area.value ? area.value + "\n" + sample : sample;
-    }
-
-    async function startFileErase() {
-      const lines = document.getElementById("fileTargets").value.split("\n")
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
-
-      if (lines.length === 0) {
-        alert("Please enter at least one file or folder path to sanitize.");
-        return;
-      }
-
-      const pattern = document.getElementById("filePattern").value;
-      const operator = document.getElementById("fileOperator").value.trim() || "op-forensic";
-
-      document.getElementById("fileResultCard").classList.remove("active");
-      const fileBadge = document.getElementById("fileStatusBadge");
-      if (fileBadge) {
-        fileBadge.className = "badge badge-cyan";
-        fileBadge.textContent = "STATUS: RUNNING";
-      }
-      setHeaderJobStatus("RUNNING", "running");
-
-      try {
-        const res = await fetch("/api/erase-files", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targets: lines, passes: 1, pattern, operator_id: operator })
-        });
-        const data = await res.json();
-        if (data.job_id) {
-          trackJob(data.job_id, "fileStatusBadge", "fileLog", onFileEraseDone);
-        } else {
-          alert(data.detail || "Error starting file erase");
-          if (fileBadge) {
-            fileBadge.className = "badge badge-red";
-            fileBadge.textContent = "STATUS: ERROR";
-          }
-          setHeaderJobStatus("ERROR", "error");
-        }
-      } catch (err) {
-        alert("Failed to trigger file erasure: " + err);
-        setHeaderJobStatus("ERROR", "error");
-      }
-    }
-
-    function onFileEraseDone(job) {
-      const resCard = document.getElementById("fileResultCard");
-      const actionBox = document.getElementById("fileActionButtons");
-      const details = document.getElementById("fileResultDetails");
-      resCard.classList.add("active");
-      actionBox.innerHTML = "";
-
-      if (job.result) {
-        details.textContent = `Batch completed: ${job.result.successful_files}/${job.result.total_files} files sanitized (${job.result.total_bytes} bytes). Inode timestamps zeroed, directory entries scrambled.`;
-        if (job.result.cert_filename) {
-          const btn = document.createElement("a");
-          btn.className = "btn btn-primary btn-sm";
-          btn.href = `/api/download/${job.id}/${job.result.cert_filename}`;
-          btn.textContent = "Download File Erasure Certificate";
-          actionBox.appendChild(btn);
-        }
-      }
-    }
-
-    // --- Module 3: Forensic File Carver ---
-    function setCarvePreset(type, el) {
-      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-      if (el) el.classList.add("active");
-      const input = document.getElementById("carveExts");
-      if (type === "all") input.value = "jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3";
-      else if (type === "images") input.value = "jpg,png,gif,bmp";
-      else if (type === "docs") input.value = "pdf,txt";
-      else if (type === "archives") input.value = "zip,gz";
-      else if (type === "db") input.value = "sqlite,elf,mp3";
-    }
-
-    async function startCarve() {
-      const target = document.getElementById("carveTargetSelect").value;
-      if (!target) {
-        alert("Please select a target image or device to carve.");
-        return;
-      }
-
-      const exts = document.getElementById("carveExts").value.split(",").map(e => e.trim()).filter(e => e);
-      const min_confidence = parseInt(document.getElementById("carveMinConf").value, 10) || 50;
-
-      document.getElementById("carveResultCard").classList.remove("active");
-      const carveBadge = document.getElementById("carveStatusBadge");
-      if (carveBadge) {
-        carveBadge.className = "badge badge-cyan";
-        carveBadge.textContent = "STATUS: SCANNING";
-      }
-      setHeaderJobStatus("RUNNING", "running");
-
-      try {
-        const res = await fetch("/api/carve", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target, extensions: exts, min_confidence })
-        });
-        const data = await res.json();
-        if (data.job_id) {
-          trackJob(data.job_id, "carveStatusBadge", "carveLog", onCarveDone);
-        } else {
-          alert(data.detail || "Error starting carver");
-          if (carveBadge) {
-            carveBadge.className = "badge badge-red";
-            carveBadge.textContent = "STATUS: ERROR";
-          }
-          setHeaderJobStatus("ERROR", "error");
-        }
-      } catch (err) {
-        alert("Failed to start carving session: " + err);
-        setHeaderJobStatus("ERROR", "error");
-      }
-    }
-
-    function onCarveDone(job) {
-      const resCard = document.getElementById("carveResultCard");
-      const title = document.getElementById("carveSummaryTitle");
-      const btnBox = document.getElementById("carveManifestBtnContainer");
-      const tbody = document.getElementById("carvedFilesTableBody");
-      resCard.classList.add("active");
-      btnBox.innerHTML = "";
-      tbody.innerHTML = "";
-
-      if (job.result) {
-        title.textContent = `RECOVERED ${job.result.files_recovered} EVIDENCE ARTIFACTS (${job.result.candidates_found} candidates evaluated)`;
-        if (job.result.manifest_filename) {
-          const btn = document.createElement("a");
-          btn.className = "btn btn-primary btn-sm";
-          btn.href = `/api/download/${job.id}/${job.result.manifest_filename}`;
-          btn.textContent = "Download Signed Manifest";
-          btnBox.appendChild(btn);
-        }
-
-        const files = job.result.carved_files || [];
-        if (files.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-dim);">No artifacts recovered matching confidence threshold.</td></tr>';
-        } else {
-          files.forEach(f => {
-            const tr = document.createElement("tr");
-            const confBadge = f.conf >= 75 ? "badge-green" : (f.conf >= 50 ? "badge-cyan" : "badge-amber");
-
-            const tdId = document.createElement("td");
-            tdId.className = "code-cell";
-            const strongId = document.createElement("strong");
-            strongId.textContent = f.id || "";
-            tdId.appendChild(strongId);
-
-            const tdExt = document.createElement("td");
-            const spanExt = document.createElement("span");
-            spanExt.className = "badge badge-purple";
-            spanExt.textContent = (f.ext || "").toUpperCase();
-            tdExt.appendChild(spanExt);
-
-            const tdSize = document.createElement("td");
-            tdSize.className = "code-cell";
-            tdSize.textContent = `${((f.size || 0) / 1024).toFixed(1)} KB`;
-
-            const tdConf = document.createElement("td");
-            const spanConf = document.createElement("span");
-            spanConf.className = `badge ${confBadge}`;
-            spanConf.textContent = `${f.conf || 0}%`;
-            tdConf.appendChild(spanConf);
-
-            const tdHash = document.createElement("td");
-            tdHash.className = "code-cell";
-            tdHash.style.color = "var(--text-dim)";
-            tdHash.textContent = f.sha256 ? f.sha256.substring(0, 16) + "..." : "—";
-            if (f.sha256) tdHash.title = f.sha256;
-
-            const tdAction = document.createElement("td");
-            const btnExtract = document.createElement("a");
-            btnExtract.className = "btn btn-secondary btn-sm";
-            btnExtract.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
-            btnExtract.textContent = "Extract";
-            btnExtract.href = `/api/download/${encodeURIComponent(job.id)}/${encodeURIComponent(f.filename || "")}`;
-            tdAction.appendChild(btnExtract);
-
-            tr.appendChild(tdId);
-            tr.appendChild(tdExt);
-            tr.appendChild(tdSize);
-            tr.appendChild(tdConf);
-            tr.appendChild(tdHash);
-            tr.appendChild(tdAction);
-
-            tbody.appendChild(tr);
-          });
-        }
-      }
-    }
-
-    // --- Job Poller Engine ---
-    function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
-      currentJobId = jobId;
-      const badge = statusBadgeId ? document.getElementById(statusBadgeId) : null;
-      const logEl = document.getElementById(logId);
-      setHeaderJobStatus("RUNNING", "running");
-
-      const timer = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/job/${jobId}`);
-          if (!res.ok) return;
-          const data = await res.json();
-
-          if (data.log && data.log.length > 0) {
-            logEl.textContent = data.log.join("\n");
-            logEl.scrollTop = logEl.scrollHeight;
-          }
-
-          if (data.status === "done" || data.status === "error") {
-            clearInterval(timer);
-            if (data.status === "done") {
-              if (badge) {
-                badge.className = "badge badge-green";
-                badge.textContent = "STATUS: COMPLETE";
-              }
-              setHeaderJobStatus("COMPLETE", "success");
-              setTimeout(() => setHeaderJobStatus("IDLE", "idle"), 8000);
-              if (onDoneCallback) onDoneCallback({ id: jobId, result: data.result });
-            } else {
-              if (badge) {
-                badge.className = "badge badge-red";
-                badge.textContent = "STATUS: FAILED";
-              }
-              setHeaderJobStatus("FAILED", "error");
-              setTimeout(() => setHeaderJobStatus("IDLE", "idle"), 8000);
-            }
-          }
-        } catch (e) {
-          console.warn("Poll job warning:", e);
-        }
-      }, 600);
-    }
-
-    // --- Module 4: Forensic Imager & Cloner ---
-    function updateClonePrompt() {
-      const dest = document.getElementById("imageDestInput").value.trim();
-      const promptEl = document.getElementById("cloneConfirmPromptPath");
-      if (promptEl) promptEl.textContent = dest || "destination block device path";
-    }
-
-    function toggleCloneWarning() {
-      const isClone = document.getElementById("imageIsClone").checked;
-      const box = document.getElementById("cloneWarningBox");
-      box.style.display = isClone ? "block" : "none";
-      if (isClone) updateClonePrompt();
-    }
-
-    async function startImaging() {
-      const source = document.getElementById("imageSourceSelect").value.trim();
-      const destination = document.getElementById("imageDestInput").value.trim();
-      const block_size = parseInt(document.getElementById("imageBlockSize").value, 10) || 1048576;
-      const no_recovery = !document.getElementById("imageFaultTol").checked;
-      const is_clone = document.getElementById("imageIsClone").checked;
-      const confirm_text = document.getElementById("cloneConfirmInput").value.trim();
-
-      if (!source) {
-        alert("Please select a source drive or forensic image.");
-        return;
-      }
-      if (!destination) {
-        alert("Please enter a destination image file or block device.");
-        return;
-      }
-      if (source === destination) {
-        alert("Source and destination cannot be the same path.");
-        return;
-      }
-      if (is_clone && confirm_text !== destination) {
-        alert(`Safety check: Please type the exact destination path "${destination}" to confirm cloning.`);
-        return;
-      }
-
-      document.getElementById("imageResultCard").classList.remove("active");
-      const imageBadge = document.getElementById("imageStatusBadge");
-      if (imageBadge) {
-        imageBadge.className = "badge badge-cyan";
-        imageBadge.textContent = "STATUS: RUNNING";
-      }
-      setHeaderJobStatus("RUNNING", "running");
-
-      try {
-        const res = await fetch("/api/image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source,
-            destination,
-            block_size,
-            no_recovery,
-            is_clone,
-            confirm_text
-          })
-        });
-        const data = await res.json();
-        if (data.job_id) {
-          trackJob(data.job_id, "imageStatusBadge", "imageLog", onImagingDone);
-        } else {
-          alert(data.detail || "Error starting acquisition");
-          if (imageBadge) {
-            imageBadge.className = "badge badge-red";
-            imageBadge.textContent = "STATUS: ERROR";
-          }
-          setHeaderJobStatus("ERROR", "error");
-        }
-      } catch (err) {
-        alert("Failed to communicate with imager engine: " + err);
-        setHeaderJobStatus("ERROR", "error");
-      }
-    }
-
-    function onImagingDone(job) {
-      const resCard = document.getElementById("imageResultCard");
-      const actionBox = document.getElementById("imageActionButtons");
-      resCard.classList.add("active");
-      actionBox.innerHTML = "";
-
-      if (job.result) {
-        const r = job.result;
-        const mbCopied = ((r.bytes_copied || 0) / (1024 * 1024)).toFixed(1);
-        document.getElementById("imageBytesCopiedVal").textContent = `${mbCopied} MiB (${(r.bytes_copied || 0).toLocaleString()} bytes)`;
-        const speed = (r.speed_mbps || 0).toFixed(1);
-        const dur = (r.duration_seconds || 0).toFixed(2);
-        document.getElementById("imageSpeedTimeVal").textContent = `${speed} MB/s • ${dur}s elapsed`;
-        document.getElementById("imageBadSectorsVal").textContent = r.bad_sectors_count || 0;
-        document.getElementById("imageSha256Val").textContent = r.source_sha256 || "—";
-        document.getElementById("imageMd5Val").textContent = r.source_md5 || "—";
-
-        if (r.manifest_filename) {
-          const btnManifest = document.createElement("a");
-          btnManifest.className = "btn btn-secondary btn-sm";
-          btnManifest.href = `/api/download/${job.id}/${r.manifest_filename}`;
-          btnManifest.textContent = "Download Manifest";
-          actionBox.appendChild(btnManifest);
-        }
-        if (r.cert_filename) {
-          const btnCert = document.createElement("a");
-          btnCert.className = "btn btn-primary btn-sm";
-          btnCert.href = `/api/download/${job.id}/${r.cert_filename}`;
-          btnCert.textContent = "Download Certificate";
-          actionBox.appendChild(btnCert);
-        }
-      }
-    }
-
-    // --- Module 5: Blockchain Audit Ledger ---
-    async function loadAuditBlocks() {
-      try {
-        const res = await fetch("/api/audit/blocks?limit=150");
-        const data = await res.json();
-        allBlocksCache = data.blocks || [];
-        renderAuditTable(allBlocksCache);
-      } catch (e) {
-        console.error("Failed to load audit blocks", e);
-      }
-    }
-
-    function renderAuditTable(blocks) {
-      const tbody = document.getElementById("auditTableBody");
-      const countEl = document.getElementById("auditBlockCount");
-      if (countEl) countEl.textContent = blocks.length;
-
-      tbody.innerHTML = "";
-      if (blocks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim);">No records in audit ledger yet.</td></tr>';
-        return;
-      }
-
-      blocks.forEach(b => {
-        const tr = document.createElement("tr");
-        let opBadge = "badge-cyan";
-        if (b.operation === "FILE_ERASE") opBadge = "badge-amber";
-        else if (b.operation === "FILE_CARVE") opBadge = "badge-purple";
-        else if (b.operation === "GENESIS") opBadge = "badge-green";
-
-        const prevShort = b.prev_hash ? b.prev_hash.substring(0, 12) + '...' : '—';
-        const blockShort = b.block_hash ? b.block_hash.substring(0, 12) + '...' : '—';
-
-        const tdIdx = document.createElement("td");
-        tdIdx.className = "code-cell";
-        const strongIdx = document.createElement("strong");
-        strongIdx.textContent = `#${b.index}`;
-        tdIdx.appendChild(strongIdx);
-
-        const tdTime = document.createElement("td");
-        tdTime.className = "code-cell";
-        tdTime.textContent = b.timestamp || "";
-
-        const tdOp = document.createElement("td");
-        const spanOp = document.createElement("span");
-        spanOp.className = `badge ${opBadge}`;
-        spanOp.textContent = b.operation || "";
-        tdOp.appendChild(spanOp);
-
-        const tdTarget = document.createElement("td");
-        tdTarget.className = "code-cell";
-        tdTarget.style.cssText = "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
-        tdTarget.textContent = b.target || "";
-        if (b.target) tdTarget.title = b.target;
-
-        const tdOpId = document.createElement("td");
-        tdOpId.textContent = b.operator || "";
-
-        const tdPrev = document.createElement("td");
-        tdPrev.className = "code-cell";
-        tdPrev.style.cssText = "color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
-        tdPrev.textContent = prevShort;
-        if (b.prev_hash) tdPrev.title = b.prev_hash;
-
-        const tdBlock = document.createElement("td");
-        tdBlock.className = "code-cell";
-        tdBlock.style.cssText = "color: #38bdf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
-        tdBlock.textContent = blockShort;
-        if (b.block_hash) tdBlock.title = b.block_hash;
-
-        const tdAction = document.createElement("td");
-        tdAction.style.textAlign = "center";
-        const btnInspect = document.createElement("button");
-        btnInspect.className = "btn btn-secondary btn-sm";
-        btnInspect.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
-        btnInspect.textContent = "Inspect";
-        btnInspect.onclick = () => inspectBlock(b.index);
-        tdAction.appendChild(btnInspect);
-
-        tr.appendChild(tdIdx);
-        tr.appendChild(tdTime);
-        tr.appendChild(tdOp);
-        tr.appendChild(tdTarget);
-        tr.appendChild(tdOpId);
-        tr.appendChild(tdPrev);
-        tr.appendChild(tdBlock);
-        tr.appendChild(tdAction);
-
-        tbody.appendChild(tr);
-      });
-    }
-
-    function applyAuditFilters() {
-      const opFilter = document.getElementById("auditFilterOp").value;
-      const search = document.getElementById("auditSearch").value.toLowerCase().trim();
-
-      const filtered = allBlocksCache.filter(b => {
-        const matchesOp = (opFilter === "ALL" || b.operation === opFilter);
-        const matchesSearch = !search ||
-          (b.target && b.target.toLowerCase().includes(search)) ||
-          (b.block_hash && b.block_hash.toLowerCase().includes(search)) ||
-          (b.operator && b.operator.toLowerCase().includes(search));
-        return matchesOp && matchesSearch;
-      });
-      renderAuditTable(filtered);
-    }
-
-    async function verifyLedger() {
-      const banner = document.getElementById("auditVerifyBanner");
-      banner.style.display = "block";
-      banner.className = "badge badge-cyan";
-      banner.style.width = "100%";
-      banner.textContent = "Auditing cryptographic SHA-256 hash chain and block continuity...";
-
-      try {
-        const res = await fetch("/api/audit/verify");
-        const data = await res.json();
-        if (data.is_valid) {
-          banner.style.background = "rgba(16, 185, 129, 0.15)";
-          banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
-          banner.style.color = "#34d399";
-          banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong></span> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
-        } else {
-          banner.style.background = "rgba(239, 68, 68, 0.15)";
-          banner.style.border = "1px solid rgba(239, 68, 68, 0.35)";
-          banner.style.color = "#f87171";
-          banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> <strong>INTEGRITY VIOLATION DETECTED:</strong></span> ${escapeHtml(data.reason)}`;
-        }
-      } catch (err) {
-        banner.style.color = "#f87171";
-        banner.textContent = "Verification request failed: " + err;
-      }
-    }
-
-    function inspectBlock(idx) {
-      const b = allBlocksCache.find(item => item.index === idx);
-      if (!b) return;
-
-      document.getElementById("modalTitle").textContent = `Block Inspector // #${b.index} [${b.operation}]`;
-      document.getElementById("modalContent").textContent = JSON.stringify(b, null, 2);
-      document.getElementById("inspectorModal").classList.add("active");
-    }
-
-    function closeInspector() {
-      document.getElementById("inspectorModal").classList.remove("active");
-    }
-
-    // Initialize on load
-    window.addEventListener("DOMContentLoaded", () => {
-      loadDevices();
-    });
-  </script>
+<script src="/static/js/dashboard.js"></script>
 </body>
 </html>
