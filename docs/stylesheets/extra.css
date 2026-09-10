@@ -105,24 +105,35 @@
   border-bottom: 1px solid #142338;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
   height: var(--s0-header-height);
-  position: sticky;
-  top: 0;
-  z-index: 4;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
 }
 
-/* Site name in header */
+/* Hyperlinked site name in header */
+.s0-header-title-link {
+  color: #FFFFFF !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  transition: color 0.15s ease;
+  display: inline-block;
+}
+.s0-header-title-link:hover {
+  color: #FF6500 !important;
+}
+[data-md-color-scheme="default"] .s0-header-title-link {
+  color: #0B192C !important;
+}
+[data-md-color-scheme="default"] .s0-header-title-link:hover {
+  color: #CC5200 !important;
+}
+
+/* Site name in header (fallback) */
 .md-header__title {
   color: #FFFFFF;
   font-weight: 600;
-}
-
-/* Logo in header */
-.md-header .md-logo svg,
-.md-header .md-logo img {
-  fill: #FF6500;
-  height: 1.55rem;
-  width: auto;
-  display: block;
 }
 
 /* Icon buttons */
@@ -394,6 +405,11 @@
   background-color: rgba(255, 101, 0, 0.12);
   border-left: 3px solid #FF6500;
   padding-left: calc(0.6rem - 3px) !important;
+}
+
+/* Hide redundant site name title from left index pane (already pinned in header) */
+.md-sidebar--primary .md-nav__title {
+  display: none !important;
 }
 
 .md-nav__title {
@@ -1002,6 +1018,25 @@
 .md-footer__inner {
   padding: 0.6rem 0;
 }
+.md-footer-meta,
+.md-footer-meta.md-typeset,
+.md-copyright,
+.md-copyright__highlight {
+  color: #94A3B8 !important;
+}
+html .md-footer-meta.md-typeset a,
+.md-copyright a,
+.md-copyright__highlight a {
+  color: #FF6500 !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+html .md-footer-meta.md-typeset a:hover,
+.md-copyright a:hover,
+.md-copyright__highlight a:hover {
+  color: #FF8533 !important;
+  text-decoration: underline;
+}
 
 /* ── Light Mode Footer Overrides ── */
 [data-md-color-scheme="default"] .md-footer {
@@ -1020,11 +1055,23 @@
 [data-md-color-scheme="default"] .md-footer__title {
   color: #64748B !important;
 }
-[data-md-color-scheme="default"] .md-copyright {
-  color: #64748B !important;
+[data-md-color-scheme="default"] .md-footer-meta,
+[data-md-color-scheme="default"] .md-footer-meta.md-typeset,
+[data-md-color-scheme="default"] .md-copyright,
+[data-md-color-scheme="default"] .md-copyright__highlight {
+  color: #334155 !important;
 }
-[data-md-color-scheme="default"] .md-copyright a {
+[data-md-color-scheme="default"] html .md-footer-meta.md-typeset a,
+[data-md-color-scheme="default"] .md-copyright a,
+[data-md-color-scheme="default"] .md-copyright__highlight a {
   color: #CC5200 !important;
+  font-weight: 600 !important;
+}
+[data-md-color-scheme="default"] html .md-footer-meta.md-typeset a:hover,
+[data-md-color-scheme="default"] .md-copyright a:hover,
+[data-md-color-scheme="default"] .md-copyright__highlight a:hover {
+  color: #993D00 !important;
+  text-decoration: underline;
 }
 
 /* ================================================================
