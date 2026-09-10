@@ -64,26 +64,45 @@ To build the ISO, you need a machine with **root/sudo access** and an internet c
 | Debian 12 (Bookworm) | ✅ Recommended (Native) |
 | Debian 11 (Bullseye) | ✅ Supported |
 | Ubuntu 22.04 / 24.04 LTS | ✅ Supported |
+| Fedora 38 / 39 / 40+ | ✅ Supported via Podman or Docker (`scripts/build_iso.sh`) |
+| RHEL / CentOS Stream 9+ | ✅ Supported via Podman (`scripts/build_iso.sh`) |
 | Windows 10 & 11 | ✅ Supported via Docker Desktop or WSL2 (`scripts/build_iso.ps1`) |
-| macOS | ✅ Supported via Docker (`linux/iso/Dockerfile`) |
+| macOS | ✅ Supported via Docker (`linux/iso/Dockerfile` or `scripts/build_iso.sh`) |
 | Debian-based VM | ✅ Supported |
 
 ### Install Required Toolchain
 
-```bash
-sudo apt update
-sudo apt install -y \
-    live-build \
-    debootstrap \
-    xorriso \
-    isolinux \
-    syslinux-efi \
-    grub-pc-bin \
-    grub-efi-amd64-bin \
-    mtools \
-    dosfstools \
-    qemu-system-x86_64
-```
+=== "Debian / Ubuntu (Native)"
+
+    ```bash
+    sudo apt update
+    sudo apt install -y \
+        live-build \
+        debootstrap \
+        xorriso \
+        isolinux \
+        syslinux-efi \
+        grub-pc-bin \
+        grub-efi-amd64-bin \
+        mtools \
+        dosfstools \
+        qemu-system-x86_64
+    ```
+
+=== "Fedora / RHEL (Podman & QEMU)"
+
+    Fedora uses RPM packages and does not have Debian's `live-build` natively in `dnf`. Use Fedora's native **Podman** container engine to build the Debian Live ISO, and install QEMU for virtualization testing:
+
+    ```bash
+    sudo dnf install -y podman qemu-system-x86 qemu-img
+    ```
+
+=== "Docker (Universal Linux / macOS)"
+
+    ```bash
+    # Requires Docker Engine or Docker Desktop
+    docker --version
+    ```
 
 !!! note "Disk Space Requirement"
     The build process downloads approximately 1 GB of Debian packages and requires **6–8 GB** of free disk space for the temporary chroot environment.
@@ -150,6 +169,55 @@ linux/iso/live-image-amd64.hybrid.iso
 ```
 
 This is a hybrid ISO that boots on both UEFI and Legacy BIOS systems.
+
+---
+
+## Building from Fedora & RHEL (Podman & Containerization)
+
+Fedora and RHEL use the RPM package format and do not carry Debian's `live-build` natively in `dnf`. However, you do **not** need a separate Debian workstation. S0 provides first-class support for Fedora using **Podman** (Fedora's default container engine) with automated SELinux volume relabeling.
+
+### Option 1: Automated Script (`scripts/build_iso.sh`)
+
+Run the universal build orchestrator:
+
+```bash
+# Automatically detects Fedora, verifies Podman, applies SELinux :z flag, and builds
+./scripts/build_iso.sh
+```
+
+### Option 2: Direct Podman Commands
+
+If you prefer executing the container steps manually:
+
+```bash
+# 1. Build the Debian Bookworm builder image
+podman build -t s0-live-builder -f linux/iso/Dockerfile linux/iso
+
+# 2. Run the build in privileged mode with SELinux volume relabeling (:z)
+podman run --rm --privileged -v "$PWD":/workspace:z s0-live-builder
+```
+
+The resulting `s0-live-amd64.hybrid.iso` is generated directly into your current directory.
+
+### Testing with QEMU on Fedora
+
+```bash
+# Install QEMU and disk imaging tools
+sudo dnf install -y qemu-system-x86 qemu-img
+
+# Create a 1 GB dummy drive to test device detection in the s0 GUI
+qemu-img create -f raw test_drive.img 1G
+
+# Boot the ISO with KVM hardware acceleration
+qemu-system-x86_64 \
+    -enable-kvm \
+    -m 2048 \
+    -smp 2 \
+    -cdrom s0-live-amd64.hybrid.iso \
+    -drive file=test_drive.img,format=raw,if=virtio \
+    -vga virtio \
+    -usb -device usb-tablet
+```
 
 ---
 
@@ -295,7 +363,10 @@ Once verified, write the ISO to a physical USB drive (minimum **4 GB** capacity)
     sudo umount /dev/sdb* 2>/dev/null || true
 
     # Write the hybrid ISO (raw mode — preserves UEFI/BIOS boot sectors)
-    sudo dd if=live-image-amd64.hybrid.iso of=/dev/sdb bs=4M status=progress oflag=sync
+    # Works on Fedora, Debian, Ubuntu, and Arch:
+    sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdb bs=4M status=progress oflag=sync
+
+    # Tip: On Fedora, you can also use Fedora Media Writer (Custom OS -> Select ISO).
     ```
 
 === "Windows"

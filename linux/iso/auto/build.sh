@@ -28,8 +28,11 @@ lb config noauto \
     --iso-volume "S0" \
     "${@}"
 
-echo "==> building (this downloads ~1GB of packages on first run)"
-sudo lb build
+if [ "$(id -u)" -eq 0 ]; then
+    lb build
+else
+    sudo lb build
+fi
 
 echo "==> done: $(pwd)/live-image-amd64.hybrid.iso"
 echo "    smoke-test it headless: ./qemu-test.sh live-image-amd64.hybrid.iso"

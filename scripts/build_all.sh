@@ -129,17 +129,23 @@ phase_ok
 phase_start "Probing Optional Toolchains"
 ISO_STATUS="${_gray}⊘ UNVERIFIED${_reset}  "
 if command -v lb >/dev/null 2>&1 && command -v xorriso >/dev/null 2>&1; then
-    step_ok "live-build & xorriso detected — ISO build available"
+    step_ok "live-build & xorriso detected — native ISO build ready"
+    ISO_STATUS="${_green}✅ READY${_reset}     "
+elif command -v podman >/dev/null 2>&1; then
+    step_ok "podman detected — containerized ISO build ready (Fedora / RHEL)"
+    ISO_STATUS="${_green}✅ READY${_reset}     "
+elif command -v docker >/dev/null 2>&1; then
+    step_ok "docker detected — containerized ISO build ready"
     ISO_STATUS="${_green}✅ READY${_reset}     "
 else
-    step_skip "live-build / xorriso not installed (see docs/HANDOVER.md)"
+    step_skip "live-build / podman / docker not installed (see docs/LIVE_ISO_BUILD_GUIDE.md)"
 fi
 if command -v qemu-system-x86_64 >/dev/null 2>&1; then
     step_ok "qemu-system-x86_64 detected"
 else
-    step_skip "qemu-system-x86_64 not installed (see docs/HANDOVER.md)"
+    step_skip "qemu-system-x86_64 not installed (see docs/LIVE_ISO_BUILD_GUIDE.md)"
 fi
-step_info "Bootable Bare-Metal Live ISO target: linux/iso/"
+step_info "Bootable Bare-Metal Live ISO target: linux/iso/ or ./scripts/build_iso.sh"
 phase_ok
 
 # ── Phase 7: Build Summary ─────────────────────────────────────────────────────

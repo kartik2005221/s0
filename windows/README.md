@@ -38,3 +38,30 @@ windows\s0-eraser.bat C:\Sensitive\evidence.docx 1 zero
 ```bash
 python windows/s0_eraser.py --targets C:\TargetFile.pdf --passes 1 --pattern zero --out-dir .\reports
 ```
+
+---
+
+## 3. Whole-Drive Sanitization & Bootable USB (Decommissioning)
+
+To wipe the primary system drive (`C:`) of a Windows machine being recycled or decommissioned, the operating system drive cannot be wiped from within running Windows due to kernel locks, pagefile access, and Volume Shadow Copies.
+
+Instead, operators boot from an **s0 Bare-Metal Live USB**:
+
+### Making a Bootable USB from Windows:
+
+1. **Download the Verified ISO directly:**
+   ```powershell
+   irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex
+   ```
+   *Or build from source on Windows via Docker Desktop / WSL2:*
+   ```powershell
+   .\scripts\build_iso.ps1
+   ```
+
+2. **Flash to USB with Rufus:**
+   - Download portable Rufus from [rufus.ie](https://rufus.ie/).
+   - Select your target USB flash drive (≥ 4 GB).
+   - Select `s0-live-amd64.hybrid.iso`.
+   - **Crucial:** When prompted, select **"Write in DD Image mode"** to preserve the hybrid UEFI/BIOS partition layout.
+
+For full step-by-step instructions, see [docs/LIVE_ISO_BUILD_GUIDE.md](../docs/LIVE_ISO_BUILD_GUIDE.md).

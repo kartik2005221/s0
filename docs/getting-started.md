@@ -490,7 +490,7 @@ Now that you have s0 installed and have run your first operations, explore the d
 
     ---
 
-    Build a bootable Debian Live ISO with s0 pre-installed — ideal for sanitizing machines that cannot boot their own OS.
+    Build a bootable Live ISO with s0 pre-installed (on Debian, Fedora via Podman, or Windows) — ideal for sanitizing machines that cannot boot their own OS.
 
     [:octicons-arrow-right-24: Live ISO Build Guide](LIVE_ISO_BUILD_GUIDE.md)
 

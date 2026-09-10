@@ -10,16 +10,28 @@ The development environment has **no sudo**, so `live-build`, `xorriso` and
 `qemu-system-x86_64` could not be installed and this ISO has **never been
 built or boot-tested here**. Everything below is complete build
 configuration written against Debian live-build's documented interface.
-Until someone runs:
+### Build Quickstart by Distribution
 
-    sudo apt install live-build xorriso qemu-system-x86_64
-    ./build.sh && ./qemu-test.sh
+**Debian / Ubuntu (Native):**
+```bash
+sudo apt install live-build xorriso debootstrap qemu-system-x86_64
+./build.sh && ./qemu-test.sh
+```
 
-and confirms a clean QEMU boot, treat this component as UNVERIFIED. It is
-listed that way in docs/LIMITATIONS.md and scripts/build_all.sh skips it
-with an explanatory log line rather than pretending.
+**Fedora / RHEL / CentOS (Podman containerized):**
+```bash
+sudo dnf install -y podman qemu-system-x86 qemu-img
+../../scripts/build_iso.sh
+```
 
-> 📖 **Complete Step-by-Step Guide:** For a full, zero-to-one walkthrough covering prerequisites, Debian live-build staging, key provisioning, QEMU smoke-testing, USB flashing, and BIOS/UEFI deployment, read [docs/LIVE_ISO_BUILD_GUIDE.md](../../docs/LIVE_ISO_BUILD_GUIDE.md).
+**Universal (Docker Desktop / any Linux with Docker):**
+```bash
+../../scripts/build_iso.sh
+```
+
+Until verified on physical hardware, treat this component as unverified on bare metal.
+
+> 📖 **Complete Step-by-Step Guide:** For a full, zero-to-one walkthrough covering prerequisites, Fedora Podman staging, Debian live-build, Windows Rufus flashing, QEMU smoke-testing, and BIOS/UEFI deployment, read [docs/LIVE_ISO_BUILD_GUIDE.md](../../docs/LIVE_ISO_BUILD_GUIDE.md).
 
 ## Layout
 

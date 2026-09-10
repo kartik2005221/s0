@@ -46,3 +46,13 @@ verified on actual Windows hardware.
 - **Encrypted volumes (BitLocker):** Overwrite operates on the decrypted view.
   Original ciphertext blocks are inaccessible without the BitLocker recovery key,
   providing defense-in-depth.
+
+## Whole-Drive Sanitization: Bootable Live USB
+
+Due to active system file locks, the pagefile, and VSS shadows, wiping the primary `C:` drive of a Windows PC requires booting into an independent environment.
+
+- **Making Bootable USB on Windows:**
+  - Build ISO locally using Docker Desktop or WSL2: `.\scripts\build_iso.ps1`
+  - Download verified release ISO: `irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex`
+  - Write to USB using **Rufus** (select **"Write in DD Image mode"**) or **Ventoy**.
+- Detailed guide: [docs/LIVE_ISO_BUILD_GUIDE.md](../LIVE_ISO_BUILD_GUIDE.md).

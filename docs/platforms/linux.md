@@ -21,7 +21,7 @@ this file changes.
 | ATA Security Erase / Enhanced | full hdparm workflow incl. frozen-state detection, temp-password hygiene | no SATA drive in dev env; hdparm absent of hardware returns errors we handle but can't prove erase semantics | boot ISO on a sacrificial SATA machine, verify with a forensics lab sample set |
 | HPA/DCO detect & remove | `hdparm -N` / `--dco-identify` parsing, restore commands | loop/image targets never exhibit HPA/DCO | same sacrificial-machine pass |
 | NVMe Sanitize / Format (incl. crypto erase) | nvme-cli command construction, sanitize-log polling parser, capability gating (refuses crypto claim without OACS bit) | no NVMe controller; QEMU's emulated NVMe does not implement Sanitize | real NVMe drive test rig |
-| Bootable live ISO | complete live-build config + QEMU smoke-test script | `live-build`/`xorriso`/`qemu` need sudo to install | `sudo apt install live-build xorriso qemu-system-x86_64`, then `auto/build.sh && ./qemu-test.sh` |
+| Bootable live ISO | complete live-build config + containerized Podman/Docker recipe + QEMU smoke-test script | `live-build`/`xorriso`/`qemu` need sudo to install; containerized builds require Podman/Docker | Debian/Ubuntu: `sudo apt install live-build xorriso qemu-system-x86_64` then `auto/build.sh`; Fedora/RHEL: `sudo dnf install podman qemu-system-x86` then `./scripts/build_iso.sh` |
 
 ## Known behavioral caveats (true on real hardware too)
 
