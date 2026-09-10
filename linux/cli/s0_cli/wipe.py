@@ -26,6 +26,7 @@ from pathlib import Path
 # The wipe CLI imports the shared core from the same venv.
 from s0_core import certificate as cert_mod
 from s0_core import crypto as core_crypto
+from s0_core.config import CONFIG
 
 from .devices import Target, device_id_for
 from .methods.ata import AtaSecureEraseMethod
@@ -255,6 +256,14 @@ def default_issuer_key(explicit: str | None) -> Path | None:
     if explicit:
         p = Path(explicit)
         return p if p.exists() else None
+    cfg_key = CONFIG.get("default_key_path")
+    if cfg_key:
+        p = Path(cfg_key)
+        if p.exists():
+            return p
+        repo_p = Path(__file__).resolve().parents[3] / cfg_key
+        if repo_p.exists():
+            return repo_p
     env = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
     if env.exists():
         return env

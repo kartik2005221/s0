@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from s0_core import certificate as cert_mod
+from s0_core.config import CONFIG
 from s0_core.progress import ProgressBar
 
 from . import __version__
@@ -1058,8 +1059,8 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument("--yes", action="store_true", help="skip interactive WIPE prompt")
     wp.add_argument("--key", help="issuer private key PEM")
     wp.add_argument("--out-dir", default=".")
-    wp.add_argument("--operator", default="unknown-operator")
-    wp.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
+    wp.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
+    wp.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     wp.add_argument("--no-pdf", action="store_true")
     wp.add_argument("--verify-samples", type=int, default=64)
     wp.add_argument(
@@ -1070,13 +1071,13 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument("--json", action="store_true", help="machine-readable stdout")
     wp.add_argument(
         "--portal-url",
-        default="https://s0-vp.vercel.app/",
+        default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
         help="verification portal base URL",
     )
     wp.add_argument(
         "--qr-url-template",
         dest="qr_url_template",
-        default="https://s0-vp.vercel.app/?cert={cert_uuid}",
+        default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"),
     )
     wp.set_defaults(func=cmd_wipe)
 
@@ -1087,8 +1088,8 @@ def build_parser() -> argparse.ArgumentParser:
         fe.add_argument("--passes", type=int, default=1, help="number of overwrite passes")
         fe.add_argument("--pattern", choices=["zero", "random"], default="zero")
         fe.add_argument("--out-dir", default=".")
-        fe.add_argument("--operator", default="op-forensic")
-        fe.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
+        fe.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
+        fe.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
         fe.add_argument("--key", help="signing key path")
         fe.add_argument(
             "--no-certificate",
@@ -1098,12 +1099,12 @@ def build_parser() -> argparse.ArgumentParser:
         fe.add_argument("--no-pdf", action="store_true", help="skip rendering PDF certificate")
         fe.add_argument(
             "--portal-url",
-            default="https://s0-vp.vercel.app/",
+            default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
             help="verification portal base URL",
         )
         fe.add_argument(
             "--qr-url-template",
-            default="https://s0-vp.vercel.app/?cert={cert_uuid}",
+            default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"),
             help="URL template for verification QR",
         )
         fe.add_argument(
@@ -1124,8 +1125,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
-    crv.add_argument("--operator", default="op-forensic")
-    crv.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")
+    crv.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
+    crv.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     crv.add_argument("--key", help="signing key path")
     crv.add_argument(
         "--no-certificate",
@@ -1166,8 +1167,8 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--block-size", type=int, default=1048576, help="buffer block size in bytes (default: 1048576 / 1MB)")
         img.add_argument("--no-recovery", action="store_true", help="abort on I/O read error instead of zero-filling bad sectors")
         img.add_argument("--out-dir", default=".", help="directory to store acquisition manifest and certificate")
-        img.add_argument("--operator", default="op-forensic", help="operator ID")
-        img.add_argument("--organization", default="Digital Forensics & Incident Response Lab", help="organization name")
+        img.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator ID")
+        img.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name")
         img.add_argument("--key", help="path to Ed25519 issuer private key PEM")
         img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
         img.add_argument("--yes", action="store_true", help="skip interactive confirmation when cloning to a physical disk")

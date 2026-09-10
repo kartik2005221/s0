@@ -42,12 +42,18 @@ try:
     from s0_core.progress import ProgressBar
     from s0_core.temperature import read_temperature
     from s0_core import pdfgen
+    from s0_core.config import CONFIG
 except ImportError:
     cert_mod = None
     core_crypto = None
     ProgressBar = None
     read_temperature = lambda _: None
     pdfgen = None
+    CONFIG = {
+        "default_operator": "op-forensic-01",
+        "default_organization": "Digital Forensics & Data Sanitization Lab",
+        "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
+    }
 
 # Darwin fcntl command for full hardware write cache flush
 F_FULLFSYNC = 51
@@ -675,12 +681,12 @@ def main() -> int:
     parser.add_argument("--pattern", choices=["zero", "random"], default="zero", help="Overwrite pattern")
     parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
     parser.add_argument("--signing-key", help="Path to Ed25519 issuer private key PEM")
-    parser.add_argument("--operator-id", default="op-forensic-01", help="Operator identifier")
-    parser.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab", help="Issuing organization")
+    parser.add_argument("--operator-id", default=CONFIG.get("default_operator", "op-forensic-01"), help="Operator identifier")
+    parser.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="Issuing organization")
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
     parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
-    parser.add_argument("--qr-url-template", default="https://s0-vp.vercel.app/?cert={cert_uuid}", help="URL template for verification QR")
+    parser.add_argument("--qr-url-template", default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"), help="URL template for verification QR")
     parser.add_argument("--json", action="store_true", help="Output JSON result")
     args = parser.parse_args()
 

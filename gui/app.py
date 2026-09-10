@@ -97,7 +97,8 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Path
             raise HTTPException(400, f"Specified signing key not found: {key_path}")
         return kp
 
-    default_key = REPO / "core" / "keys" / "demo_issuer_private.pem"
+    default_key_rel = CONFIG.get("default_key_path", "core/keys/demo_issuer_private.pem")
+    default_key = (REPO / default_key_rel).resolve()
     if default_key.exists():
         return default_key
     return None
@@ -108,8 +109,8 @@ class WipeRequest(BaseModel):
     confirm_text: str
     pattern: str = "zero"
     passes: int = 1
-    operator: str = "op-forensic"
-    organization: str = "Digital Forensics & Data Sanitization Lab"
+    operator: str = CONFIG.get("default_operator", "op-forensic")
+    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
     key_path: Optional[str] = None
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
@@ -122,8 +123,8 @@ class FileEraseRequest(BaseModel):
     targets: List[str]
     passes: int = 1
     pattern: str = "zero"
-    operator_id: str = Field(default="op-forensic")
-    organization: str = "Digital Forensics & Data Sanitization Lab"
+    operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
+    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
     key_path: Optional[str] = None
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
@@ -148,8 +149,8 @@ class CarveRequest(BaseModel):
     target: str
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
-    operator_id: str = Field(default="op-forensic")
-    organization: str = "Digital Forensics & Data Sanitization Lab"
+    operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
+    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
@@ -175,8 +176,8 @@ class ImageRequest(BaseModel):
     no_recovery: bool = False
     is_clone: bool = False
     confirm_text: str = ""
-    operator_id: str = Field(default="op-forensic")
-    organization: str = "Digital Forensics & Incident Response Lab"
+    operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
+    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None

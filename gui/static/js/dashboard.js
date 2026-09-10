@@ -117,16 +117,20 @@ async function loadAppConfig() {
     const opFields = ["driveOperator", "fileOperator", "carveOperator", "imageOperator"];
     opFields.forEach(id => {
       const el = document.getElementById(id);
-      if (el && !el.value && appConfig.default_operator) {
-        el.value = appConfig.default_operator;
+      if (el && appConfig.default_operator) {
+        if (!el.value || el.value === "op-forensic") {
+          el.value = appConfig.default_operator;
+        }
       }
     });
 
     const orgFields = ["driveOrganization", "fileOrganization", "carveOrganization", "imageOrganization"];
     orgFields.forEach(id => {
       const el = document.getElementById(id);
-      if (el && !el.value && appConfig.default_organization) {
-        el.value = appConfig.default_organization;
+      if (el && appConfig.default_organization) {
+        if (!el.value || el.value.includes("Digital Forensics")) {
+          el.value = appConfig.default_organization;
+        }
       }
     });
   } catch (e) {
