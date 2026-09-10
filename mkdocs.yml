@@ -64,9 +64,6 @@ extra:
   status:
     new: Recently added
     deprecated: Deprecated
-  version:
-    provider: mike
-    default: stable
 
 extra_css:
   - stylesheets/extra.css
