@@ -1247,7 +1247,7 @@
 
         <div class="form-group">
           <label for="imageDestInput">Destination Image File or Target Block Device:</label>
-          <input type="text" id="imageDestInput" placeholder="/path/to/evidence.raw or /dev/sdX">
+          <input type="text" id="imageDestInput" placeholder="/path/to/evidence.raw or /dev/sdX" oninput="updateClonePrompt()">
         </div>
 
         <div class="form-group">
@@ -1286,6 +1286,7 @@
           <p class="safety-guard-text">
             All existing partitions and data on the destination device will be permanently replaced. Type the exact destination path to confirm:
           </p>
+          <div class="safety-target-highlight" id="cloneConfirmPromptPath">destination block device path</div>
           <input type="text" id="cloneConfirmInput" placeholder="Type exact destination path to confirm" class="safety-guard-input">
         </div>
 
@@ -1816,9 +1817,17 @@
     }
 
     // --- Module 4: Forensic Imager & Cloner ---
+    function updateClonePrompt() {
+      const dest = document.getElementById("imageDestInput").value.trim();
+      const promptEl = document.getElementById("cloneConfirmPromptPath");
+      if (promptEl) promptEl.textContent = dest || "destination block device path";
+    }
+
     function toggleCloneWarning() {
       const isClone = document.getElementById("imageIsClone").checked;
-      document.getElementById("cloneWarningBox").style.display = isClone ? "block" : "none";
+      const box = document.getElementById("cloneWarningBox");
+      box.style.display = isClone ? "block" : "none";
+      if (isClone) updateClonePrompt();
     }
 
     async function startImaging() {
@@ -1970,13 +1979,13 @@
 
         const tdPrev = document.createElement("td");
         tdPrev.className = "code-cell";
-        tdPrev.style.color = "var(--text-dim)";
+        tdPrev.style.cssText = "color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
         tdPrev.textContent = prevShort;
         if (b.prev_hash) tdPrev.title = b.prev_hash;
 
         const tdBlock = document.createElement("td");
         tdBlock.className = "code-cell";
-        tdBlock.style.color = "#38bdf8";
+        tdBlock.style.cssText = "color: #38bdf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
         tdBlock.textContent = blockShort;
         if (b.block_hash) tdBlock.title = b.block_hash;
 
