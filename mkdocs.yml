@@ -76,8 +76,7 @@ markdown_extensions:
   - md_in_html
   - tables
   - toc:
-      permalink: true
-      permalink_title: Link to this section
+      permalink: false
       toc_depth: 3
   - pymdownx.details
   - pymdownx.superfences:
@@ -146,4 +145,4 @@ nav:
       - Agentic AI & High-Risk Safety: agentic-ai.md
       - Contributing Guide: contributing.md
       - Changelog & Releases: changelog.md
-  - Verification Portal ↗: https://s0-vp.vercel.app/
+  - Verification Portal: https://s0-vp.vercel.app/

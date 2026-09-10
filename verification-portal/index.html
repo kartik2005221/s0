@@ -77,11 +77,86 @@
       min-width: 0;
     }
 
-    /* Header */
-    header {
+    /* Pinned Top Navigation Header */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .site-header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .site-logo-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+    }
+    .site-logo-link:hover .site-logo-title {
+      color: var(--primary);
+    }
+    .site-logo-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 101, 0, 0.12);
+      border: 1px solid rgba(255, 101, 0, 0.3);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .site-header-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-btn {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .nav-btn:hover {
+      color: #FFFFFF;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .nav-github {
+      background: #070D18;
+      border: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+    .nav-github:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Portal Hero */
+    .portal-hero {
       text-align: center;
       margin-bottom: 28px;
-      padding: 24px 16px 28px;
+      padding: 28px 16px;
       border-bottom: 1px solid var(--border-subtle);
       background: rgba(7, 13, 24, 0.7);
       backdrop-filter: blur(12px);
@@ -830,29 +905,75 @@
       textarea {
         font-size: 16px; /* Prevents iOS auto-zoom on input focus */
       }
+    /* Portal Footer */
+    .portal-footer {
+      margin-top: 48px;
+      padding: 24px 16px;
+      border-top: 1px solid var(--border-subtle);
+      text-align: center;
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+    .portal-footer .footer-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .portal-footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .portal-footer a:hover {
+      text-decoration: underline;
+    }
+    .ascii-tag {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      margin-right: 4px;
     }
   </style>
 </head>
 <body>
 
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="https://s0-docs-ten.vercel.app/" class="site-logo-link">
+      <span class="site-logo-title">s0 — Sector Zero</span>
+      <span class="site-logo-badge">Verification Portal</span>
+    </a>
+    <nav class="site-header-nav">
+      <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-btn">Documentation</a>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" aria-label="GitHub Repository">
+        <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>kartik2005221/s0</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
 <div class="portal-container">
-  <header>
+  <div class="portal-hero">
     <div class="brand-badge">
       <span class="pulse-dot"></span>
       Zero-Trust Offline Verifier
     </div>
     <div class="brand-title">
-      <span class="logo-glyph">🛡️</span> s0 Verification Portal
+      s0 Verification Portal
     </div>
     <div class="subtitle">
       Mathematical non-repudiation and cryptographic audit for digital sanitization certificates.
     </div>
     <div class="trust-meta">
-      <span>🔒 100% Client-Side In-Browser</span>
-      <span>⚡ Pure WebCrypto &amp; Ed25519</span>
-      <span>📦 Zero Server Communication</span>
+      <span>[ 100% Client-Side In-Browser ]</span>
+      <span>[ Pure WebCrypto &amp; Ed25519 ]</span>
+      <span>[ Zero Server Communication ]</span>
     </div>
-  </header>
+  </div>
 
   <div class="portal-grid">
     <!-- Left Column: Input & Authority Keys -->
@@ -860,11 +981,13 @@
       <!-- Upload Card -->
       <div class="card">
         <div class="card-header">
-          <h2>📂 Input Certificate</h2>
+          <h2>Input Certificate</h2>
         </div>
         
         <div class="dropzone" id="dropzone">
-          <span class="dropzone-icon">📄</span>
+          <span class="dropzone-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          </span>
           <p><strong>Drag &amp; drop</strong> certificate JSON here</p>
           <p class="hint">or click to browse local filesystem</p>
           <input type="file" id="fileInput" accept=".json,application/json">
@@ -881,19 +1004,19 @@
 
         <div class="btn-group">
           <button class="primary" id="btnVerify">
-            <span>🛡️</span> Verify Signature
+            Verify Signature
           </button>
           <button id="btnClear">Clear</button>
         </div>
 
         <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
-          <label>⚡ Live Demonstration Scenarios:</label>
+          <label>Live Demonstration Scenarios:</label>
           <div class="btn-group" style="margin-top: 8px;">
             <button class="scenario-btn" id="btnLoadValid">
-              <span style="color: #34d399;">✓</span> Load Authentic Certificate
+              <span class="ascii-tag" style="color: #34d399;">[+]</span> Load Authentic Certificate
             </button>
             <button class="scenario-btn danger-outline" id="btnLoadTampered">
-              <span style="color: #f87171;">⚠️</span> Load Tampered Certificate
+              <span class="ascii-tag" style="color: #f87171;">[!]</span> Load Tampered Certificate
             </button>
           </div>
         </div>
@@ -902,7 +1025,7 @@
       <!-- Pinned Keys Card -->
       <div class="card">
         <div class="card-header">
-          <h2>🔑 Pinned Issuer Keys</h2>
+          <h2>Pinned Issuer Keys</h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
           Certificates are verified exclusively against pinned public keys shipped with this verifier.
@@ -915,7 +1038,7 @@
       <!-- Custom Key Card -->
       <div class="card">
         <div class="card-header">
-          <h2>🗝️ Custom Public Key Verification</h2>
+          <h2>Custom Public Key Verification</h2>
         </div>
         <p style="font-size: 0.84rem; color: var(--text-secondary); margin-bottom: 10px;">
           Verify certificates issued by non-pinned authority keys.
@@ -934,12 +1057,14 @@
     <div class="portal-col">
       <div class="card" id="resultsCard">
         <div class="card-header">
-          <h2>🔍 Verification Audit Result</h2>
+          <h2>Verification Audit Result</h2>
         </div>
 
         <!-- Empty State -->
         <div id="emptyState">
-          <span class="empty-icon">🔒</span>
+          <span class="empty-icon">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </span>
           <p style="font-size: 1rem; color: var(--text-secondary); font-weight: 600;">No certificate loaded yet</p>
           <p style="font-size: 0.85rem; margin-top: 6px;">Upload a certificate JSON file or select a live demo scenario.</p>
         </div>
@@ -948,7 +1073,7 @@
         <div id="resultContainer" style="display: none; min-width: 0; max-width: 100%;">
           <!-- Verdict Banner -->
           <div id="resultBanner" class="result-banner">
-            <div class="banner-icon" id="bannerIcon">✓</div>
+            <div class="banner-icon" id="bannerIcon">[OK]</div>
             <div class="banner-text">
               <h3 id="bannerTitle">Status</h3>
               <p id="bannerDesc">Description</p>
@@ -976,7 +1101,7 @@
           </div>
 
           <!-- Certificate Identity -->
-          <div class="section-title">📜 Certificate Metadata</div>
+          <div class="section-title">Certificate Metadata</div>
           <div class="table-container">
             <table class="prop-table">
               <tbody>
@@ -990,7 +1115,7 @@
           </div>
 
           <!-- Target Media & Geometry -->
-          <div class="section-title">💾 Target Media &amp; Sanitization Protocol</div>
+          <div class="section-title">Target Media &amp; Sanitization Protocol</div>
           <div class="table-container">
             <table class="prop-table">
               <tbody>
@@ -1003,7 +1128,7 @@
           </div>
 
           <!-- Cryptographic Evidence -->
-          <div class="section-title">🔐 Cryptographic Proof</div>
+          <div class="section-title">Cryptographic Proof</div>
           <div class="table-container">
             <table class="prop-table">
               <tbody>
@@ -1023,7 +1148,7 @@
           <div id="tab-canonical" class="tab-content active">
             <div class="code-wrapper">
               <div class="code-actions">
-                <button class="btn-copy" onclick="copyCode('codeCanonical')">📋 Copy Canonical</button>
+                <button class="btn-copy" onclick="copyCode('codeCanonical')">Copy Canonical</button>
               </div>
               <pre><code id="codeCanonical">-</code></pre>
             </div>
@@ -1032,7 +1157,7 @@
           <div id="tab-raw" class="tab-content">
             <div class="code-wrapper">
               <div class="code-actions">
-                <button class="btn-copy" onclick="copyCode('codeRaw')">📋 Copy JSON</button>
+                <button class="btn-copy" onclick="copyCode('codeRaw')">Copy JSON</button>
               </div>
               <pre><code id="codeRaw">-</code></pre>
             </div>
@@ -1043,11 +1168,11 @@
     </div>
   </div>
 
-  <footer>
-    <p>s0 Secure Data Sanitization &amp; Digital Forensic Suite • Pure Client-Side Zero-Trust Verification</p>
-    <p style="font-size: 0.78rem; margin-top: 6px; color: var(--text-muted);">
-      Mathematical non-repudiation: Ed25519 public key signatures guarantee proof of sanitization without server callbacks.
-    </p>
+  <footer class="portal-footer">
+    <div class="footer-inner">
+      <div>Made by <a href="https://github.com/kartik2005221" target="_blank">@kartik2005221</a></div>
+      <div>s0 Secure Data Sanitization &bull; Pure Client-Side Zero-Trust Verification</div>
+    </div>
   </footer>
 </div>
 
@@ -1270,35 +1395,35 @@
 
     if (res.status === "VERIFIED_CUSTOM_KEY") {
       banner.classList.add("custom-key");
-      icon.textContent = "🗝️";
+      icon.textContent = "[KEY]";
       title.textContent = "VERIFIED (Custom Key — Non-Pinned Authority)";
       desc.textContent = res.reason;
       document.getElementById("metricIntegrity").textContent = "Custom Key";
       document.getElementById("metricIntegrity").style.color = "var(--info)";
     } else if (res.ok) {
       banner.classList.add("authentic");
-      icon.textContent = "🛡️";
+      icon.textContent = "[AUTHENTIC]";
       title.textContent = "AUTHENTIC & CRYPTOGRAPHICALLY VERIFIED";
       desc.textContent = res.reason;
-      document.getElementById("metricIntegrity").textContent = "✓ Authentic";
+      document.getElementById("metricIntegrity").textContent = "Authentic";
       document.getElementById("metricIntegrity").style.color = "var(--success)";
     } else if (res.status === "TAMPERED_OR_CORRUPT") {
       banner.classList.add("tampered");
-      icon.textContent = "⚠️";
+      icon.textContent = "[TAMPERED]";
       title.textContent = "SIGNATURE MISMATCH / TAMPER DETECTED";
       desc.textContent = res.reason;
-      document.getElementById("metricIntegrity").textContent = "✗ Tampered";
+      document.getElementById("metricIntegrity").textContent = "Tampered";
       document.getElementById("metricIntegrity").style.color = "var(--danger)";
     } else if (res.status === "UNTRUSTED_ISSUER") {
       banner.classList.add("untrusted");
-      icon.textContent = "❓";
+      icon.textContent = "[UNTRUSTED]";
       title.textContent = "UNTRUSTED ISSUER KEY";
       desc.textContent = res.reason;
       document.getElementById("metricIntegrity").textContent = "Untrusted";
       document.getElementById("metricIntegrity").style.color = "var(--warning)";
     } else {
       banner.classList.add("invalid");
-      icon.textContent = "❌";
+      icon.textContent = "[INVALID]";
       title.textContent = "VALIDATION FAILED (" + res.status + ")";
       desc.textContent = res.reason;
       document.getElementById("metricIntegrity").textContent = "Invalid";
@@ -1360,7 +1485,7 @@
     navigator.clipboard.writeText(text).then(function() {
       var btn = event.target;
       var origText = btn.textContent;
-      btn.textContent = "✓ Copied!";
+      btn.textContent = "Copied!";
       setTimeout(function() { btn.textContent = origText; }, 1800);
     }).catch(function() {
       alert("Copy failed — please select and copy manually.");
@@ -1417,7 +1542,7 @@
 
         if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(certParam)) {
           document.getElementById("emptyState").innerHTML =
-            '<span class="empty-icon">📋</span>' +
+            '<span class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span>' +
             '<h3 style="margin-top: 10px; color: var(--primary);">Certificate Locator: ' + certParam + '</h3>' +
             '<p style="margin-top: 8px; font-size: 0.88rem;">s0 operates on a zero-trust offline architecture: certificates are stored locally on forensic storage, not centrally tracked.<br><br>Please drag & drop or paste your <strong>certificate_' + certParam.substring(0, 8) + '.json</strong> to audit and verify its Ed25519 signature.</p>';
         }

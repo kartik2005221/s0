@@ -743,6 +743,16 @@
   font-weight: 600;
 }
 
+/* Remove permalink anchor icons from headings completely */
+.md-typeset .headerlink,
+.headerlink,
+[href^="#"] > .headerlink {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .md-typeset p,
 .md-typeset li {
   color: #CBD5E1;
@@ -996,14 +1006,16 @@
 }
 
 /* ================================================================
-   16. FOOTER
+   16. FOOTER (Nested inside main content column)
    ================================================================ */
 .md-footer {
-  background-color: #000000 !important;
-  border-top: 1px solid #142338;
+  background-color: transparent !important;
+  border-top: 1px solid #142338 !important;
+  margin-top: 3.5rem;
+  padding-bottom: 2rem;
 }
 .md-footer-meta {
-  background-color: #000000 !important;
+  background-color: transparent !important;
 }
 .md-footer__link {
   color: #94A3B8 !important;
@@ -1018,6 +1030,10 @@
 }
 .md-footer__inner {
   padding: 0.6rem 0;
+  max-width: 100% !important;
+}
+.md-footer-meta__inner {
+  max-width: 100% !important;
 }
 .md-footer-meta,
 .md-footer-meta.md-typeset,
@@ -1041,11 +1057,11 @@ html .md-footer-meta.md-typeset a:hover,
 
 /* ── Light Mode Footer Overrides ── */
 [data-md-color-scheme="default"] .md-footer {
-  background-color: #F8FAFC !important;
+  background-color: transparent !important;
   border-top: 1px solid #E2E8F0 !important;
 }
 [data-md-color-scheme="default"] .md-footer-meta {
-  background-color: #F1F5F9 !important;
+  background-color: transparent !important;
 }
 [data-md-color-scheme="default"] .md-footer__link {
   color: #475569 !important;
@@ -1073,6 +1089,60 @@ html .md-footer-meta.md-typeset a:hover,
 [data-md-color-scheme="default"] .md-copyright__highlight a:hover {
   color: #993D00 !important;
   text-decoration: underline;
+}
+
+/* ================================================================
+   16b. BACK TO TOP BUTTON (Minimal Arrow in Bottom-Right Corner)
+   ================================================================ */
+.md-top {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  top: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  background-color: #070D18 !important;
+  border: 1px solid #142338 !important;
+  color: #CBD5E1 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  cursor: pointer !important;
+  z-index: 100 !important;
+  transition: all 0.2s ease !important;
+}
+.md-top:hover {
+  background-color: #142338 !important;
+  border-color: #FF6500 !important;
+  color: #FF6500 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(255, 101, 0, 0.25) !important;
+}
+.md-top svg {
+  width: 20px !important;
+  height: 20px !important;
+  fill: currentColor !important;
+}
+.md-top[hidden] {
+  display: none !important;
+}
+[data-md-color-scheme="default"] .md-top {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+  color: #475569 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+[data-md-color-scheme="default"] .md-top:hover {
+  background-color: #F8FAFC !important;
+  border-color: #CC5200 !important;
+  color: #CC5200 !important;
 }
 
 /* ================================================================
