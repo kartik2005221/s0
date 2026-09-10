@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>s0 - Forensic Workstation</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem("s0_theme") || "dark";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
   <link rel="stylesheet" href="/static/fonts/fonts.css">
   <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
@@ -16,6 +22,11 @@
       <span class="site-logo-badge">Forensic Workstation</span>
     </a>
     <nav class="site-header-nav">
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+        <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <span id="themeToggleLabel">Light</span>
+      </button>
       <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-btn" id="navDocLink">Documentation</a>
       <a href="/portal/" target="_blank" class="nav-btn" id="navPortalLink">Verification Portal</a>
       <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" id="navGithubLink" aria-label="GitHub Repository">

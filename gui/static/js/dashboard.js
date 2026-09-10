@@ -1129,8 +1129,34 @@ function closeInspector() {
   document.getElementById("inspectorModal").classList.remove("active");
 }
 
+// Light / Dark Mode Theme Controller
+function initTheme() {
+  let saved = "dark";
+  try {
+    saved = localStorage.getItem("s0_theme") || "dark";
+  } catch (_) {}
+  applyTheme(saved);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  try {
+    localStorage.setItem("s0_theme", theme);
+  } catch (_) {}
+  const lbl = document.getElementById("themeToggleLabel");
+  if (lbl) {
+    lbl.textContent = theme === "light" ? "Dark" : "Light";
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
+}
+
 // Initialize on DOM ready
 window.addEventListener("DOMContentLoaded", async () => {
+  initTheme();
   initCarverCheckboxes();
   await loadAppConfig();
   await loadDevices();

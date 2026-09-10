@@ -25,8 +25,77 @@
   --accent-amber: #f59e0b;
   --accent-purple: #8b5cf6;
 
+  --header-bg: rgba(0, 0, 0, 0.88);
   --font-mono: "JetBrains Mono", monospace;
   --font-sans: "Rubik", sans-serif;
+}
+
+[data-theme="light"] {
+  --bg-base: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-panel: #FFFFFF;
+  --bg-elevated: #F1F5F9;
+  --bg-input: #F8FAFC;
+  --bg-terminal: #0F172A;
+
+  --border: #E2E8F0;
+  --border-subtle: #E2E8F0;
+  --border-hover: #CBD5E1;
+  --border-focus: #E65100;
+
+  --text-main: #0F172A;
+  --text-muted: #334155;
+  --text-dim: #64748B;
+
+  --accent-cyan: #E65100;
+  --accent-cyan-hover: #FF6D00;
+  --accent-cyan-glow: rgba(230, 81, 0, 0.20);
+  --accent-blue: #2563EB;
+  --accent-emerald: #059669;
+  --accent-crimson: #DC2626;
+  --accent-red: #DC2626;
+  --accent-amber: #D97706;
+  --accent-purple: #7C3AED;
+
+  --header-bg: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="light"] body {
+  background-color: var(--bg-base);
+  background-image: none;
+}
+
+[data-theme="light"] .panel,
+[data-theme="light"] .device-card,
+[data-theme="light"] .method-card,
+[data-theme="light"] .result-card,
+[data-theme="light"] .card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .nav-tab {
+  background: #F1F5F9;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+[data-theme="light"] .nav-tab.active {
+  background: #FFFFFF;
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.theme-icon-moon {
+  display: none;
+}
+
+[data-theme="light"] .theme-icon-sun {
+  display: none;
+}
+
+[data-theme="light"] .theme-icon-moon {
+  display: inline-block !important;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -80,7 +149,7 @@ body {
   top: 0;
   z-index: 100;
   width: 100%;
-  background: rgba(0, 0, 0, 0.88);
+  background: var(--header-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -99,7 +168,7 @@ body {
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: #FFFFFF;
+  color: var(--text-main);
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: -0.01em;
