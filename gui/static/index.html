@@ -43,6 +43,11 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
+      width: 100%;
+      max-width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
       background-color: var(--bg-base);
       background-image:
         radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.08), transparent 70%),
@@ -50,17 +55,19 @@
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.5;
-      padding: 24px 28px 48px;
-      min-height: 100vh;
+      overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
     /* Structured App Container — Prevents content sprawl */
     .app-container {
+      width: 100%;
       max-width: 1400px;
       margin: 0 auto;
-      width: 100%;
+      padding: 24px 28px 48px;
+      min-width: 0;
+      flex: 1 0 auto;
     }
 
     /* Custom Scrollbars */
@@ -79,89 +86,95 @@
       background: #334155;
     }
 
-    /* Top Bar Header */
-    .top-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 20px;
+    /* Pinned Top Navigation Header */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
-      margin-bottom: 22px;
-      flex-wrap: wrap;
-      gap: 16px;
     }
-
-    .brand-section {
+    .site-header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 28px;
+      height: 52px;
       display: flex;
       align-items: center;
-      gap: 16px;
+      justify-content: space-between;
     }
-
-    .brand-logo {
-      width: 44px;
-      height: 44px;
-      background: linear-gradient(135deg, rgba(255, 101, 0, 0.2), #070D18);
-      border: 1px solid rgba(255, 101, 0, 0.4);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 20px rgba(255, 101, 0, 0.2);
-      color: var(--accent-cyan);
-      flex-shrink: 0;
-    }
-
-    .brand-title h1 {
-      font-size: 1.35rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--text-main);
+    .site-logo-link {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      text-decoration: none;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
     }
-
-    .brand-title .version-badge {
+    .site-logo-link:hover .site-logo-title {
+      color: var(--accent-cyan);
+    }
+    .site-logo-badge {
       font-family: var(--font-mono);
       font-size: 0.7rem;
-      font-weight: 600;
-      background: rgba(255, 101, 0, 0.12);
-      color: var(--accent-cyan);
-      border: 1px solid rgba(255, 101, 0, 0.35);
-      padding: 2px 8px;
+      padding: 2px 7px;
       border-radius: 4px;
-      letter-spacing: 0.04em;
+      background: rgba(255, 101, 0, 0.12);
+      border: 1px solid rgba(255, 101, 0, 0.3);
+      color: var(--accent-cyan);
+      font-weight: 600;
     }
-
-    .brand-subtitle {
-      font-size: 0.76rem;
-      color: var(--text-dim);
-      margin-top: 3px;
-      font-family: var(--font-mono);
-      letter-spacing: 0.05em;
-    }
-
-    .header-status {
+    .site-header-nav {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+    }
+    .nav-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .nav-btn:hover {
+      color: #FFFFFF;
+      border-color: var(--border-focus);
+      background: var(--bg-panel);
+    }
+    .nav-github {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+    .nav-github:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
     }
 
     .sys-pill {
       font-family: var(--font-mono);
       font-size: 0.74rem;
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 6px;
       background: var(--bg-surface);
       border: 1px solid var(--border);
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 9px;
+      gap: 8px;
       color: var(--text-muted);
       letter-spacing: 0.04em;
     }
-
     .dot-live {
       width: 8px;
       height: 8px;
@@ -171,54 +184,26 @@
       animation: pulse-green 2s infinite;
       flex-shrink: 0;
     }
-
     @keyframes pulse-green {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.9); }
     }
 
-    .nav-link-btn {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-surface);
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      transition: all 0.15s ease;
-    }
-    .nav-link-btn:hover {
-      color: #FFFFFF;
-      border-color: var(--border-hover);
-      background: var(--bg-panel);
-    }
-    .github-pill {
-      font-family: var(--font-mono);
-      font-size: 0.74rem;
-    }
-    .github-pill:hover {
-      border-color: var(--accent-cyan);
-      color: var(--accent-cyan);
-    }
-
     /* App Footer */
     .app-footer {
-      margin-top: 48px;
-      padding-top: 20px;
+      margin-top: auto;
+      padding: 24px 16px;
       border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.84rem;
       color: var(--text-dim);
-      font-size: 0.8rem;
     }
     .app-footer .footer-inner {
+      max-width: 1400px;
+      margin: 0 auto;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
     }
     .app-footer a {
       color: var(--accent-cyan);
@@ -227,6 +212,19 @@
     }
     .app-footer a:hover {
       text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .site-header-inner {
+        height: auto;
+        padding: 10px 16px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .site-header-nav {
+        width: 100%;
+        justify-content: space-between;
+      }
     }
 
     /* Navigation Tabs */
@@ -911,73 +909,54 @@
 </head>
 <body>
 
-<div class="app-container">
-
-  <!-- Top Navigation Header -->
-  <header class="top-header">
-    <div class="brand-section">
-      <div class="brand-logo" aria-hidden="true">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          <path d="m9 12 2 2 4-4"/>
-        </svg>
-      </div>
-      <div class="brand-title">
-        <h1>
-          s0 Forensic &amp; Sanitization Suite
-          <span class="version-badge">v2.0.0-PRO</span>
-        </h1>
-        <div class="brand-subtitle">
-          SECURE DATA SANITIZATION &amp; FORENSIC RECOVERY WORKSTATION
-        </div>
-      </div>
-    </div>
-    <div class="header-status">
-      <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-link-btn">Documentation</a>
-      <a href="https://s0-vp.vercel.app/" target="_blank" class="nav-link-btn">Verification Portal</a>
-      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-link-btn github-pill" aria-label="GitHub Repository">
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="site-logo-link">
+      <span class="site-logo-title">s0 — Sector Zero</span>
+      <span class="site-logo-badge">Forensic Workstation</span>
+    </a>
+    <nav class="site-header-nav">
+      <a href="https://s0-docs-ten.vercel.app/" target="_blank" class="nav-btn">Documentation</a>
+      <a href="/portal/" target="_blank" class="nav-btn">Verification Portal</a>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" aria-label="GitHub Repository">
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span>kartik2005221/s0</span>
       </a>
       <div class="sys-pill">
         <div class="dot-live"></div>
-        <span>ENGINE RUNTIME: ONLINE</span>
+        <span>ONLINE</span> • <span id="headerJobStatus">IDLE</span>
       </div>
-    </div>
-  </header>
+    </nav>
+  </div>
+</header>
+
+<div class="app-container">
 
   <!-- Module Navigation Tabs -->
   <nav class="nav-bar">
     <button class="nav-tab active" onclick="switchNav('drive', this)">
       <span class="tab-num">[ 01 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="12" x2="2" y2="12"></line><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><line x1="6" y1="16" x2="6.01" y2="16"></line><line x1="10" y1="16" x2="10.01" y2="16"></line></svg>
       <span>Drive Sanitizer</span>
     </button>
     <button class="nav-tab" onclick="switchNav('file', this)">
       <span class="tab-num">[ 02 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="15" x2="15" y2="15"></line></svg>
       <span>File &amp; Folder Eraser</span>
     </button>
     <button class="nav-tab" onclick="switchNav('carve', this)">
       <span class="tab-num">[ 03 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
       <span>Forensic File Carver</span>
     </button>
     <button class="nav-tab" onclick="switchNav('image', this)">
       <span class="tab-num">[ 04 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
       <span>Forensic Imager &amp; Cloner</span>
     </button>
     <button class="nav-tab" onclick="switchNav('audit', this)">
       <span class="tab-num">[ 05 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
       <span>Audit Chain Ledger</span>
     </button>
     <a href="/portal/" target="_blank" class="nav-tab portal-link">
       <span class="tab-num">[ 06 ]</span>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       <span>Verification Portal</span>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
     </a>
   </nav>
 
@@ -995,7 +974,6 @@
             <span>Refresh Media</span>
           </button>
         </div>
-        <p class="panel-subtitle">Select raw block device or forensic image for NIST SP 800-88 compliant sanitization.</p>
 
         <div class="form-group">
           <label for="driveSelect">Target Storage Media:</label>
@@ -1013,10 +991,6 @@
           <div class="telemetry-row">
             <span class="telemetry-label">Recommended Method:</span>
             <span class="telemetry-val" id="driveMethodVal">—</span>
-          </div>
-          <div class="telemetry-row">
-            <span class="telemetry-label">NIST 800-88 Category:</span>
-            <span class="telemetry-val" id="driveNistVal"><span class="badge badge-cyan">Clear</span></span>
           </div>
           <div class="telemetry-row">
             <span class="telemetry-label">Firmware Security:</span>
@@ -1047,10 +1021,9 @@
             <span>DESTRUCTIVE SANITIZATION GUARD</span>
           </div>
           <p class="safety-guard-text">
-            Permanent physical overwrite. To arm this operation, type the exact target path below:
+            To arm, type <strong id="driveConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">target device path</strong> below:
           </p>
-          <div class="safety-target-highlight" id="driveConfirmPromptPath">target device path</div>
-          <input type="text" id="driveConfirm" placeholder="Type exact target device path to arm command" class="safety-guard-input">
+          <input type="text" id="driveConfirm" placeholder="Type target device path to confirm" class="safety-guard-input">
         </div>
 
         <button class="btn btn-danger" onclick="startDriveWipe()">
@@ -1063,18 +1036,14 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Execution Console &amp; Certificate Manifest</h2>
-          <span class="badge badge-amber" id="driveStatusBadge">STATUS: IDLE</span>
         </div>
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <div class="terminal-title-group">
-              <div class="terminal-dots">
-                <span class="dot-term dot-red"></span>
-                <span class="dot-term dot-amber"></span>
-                <span class="dot-term dot-green"></span>
-              </div>
-              <span>OPERATOR TERMINAL // s0 wipe</span>
+            <div class="terminal-dots">
+              <span class="dot-term dot-red"></span>
+              <span class="dot-term dot-amber"></span>
+              <span class="dot-term dot-green"></span>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('driveLog')">Clear</button>
           </div>
@@ -1145,18 +1114,14 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Batch Erasure Status &amp; Compliance Record</h2>
-          <span class="badge badge-amber" id="fileStatusBadge">STATUS: IDLE</span>
         </div>
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <div class="terminal-title-group">
-              <div class="terminal-dots">
-                <span class="dot-term dot-red"></span>
-                <span class="dot-term dot-amber"></span>
-                <span class="dot-term dot-green"></span>
-              </div>
-              <span>BATCH EXECUTION LOG // s0 erase</span>
+            <div class="terminal-dots">
+              <span class="dot-term dot-red"></span>
+              <span class="dot-term dot-amber"></span>
+              <span class="dot-term dot-green"></span>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('fileLog')">Clear</button>
           </div>
@@ -1237,18 +1202,14 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Carving Execution &amp; Evidence Manifest</h2>
-          <span class="badge badge-amber" id="carveStatusBadge">STATUS: IDLE</span>
         </div>
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <div class="terminal-title-group">
-              <div class="terminal-dots">
-                <span class="dot-term dot-red"></span>
-                <span class="dot-term dot-amber"></span>
-                <span class="dot-term dot-green"></span>
-              </div>
-              <span>FORENSIC CARVER TELEMETRY // s0 carve</span>
+            <div class="terminal-dots">
+              <span class="dot-term dot-red"></span>
+              <span class="dot-term dot-amber"></span>
+              <span class="dot-term dot-green"></span>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('carveLog')">Clear</button>
           </div>
@@ -1345,10 +1306,9 @@
             <span>BIT-STREAM CLONING GUARD</span>
           </div>
           <p class="safety-guard-text">
-            All existing partitions and data on the destination device will be permanently replaced. Type the exact destination path to confirm:
+            To arm bit-stream duplication, type <strong id="cloneConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">destination block device path</strong> below:
           </p>
-          <div class="safety-target-highlight" id="cloneConfirmPromptPath">destination block device path</div>
-          <input type="text" id="cloneConfirmInput" placeholder="Type exact destination path to confirm" class="safety-guard-input">
+          <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" class="safety-guard-input">
         </div>
 
         <button class="btn btn-primary" onclick="startImaging()">
@@ -1360,18 +1320,14 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Acquisition Telemetry &amp; Evidence Manifest</h2>
-          <span class="badge badge-amber" id="imageStatusBadge">STATUS: IDLE</span>
         </div>
 
         <div class="terminal-container">
           <div class="terminal-bar">
-            <div class="terminal-title-group">
-              <div class="terminal-dots">
-                <span class="dot-term dot-red"></span>
-                <span class="dot-term dot-amber"></span>
-                <span class="dot-term dot-green"></span>
-              </div>
-              <span>BIT-STREAM ACQUISITION LOG // s0 image</span>
+            <div class="terminal-dots">
+              <span class="dot-term dot-red"></span>
+              <span class="dot-term dot-amber"></span>
+              <span class="dot-term dot-green"></span>
             </div>
             <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 0.7rem;" onclick="clearLog('imageLog')">Clear</button>
           </div>
@@ -1502,15 +1458,14 @@
     </div>
   </div>
 
-  <!-- Unified Platform Footer -->
-  <footer class="app-footer">
-    <div class="footer-inner">
-      <div>Made by <a href="https://github.com/kartik2005221" target="_blank">@kartik2005221</a></div>
-      <div>s0 Forensic &amp; Sanitization Workstation &bull; NIST SP 800-88 Compliant</div>
-    </div>
-  </footer>
-
 </div>
+
+<!-- Unified Platform Footer -->
+<footer class="app-footer">
+  <div class="footer-inner">
+    <div>Made by <a href="https://github.com/kartik2005221" target="_blank">@kartik2005221</a></div>
+  </div>
+</footer>
 
   <!-- ===================================================================== -->
   <!-- JAVASCRIPT CONTROLLER                                                 -->
@@ -1541,6 +1496,21 @@
     function clearLog(logId) {
       const el = document.getElementById(logId);
       if (el) el.textContent = "";
+    }
+
+    function setHeaderJobStatus(text, type) {
+      const el = document.getElementById("headerJobStatus");
+      if (!el) return;
+      el.textContent = text;
+      if (type === "running") {
+        el.style.color = "var(--accent-cyan)";
+      } else if (type === "success") {
+        el.style.color = "var(--accent-emerald)";
+      } else if (type === "error") {
+        el.style.color = "var(--accent-crimson)";
+      } else {
+        el.style.color = "";
+      }
     }
 
     // --- Device Management & Plan Calculation ---
@@ -1600,7 +1570,8 @@
         const mb = (plan.target.capacity_bytes / (1024 * 1024)).toFixed(1);
         document.getElementById("driveCapVal").textContent = `${mb} MB (${plan.target.storage_type || "UNKNOWN"})`;
         document.getElementById("driveMethodVal").textContent = plan.method_id || "None";
-        document.getElementById("driveNistVal").innerHTML = `<span class="badge badge-cyan">${plan.nist_category || "Clear"}</span>`;
+        const nistEl = document.getElementById("driveNistVal");
+        if (nistEl) nistEl.innerHTML = `<span class="badge badge-cyan">${plan.nist_category || "Clear"}</span>`;
         if (plan.hpa_dco) {
           document.getElementById("driveHpaVal").innerHTML = `<span class="badge badge-amber">${plan.hpa_dco.status || "Check required"}</span>`;
         } else {
@@ -1624,8 +1595,12 @@
       }
 
       document.getElementById("driveResultCard").classList.remove("active");
-      document.getElementById("driveStatusBadge").className = "badge badge-cyan";
-      document.getElementById("driveStatusBadge").textContent = "STATUS: RUNNING";
+      const driveBadge = document.getElementById("driveStatusBadge");
+      if (driveBadge) {
+        driveBadge.className = "badge badge-cyan";
+        driveBadge.textContent = "STATUS: RUNNING";
+      }
+      setHeaderJobStatus("RUNNING", "running");
 
       try {
         const res = await fetch("/api/wipe", {
@@ -1638,11 +1613,15 @@
           trackJob(data.job_id, "driveStatusBadge", "driveLog", onDriveWipeDone);
         } else {
           alert(data.detail || "Error starting wipe");
-          document.getElementById("driveStatusBadge").className = "badge badge-red";
-          document.getElementById("driveStatusBadge").textContent = "STATUS: ERROR";
+          if (driveBadge) {
+            driveBadge.className = "badge badge-red";
+            driveBadge.textContent = "STATUS: ERROR";
+          }
+          setHeaderJobStatus("ERROR", "error");
         }
       } catch (err) {
         alert("Failed to communicate with wipe engine: " + err);
+        setHeaderJobStatus("ERROR", "error");
       }
     }
 
@@ -1689,8 +1668,12 @@
       const operator = document.getElementById("fileOperator").value.trim() || "op-forensic";
 
       document.getElementById("fileResultCard").classList.remove("active");
-      document.getElementById("fileStatusBadge").className = "badge badge-cyan";
-      document.getElementById("fileStatusBadge").textContent = "STATUS: RUNNING";
+      const fileBadge = document.getElementById("fileStatusBadge");
+      if (fileBadge) {
+        fileBadge.className = "badge badge-cyan";
+        fileBadge.textContent = "STATUS: RUNNING";
+      }
+      setHeaderJobStatus("RUNNING", "running");
 
       try {
         const res = await fetch("/api/erase-files", {
@@ -1703,11 +1686,15 @@
           trackJob(data.job_id, "fileStatusBadge", "fileLog", onFileEraseDone);
         } else {
           alert(data.detail || "Error starting file erase");
-          document.getElementById("fileStatusBadge").className = "badge badge-red";
-          document.getElementById("fileStatusBadge").textContent = "STATUS: ERROR";
+          if (fileBadge) {
+            fileBadge.className = "badge badge-red";
+            fileBadge.textContent = "STATUS: ERROR";
+          }
+          setHeaderJobStatus("ERROR", "error");
         }
       } catch (err) {
         alert("Failed to trigger file erasure: " + err);
+        setHeaderJobStatus("ERROR", "error");
       }
     }
 
@@ -1753,8 +1740,12 @@
       const min_confidence = parseInt(document.getElementById("carveMinConf").value, 10) || 50;
 
       document.getElementById("carveResultCard").classList.remove("active");
-      document.getElementById("carveStatusBadge").className = "badge badge-cyan";
-      document.getElementById("carveStatusBadge").textContent = "STATUS: SCANNING";
+      const carveBadge = document.getElementById("carveStatusBadge");
+      if (carveBadge) {
+        carveBadge.className = "badge badge-cyan";
+        carveBadge.textContent = "STATUS: SCANNING";
+      }
+      setHeaderJobStatus("RUNNING", "running");
 
       try {
         const res = await fetch("/api/carve", {
@@ -1767,11 +1758,15 @@
           trackJob(data.job_id, "carveStatusBadge", "carveLog", onCarveDone);
         } else {
           alert(data.detail || "Error starting carver");
-          document.getElementById("carveStatusBadge").className = "badge badge-red";
-          document.getElementById("carveStatusBadge").textContent = "STATUS: ERROR";
+          if (carveBadge) {
+            carveBadge.className = "badge badge-red";
+            carveBadge.textContent = "STATUS: ERROR";
+          }
+          setHeaderJobStatus("ERROR", "error");
         }
       } catch (err) {
         alert("Failed to start carving session: " + err);
+        setHeaderJobStatus("ERROR", "error");
       }
     }
 
@@ -1854,8 +1849,9 @@
     // --- Job Poller Engine ---
     function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
       currentJobId = jobId;
-      const badge = document.getElementById(statusBadgeId);
+      const badge = statusBadgeId ? document.getElementById(statusBadgeId) : null;
       const logEl = document.getElementById(logId);
+      setHeaderJobStatus("RUNNING", "running");
 
       const timer = setInterval(async () => {
         try {
@@ -1871,12 +1867,20 @@
           if (data.status === "done" || data.status === "error") {
             clearInterval(timer);
             if (data.status === "done") {
-              badge.className = "badge badge-green";
-              badge.textContent = "STATUS: COMPLETE";
+              if (badge) {
+                badge.className = "badge badge-green";
+                badge.textContent = "STATUS: COMPLETE";
+              }
+              setHeaderJobStatus("COMPLETE", "success");
+              setTimeout(() => setHeaderJobStatus("IDLE", "idle"), 8000);
               if (onDoneCallback) onDoneCallback({ id: jobId, result: data.result });
             } else {
-              badge.className = "badge badge-red";
-              badge.textContent = "STATUS: FAILED";
+              if (badge) {
+                badge.className = "badge badge-red";
+                badge.textContent = "STATUS: FAILED";
+              }
+              setHeaderJobStatus("FAILED", "error");
+              setTimeout(() => setHeaderJobStatus("IDLE", "idle"), 8000);
             }
           }
         } catch (e) {
@@ -1925,8 +1929,12 @@
       }
 
       document.getElementById("imageResultCard").classList.remove("active");
-      document.getElementById("imageStatusBadge").className = "badge badge-cyan";
-      document.getElementById("imageStatusBadge").textContent = "STATUS: RUNNING";
+      const imageBadge = document.getElementById("imageStatusBadge");
+      if (imageBadge) {
+        imageBadge.className = "badge badge-cyan";
+        imageBadge.textContent = "STATUS: RUNNING";
+      }
+      setHeaderJobStatus("RUNNING", "running");
 
       try {
         const res = await fetch("/api/image", {
@@ -1946,11 +1954,15 @@
           trackJob(data.job_id, "imageStatusBadge", "imageLog", onImagingDone);
         } else {
           alert(data.detail || "Error starting acquisition");
-          document.getElementById("imageStatusBadge").className = "badge badge-red";
-          document.getElementById("imageStatusBadge").textContent = "STATUS: ERROR";
+          if (imageBadge) {
+            imageBadge.className = "badge badge-red";
+            imageBadge.textContent = "STATUS: ERROR";
+          }
+          setHeaderJobStatus("ERROR", "error");
         }
       } catch (err) {
         alert("Failed to communicate with imager engine: " + err);
+        setHeaderJobStatus("ERROR", "error");
       }
     }
 
