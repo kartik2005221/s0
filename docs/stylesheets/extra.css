@@ -1,19 +1,19 @@
 /* ================================================================
    S0 — Sector Zero Documentation Theme
-   Palette:
-   #000000  Pure Black       — Header / deepest surfaces
-   #0B192C  Dark Navy        — Page base background
-   #1E3E62  Navy Blue        — Borders / secondary surfaces
-   #FF6500  Electric Orange  — Accent / links / active states
-   #EEEEEE  Crisp White      — Primary text
-   ================================================================ */
-
-/* ── Derived tones (not in the base palette, computed for usability) ──
-   #080F1C  Near-black navy  — elevated bg in header / code
-   #0F2035  Mid-dark navy    — card / sidebar surface
-   #162A45  Lighter navy     — elevated card surface
-   #FF8533  Light orange     — accent hover state
-   rgba(255,101,0,…)         — orange transparent fills
+   Aesthetic: Forensic Pitch-Black & Deep Navy with Electric Orange
+   
+   Palette Core & Variations:
+   #000000  Pitch Black       — Base canvas & header
+   #04070D  Ultra-Dark Navy   — Deep code blocks & terminal
+   #070D18  Dark Navy Tint    — Cards & elevated surfaces
+   #0D1929  Elevated Slate    — Card borders & subtle pills
+   #142338  Navy Border Soft  — Secondary structural dividers
+   #1E3E62  Navy Accent       — Accent borders & tag bases
+   #FF6500  Electric Orange   — Core accent / links / active states
+   #FF8533  Light Orange      — Interactive hover highlights
+   #FFFFFF  Pure White        — High-impact headings & titles
+   #CBD5E1  Crisp Light Slate — Optimized readable body copy
+   #94A3B8  Muted Slate       — Subtext & captions
    ================================================================ */
 
 /* ── Font fallback stack (Google Fonts may be blocked in air-gapped envs) ── */
@@ -24,24 +24,24 @@
     Menlo, Consolas, "Courier New", monospace;
 }
 
-/* ── Slate / Dark Mode (Default) ─────────────────────────────── */
+/* ── Slate / Dark Mode (Pitch Black Default) ─────────────────── */
 [data-md-color-scheme="slate"] {
-  /* Page Base */
-  --md-default-bg-color:           #0B192C;
-  --md-default-bg-color--light:    #0F2035;
-  --md-default-bg-color--lighter:  #162A45;
-  --md-default-bg-color--lightest: #1E3E62;
+  /* Page Base — Pitch Black Canvas */
+  --md-default-bg-color:           #000000;
+  --md-default-bg-color--light:    #070D18;
+  --md-default-bg-color--lighter:  #0D1929;
+  --md-default-bg-color--lightest: #142338;
 
-  /* Typography */
-  --md-default-fg-color:           #EEEEEE;
-  --md-default-fg-color--light:    #D6D6D6;
-  --md-default-fg-color--lighter:  #8fa3be;
-  --md-default-fg-color--lightest: #5a7a9e;
+  /* Typography — High-legibility contrast on black */
+  --md-default-fg-color:           #CBD5E1;
+  --md-default-fg-color--light:    #E2E8F0;
+  --md-default-fg-color--lighter:  #94A3B8;
+  --md-default-fg-color--lightest: #64748B;
 
   /* Header & Primary */
   --md-primary-fg-color:           #000000;
-  --md-primary-bg-color:           #EEEEEE;
-  --md-primary-fg-color--light:    #080F1C;
+  --md-primary-bg-color:           #FFFFFF;
+  --md-primary-fg-color--light:    #04070D;
   --md-primary-fg-color--dark:     #000000;
 
   /* Accents */
@@ -50,29 +50,29 @@
   --md-accent-bg-color:            #FFFFFF;
 
   /* Code Blocks */
-  --md-code-bg-color:              #050D1A;
-  --md-code-fg-color:              #EEEEEE;
+  --md-code-bg-color:              #04070D;
+  --md-code-fg-color:              #E2E8F0;
 
   /* Hyperlinks */
   --md-typeset-a-color:            #FF6500;
 
   /* Borders & Dividers */
-  --md-default-border-color:       #1E3E62;
+  --md-default-border-color:       #142338;
 }
 
 /* ── Default / Light Mode ────────────────────────────────────── */
 [data-md-color-scheme="default"] {
   /* Page Base */
-  --md-default-bg-color:           #F4F7FC;
-  --md-default-bg-color--light:    #E8EEF8;
-  --md-default-bg-color--lighter:  #D8E2F0;
-  --md-default-bg-color--lightest: #C8D5E8;
+  --md-default-bg-color:           #F8FAFC;
+  --md-default-bg-color--light:    #F1F5F9;
+  --md-default-bg-color--lighter:  #E2E8F0;
+  --md-default-bg-color--lightest: #CBD5E1;
 
   /* Typography */
   --md-default-fg-color:           #0B192C;
   --md-default-fg-color--light:    #1E3E62;
-  --md-default-fg-color--lighter:  #3A5A80;
-  --md-default-fg-color--lightest: #8fa3be;
+  --md-default-fg-color--lighter:  #334155;
+  --md-default-fg-color--lightest: #64748B;
 
   /* Header & Primary */
   --md-primary-fg-color:           #0B192C;
@@ -86,14 +86,14 @@
   --md-accent-bg-color:            #FFFFFF;
 
   /* Code Blocks */
-  --md-code-bg-color:              #EAF0FA;
+  --md-code-bg-color:              #EFF4FA;
   --md-code-fg-color:              #0B192C;
 
   /* Hyperlinks */
   --md-typeset-a-color:            #CC5200;
 
   /* Borders & Dividers */
-  --md-default-border-color:       #C8D5E8;
+  --md-default-border-color:       #E2E8F0;
 }
 
 /* ================================================================
@@ -101,14 +101,14 @@
    ================================================================ */
 .md-header {
   background-color: #000000;
-  border-bottom: 1px solid #0F2035;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
-  height: 2.8rem;
+  border-bottom: 1px solid #142338;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+  height: 2.85rem;
 }
 
 /* Site name in header */
 .md-header__title {
-  color: #EEEEEE;
+  color: #FFFFFF;
   font-weight: 600;
 }
 
@@ -116,14 +116,14 @@
 .md-header .md-logo svg,
 .md-header .md-logo img {
   fill: #FF6500;
-  height: 1.5rem;
+  height: 1.55rem;
   width: auto;
   display: block;
 }
 
 /* Icon buttons */
 .md-header__button {
-  color: #8fa3be;
+  color: #94A3B8;
   transition: color 0.15s ease;
 }
 .md-header__button:hover {
@@ -132,8 +132,8 @@
 
 /* ── Search bar inside the header ── */
 .md-search__form {
-  background-color: #0F2035 !important;
-  border: 1px solid #1E3E62 !important;
+  background-color: #070D18 !important;
+  border: 1px solid #142338 !important;
   border-radius: 6px !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
@@ -142,71 +142,72 @@
   box-shadow: 0 0 0 2px rgba(255, 101, 0, 0.22) !important;
 }
 .md-search__input {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
   font-family: var(--s0-font-sans);
 }
 .md-search__input::placeholder {
-  color: #5a7a9e !important;
+  color: #64748B !important;
   opacity: 1 !important;
 }
 .md-search__icon {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
 }
 
 /* Search results dropdown */
 .md-search__output {
-  background-color: #080F1C !important;
+  background-color: #04070D !important;
   border: 1px solid #1E3E62 !important;
   border-radius: 8px !important;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.85) !important;
 }
 .md-search-result__meta {
-  background-color: #050D1A !important;
-  color: #8fa3be !important;
+  background-color: #000000 !important;
+  color: #94A3B8 !important;
   font-size: 0.8rem !important;
+  border-bottom: 1px solid #142338;
 }
 .md-search-result__link:hover,
 .md-search-result__link:focus {
-  background-color: rgba(255, 101, 0, 0.09) !important;
+  background-color: rgba(255, 101, 0, 0.08) !important;
 }
 .md-search-result__article {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
 }
 .md-search-result__teaser {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
 }
 .md-search-result__teaser em {
   color: #FF6500 !important;
   font-weight: 700 !important;
   font-style: normal !important;
-  background-color: rgba(255, 101, 0, 0.12) !important;
-  padding: 0 0.2rem !important;
+  background-color: rgba(255, 101, 0, 0.15) !important;
+  padding: 0 0.25rem !important;
   border-radius: 2px !important;
 }
 
 /* ── Light mode header overrides ── */
 [data-md-color-scheme="default"] .md-header {
   background-color: #0B192C;
-  border-bottom-color: #000000;
+  border-bottom-color: #04070D;
 }
 [data-md-color-scheme="default"] .md-search__form {
-  background-color: #1E3E62 !important;
-  border-color: #2A5585 !important;
+  background-color: #142338 !important;
+  border-color: #1E3E62 !important;
 }
 [data-md-color-scheme="default"] .md-search__input {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
 }
 [data-md-color-scheme="default"] .md-search__input::placeholder {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
   opacity: 1 !important;
 }
 
 /* ================================================================
-   2. NAVIGATION TABS (not used currently — guarded by feature flag)
+   2. NAVIGATION TABS (Guarded)
    ================================================================ */
 .md-tabs {
-  background-color: #080F1C !important;
-  border-bottom: 1px solid #0F2035;
+  background-color: #000000 !important;
+  border-bottom: 1px solid #142338;
 }
 .md-tabs__list {
   display: flex;
@@ -216,7 +217,7 @@
   height: 2.4rem;
 }
 .md-tabs__link {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
   font-size: 0.84rem;
   font-weight: 500;
   opacity: 1 !important;
@@ -225,7 +226,7 @@
   border-bottom: 2px solid transparent;
 }
 .md-tabs__link:hover {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
 }
 .md-tabs__link--active {
   color: #FF6500 !important;
@@ -241,6 +242,7 @@
   padding-top: 0 !important;
   height: 100vh !important;
   position: sticky !important;
+  background-color: #000000;
 }
 
 .md-sidebar__scrollwrap {
@@ -250,7 +252,7 @@
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: thin;
-  scrollbar-color: #1E3E62 transparent;
+  scrollbar-color: #142338 transparent;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
@@ -258,7 +260,7 @@
   width: 4px;
 }
 .md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
-  background-color: #1E3E62;
+  background-color: #142338;
   border-radius: 4px;
 }
 .md-sidebar__scrollwrap::-webkit-scrollbar-thumb:hover {
@@ -266,7 +268,7 @@
 }
 
 .md-sidebar--primary {
-  border-right: 1px solid #0F2035;
+  border-right: 1px solid #142338;
 }
 
 /* Content area top margin */
@@ -278,41 +280,41 @@
    4. SIDEBAR NAVIGATION
    ================================================================ */
 .md-nav--primary .md-nav__item--section > .md-nav__link {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
   font-weight: 700;
   font-size: 0.78rem;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-top: 1.1rem;
-  padding-bottom: 0.2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .md-nav__link {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
   font-size: 0.87rem;
   border-radius: 5px;
-  padding: 0.3rem 0.6rem !important;
+  padding: 0.32rem 0.6rem !important;
   transition: all 0.15s ease;
   margin-bottom: 0.05rem;
 }
 .md-nav__link:hover {
   color: #FF8533 !important;
-  background-color: rgba(255, 101, 0, 0.07);
+  background-color: rgba(255, 101, 0, 0.08);
 }
 
-/* Active item — border-left with compensated padding so text doesn't shift */
+/* Active item — border-left with compensated padding */
 .md-nav__link--active,
 .md-nav__item--active > .md-nav__link {
   color: #FF6500 !important;
   font-weight: 600;
-  background-color: rgba(255, 101, 0, 0.10);
+  background-color: rgba(255, 101, 0, 0.12);
   border-left: 3px solid #FF6500;
   padding-left: calc(0.6rem - 3px) !important;
 }
 
 .md-nav__title {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
   font-weight: 700;
   font-size: 0.85rem;
   letter-spacing: 0.04em;
@@ -323,23 +325,23 @@
 }
 
 /* ================================================================
-   5. GRID CARDS (Homepage & section pages)
+   5. GRID CARDS (Homepage & Section Pages)
    ================================================================ */
 .md-typeset .grid.cards > ul > li {
-  background-color: #0F2035;
-  border: 1px solid rgba(255, 101, 0, 0.20);
+  background-color: #070D18;
+  border: 1px solid #142338;
   border-radius: 10px;
-  padding: 1.2rem 1.35rem;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .md-typeset .grid.cards > ul > li:hover {
   border-color: #FF6500;
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(255, 101, 0, 0.18);
+  box-shadow: 0 8px 26px rgba(255, 101, 0, 0.16);
 }
 .md-typeset .grid.cards > ul > li hr {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
   margin: 0.75rem 0;
 }
 .md-typeset .grid.cards > ul > li strong {
@@ -347,7 +349,7 @@
   font-size: 1.02rem;
 }
 .md-typeset .grid.cards > ul > li p {
-  color: #8fa3be;
+  color: #CBD5E1;
   font-size: 0.9rem;
   line-height: 1.65;
 }
@@ -369,11 +371,11 @@
 /* Light mode cards */
 [data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li {
   background-color: #FFFFFF;
-  border-color: rgba(204, 82, 0, 0.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border-color: #E2E8F0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 [data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li p {
-  color: #3A5A80;
+  color: #334155;
 }
 [data-md-color-scheme="default"] .md-typeset .grid.cards > ul > li:hover {
   border-color: #CC5200;
@@ -384,30 +386,32 @@
    6. CODE BLOCKS & SYNTAX HIGHLIGHTING
    ================================================================ */
 .md-typeset pre {
-  background-color: #050D1A !important;
-  border: 1px solid #1E3E62;
+  background-color: #04070D !important;
+  border: 1px solid #142338;
   border-radius: 8px;
   font-family: var(--s0-font-mono);
 }
 
 .md-typeset code {
-  background-color: #0F2035;
+  background-color: #070D18;
   color: #FF8533;
   border-radius: 4px;
   padding: 0.12rem 0.35rem;
   font-size: 0.85em;
   font-family: var(--s0-font-mono);
+  border: 1px solid rgba(255, 101, 0, 0.15);
 }
 
 .md-typeset pre > code {
   background-color: transparent;
-  color: #EEEEEE;
+  color: #E2E8F0;
   padding: 0;
+  border: none;
 }
 
 /* Copy button */
 .md-clipboard {
-  color: #5a7a9e !important;
+  color: #64748B !important;
   transition: color 0.15s ease;
 }
 .md-clipboard:hover {
@@ -416,21 +420,22 @@
 
 /* Language label chip */
 .md-typeset .highlight span.filename {
-  background-color: #0F2035;
-  border-bottom: 1px solid #1E3E62;
-  color: #8fa3be;
+  background-color: #070D18;
+  border-bottom: 1px solid #142338;
+  color: #94A3B8;
   font-family: var(--s0-font-mono);
   font-size: 0.78rem;
 }
 
 /* Light mode code */
 [data-md-color-scheme="default"] .md-typeset pre {
-  background-color: #EAF0FA !important;
-  border-color: #C8D5E8;
+  background-color: #EFF4FA !important;
+  border-color: #E2E8F0;
 }
 [data-md-color-scheme="default"] .md-typeset code {
-  background-color: #D8E2F0;
+  background-color: #E2E8F0;
   color: #CC5200;
+  border-color: rgba(204, 82, 0, 0.2);
 }
 [data-md-color-scheme="default"] .md-typeset pre > code {
   background-color: transparent;
@@ -441,10 +446,10 @@
    7. ADMONITIONS & CALLOUT BOXES
    ================================================================ */
 .md-typeset .admonition {
-  background-color: #0F2035;
+  background-color: #070D18;
   border-radius: 8px;
   border-left-width: 4px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* Tip / Note / Info → orange accent */
@@ -498,8 +503,8 @@
 
 /* Details (collapsible) */
 .md-typeset details {
-  background-color: #0F2035;
-  border: 1px solid #1E3E62;
+  background-color: #070D18;
+  border: 1px solid #142338;
   border-radius: 8px;
 }
 .md-typeset details summary {
@@ -509,11 +514,11 @@
 
 /* Light mode admonitions */
 [data-md-color-scheme="default"] .md-typeset .admonition {
-  background-color: #F4F7FC;
+  background-color: #F8FAFC;
 }
 [data-md-color-scheme="default"] .md-typeset details {
-  background-color: #F4F7FC;
-  border-color: #C8D5E8;
+  background-color: #F8FAFC;
+  border-color: #E2E8F0;
 }
 
 /* ================================================================
@@ -527,26 +532,27 @@
 }
 
 .md-typeset table:not([class]) {
-  border: 1px solid #1E3E62;
+  border: 1px solid #142338;
   border-radius: 8px;
   border-spacing: 0;
   min-width: 480px;
   overflow: visible;
+  background-color: #04070D;
 }
 
 .md-typeset table:not([class]) th {
-  background-color: #0F2035;
-  color: #EEEEEE;
+  background-color: #070D18;
+  color: #FFFFFF;
   font-weight: 600;
-  border-bottom: 2px solid #1E3E62;
+  border-bottom: 2px solid #142338;
   white-space: nowrap;
-  padding: 0.6rem 0.85rem;
+  padding: 0.65rem 0.9rem;
 }
 
 .md-typeset table:not([class]) td {
-  border-bottom: 1px solid rgba(30, 62, 98, 0.5);
-  color: #8fa3be;
-  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid rgba(20, 35, 56, 0.8);
+  color: #CBD5E1;
+  padding: 0.55rem 0.9rem;
 }
 
 .md-typeset table:not([class]) tr:last-child td {
@@ -554,21 +560,22 @@
 }
 
 .md-typeset table:not([class]) tr:hover {
-  background-color: rgba(255, 101, 0, 0.04);
+  background-color: rgba(255, 101, 0, 0.05);
 }
 
 /* Light mode tables */
 [data-md-color-scheme="default"] .md-typeset table:not([class]) {
-  border-color: #C8D5E8;
+  border-color: #E2E8F0;
+  background-color: #FFFFFF;
 }
 [data-md-color-scheme="default"] .md-typeset table:not([class]) th {
-  background-color: #E8EEF8;
+  background-color: #F1F5F9;
   color: #0B192C;
-  border-bottom-color: #C8D5E8;
+  border-bottom-color: #E2E8F0;
 }
 [data-md-color-scheme="default"] .md-typeset table:not([class]) td {
-  color: #1E3E62;
-  border-bottom: 1px solid #D8E2F0;
+  color: #334155;
+  border-bottom: 1px solid #F1F5F9;
 }
 [data-md-color-scheme="default"] .md-typeset table:not([class]) tr:hover {
   background-color: rgba(204, 82, 0, 0.04);
@@ -586,7 +593,7 @@
   color: #FFFFFF;
   font-weight: 700;
   letter-spacing: -0.015em;
-  border-bottom: 1px solid rgba(30, 62, 98, 0.8);
+  border-bottom: 1px solid #142338;
   padding-bottom: 0.35rem;
   margin-top: 2rem;
 }
@@ -598,13 +605,13 @@
 .md-typeset h4,
 .md-typeset h5,
 .md-typeset h6 {
-  color: #D6D6D6;
+  color: #E2E8F0;
   font-weight: 600;
 }
 
 .md-typeset p,
 .md-typeset li {
-  color: #8fa3be;
+  color: #CBD5E1;
   line-height: 1.75;
 }
 
@@ -612,19 +619,19 @@
   color: #FFFFFF;
 }
 
-/* Blockquote — orange accent, good contrast */
+/* Blockquote — orange accent, high contrast text */
 .md-typeset blockquote {
-  border-left: 4px solid rgba(255, 101, 0, 0.5);
-  background-color: rgba(255, 101, 0, 0.05);
+  border-left: 4px solid #FF6500;
+  background-color: rgba(255, 101, 0, 0.06);
   border-radius: 0 6px 6px 0;
-  padding: 0.6rem 1rem;
-  color: #D6D6D6;
+  padding: 0.65rem 1.05rem;
+  color: #E2E8F0;
 }
 
 /* Keyboard key styling */
 .md-typeset kbd {
-  background-color: #0F2035;
-  border: 1px solid #1E3E62;
+  background-color: #070D18;
+  border: 1px solid #142338;
   border-radius: 4px;
   color: #FF6500;
   font-size: 0.78em;
@@ -634,7 +641,7 @@
 
 /* Horizontal rule */
 .md-typeset hr {
-  border-color: rgba(30, 62, 98, 0.7);
+  border-color: #142338;
 }
 
 /* Light mode typography */
@@ -644,7 +651,7 @@
   color: #0B192C;
 }
 [data-md-color-scheme="default"] .md-typeset h2 {
-  border-bottom-color: #C8D5E8;
+  border-bottom-color: #E2E8F0;
 }
 [data-md-color-scheme="default"] .md-typeset h4,
 [data-md-color-scheme="default"] .md-typeset h5,
@@ -653,22 +660,22 @@
 }
 [data-md-color-scheme="default"] .md-typeset p,
 [data-md-color-scheme="default"] .md-typeset li {
-  color: #1E3E62;
+  color: #334155;
 }
 [data-md-color-scheme="default"] .md-typeset strong {
   color: #0B192C;
 }
 [data-md-color-scheme="default"] .md-typeset blockquote {
-  border-left-color: rgba(204, 82, 0, 0.5);
+  border-left-color: #CC5200;
   background-color: rgba(204, 82, 0, 0.05);
-  color: #1E3E62;
+  color: #334155;
 }
 [data-md-color-scheme="default"] .md-typeset hr {
-  border-color: #C8D5E8;
+  border-color: #E2E8F0;
 }
 [data-md-color-scheme="default"] .md-typeset kbd {
-  background-color: #E8EEF8;
-  border-color: #C8D5E8;
+  background-color: #F1F5F9;
+  border-color: #E2E8F0;
   color: #CC5200;
 }
 
@@ -676,7 +683,7 @@
    10. CONTENT TABS
    ================================================================ */
 .md-typeset .tabbed-labels > label {
-  color: #8fa3be;
+  color: #94A3B8;
   font-weight: 500;
   border-bottom: 2px solid transparent;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -689,14 +696,14 @@
   border-bottom-color: #FF6500;
 }
 .md-typeset .tabbed-content {
-  border: 1px solid #1E3E62;
+  border: 1px solid #142338;
   border-radius: 0 8px 8px 8px;
-  background-color: #0F2035;
+  background-color: #070D18;
 }
 
 [data-md-color-scheme="default"] .md-typeset .tabbed-content {
-  background-color: #F4F7FC;
-  border-color: #C8D5E8;
+  background-color: #F8FAFC;
+  border-color: #E2E8F0;
 }
 [data-md-color-scheme="default"] .md-typeset .tabbed-labels > .tabbed-label--active {
   color: #CC5200;
@@ -704,26 +711,26 @@
 }
 
 /* ================================================================
-   11. HERO SECTION (Landing page)
+   11. HERO SECTION (Landing Page)
    ================================================================ */
 .s0-hero {
   text-align: center;
   padding: 2rem 0 3rem;
 }
 
-/* Dark mode: orange → white gradient */
+/* Dark mode: intense electric orange → white gradient */
 .s0-hero h1 {
   font-size: clamp(2.2rem, 5vw, 3rem);
   font-weight: 800;
   letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #FF6500 0%, #FF8533 50%, #EEEEEE 100%);
+  background: linear-gradient(135deg, #FF6500 0%, #FFA040 50%, #FFFFFF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 0.5rem;
 }
 
-/* Light mode: solid dark navy (gradient washes out on light bg) */
+/* Light mode: solid dark navy */
 [data-md-color-scheme="default"] .s0-hero h1 {
   background: none;
   -webkit-text-fill-color: unset;
@@ -731,7 +738,7 @@
 }
 
 .s0-hero .s0-tagline {
-  color: #8fa3be;
+  color: #94A3B8;
   font-size: 1.05rem;
   font-weight: 400;
   margin-bottom: 1.5rem;
@@ -745,7 +752,7 @@
 }
 
 [data-md-color-scheme="default"] .s0-hero .s0-tagline {
-  color: #3A5A80;
+  color: #334155;
 }
 
 /* ================================================================
@@ -753,7 +760,7 @@
    ================================================================ */
 .terminal-demo {
   background-color: #000000;
-  border: 1px solid #1E3E62;
+  border: 1px solid #142338;
   border-radius: 8px;
   padding: 1rem 1.25rem;
   font-family: var(--s0-font-mono);
@@ -762,19 +769,19 @@
   overflow-x: auto;
 }
 .terminal-demo .t-prompt  { color: #FF6500; }
-.terminal-demo .t-output  { color: #8fa3be; }
+.terminal-demo .t-output  { color: #CBD5E1; }
 .terminal-demo .t-success { color: #22c55e; }
 .terminal-demo .t-warn    { color: #f59e0b; }
 .terminal-demo .t-error   { color: #ef4444; }
 
 /* ================================================================
-   13. STATUS BADGES (inline)
+   13. STATUS BADGES (Inline)
    ================================================================ */
 .badge-purge {
   display: inline-block;
   background-color: rgba(255, 101, 0, 0.12);
   color: #FF6500;
-  border: 1px solid rgba(255, 101, 0, 0.4);
+  border: 1px solid rgba(255, 101, 0, 0.45);
   border-radius: 4px;
   padding: 0.1rem 0.5rem;
   font-size: 0.75rem;
@@ -786,7 +793,7 @@
   display: inline-block;
   background-color: rgba(34, 197, 94, 0.12);
   color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.35);
   border-radius: 4px;
   padding: 0.1rem 0.5rem;
   font-size: 0.75rem;
@@ -796,9 +803,9 @@
 }
 .badge-na {
   display: inline-block;
-  background-color: rgba(90, 122, 158, 0.15);
-  color: #8fa3be;
-  border: 1px solid rgba(90, 122, 158, 0.3);
+  background-color: rgba(100, 116, 139, 0.15);
+  color: #94A3B8;
+  border: 1px solid rgba(100, 116, 139, 0.35);
   border-radius: 4px;
   padding: 0.1rem 0.5rem;
   font-size: 0.75rem;
@@ -808,12 +815,12 @@
 }
 
 /* ================================================================
-   14. MERMAID DIAGRAMS (responsive — no fixed min-width)
+   14. MERMAID DIAGRAMS (Responsive)
    ================================================================ */
 .mermaid {
   text-align: center;
-  background-color: #080F1C !important;
-  border: 1px solid #1E3E62;
+  background-color: #04070D !important;
+  border: 1px solid #142338;
   border-radius: 8px;
   padding: 1.25rem 1rem;
   overflow-x: auto !important;
@@ -829,8 +836,8 @@
 }
 
 [data-md-color-scheme="default"] .mermaid {
-  background-color: #EAF0FA !important;
-  border-color: #C8D5E8;
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0;
 }
 
 /* ================================================================
@@ -851,28 +858,28 @@
 .md-typeset .md-button--primary:hover {
   background-color: #E05A00;
   border-color: #E05A00;
-  box-shadow: 0 4px 16px rgba(255, 101, 0, 0.40);
+  box-shadow: 0 4px 18px rgba(255, 101, 0, 0.45);
 }
 
 /* ================================================================
    16. FOOTER
    ================================================================ */
 .md-footer {
-  background-color: #080F1C !important;
-  border-top: 1px solid #0F2035;
+  background-color: #000000 !important;
+  border-top: 1px solid #142338;
 }
 .md-footer-meta {
   background-color: #000000 !important;
 }
 .md-footer__link {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
   transition: color 0.15s ease;
 }
 .md-footer__link:hover {
   color: #FF6500 !important;
 }
 .md-footer__title {
-  color: #5a7a9e;
+  color: #64748B;
   font-size: 0.78rem;
 }
 .md-footer__inner {
@@ -880,18 +887,18 @@
 }
 
 /* ================================================================
-   17. TABLE OF CONTENTS (right sidebar)
+   17. TABLE OF CONTENTS (Right Sidebar)
    ================================================================ */
 .md-nav--secondary .md-nav__link {
   font-size: 0.8rem;
-  color: #5a7a9e !important;
+  color: #64748B !important;
   padding: 0.25rem 0.6rem !important;
   border-radius: 4px;
   transition: color 0.15s ease, background 0.15s ease;
 }
 .md-nav--secondary .md-nav__link:hover {
-  color: #EEEEEE !important;
-  background-color: rgba(255, 255, 255, 0.04);
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 .md-nav--secondary .md-nav__link--active {
   color: #FF6500 !important;
@@ -900,7 +907,7 @@
 }
 
 [data-md-color-scheme="default"] .md-nav--secondary .md-nav__link {
-  color: #3A5A80 !important;
+  color: #64748B !important;
 }
 [data-md-color-scheme="default"] .md-nav--secondary .md-nav__link--active {
   color: #CC5200 !important;
@@ -911,17 +918,17 @@
    18. SOURCE (GitHub) REPO CHIP IN HEADER
    ================================================================ */
 .md-source {
-  color: #8fa3be !important;
+  color: #94A3B8 !important;
   transition: color 0.15s ease;
 }
 .md-source:hover {
-  color: #EEEEEE !important;
+  color: #FFFFFF !important;
 }
 .md-source__icon svg {
   fill: currentColor;
 }
 .md-source__facts {
-  color: #5a7a9e;
+  color: #64748B;
   font-size: 0.72rem;
 }
 
@@ -932,8 +939,8 @@
   .md-sidebar--primary {
     height: 100% !important;
     position: fixed !important;
-    border-right: 1px solid #0F2035;
-    background-color: #0B192C;
+    border-right: 1px solid #142338;
+    background-color: #000000;
   }
 }
 
