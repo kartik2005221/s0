@@ -17,6 +17,24 @@ timeline
 
 ---
 
+## [2.1.0] — 2026-09-10
+
+### Added
+- **Custom File Signatures in Carver (CLI & GUI):** Added support for arbitrary user-defined magic byte signatures (`--custom-sig` on CLI and interactive Signature Builder on Web Dashboard) supporting hex headers, optional footers, extensions, categories, and max carving sizes across NTFS, ext4, FAT32, exFAT, and raw carving engines.
+- **Central Workspace Configuration (`s0_config.json`):** Unified default operator, organization, documentation URLs, and key paths automatically loaded across Linux, macOS, and Windows CLIs, Web Dashboard, and Verification Portal.
+- **Persistent Light & Dark Theme Mode:** Implemented accessible, high-contrast light and dark mode toggles with zero-flicker `<head>` initialization and `localStorage` persistence across both Web Dashboard and Verification Portal.
+- **Offline Typography Consolidation:** Strictly consolidated Web Dashboard and Verification Portal on self-hosted Rubik (sans-serif) and JetBrains Mono (monospace) `.woff2` font assets, eliminating external CDN dependencies.
+- **Verification Portal QR & PDF Verification:** Added direct PDF certificate upload support with embedded QR code extraction and immediate cryptographically verified payload rendering.
+- **Carver Output Directory Option:** Added custom extraction output directory selection to both GUI and CLI carving workflows.
+
+### Changed
+- **Drive Sanitizer Form Refinement:** Streamlined drive wipe options in Web Dashboard, providing explicit operator and organization fields and harmonizing overwrite pattern standards with pass counts.
+
+### Fixed
+- **Verification Portal Background Flare:** Constrained top radial gradient and removed fixed card minimum height constraints, eliminating viewport blowout and mid-screen visual artifacts.
+
+---
+
 ## [2.0.0] — 2026-09-09
 
 ### Added

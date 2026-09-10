@@ -456,7 +456,33 @@ You have three independent ways to verify any s0 certificate, all of which work 
 
 ---
 
-## 10. Next Steps
+## 10. Workspace Configuration (`s0_config.json`)
+
+To eliminate the need for passing repeated command-line arguments and ensure organizational consistency across all workstation interfaces, `s0` automatically reads `s0_config.json` at the root of the repository or the current working directory (override path via the `S0_CONFIG_PATH` environment variable):
+
+```json
+{
+  "version": "2.0.0",
+  "tool_name": "s0",
+  "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
+  "documentation_url": "https://s0-docs-ten.vercel.app/",
+  "verification_portal_url": "https://s0-vp.vercel.app/",
+  "github_url": "https://github.com/kartik2005221/s0",
+  "default_operator": "op-forensic",
+  "default_organization": "Digital Forensics & Data Sanitization Lab",
+  "default_key_path": "core/keys/demo_issuer_private.pem",
+  "default_public_key_path": "core/keys/demo_issuer_public.pem",
+  "default_out_dir": "demo-out",
+  "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
+  "api_port": 8000
+}
+```
+
+Every command line interface (`s0 wipe`, `s0 erase`, `s0 carve`, `s0 image`), macOS/Windows CLI tool, Web Dashboard, and Verification Portal automatically derives its operational defaults from this central file.
+
+---
+
+## 11. Next Steps
 
 Now that you have s0 installed and have run your first operations, explore the deeper documentation:
 

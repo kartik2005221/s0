@@ -28,6 +28,58 @@ s0 recognizes the following file types by their binary signatures:
 
 ---
 
+## Custom File Signatures
+
+When investigating proprietary forensic evidence, specialized container formats, or uncataloged file types, `s0` allows investigators to define **custom binary file signatures** with arbitrary magic header and footer bytes.
+
+### Signature Definition Format
+
+Custom signatures can be provided as a JSON file or inline JSON object with the following schema:
+
+```json
+[
+  {
+    "name": "Proprietary Encrypted Vault",
+    "extension": "psv",
+    "category": "archive",
+    "header_hex": "53 45 43 56 41 55 4C 54",
+    "footer_hex": "45 4E 44 56 41 55 4C 54",
+    "min_size": 64,
+    "max_size": 104857600
+  }
+]
+```
+
+#### Field Specifications:
+- **`name`** *(string, required)*: Descriptive label for the artifact (appears in forensic reports and audit logs).
+- **`extension`** *(string, required)*: Target file extension without leading dot (e.g. `psv`, `dat`, `kdbx`).
+- **`category`** *(string, optional)*: Categorization enum (`document`, `image`, `archive`, `audio`, `video`, `executable`, or `custom`).
+- **`header_hex`** *(string or bytes, required)*: Hexadecimal magic header bytes (spaces or `0x` prefixes optional, e.g. `FF D8 FF` or `ffd8ff`).
+- **`footer_hex`** *(string or bytes, optional)*: Hexadecimal trailer/footer bytes indicating end-of-file boundary.
+- **`min_size`** *(integer, optional, default: 32)*: Minimum candidate byte length to consider valid.
+- **`max_size`** *(integer, optional, default: 50MB)*: Maximum allocation window to search for footers.
+
+### Invocation via CLI & GUI
+
+=== "CLI Flag (`--custom-sig`)"
+    ```bash
+    # Supply a custom signatures JSON file
+    s0 carve --target /dev/sdb --out-dir ./recovered --custom-sig ./my_sigs.json
+
+    # Or provide inline JSON directly on the command line
+    s0 carve --target evidence.raw --out-dir ./out \
+             --custom-sig '{"name":"CustomDB","extension":"cdb","header_hex":"43 44 42 01"}'
+    ```
+
+=== "Web Dashboard"
+    In the **Forensic File Carver** tab, expand **➕ Custom File Signatures (Magic Bytes Header / Footer)**:
+    1. Click **+ Add Custom Signature**.
+    2. Enter the format name, extension, category, and raw hexadecimal header/footer bytes.
+    3. The extension is automatically synced into the active extension filter.
+    4. Click **Start Forensic Carving Scan** — the engine injects custom signatures into the scanning loop automatically.
+
+---
+
 ## The Five Carving Engines
 
 ### Engine Overview

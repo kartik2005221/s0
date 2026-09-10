@@ -682,6 +682,7 @@ Forensic file carving and recovery from raw disk images or live block devices. `
     s0 carve --target PATH \
              --out-dir DIR \
              [--extensions EXT,...] \
+             [--custom-sig PATH_OR_JSON] \
              [--min-confidence N] \
              [--operator ID] \
              [--organization NAME] \
@@ -695,11 +696,12 @@ Forensic file carving and recovery from raw disk images or live block devices. `
     |------|------|---------|----------|-------------|
     | `--target` | path | — | **yes** | Raw disk image (`.raw`, `.img`, `.dd`) or block device (e.g. `/dev/sda`). |
     | `--out-dir` | path | — | **yes** | Directory to write carved files and the recovery index into. |
-    | `--extensions` | comma-separated | all | no | Restrict carving to specific types. See supported types below. |
+    | `--extensions` | comma-separated | all | no | Restrict carving to specific types (e.g. `jpg,png,pdf,zip`). |
+    | `--custom-sig` | path or JSON | — | no | Path to JSON file (or inline JSON) defining custom file signature(s) with hex magic bytes. |
     | `--min-confidence` | 0–100 | `50` | no | Discard recovered files scoring below this threshold. |
-    | `--operator` | string | *(empty)* | no | Forensic operator identity for the manifest certificate. |
-    | `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no | Issuing organization name. |
-    | `--key` | path | auto | no | Signing key PEM for the manifest certificate. |
+    | `--operator` | string | `s0_config.json` | no | Forensic operator identity for the manifest certificate (default: `op-forensic`). |
+    | `--organization` | string | `s0_config.json` | no | Issuing organization name (default from central configuration). |
+    | `--key` | path | auto (`s0_config.json`) | no | Signing key PEM for the manifest certificate. |
     | `--no-certificate` | flag | off | no | Skip manifest certificate generation. |
 
     **Supported file types**
@@ -787,6 +789,21 @@ Forensic file carving and recovery from raw disk images or live block devices. `
         --operator "examiner.jane@dfir.lab" \
         --organization "DFIR Lab Unit 7" \
         --no-certificate
+    ```
+
+    **Carve with Custom File Signatures**
+    ```bash
+    # Supply a JSON file defining proprietary magic bytes header/footer
+    s0 carve \
+        --target /evidence/suspect_drive.raw \
+        --out-dir /evidence/recovered/ \
+        --custom-sig ./custom_signatures.json
+
+    # Or supply inline JSON directly
+    s0 carve \
+        --target /evidence/suspect_drive.raw \
+        --out-dir /evidence/recovered/ \
+        --custom-sig '{"name":"SecureContainer","extension":"sc","category":"archive","header_hex":"53454355","footer_hex":"454E44"}'
     ```
 
     **Inspect the recovery index**

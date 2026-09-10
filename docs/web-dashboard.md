@@ -147,6 +147,7 @@ The Carver tab recovers deleted artifacts from disk images (`.raw`, `.img`, `.dd
 
 #### Key Capabilities:
 - **Filesystem-Aware Acceleration:** Automatically detects ext4 (inode extents) or NTFS ($MFT) structures to index recovered files in seconds.
+- **Custom Magic Byte File Signatures:** Define proprietary or uncataloged file signatures directly in the browser by expanding **➕ Custom File Signatures**. Enter custom header magic bytes (e.g. `53 45 43 55`), optional footer bytes (e.g. `00 00 45 4F 46`), format name, and target extension. The carver automatically injects these into the raw stream and filesystem parsers alongside built-in signatures.
 - **Entropy & Confidence Filtering:** Use the interactive confidence slider to filter out fragmented noise or corrupted candidates before exporting.
 - **Instant Triage:** Review extracted file sizes, SHA-256 hashes, and download recovered artifacts directly from the browser table.
 
@@ -220,4 +221,26 @@ The Audit Ledger tab provides visual verification of the forensic chain of custo
 
 The Certificate Portal allows instant, offline, zero-trust verification of signed certificates issued by s0:
 - **Air-Gapped Operation:** Pure client-side Web Crypto verification with zero network dependencies.
-- **Drag-and-Drop Ingestion:** Drop any `.json` certificate issued by s0 or scan an evidentiary QR code to view validated metadata, sanitization method, NIST 800-88 compliance tier, and Ed25519 signature validity.
+- **Multi-Format Ingestion:** Drop any `.json` certificate issued by s0, upload an official `.pdf` sanitization certificate for optical QR decoding, or paste/drop raw QR code images to instantly inspect cryptographic proofs.
+- **Custom Key Verification:** Verify certificates issued by independent authorities by providing raw SPKI PEM or 64-character Ed25519 public keys.
+
+---
+
+## 4. Workstation Interface Features
+
+### High-Contrast Light & Dark Theme Toggle
+Both the primary Web Dashboard and the Verification Portal feature an instant theme toggle in the top navigation header:
+- **Default Dark Mode:** High-contrast forensic aesthetic with deep blacks (`#000000`), subtle cards (`#070D18`), and signature orange accents (`#FF6500`).
+- **Clean Light Mode:** Professional daytime workstation palette (`#F8FAFC` canvas, crisp `#FFFFFF` cards, navy terminal slate `#0F172A`).
+- **Persistent State:** Theme preference is remembered via `localStorage` across all tabs and browser restarts, with zero page flicker on reload.
+
+### Strict Offline Air-Gapped Typography
+To ensure 100% air-gapped forensic operation without external telemetry leaks:
+- Both GUIs strictly load self-hosted **Rubik** (sans-serif UI) and **JetBrains Mono** (terminal, hexadecimal, hashes, and code metrics).
+- All Google Fonts CDN links have been removed in favor of local `.woff2` font bundles served directly from `/static/fonts/` and `/fonts/`.
+
+### Central Workspace Configuration (`s0_config.json`)
+The Web Dashboard automatically reads `/home/kartik/s0/s0_config.json` via `/api/config` on startup:
+- Default operator identifier, laboratory name, output directory, and verification URLs are automatically pre-populated into all dashboard forms.
+- If customized in `s0_config.json`, the entire workstation reflects the updated organization details immediately upon page load.
+

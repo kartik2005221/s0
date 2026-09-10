@@ -11,10 +11,16 @@ Deploy the contents of the `verification-portal/` directory:
 ```
 verification-portal/
 ├── index.html              # Interactive verification UI (drag-and-drop, QR scanner, payload viewer)
+├── css/portal.css          # Modular portal stylesheet with light/dark themes
+├── js/portal.js            # Client-side controller (PDF rendering, optical QR decode, theme toggle)
 ├── verify.js               # Pure JS verifier (s0 Canonical JSON v1 + Ed25519 validator)
 ├── keys.json               # Trusted authority public key registry (pinned keys & fingerprints)
+├── fonts/                  # Self-hosted offline fonts (Rubik & JetBrains Mono woff2)
 └── vendor/
-    └── crypto-bundle.js    # Self-contained crypto primitives (no CDN or external network needed)
+    ├── crypto-bundle.js    # Self-contained crypto primitives (no CDN or external network needed)
+    ├── pdf.min.js          # Pure client-side PDF document parser (PDF.js 3.11)
+    ├── pdf.worker.min.js   # PDF.js Web Worker
+    └── jsqr.min.js         # Pure client-side optical QR image decoder (jsQR 1.4)
 ```
 
 ### 1.2 Deployment Options (Zero-Backend Static Hosting)
