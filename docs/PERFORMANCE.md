@@ -82,7 +82,7 @@ gantt
 
 ## 4. Cryptographic Core & Ledger Verification Latency
 
-All cryptographic operations are executed in-process with minimal overhead. The figures below are verified empirically via `python tools/benchmark_perf.py`:
+All cryptographic operations are executed in-process with minimal overhead. The figures below are verified empirically via `python scripts/benchmark_perf.py`:
 
 | Cryptographic Operation | Underlying Algorithm / RFC | Empirical Latency | Throughput / Ops/sec | Impact on Total Job |
 |---|---|---|---|---|
@@ -129,15 +129,15 @@ Unlike legacy forensic utilities that buffer entire disk images or carving table
 
 ## 7. Reproducible Benchmark Harness
 
-To reproduce all empirical metrics on your specific target hardware, execute the automated benchmark harness committed in `tools/benchmark_perf.py`:
+To reproduce all empirical metrics on your specific target hardware, execute the automated benchmark harness committed in `scripts/benchmark_perf.py`:
 
 ```bash
 # Run standard empirical performance benchmark suite
-python tools/benchmark_perf.py
+python scripts/benchmark_perf.py
 
 # Run quick verification test
-python tools/benchmark_perf.py --quick
+python scripts/benchmark_perf.py --quick
 
 # Output machine-readable JSON metrics for CI/CD telemetry
-python tools/benchmark_perf.py --json
+python scripts/benchmark_perf.py --json
 ```

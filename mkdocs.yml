@@ -138,6 +138,10 @@ nav:
   - Compliance & Standards:
       - NIST SP 800-88 Compliance: COMPLIANCE.md
       - Technical Limitations & Scope: LIMITATIONS.md
+      - Platform Validation:
+          - Linux Storage & Emulation: platforms/linux.md
+          - macOS Native APFS: platforms/macos.md
+          - Windows Native Storage: platforms/windows.md
   - Developer & Defense:
       - Contributing Guide: contributing.md
       - Forensic Test Plan & QA: TEST_PLAN.md

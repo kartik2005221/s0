@@ -10,9 +10,9 @@ Measures actual empirical performance across:
 6. Memory (RSS) footprint under streaming I/O load
 
 Usage:
-    python tools/benchmark_perf.py
-    python tools/benchmark_perf.py --json
-    python tools/benchmark_perf.py --quick
+    python scripts/benchmark_perf.py
+    python scripts/benchmark_perf.py --json
+    python scripts/benchmark_perf.py --quick
 """
 
 from __future__ import annotations

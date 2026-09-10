@@ -47,13 +47,20 @@
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.5;
-      padding: 20px 28px 48px;
+      padding: 24px 28px 48px;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Custom Scrollbar */
+    /* Structured App Container — Prevents content sprawl */
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Custom Scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
@@ -74,9 +81,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 18px;
+      padding-bottom: 20px;
       border-bottom: 1px solid var(--border);
       margin-bottom: 22px;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     .brand-section {
@@ -96,6 +105,7 @@
       justify-content: center;
       box-shadow: 0 0 20px rgba(0, 173, 181, 0.2);
       color: var(--accent-cyan);
+      flex-shrink: 0;
     }
 
     .brand-title h1 {
@@ -106,6 +116,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     .brand-title .version-badge {
@@ -131,7 +142,7 @@
     .header-status {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .sys-pill {
@@ -155,6 +166,7 @@
       background: var(--accent-emerald);
       box-shadow: 0 0 8px var(--accent-emerald);
       animation: pulse-green 2s infinite;
+      flex-shrink: 0;
     }
 
     @keyframes pulse-green {
@@ -168,16 +180,17 @@
       gap: 8px;
       margin-bottom: 24px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 12px;
+      padding-bottom: 14px;
       overflow-x: auto;
+      align-items: center;
     }
 
     .nav-tab {
       background: var(--bg-surface);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      padding: 10px 18px;
-      font-size: 0.85rem;
+      padding: 9px 16px;
+      font-size: 0.84rem;
       font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
@@ -238,14 +251,18 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
+    /* Balanced 2-Column Grid with Alignment */
     .grid-2col {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 22px;
+      align-items: stretch;
     }
 
-    @media (max-width: 1024px) {
-      .grid-2col { grid-template-columns: 1fr; }
+    @media (max-width: 1080px) {
+      .grid-2col {
+        grid-template-columns: 1fr;
+      }
     }
 
     /* Panels & Cards */
@@ -255,19 +272,27 @@
       border-radius: 8px;
       padding: 22px;
       box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-console {
+      display: flex;
+      flex-direction: column;
     }
 
     .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border-subtle);
+      gap: 12px;
     }
 
     .panel-title {
-      font-size: 1.05rem;
+      font-size: 1.02rem;
       font-weight: 700;
       color: var(--text-main);
       display: flex;
@@ -279,18 +304,39 @@
     .panel-subtitle {
       font-size: 0.8rem;
       color: var(--text-muted);
-      margin-top: -8px;
+      margin-top: -6px;
       margin-bottom: 18px;
+      line-height: 1.4;
     }
 
-    /* Form Controls */
+    /* Form Layouts & Rows */
     .form-group {
       margin-bottom: 16px;
     }
 
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .form-row-2-1 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .form-row, .form-row-2-1 {
+        grid-template-columns: 1fr;
+      }
+    }
+
     label {
       display: block;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 600;
       color: var(--text-muted);
       margin-bottom: 6px;
@@ -298,7 +344,7 @@
       letter-spacing: 0.04em;
     }
 
-    input, select, textarea {
+    input[type="text"], input[type="number"], select, textarea {
       width: 100%;
       background: var(--bg-input);
       border: 1px solid var(--border);
@@ -311,15 +357,144 @@
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    input:focus, select:focus, textarea:focus {
+    input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
       border-color: var(--border-focus);
       box-shadow: 0 0 0 2px var(--accent-cyan-glow);
+    }
+
+    /* Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      outline: none;
+      margin: 10px 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 173, 181, 0.6);
+      transition: transform 0.1s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
     }
 
     textarea {
       font-family: var(--font-mono);
       font-size: 0.82rem;
       resize: vertical;
+      line-height: 1.45;
+    }
+
+    /* Toggle Option Cards */
+    .toggle-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .toggle-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 11px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .toggle-card:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-elevated);
+    }
+
+    .toggle-card input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent-cyan);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toggle-title {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--text-main);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .toggle-desc {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      line-height: 1.35;
+    }
+
+    /* Destructive Safety Lock Cards */
+    .safety-guard-card {
+      background: rgba(239, 68, 68, 0.07);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+
+    .safety-guard-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent-red);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+
+    .safety-guard-text {
+      font-size: 0.78rem;
+      color: #fca5a5;
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+
+    .safety-target-highlight {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px dashed rgba(239, 68, 68, 0.4);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #fff;
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+
+    .safety-guard-input {
+      border-color: rgba(239, 68, 68, 0.5) !important;
+    }
+
+    .safety-guard-input:focus {
+      border-color: #ef4444 !important;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
     }
 
     /* Buttons */
@@ -385,27 +560,38 @@
       width: auto;
     }
 
-    /* Live Telemetry / Plan Preview Box */
+    /* Live Telemetry Card */
     .telemetry-card {
       background: var(--bg-panel);
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 14px 16px;
+      padding: 12px 16px;
       margin-bottom: 16px;
       font-family: var(--font-mono);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
     }
 
     .telemetry-row {
       display: flex;
       justify-content: space-between;
-      padding: 5px 0;
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.06);
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      gap: 12px;
     }
     .telemetry-row:last-child { border-bottom: none; }
 
-    .telemetry-label { color: var(--text-dim); }
-    .telemetry-val { color: var(--text-main); font-weight: 500; }
+    .telemetry-label {
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .telemetry-val {
+      color: var(--text-main);
+      font-weight: 500;
+      text-align: right;
+      word-break: break-all;
+      max-width: 65%;
+    }
 
     /* Console / Terminal Log */
     .terminal-container {
@@ -414,18 +600,23 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 290px;
     }
 
     .terminal-bar {
       background: #0d131f;
       padding: 9px 14px;
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-family: var(--font-mono);
       color: var(--text-dim);
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .terminal-title-group {
@@ -454,11 +645,12 @@
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: #cbd5e1;
-      height: 260px;
       overflow-y: auto;
       white-space: pre-wrap;
       line-height: 1.5;
       background: var(--bg-terminal);
+      flex: 1;
+      min-height: 250px;
     }
 
     /* Status Badges */
@@ -472,6 +664,7 @@
       padding: 3px 8px;
       border-radius: 4px;
       letter-spacing: 0.03em;
+      white-space: nowrap;
     }
 
     .badge-cyan { background: rgba(0, 173, 181, 0.12); color: #22d3ee; border: 1px solid rgba(0, 173, 181, 0.3); }
@@ -488,6 +681,7 @@
       padding: 16px;
       margin-top: 16px;
       display: none;
+      flex-shrink: 0;
     }
 
     .result-showcase.active {
@@ -525,14 +719,14 @@
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     .chip {
       background: var(--bg-input);
       border: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       padding: 4px 10px;
       border-radius: 4px;
       cursor: pointer;
@@ -563,7 +757,7 @@
     .data-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.82rem;
+      font-size: 0.81rem;
       text-align: left;
     }
 
@@ -573,15 +767,17 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      font-size: 0.74rem;
+      font-size: 0.72rem;
       padding: 11px 14px;
       border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
     .data-table td {
       padding: 11px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.03);
       color: var(--text-main);
+      vertical-align: middle;
     }
 
     .data-table tr:hover td {
@@ -660,6 +856,8 @@
 </head>
 <body>
 
+<div class="app-container">
+
   <!-- Top Navigation Header -->
   <header class="top-header">
     <div class="brand-section">
@@ -736,7 +934,7 @@
             <span>Refresh Media</span>
           </button>
         </div>
-        <p class="panel-subtitle">Select raw block device or forensic image for NIST SP 800-88 sanitization.</p>
+        <p class="panel-subtitle">Select raw block device or forensic image for NIST SP 800-88 compliant sanitization.</p>
 
         <div class="form-group">
           <label for="driveSelect">Target Storage Media:</label>
@@ -765,26 +963,33 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="drivePattern">Overwrite Pattern Standard:</label>
-          <select id="drivePattern">
-            <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
-            <option value="random">3-Pass DoD 5220.22-M (Pseudo-Random + Invert + Zero)</option>
-            <option value="random">7-Pass High-Security Random Overwrite</option>
-          </select>
+        <!-- Pattern and Passes grouped side-by-side -->
+        <div class="form-row-2-1">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="drivePattern">Overwrite Pattern Standard:</label>
+            <select id="drivePattern">
+              <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+              <option value="random">3-Pass DoD 5220.22-M (Pseudo-Random + Invert + Zero)</option>
+              <option value="random">7-Pass High-Security Random Overwrite</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="drivePasses">Passes:</label>
+            <input type="number" id="drivePasses" value="1" min="1" max="7">
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="drivePasses">Overwrite Passes:</label>
-          <input type="number" id="drivePasses" value="1" min="1" max="7">
-        </div>
-
-        <div class="form-group" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px;">
-          <label style="color: #f87171;">Destructive Safety Lock:</label>
-          <p style="font-size: 0.78rem; color: #fca5a5; margin-bottom: 8px;">
-            Type exact target path <strong id="driveConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">target device path</strong> to confirm permanent physical destruction:
+        <!-- Destructive Safety Lock Guard -->
+        <div class="safety-guard-card">
+          <div class="safety-guard-header">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>DESTRUCTIVE SANITIZATION GUARD</span>
+          </div>
+          <p class="safety-guard-text">
+            Permanent physical overwrite. To arm this operation, type the exact target path below:
           </p>
-          <input type="text" id="driveConfirm" placeholder='Type exact target device path to arm command' style="border-color: rgba(239, 68, 68, 0.5);">
+          <div class="safety-target-highlight" id="driveConfirmPromptPath">target device path</div>
+          <input type="text" id="driveConfirm" placeholder="Type exact target device path to arm command" class="safety-guard-input">
         </div>
 
         <button class="btn btn-danger" onclick="startDriveWipe()">
@@ -794,7 +999,7 @@
       </section>
 
       <!-- Execution & Results Panel -->
-      <section class="panel">
+      <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Execution Console &amp; Certificate Manifest</h2>
           <span class="badge badge-amber" id="driveStatusBadge">STATUS: IDLE</span>
@@ -850,30 +1055,33 @@
         <p class="panel-subtitle">Overwrites allocated clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.</p>
 
         <div class="form-group">
-          <label for="fileTargets">Target File or Directory Paths (one per line):</label>
-          <textarea id="fileTargets" rows="5" placeholder="/tmp/classified_document.pdf
-/tmp/evidence_folder/"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="fileTargets" style="margin-bottom: 0;">Target File or Directory Paths:</label>
+            <span style="font-size: 0.72rem; color: var(--text-dim); font-family: var(--font-mono);">One path per line</span>
+          </div>
+          <textarea id="fileTargets" rows="6" placeholder="/path/to/classified_document.pdf&#10;/path/to/evidence_folder/"></textarea>
         </div>
 
-        <div class="form-group">
-          <label for="filePattern">Sanitization Pattern:</label>
-          <select id="filePattern">
-            <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
-            <option value="random">3-Pass DoD Pseudo-Random Overwrite</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="filePattern">Sanitization Pattern:</label>
+            <select id="filePattern">
+              <option value="zero">1-Pass Zero Overwrite (NIST SP 800-88 Clear)</option>
+              <option value="random">3-Pass DoD Pseudo-Random Overwrite</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="fileOperator">Operator Identifier:</label>
+            <input type="text" id="fileOperator" value="op-forensic-01">
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="fileOperator">Operator Identifier:</label>
-          <input type="text" id="fileOperator" value="op-forensic-01">
-        </div>
-
-        <button class="btn btn-primary" onclick="startFileErase()">
+        <button class="btn btn-primary" style="margin-top: 10px;" onclick="startFileErase()">
           Scrub Allocated Clusters &amp; Metadata
         </button>
       </section>
 
-      <section class="panel">
+      <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Batch Erasure Status &amp; Compliance Record</h2>
           <span class="badge badge-amber" id="fileStatusBadge">STATUS: IDLE</span>
@@ -932,7 +1140,7 @@
         </div>
 
         <div class="form-group">
-          <label>File Formats to Carve:</label>
+          <label>File Format Presets:</label>
           <div class="chip-group">
             <span class="chip active" onclick="setCarvePreset('all', this)">All Formats</span>
             <span class="chip" onclick="setCarvePreset('images', this)">Images</span>
@@ -940,23 +1148,32 @@
             <span class="chip" onclick="setCarvePreset('archives', this)">Archives</span>
             <span class="chip" onclick="setCarvePreset('db', this)">DB &amp; Binary</span>
           </div>
-          <input type="text" id="carveExts" value="jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3">
+          <div style="margin-top: 10px;">
+            <label for="carveExts" style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px;">Active Extension Filter (Comma-separated):</label>
+            <input type="text" id="carveExts" value="jpg,png,pdf,zip,gif,gz,bmp,elf,sqlite,mp3">
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="carveMinConf">
-            Minimum Confidence Threshold: <strong id="confVal" style="color: var(--accent-cyan);">50%</strong>
-          </label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label for="carveMinConf" style="margin-bottom: 0;">Minimum Confidence Threshold:</label>
+            <strong id="confVal" style="color: var(--accent-cyan); font-family: var(--font-mono); font-size: 0.88rem;">50%</strong>
+          </div>
           <input type="range" id="carveMinConf" min="10" max="95" value="50" oninput="document.getElementById('confVal').textContent = this.value + '%'">
+          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono);">
+            <span>10% (Permissive)</span>
+            <span>50% (Balanced)</span>
+            <span>95% (Strict)</span>
+          </div>
         </div>
 
-        <button class="btn btn-primary" onclick="startCarve()">
+        <button class="btn btn-primary" style="margin-top: 8px;" onclick="startCarve()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>Start Forensic Carving Scan</span>
         </button>
       </section>
 
-      <section class="panel">
+      <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Carving Execution &amp; Evidence Manifest</h2>
           <span class="badge badge-amber" id="carveStatusBadge">STATUS: IDLE</span>
@@ -978,7 +1195,7 @@
         </div>
 
         <div class="result-showcase" id="carveResultCard">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <div class="showcase-icon showcase-icon-purple">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -991,12 +1208,12 @@
             <table class="data-table" id="carvedFilesTable">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Ext</th>
-                  <th>Size</th>
-                  <th>Confidence</th>
-                  <th>SHA256 (Prefix)</th>
-                  <th>Action</th>
+                  <th style="width: 15%;">ID</th>
+                  <th style="width: 12%;">Ext</th>
+                  <th style="width: 15%;">Size</th>
+                  <th style="width: 16%;">Confidence</th>
+                  <th style="width: 27%;">SHA256 (Prefix)</th>
+                  <th style="width: 15%;">Action</th>
                 </tr>
               </thead>
               <tbody id="carvedFilesTableBody">
@@ -1043,29 +1260,33 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <!-- Mode Toggles as Structured Cards -->
+        <div class="toggle-group">
+          <label class="toggle-card">
             <input type="checkbox" id="imageFaultTol" checked>
-            <span>Fault Tolerance: Zero-fill damaged sectors &amp; log bad LBA ranges (ddrescue mode)</span>
+            <div class="toggle-info">
+              <span class="toggle-title">Fault-Tolerant ddrescue Recovery Mode</span>
+              <span class="toggle-desc">Zero-fill damaged sectors and log bad LBA ranges to prevent drive lockup</span>
+            </div>
           </label>
-        </div>
-
-        <div class="form-group">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <label class="toggle-card">
             <input type="checkbox" id="imageIsClone" onchange="toggleCloneWarning()">
-            <span>Physical Drive-to-Drive Clone Mode</span>
+            <div class="toggle-info">
+              <span class="toggle-title">Physical Drive-to-Drive Bit-Stream Clone Mode</span>
+              <span class="toggle-desc">Direct bit-for-bit duplication from source device to destination block media</span>
+            </div>
           </label>
         </div>
 
-        <div id="cloneWarningBox" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-          <div style="color: var(--accent-red); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+        <div id="cloneWarningBox" class="safety-guard-card" style="display: none;">
+          <div class="safety-guard-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            <span>CAUTION: BIT-STREAM CLONING OVERWRITES DESTINATION MEDIA</span>
+            <span>BIT-STREAM CLONING GUARD</span>
           </div>
-          <div style="font-size: 0.78rem; color: var(--text-dim); margin-bottom: 8px;">
-            All existing partitions and data on the destination device will be permanently replaced. To confirm, type the exact destination path below:
-          </div>
-          <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" style="border-color: rgba(239, 68, 68, 0.5);">
+          <p class="safety-guard-text">
+            All existing partitions and data on the destination device will be permanently replaced. Type the exact destination path to confirm:
+          </p>
+          <input type="text" id="cloneConfirmInput" placeholder="Type exact destination path to confirm" class="safety-guard-input">
         </div>
 
         <button class="btn btn-primary" onclick="startImaging()">
@@ -1074,7 +1295,7 @@
         </button>
       </section>
 
-      <section class="panel">
+      <section class="panel panel-console">
         <div class="panel-header">
           <h2 class="panel-title">Acquisition Telemetry &amp; Evidence Manifest</h2>
           <span class="badge badge-amber" id="imageStatusBadge">STATUS: IDLE</span>
@@ -1096,7 +1317,7 @@
         </div>
 
         <div class="result-showcase" id="imageResultCard">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <div class="showcase-icon showcase-icon-success">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
@@ -1105,7 +1326,7 @@
             </div>
             <div id="imageActionButtons" style="display: flex; gap: 8px;"></div>
           </div>
-          <div class="telemetry-card">
+          <div class="telemetry-card" style="margin-bottom: 0;">
             <div class="telemetry-row">
               <span class="telemetry-label">Bytes Copied:</span>
               <span class="telemetry-val" id="imageBytesCopiedVal">—</span>
@@ -1147,7 +1368,7 @@
             Tamper-evident local blockchain ledger with SHA-256 block chaining and Ed25519 digital signatures.
           </div>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; align-items: center;">
           <button class="btn btn-primary btn-sm" onclick="verifyLedger()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             <span>Verify Chain Continuity</span>
@@ -1162,31 +1383,36 @@
       <!-- Live Verification Banner -->
       <div id="auditVerifyBanner" style="display: none; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-family: var(--font-mono); font-size: 0.82rem;"></div>
 
-      <!-- Filter Controls -->
-      <div style="display: flex; gap: 12px; margin-bottom: 14px;">
-        <select id="auditFilterOp" onchange="applyAuditFilters()" style="max-width: 220px;">
+      <!-- Filter & Search Controls Bar -->
+      <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: center; flex-wrap: wrap;">
+        <select id="auditFilterOp" onchange="applyAuditFilters()" style="max-width: 200px;">
           <option value="ALL">All Operations</option>
           <option value="DRIVE_ERASE">DRIVE_ERASE</option>
           <option value="FILE_ERASE">FILE_ERASE</option>
           <option value="FILE_CARVE">FILE_CARVE</option>
           <option value="GENESIS">GENESIS</option>
         </select>
-        <input type="text" id="auditSearch" placeholder="Search by Target ID or Block Hash..." oninput="applyAuditFilters()">
+        <div style="flex: 1; min-width: 240px;">
+          <input type="text" id="auditSearch" placeholder="Filter by Target ID, Operator, or Block Hash..." oninput="applyAuditFilters()">
+        </div>
+        <div class="sys-pill" id="auditStatsPill">
+          <span>Blocks: <strong id="auditBlockCount" style="color: var(--accent-cyan);">0</strong></span>
+        </div>
       </div>
 
       <!-- Audit Table -->
       <div class="data-table-container">
-        <table class="data-table">
+        <table class="data-table" style="table-layout: fixed;">
           <thead>
             <tr>
-              <th>Block #</th>
-              <th>Timestamp (UTC)</th>
-              <th>Operation</th>
-              <th>Target ID</th>
-              <th>Operator</th>
-              <th>Previous Hash</th>
-              <th>Block Hash</th>
-              <th>Action</th>
+              <th style="width: 85px;">Block #</th>
+              <th style="width: 175px;">Timestamp (UTC)</th>
+              <th style="width: 130px;">Operation</th>
+              <th style="width: 200px;">Target ID</th>
+              <th style="width: 120px;">Operator</th>
+              <th style="width: 140px;">Previous Hash</th>
+              <th style="width: 140px;">Block Hash</th>
+              <th style="width: 90px; text-align: center;">Action</th>
             </tr>
           </thead>
           <tbody id="auditTableBody">
@@ -1213,6 +1439,8 @@
       </div>
     </div>
   </div>
+
+</div>
 
   <!-- ===================================================================== -->
   <!-- JAVASCRIPT CONTROLLER                                                 -->
@@ -1696,6 +1924,9 @@
 
     function renderAuditTable(blocks) {
       const tbody = document.getElementById("auditTableBody");
+      const countEl = document.getElementById("auditBlockCount");
+      if (countEl) countEl.textContent = blocks.length;
+
       tbody.innerHTML = "";
       if (blocks.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-dim);">No records in audit ledger yet.</td></tr>';
@@ -1730,7 +1961,7 @@
 
         const tdTarget = document.createElement("td");
         tdTarget.className = "code-cell";
-        tdTarget.style.cssText = "max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
+        tdTarget.style.cssText = "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;";
         tdTarget.textContent = b.target || "";
         if (b.target) tdTarget.title = b.target;
 
@@ -1750,6 +1981,7 @@
         if (b.block_hash) tdBlock.title = b.block_hash;
 
         const tdAction = document.createElement("td");
+        tdAction.style.textAlign = "center";
         const btnInspect = document.createElement("button");
         btnInspect.className = "btn btn-secondary btn-sm";
         btnInspect.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";

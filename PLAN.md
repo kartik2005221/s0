@@ -28,7 +28,7 @@ All planned development phases are **100% complete and validated**:
 | **Phase 4** | Advanced File Carver (Module 3) | **DONE** | Multi-format sliding-window carver (`engine.py`), ext4 inode extent tree parser (`ext4_carver.py`), NTFS $MFT non-resident runlist carver (`ntfs_carver.py`), FAT32/exFAT carvers, 4-factor Shannon entropy scoring | `linux/cli/tests/test_carver.py`<br>`linux/cli/tests/test_ntfs_carver.py`<br>`linux/cli/demo_e2e_ntfs.sh` |
 | **Phase 5** | Blockchain Audit Ledger (Module 4) | **DONE** | Local SQLite3 append-only ledger (`audit/ledger.py`), SHA-256 block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
 | **Phase 6** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`gui/`), zero-backend static Verification Portal (`verification-portal/`) with TweetNaCl WebCrypto and pinned key registry (`keys.json`) | `gui/tests/test_gui.py`<br>`verification-portal/tests/` |
-| **Phase 7** | Packaging, Live ISO & Documentation | **DONE** | Debian 12 Live ISO recipe (`linux/iso/`), cross-platform installers (`scripts/`), master test orchestrator (`build_all.sh`), Material for MkDocs documentation site | `bash scripts/build_all.sh`<br>`bash build-docs.sh` (100% green) |
+| **Phase 7** | Packaging, Live ISO & Documentation | **DONE** | Debian 12 Live ISO recipe (`linux/iso/`), cross-platform installers (`scripts/`), master test orchestrator (`build_all.sh`), Material for MkDocs documentation site | `bash scripts/build_all.sh`<br>`bash scripts/build-docs.sh` (100% green) |
 
 ---
 

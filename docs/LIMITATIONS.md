@@ -250,3 +250,14 @@ A **local, single-authority hash chain** stored in SQLite:
 The tamper-evidence guarantee of a hash chain is **mathematically equivalent** to a blockchain for single-authority forensic use: if anyone modifies a historical record, the chain breaks and `s0 verify-chain` reports `BROKEN` at the exact record where tampering occurred.
 
 Distributed consensus solves the **Byzantine generals problem** — coordinating agreement among mutually distrusting parties across a network. That problem does not exist on an air-gapped forensic workstation. The simpler, faster, auditable local hash chain is the correct tool.
+
+---
+
+## 10. Platform-Specific Validation Reports
+
+Detailed breakdown of tested vs. simulated hardware capabilities across operating environments:
+
+- [Linux Hardware & Emulation Validation Report](platforms/linux.md)
+- [macOS APFS & Native Storage Validation Report](platforms/macos.md)
+- [Windows NTFS & Win32 Storage Validation Report](platforms/windows.md)
+

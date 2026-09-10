@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 echo "========================================="
 echo "==> Building s0 Documentation for Vercel"

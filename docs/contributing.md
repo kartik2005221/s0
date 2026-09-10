@@ -188,7 +188,7 @@ uv run --with "mkdocs-material>=9.5.0" mkdocs serve
 To compile static HTML files into `public/`:
 ```bash
 # Build complete documentation site to public/ directory
-bash build-docs.sh
+bash scripts/build-docs.sh
 ```
 
 ---
@@ -200,4 +200,4 @@ Before submitting your PR:
 - [ ] All 190+ automated tests pass (`pytest` runs 100% green).
 - [ ] Schema changes in `core/cert_schema.json` are mirrored in `verification-portal/verify.js` and `core/python/s0_core/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
-- [ ] `bash build-docs.sh` builds cleanly with zero broken link warnings.
+- [ ] `bash scripts/build-docs.sh` builds cleanly with zero broken link warnings.
