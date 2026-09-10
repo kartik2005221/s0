@@ -24,7 +24,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 REPO = Path(__file__).resolve().parents[1]
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
@@ -153,6 +153,7 @@ class CarveRequest(BaseModel):
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
+    custom_signatures: Optional[List[Dict[str, Any]]] = None
 
     @field_validator("operator_id")
     @classmethod
@@ -546,10 +547,22 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                     else:
                         _jobs[job_id]["log"][-1] = msg
 
+            custom_sigs = None
+            if req.custom_signatures:
+                from s0_cli.carver.signatures import signature_from_dict
+                custom_sigs = []
+                for cs in req.custom_signatures:
+                    try:
+                        custom_sigs.append(signature_from_dict(cs))
+                    except Exception as sig_err:
+                        with _lock:
+                            _jobs[job_id]["log"].append(f"Warning: skipped invalid custom signature: {sig_err}")
+
             summary = carve_image(
                 req.target,
                 out_dir,
                 extensions=req.extensions,
+                custom_signatures=custom_sigs,
                 min_confidence=req.min_confidence,
                 operator_id=req.operator_id,
                 organization=req.organization,

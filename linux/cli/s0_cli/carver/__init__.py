@@ -16,7 +16,7 @@ from .ntfs_carver import (
     scan_ntfs_deleted_files,
 )
 from .scoring import calculate_shannon_entropy, score_carved_candidate
-from .signatures import SIGNATURES, FileSignature, get_signature_by_ext
+from .signatures import SIGNATURES, FileSignature, get_signature_by_ext, parse_hex_bytes, signature_from_dict
 
 __all__ = [
     "CarvedFile",
@@ -28,6 +28,8 @@ __all__ = [
     "SIGNATURES",
     "FileSignature",
     "get_signature_by_ext",
+    "parse_hex_bytes",
+    "signature_from_dict",
     "parse_ext4_superblock",
     "scan_ext4_deleted_inodes",
     "Fat32BootSector",

@@ -40,7 +40,7 @@ from s0_core.progress import ProgressBar
 
 from . import __version__
 from .audit import init_audit_db, list_audit_blocks, record_audit_event, verify_audit_ledger
-from .carver import carve_image
+from .carver import carve_image, signature_from_dict
 from .devices import SafetyError, check_safety, get_block_device_size, image_target, list_block_targets
 from .devices import Target as DevTarget
 from .file_eraser import erase_batch
@@ -682,10 +682,28 @@ def cmd_carve(args) -> int:
 
     exts = [e.strip() for e in args.extensions.split(",")] if args.extensions else None
 
+    custom_sigs = None
+    if getattr(args, "custom_sig", None):
+        sig_arg = args.custom_sig.strip()
+        sig_path = Path(sig_arg)
+        try:
+            if sig_path.exists():
+                raw_data = json.loads(sig_path.read_text(encoding="utf-8"))
+            else:
+                raw_data = json.loads(sig_arg)
+            if isinstance(raw_data, dict):
+                raw_data = [raw_data]
+            custom_sigs = [signature_from_dict(d) for d in raw_data]
+            print(f"Loaded {len(custom_sigs)} custom forensic signature(s): {', '.join(s.name for s in custom_sigs)}")
+        except Exception as err:
+            print(f"error: failed to parse custom signatures from '{args.custom_sig}': {err}", file=sys.stderr)
+            return 2
+
     summary = carve_image(
         args.target,
         args.out_dir,
         extensions=exts,
+        custom_signatures=custom_sigs,
         min_confidence=args.min_confidence,
         operator_id=args.operator,
         organization=args.organization,
@@ -1101,6 +1119,10 @@ def build_parser() -> argparse.ArgumentParser:
     crv.add_argument("--target", required=True, help="raw disk image or block device to scan")
     crv.add_argument("--out-dir", required=True, help="directory to store carved files")
     crv.add_argument("--extensions", help="comma-separated file extensions to carve (e.g. jpg,png,pdf,zip)")
+    crv.add_argument(
+        "--custom-sig",
+        help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
+    )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
     crv.add_argument("--operator", default="op-forensic")
     crv.add_argument("--organization", default="Digital Forensics & Data Sanitization Lab")

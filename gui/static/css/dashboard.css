@@ -945,3 +945,67 @@ details.advanced-panel[open] summary {
   padding: 0 14px;
   white-space: nowrap;
 }
+
+/* Custom Signature Editor in Carver */
+.custom-sig-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.custom-sig-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.custom-sig-card-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-sig-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.custom-sig-hex-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.custom-sig-card input,
+.custom-sig-card select {
+  font-size: 0.78rem;
+  padding: 5px 8px;
+}
+
+.custom-sig-card input.mono-hex {
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.btn-remove-sig {
+  background: transparent;
+  border: none;
+  color: var(--accent-red);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-remove-sig:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+

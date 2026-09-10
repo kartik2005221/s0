@@ -163,6 +163,7 @@ def carve_image(
     output_dir: str | Path,
     *,
     extensions: Optional[List[str]] = None,
+    custom_signatures: Optional[List[FileSignature]] = None,
     min_confidence: int = 50,
     chunk_size: int = 2 * 1024 * 1024,  # 2 MiB read window
     overlap_size: int = 64 * 1024,      # 64 KiB window overlap
@@ -191,6 +192,7 @@ def carve_image(
     recovered_hashes = set()
 
     warnings: List[str] = []
+    all_sigs: List[FileSignature] = list(custom_signatures or []) + list(SIGNATURES)
 
     # 1. Structure-based recovery across all detected partitions
     for part_fs, part_offset in detected_parts:
@@ -204,7 +206,7 @@ def carve_image(
                             continue
 
                         candidate_count += 1
-                        sig = get_signature_by_ext(ext)
+                        sig = get_signature_by_ext(ext, custom_sigs=custom_signatures)
                         if sig:
                             score, heuristics = score_carved_candidate(
                                 sig, nf.data, has_valid_footer=(sig.footer is not None and sig.footer in nf.data)
@@ -261,7 +263,7 @@ def carve_image(
                 for inode in ext4_inodes:
                     if inode.data and len(inode.data) > 0:
                         matched_sig = None
-                        for sig in SIGNATURES:
+                        for sig in all_sigs:
                             if inode.data.startswith(sig.header):
                                 matched_sig = sig
                                 break
@@ -322,7 +324,7 @@ def carve_image(
                             continue
 
                         candidate_count += 1
-                        sig = get_signature_by_ext(ext)
+                        sig = get_signature_by_ext(ext, custom_sigs=custom_signatures)
                         if sig:
                             score, heuristics = score_carved_candidate(
                                 sig, ff.data, has_valid_footer=(sig.footer is not None and sig.footer in ff.data)
@@ -379,7 +381,7 @@ def carve_image(
                             continue
 
                         candidate_count += 1
-                        sig = get_signature_by_ext(ext)
+                        sig = get_signature_by_ext(ext, custom_sigs=custom_signatures)
                         if sig:
                             score, heuristics = score_carved_candidate(
                                 sig, ef.data, has_valid_footer=(sig.footer is not None and sig.footer in ef.data)
@@ -431,10 +433,14 @@ def carve_image(
                 warnings.append(f"exFAT structure carving warning (offset {part_offset}): {e}")
 
     # 4. Raw Stream Signature-based Carving
-    active_signatures = SIGNATURES
+    active_signatures = list(all_sigs)
     if extensions:
         norm_exts = [e.lower().lstrip(".") for e in extensions]
-        active_signatures = [s for s in SIGNATURES if s.extension in norm_exts]
+        custom_exts = [cs.extension.lower().lstrip(".") for cs in (custom_signatures or [])]
+        active_signatures = [
+            s for s in all_sigs
+            if s.extension.lower().lstrip(".") in norm_exts or s.extension.lower().lstrip(".") in custom_exts
+        ]
 
     with open(str(target_p), "rb") as f:
         buffer_offset = 0

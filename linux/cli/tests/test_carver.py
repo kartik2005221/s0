@@ -241,3 +241,46 @@ def test_carve_mp3_sync_frames_and_new_formats(tmp_path):
     assert "7z" in rec_exts, "7z archive was not carved"
     assert "pcap" in rec_exts, "PCAP capture was not carved"
 
+
+def test_custom_signatures_carving(tmp_path):
+    from s0_cli.carver import signature_from_dict
+
+    custom_sig_dict = {
+        "name": "Proprietary Secure Vault",
+        "extension": "psv",
+        "category": "archive",
+        "header_hex": "53 45 43 56 41 55 4C 54",  # SECVAULT
+        "footer_hex": "45 4E 44 56 41 55 4C 54",  # ENDVAULT
+        "min_size": 16,
+        "max_size": 1024 * 1024,
+    }
+    sig = signature_from_dict(custom_sig_dict)
+
+    disk_img = tmp_path / "custom_target.raw"
+    out_dir = tmp_path / "carved_custom"
+
+    payload = b"SECVAULT" + b"\x12\x34\x56\x78" * 32 + b"ENDVAULT"
+    junk = b"\x00" * 2048
+
+    with open(disk_img, "wb") as f:
+        f.write(junk)
+        f.write(payload)
+        f.write(junk)
+
+    summary = carve_image(
+        disk_img,
+        out_dir,
+        custom_signatures=[sig],
+        min_confidence=50,
+        operator_id="op-test",
+    )
+
+    rec_exts = {c.extension for c in summary.carved_files}
+    assert "psv" in rec_exts
+    assert summary.files_recovered >= 1
+    carved_file = next(c for c in summary.carved_files if c.extension == "psv")
+    assert carved_file.size_bytes == len(payload)
+    with open(carved_file.recovered_path, "rb") as f:
+        assert f.read() == payload
+
+

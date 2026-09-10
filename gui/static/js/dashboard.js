@@ -571,6 +571,103 @@ function setCarvePreset(type, el) {
   syncInputToExtCheckboxes();
 }
 
+let customSigCounter = 0;
+
+function addCustomSigRow(name = "", ext = "", cat = "custom", headerHex = "", footerHex = "", minSize = 32, maxSize = 52428800) {
+  customSigCounter++;
+  const list = document.getElementById("customSigList");
+  if (!list) return;
+
+  const card = document.createElement("div");
+  card.className = "custom-sig-card";
+  card.id = `customSigRow_${customSigCounter}`;
+  card.innerHTML = `
+    <div class="custom-sig-card-header">
+      <span class="custom-sig-card-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        Signature #${customSigCounter}
+      </span>
+      <button type="button" class="btn-remove-sig" onclick="removeCustomSigRow('${card.id}')" title="Remove Signature">&times; Remove</button>
+    </div>
+    <div class="custom-sig-grid">
+      <div>
+        <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Format Name:</label>
+        <input type="text" class="sig-name" placeholder="e.g. Custom Container" value="${escapeHtml(name)}">
+      </div>
+      <div>
+        <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Ext (no dot):</label>
+        <input type="text" class="sig-ext" placeholder="e.g. dat" value="${escapeHtml(ext)}" onchange="onCustomSigExtChange(this)">
+      </div>
+      <div>
+        <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Category:</label>
+        <select class="sig-cat">
+          <option value="custom" ${cat === 'custom' ? 'selected' : ''}>Custom</option>
+          <option value="document" ${cat === 'document' ? 'selected' : ''}>Document</option>
+          <option value="image" ${cat === 'image' ? 'selected' : ''}>Image</option>
+          <option value="archive" ${cat === 'archive' ? 'selected' : ''}>Archive</option>
+          <option value="audio" ${cat === 'audio' ? 'selected' : ''}>Audio</option>
+          <option value="video" ${cat === 'video' ? 'selected' : ''}>Video</option>
+          <option value="executable" ${cat === 'executable' ? 'selected' : ''}>Executable</option>
+        </select>
+      </div>
+    </div>
+    <div class="custom-sig-hex-grid">
+      <div>
+        <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Header Magic Bytes (Hex, required):</label>
+        <input type="text" class="sig-header mono-hex" placeholder="e.g. 53 45 43 55 (or 53454355)" value="${escapeHtml(headerHex)}">
+      </div>
+      <div>
+        <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Footer Trailer Bytes (Hex, optional):</label>
+        <input type="text" class="sig-footer mono-hex" placeholder="e.g. 00 00 45 4F 46" value="${escapeHtml(footerHex)}">
+      </div>
+    </div>
+  `;
+  list.appendChild(card);
+}
+
+function removeCustomSigRow(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+}
+
+function onCustomSigExtChange(inputEl) {
+  const ext = (inputEl.value || "").trim().toLowerCase().replace(/^\./, "");
+  if (!ext) return;
+  const filterInput = document.getElementById("carveExts");
+  if (!filterInput) return;
+  const current = filterInput.value.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (!current.includes(ext)) {
+    current.push(ext);
+    filterInput.value = current.join(",");
+    syncInputToExtCheckboxes();
+  }
+}
+
+function collectCustomSignatures() {
+  const rows = document.querySelectorAll("#customSigList .custom-sig-card");
+  const sigs = [];
+  rows.forEach(row => {
+    const name = (row.querySelector(".sig-name")?.value || "").trim() || "Custom Signature";
+    const ext = (row.querySelector(".sig-ext")?.value || "").trim().toLowerCase().replace(/^\./, "") || "bin";
+    const cat = row.querySelector(".sig-cat")?.value || "custom";
+    const headerHex = (row.querySelector(".sig-header")?.value || "").trim();
+    const footerHex = (row.querySelector(".sig-footer")?.value || "").trim();
+
+    if (headerHex) {
+      sigs.push({
+        name,
+        extension: ext,
+        category: cat,
+        header_hex: headerHex,
+        footer_hex: footerHex || null,
+        min_size: 32,
+        max_size: 50 * 1024 * 1024
+      });
+    }
+  });
+  return sigs;
+}
+
 async function startCarve() {
   const target = document.getElementById("carveTargetSelect").value;
   if (!target) {
@@ -584,6 +681,7 @@ async function startCarve() {
   const operator_id = document.getElementById("carveOperator").value.trim() || "op-forensic";
   const organization = document.getElementById("carveOrganization").value.trim() || "Digital Forensics & Data Sanitization Lab";
   const out_dir = (document.getElementById("carveOutDir")?.value || "").trim() || null;
+  const custom_signatures = collectCustomSignatures();
 
   // Custom key
   const key_path = (document.getElementById("carveKeyPath")?.value || "").trim() || null;
@@ -614,6 +712,7 @@ async function startCarve() {
         out_dir,
         key_path,
         key_data,
+        custom_signatures,
       })
     });
     const data = await res.json();

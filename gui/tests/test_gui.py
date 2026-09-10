@@ -258,4 +258,38 @@ def test_browse_endpoint(client):
     assert isinstance(data["items"], list)
 
 
+def test_carve_with_custom_signatures(client, tmp_path):
+    img = tmp_path / "custom_test.img"
+    payload = b"SECVAULT" + b"X" * 64 + b"ENDVAULT"
+    with open(img, "wb") as f:
+        f.write(b"\x00" * 1024 + payload + b"\x00" * 1024)
+
+    r = client.post("/api/carve", json={
+        "target": str(img),
+        "custom_signatures": [{
+            "name": "Secure Vault Test",
+            "extension": "svt",
+            "category": "archive",
+            "header_hex": "53 45 43 56 41 55 4C 54",
+            "footer_hex": "45 4E 44 56 41 55 4C 54",
+        }],
+        "min_confidence": 40,
+    })
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+
+    result = None
+    for _ in range(60):
+        j = client.get(f"/api/job/{job_id}").json()
+        if j["status"] in ("done", "error"):
+            result = j.get("result")
+            break
+        time.sleep(0.1)
+
+    assert result is not None, "Job did not complete"
+    assert result["files_recovered"] >= 1
+    assert any(f["ext"] == "svt" for f in result["carved_files"])
+
+
+
 

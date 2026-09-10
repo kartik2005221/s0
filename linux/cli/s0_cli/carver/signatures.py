@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+import re
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -180,9 +181,49 @@ SIGNATURES: List[FileSignature] = [
 ]
 
 
-def get_signature_by_ext(ext: str) -> Optional[FileSignature]:
+def parse_hex_bytes(val: str | bytes) -> bytes:
+    """Parse hex string (with optional spaces or 0x prefixes) or raw bytes into bytes."""
+    if isinstance(val, bytes):
+        return val
+    cleaned = re.sub(r"[^0-9a-fA-F]", "", str(val or ""))
+    if not cleaned:
+        return b""
+    if len(cleaned) % 2 != 0:
+        cleaned = "0" + cleaned
+    return bytes.fromhex(cleaned)
+
+
+def signature_from_dict(d: Dict[str, Any]) -> FileSignature:
+    """Instantiate a FileSignature from a JSON/dict description."""
+    hdr_val = d.get("header") or d.get("header_hex") or ""
+    header = parse_hex_bytes(hdr_val)
+    if not header:
+        raise ValueError(f"Custom signature '{d.get('name', 'unnamed')}' requires valid non-empty header magic bytes")
+    
+    ftr_val = d.get("footer") or d.get("footer_hex")
+    footer = parse_hex_bytes(ftr_val) if ftr_val else None
+
+    return FileSignature(
+        name=str(d.get("name") or "Custom Signature"),
+        extension=str(d.get("extension") or "bin").lower().lstrip("."),
+        category=str(d.get("category") or "custom"),
+        header=header,
+        footer=footer,
+        footer_offset_from_end=int(d.get("footer_offset_from_end", 0)),
+        min_size=int(d.get("min_size", 32)),
+        max_size=int(d.get("max_size", 50 * 1024 * 1024)),
+        fixed_size=int(d["fixed_size"]) if d.get("fixed_size") else None,
+    )
+
+
+def get_signature_by_ext(ext: str, custom_sigs: Optional[List[FileSignature]] = None) -> Optional[FileSignature]:
     clean = ext.lower().lstrip(".")
+    if custom_sigs:
+        for sig in custom_sigs:
+            if sig.extension.lower().lstrip(".") == clean:
+                return sig
     for sig in SIGNATURES:
         if sig.extension == clean:
             return sig
     return None
+

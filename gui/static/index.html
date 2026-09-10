@@ -362,6 +362,20 @@
           </div>
         </div>
 
+        <!-- Custom File Signatures Collapsible -->
+        <details class="advanced-panel" id="customSigDetails" style="margin-top: 10px;">
+          <summary>➕ Custom File Signatures (Magic Bytes Header / Footer)</summary>
+          <div class="advanced-content">
+            <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px;">
+              Carve proprietary or unsupported file formats by defining raw hexadecimal magic bytes (e.g. Header: <code>FF D8 FF</code>, Footer: <code>FF D9</code>).
+            </p>
+            <div id="customSigList"></div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomSigRow()" style="margin-top: 4px;">
+              + Add Custom Signature
+            </button>
+          </div>
+        </details>
+
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <label for="carveMinConf" style="margin-bottom: 0;">Minimum Confidence Threshold:</label>
