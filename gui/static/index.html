@@ -4,28 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>s0 // Forensic &amp; Sanitization Workstation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/fonts/fonts.css">
   <style>
     :root {
-      --bg-base: #090d16;
-      --bg-surface: #0f172a;
-      --bg-panel: #131d31;
-      --bg-elevated: #1a2742;
-      --bg-input: #0a0f1d;
-      --bg-terminal: #070a10;
+      --bg-base: #000000;
+      --bg-surface: #070D18;
+      --bg-panel: #0B1626;
+      --bg-elevated: #0F1F35;
+      --bg-input: #04070D;
+      --bg-terminal: #000000;
 
-      --border: #1e293b;
-      --border-subtle: rgba(255, 255, 255, 0.05);
-      --border-hover: #334155;
-      --border-focus: #00adb5;
+      --border: #142338;
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-hover: #1E3E62;
+      --border-focus: #FF6500;
 
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
+      --text-main: #FFFFFF;
+      --text-muted: #CBD5E1;
+      --text-dim: #94A3B8;
 
-      --accent-cyan: #00adb5;
-      --accent-cyan-hover: #00c4ce;
-      --accent-cyan-glow: rgba(0, 173, 181, 0.25);
+      --accent-cyan: #FF6500;
+      --accent-cyan-hover: #FF8533;
+      --accent-cyan-glow: rgba(255, 101, 0, 0.25);
       --accent-blue: #3b82f6;
       --accent-emerald: #10b981;
       --accent-crimson: #ef4444;
@@ -33,8 +36,8 @@
       --accent-amber: #f59e0b;
       --accent-purple: #8b5cf6;
 
-      --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      --font-sans: "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --font-sans: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,8 +45,8 @@
     body {
       background-color: var(--bg-base);
       background-image:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 173, 181, 0.08), transparent 70%),
-        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.03), transparent 40%);
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.08), transparent 70%),
+        radial-gradient(circle at 100% 100%, rgba(30, 62, 98, 0.12), transparent 50%);
       color: var(--text-main);
       font-family: var(--font-sans);
       line-height: 1.5;
@@ -97,13 +100,13 @@
     .brand-logo {
       width: 44px;
       height: 44px;
-      background: linear-gradient(135deg, rgba(0, 173, 181, 0.2), #111827);
-      border: 1px solid rgba(0, 173, 181, 0.4);
+      background: linear-gradient(135deg, rgba(255, 101, 0, 0.2), #070D18);
+      border: 1px solid rgba(255, 101, 0, 0.4);
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 20px rgba(0, 173, 181, 0.2);
+      box-shadow: 0 0 20px rgba(255, 101, 0, 0.2);
       color: var(--accent-cyan);
       flex-shrink: 0;
     }
@@ -123,9 +126,9 @@
       font-family: var(--font-mono);
       font-size: 0.7rem;
       font-weight: 600;
-      background: rgba(0, 173, 181, 0.12);
+      background: rgba(255, 101, 0, 0.12);
       color: var(--accent-cyan);
-      border: 1px solid rgba(0, 173, 181, 0.35);
+      border: 1px solid rgba(255, 101, 0, 0.35);
       padding: 2px 8px;
       border-radius: 4px;
       letter-spacing: 0.04em;
@@ -223,10 +226,10 @@
     }
 
     .nav-tab.active {
-      background: rgba(0, 173, 181, 0.12);
+      background: rgba(255, 101, 0, 0.12);
       color: var(--accent-cyan);
       border-color: var(--accent-cyan);
-      box-shadow: 0 0 12px rgba(0, 173, 181, 0.2);
+      box-shadow: 0 0 12px rgba(255, 101, 0, 0.2);
     }
 
     .nav-tab .tab-num {
@@ -381,7 +384,7 @@
       border-radius: 50%;
       background: var(--accent-cyan);
       cursor: pointer;
-      box-shadow: 0 0 10px rgba(0, 173, 181, 0.6);
+      box-shadow: 0 0 10px rgba(255, 101, 0, 0.6);
       transition: transform 0.1s ease;
     }
     input[type="range"]::-webkit-slider-thumb:hover {
@@ -521,15 +524,15 @@
     }
 
     .btn-primary {
-      background: #00ADB5;
-      color: #070a10;
+      background: #FF6500;
+      color: #000000;
       font-weight: 700;
-      box-shadow: 0 2px 8px rgba(0, 173, 181, 0.3);
+      box-shadow: 0 2px 8px rgba(255, 101, 0, 0.3);
     }
     .btn-primary:hover {
-      background: #00c4ce;
-      color: #070a10;
-      box-shadow: 0 4px 14px rgba(0, 173, 181, 0.45);
+      background: #FF8533;
+      color: #000000;
+      box-shadow: 0 4px 14px rgba(255, 101, 0, 0.45);
     }
 
     .btn-danger {
@@ -667,7 +670,7 @@
       white-space: nowrap;
     }
 
-    .badge-cyan { background: rgba(0, 173, 181, 0.12); color: #22d3ee; border: 1px solid rgba(0, 173, 181, 0.3); }
+    .badge-cyan { background: rgba(255, 101, 0, 0.12); color: #FF8533; border: 1px solid rgba(255, 101, 0, 0.3); }
     .badge-green { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-amber { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
@@ -740,7 +743,7 @@
     }
 
     .chip.active {
-      background: rgba(0, 173, 181, 0.15);
+      background: rgba(255, 101, 0, 0.15);
       border-color: var(--accent-cyan);
       color: var(--accent-cyan);
     }

@@ -4,22 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>s0 — Cryptographic Certificate Verification Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="fonts/fonts.css">
   <style>
     :root {
-      --bg-canvas: #090d16;
-      --bg-card: #111827;
-      --bg-card-hover: #151f32;
-      --bg-elevated: #162033;
-      --border-subtle: #202b3d;
-      --border-focus: #00adb5;
-      --text-primary: #f3f4f6;
-      --text-secondary: #9ca3af;
-      --text-muted: #6b7280;
+      --bg-canvas: #000000;
+      --bg-card: #070D18;
+      --bg-card-hover: #0D1929;
+      --bg-elevated: #0F1F35;
+      --border-subtle: #142338;
+      --border-focus: #FF6500;
+      --text-primary: #FFFFFF;
+      --text-secondary: #CBD5E1;
+      --text-muted: #94A3B8;
       
-      --primary: #00adb5;
-      --primary-hover: #008c93;
-      --primary-glow: rgba(0, 173, 181, 0.2);
+      --primary: #FF6500;
+      --primary-hover: #FF8533;
+      --primary-glow: rgba(255, 101, 0, 0.25);
       
       --success: #10b981;
       --success-bg: rgba(16, 185, 129, 0.12);
@@ -39,9 +42,9 @@
       --info-bg: rgba(59, 130, 246, 0.12);
       --info-border: rgba(59, 130, 246, 0.35);
       
-      --code-bg: #090d14;
-      --font-mono: "Fira Code", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      --font-sans: "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --code-bg: #04070D;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --font-sans: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     *, *::before, *::after {
@@ -56,8 +59,8 @@
       min-height: 100vh;
       background-color: var(--bg-canvas);
       background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 173, 181, 0.12), transparent 70%),
-        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05), transparent 40%);
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 101, 0, 0.10), transparent 70%),
+        radial-gradient(circle at 100% 100%, rgba(30, 62, 98, 0.15), transparent 50%);
       color: var(--text-primary);
       font-family: var(--font-sans);
       line-height: 1.5;
@@ -80,7 +83,7 @@
       margin-bottom: 28px;
       padding: 24px 16px 28px;
       border-bottom: 1px solid var(--border-subtle);
-      background: rgba(17, 24, 39, 0.6);
+      background: rgba(7, 13, 24, 0.7);
       backdrop-filter: blur(12px);
       border-radius: 16px;
       border: 1px solid var(--border-subtle);
@@ -91,8 +94,8 @@
       align-items: center;
       gap: 8px;
       padding: 5px 14px;
-      background: rgba(0, 173, 181, 0.1);
-      border: 1px solid rgba(0, 173, 181, 0.3);
+      background: rgba(255, 101, 0, 0.12);
+      border: 1px solid rgba(255, 101, 0, 0.35);
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 600;
@@ -228,7 +231,7 @@
 
     .dropzone:hover, .dropzone.dragover {
       border-color: var(--primary);
-      background: rgba(0, 173, 181, 0.06);
+      background: rgba(255, 101, 0, 0.08);
       transform: translateY(-1px);
     }
 
@@ -624,7 +627,7 @@
     .tab-btn.active {
       color: var(--primary);
       border-bottom-color: var(--primary);
-      background: rgba(0, 173, 181, 0.05);
+      background: rgba(255, 101, 0, 0.08);
     }
 
     .tab-content {
