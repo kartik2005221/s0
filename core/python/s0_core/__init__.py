@@ -20,6 +20,7 @@ from .certificate import (
 from .progress import ProgressBar
 from .temperature import read_temperature
 from . import crypto
+from .config import CONFIG, load_config
 
 __all__ = [
     "CanonicalizationError",
@@ -33,5 +34,7 @@ __all__ = [
     "verify_certificate",
     "ProgressBar",
     "crypto",
+    "CONFIG",
+    "load_config",
     "__version__",
 ]
