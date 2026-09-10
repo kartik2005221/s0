@@ -196,13 +196,14 @@ def test_download_path_traversal_blocked(client, tmp_path):
 
 
 def test_index_html_safe_rendering():
-    index_html = (GUI_DIR / "static" / "index.html").read_text(encoding="utf-8")
-    assert "function escapeHtml" in index_html
+    js_file = GUI_DIR / "static" / "js" / "dashboard.js"
+    source = js_file.read_text(encoding="utf-8") if js_file.exists() else (GUI_DIR / "static" / "index.html").read_text(encoding="utf-8")
+    assert "function escapeHtml" in source
     # Ensure unescaped injection into innerHTML is absent
-    assert "${b.operator}" not in index_html
-    assert "${b.target}" not in index_html
-    assert "tdOpId.textContent = b.operator" in index_html
-    assert "tdTarget.textContent = b.target" in index_html
+    assert "${b.operator}" not in source
+    assert "${b.target}" not in source
+    assert "tdOpId.textContent = b.operator" in source
+    assert "tdTarget.textContent = b.target" in source
 
 
 def test_image_api(client, small_image, tmp_path):
@@ -237,5 +238,24 @@ def test_image_api(client, small_image, tmp_path):
     assert r_dl1.status_code == 200
     r_dl2 = client.get(f"/api/download/{job_id}/{result['cert_filename']}")
     assert r_dl2.status_code == 200
+
+
+def test_config_endpoint(client):
+    r = client.get("/api/config")
+    assert r.status_code == 200
+    cfg = r.json()
+    assert cfg["version"] == "2.0.0"
+    assert "documentation_url" in cfg
+    assert "verification_portal_url" in cfg
+
+
+def test_browse_endpoint(client):
+    r = client.get("/api/browse")
+    assert r.status_code == 200
+    data = r.json()
+    assert "current" in data
+    assert "items" in data
+    assert isinstance(data["items"], list)
+
 
 
