@@ -77,17 +77,43 @@ _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 
 
-def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Path) -> Optional[Path]:
-    """Resolve custom signing key from raw PEM content or local file path."""
+def _get_secure_keys_dir() -> Path:
+    try:
+        keys_dir = Path.home() / ".s0" / "keys"
+        keys_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(keys_dir, 0o700)
+        except Exception:
+            pass
+        return keys_dir
+    except Exception:
+        fallback = Path(tempfile.gettempdir()) / ".s0_keys"
+        fallback.mkdir(parents=True, exist_ok=True)
+        try:
+            os.chmod(fallback, 0o700)
+        except Exception:
+            pass
+        return fallback
+
+
+def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Optional[Path] = None) -> tuple[Optional[Path], bool]:
+    """Resolve custom signing key from raw PEM content or local file path.
+
+    Returns (key_path, is_demo_key). Custom pasted keys are securely saved into
+    ~/.s0/keys/ (isolated from deliverables/evidence out_dir).
+    """
+    from s0_core.crypto import is_demo_key
+
     if key_data and key_data.strip():
-        out_dir.mkdir(parents=True, exist_ok=True)
-        custom_key_file = out_dir / "custom_issuer_private.pem"
+        keys_dir = _get_secure_keys_dir()
+        key_id = uuid.uuid4().hex[:12]
+        custom_key_file = keys_dir / f"custom_issuer_{key_id}.pem"
         custom_key_file.write_text(key_data.strip() + "\n", encoding="utf-8")
         try:
             os.chmod(custom_key_file, 0o600)
         except Exception:
             pass
-        return custom_key_file
+        return custom_key_file, is_demo_key(custom_key_file)
 
     if key_path and key_path.strip():
         kp = Path(key_path.strip())
@@ -95,13 +121,13 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Path
             kp = (REPO / key_path.strip()).resolve()
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {key_path}")
-        return kp
+        return kp, is_demo_key(kp)
 
     default_key_rel = CONFIG.get("default_key_path", "core/keys/demo_issuer_private.pem")
     default_key = (REPO / default_key_rel).resolve()
     if default_key.exists():
-        return default_key
-    return None
+        return default_key, True
+    return None, True
 
 
 class WipeRequest(BaseModel):
@@ -272,10 +298,33 @@ def api_config() -> JSONResponse:
     return JSONResponse(CONFIG)
 
 
+ALLOWED_BROWSE_ROOTS = [
+    REPO.resolve(),
+    Path.home().resolve(),
+    Path("/media").resolve(),
+    Path("/mnt").resolve(),
+]
+
+
+def _is_safe_browse_path(target: Path) -> bool:
+    try:
+        resolved = target.resolve()
+        for root in ALLOWED_BROWSE_ROOTS:
+            if root.exists():
+                try:
+                    resolved.relative_to(root)
+                    return True
+                except ValueError:
+                    continue
+        return False
+    except Exception:
+        return False
+
+
 @app.get("/api/browse")
 def api_browse(path: str = ".") -> JSONResponse:
     target = Path(path).expanduser().resolve()
-    if not target.exists() or not target.is_dir():
+    if not target.exists() or not target.is_dir() or not _is_safe_browse_path(target):
         target = REPO
     items = []
     try:
@@ -290,7 +339,7 @@ def api_browse(path: str = ".") -> JSONResponse:
         return JSONResponse({"error": str(exc), "current": str(target), "items": []})
     return JSONResponse({
         "current": str(target),
-        "parent": str(target.parent) if target.parent != target else None,
+        "parent": str(target.parent) if target.parent != target and _is_safe_browse_path(target.parent) else None,
         "items": items,
     })
 
@@ -317,7 +366,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
         out_dir = REPO / "demo-out" / f"gui-wipe-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    key = _resolve_key(req.key_path, req.key_data, out_dir)
+    key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
     cmd = _get_s0_cmd() + [
         "wipe", "--target", req.target, "--yes",
@@ -335,7 +384,13 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
         cmd += ["--portal-url", req.portal_url.strip()]
 
     with _lock:
-        _jobs[job_id] = {"status": "running", "log": [], "cmd": cmd[1:], "out_dir": str(out_dir)}
+        _jobs[job_id] = {
+            "status": "running",
+            "log": [],
+            "cmd": cmd[1:],
+            "out_dir": str(out_dir),
+            "demo_key_warning": is_demo,
+        }
 
     def run() -> None:
         try:
@@ -395,11 +450,15 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
         out_dir = REPO / "demo-out" / f"gui-filewipe-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    key = _resolve_key(req.key_path, req.key_data, out_dir)
+    key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
-        _jobs[job_id] = {"status": "running", "log": [f"Sanitizing {len(req.targets)} file/folder targets..."],
-                         "out_dir": str(out_dir)}
+        _jobs[job_id] = {
+            "status": "running",
+            "log": [f"Sanitizing {len(req.targets)} file/folder targets..."],
+            "out_dir": str(out_dir),
+            "demo_key_warning": is_demo,
+        }
 
     def run() -> None:
         try:
@@ -506,11 +565,15 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         out_dir = REPO / "demo-out" / f"gui-carve-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    key = _resolve_key(req.key_path, req.key_data, out_dir)
+    key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
-        _jobs[job_id] = {"status": "running", "log": [f"Scanning {req.target} for carved artifacts..."],
-                         "out_dir": str(out_dir)}
+        _jobs[job_id] = {
+            "status": "running",
+            "log": [f"Scanning {req.target} for carved artifacts..."],
+            "out_dir": str(out_dir),
+            "demo_key_warning": is_demo,
+        }
 
     def run() -> None:
         try:
@@ -645,13 +708,14 @@ def start_image(req: ImageRequest) -> JSONResponse:
         out_dir = REPO / "demo-out" / f"gui-image-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    key = _resolve_key(req.key_path, req.key_data, out_dir)
+    key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
     with _lock:
         _jobs[job_id] = {
             "status": "running",
             "log": [f"Acquiring forensic bit-stream from {req.source} to {req.destination}..."],
             "out_dir": str(out_dir),
+            "demo_key_warning": is_demo,
         }
 
     def run() -> None:
@@ -757,6 +821,7 @@ def job_status(job_id: str) -> JSONResponse:
             "log": job.get("log", []),
             "result": job.get("result", None),
             "cmd": job.get("cmd", None),
+            "demo_key_warning": job.get("demo_key_warning", False),
         })
 
 

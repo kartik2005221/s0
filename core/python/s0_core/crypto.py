@@ -29,7 +29,38 @@ __all__ = [
     "sign_payload",
     "verify_payload",
     "payload_sha256",
+    "DEMO_KEY_FINGERPRINT",
+    "is_demo_key",
 ]
+
+DEMO_KEY_FINGERPRINT = "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06"
+
+
+def is_demo_key(key: Ed25519PrivateKey | Ed25519PublicKey | str | Path | None) -> bool:
+    """Check whether a key matches the unaccredited public demonstration key."""
+    if key is None:
+        return True
+    if isinstance(key, (str, Path)):
+        p = Path(key)
+        if "demo" in p.name.lower():
+            return True
+        if not p.exists():
+            return "demo" in str(p).lower()
+        try:
+            priv = load_private_pem(p)
+            return public_key_fingerprint(priv.public_key()) == DEMO_KEY_FINGERPRINT
+        except Exception:
+            try:
+                pub = load_public_pem(p)
+                return public_key_fingerprint(pub) == DEMO_KEY_FINGERPRINT
+            except Exception:
+                return "demo" in str(p).lower()
+    if isinstance(key, Ed25519PrivateKey):
+        return public_key_fingerprint(key.public_key()) == DEMO_KEY_FINGERPRINT
+    if isinstance(key, Ed25519PublicKey):
+        return public_key_fingerprint(key) == DEMO_KEY_FINGERPRINT
+    return False
+
 
 
 def generate_private_key() -> Ed25519PrivateKey:

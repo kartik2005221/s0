@@ -58,8 +58,19 @@ from .wipe import (
 )
 
 
+from s0_core.crypto import is_demo_key
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _warn_if_demo_key(key_path: Path | None) -> None:
+    if key_path is not None and is_demo_key(key_path):
+        sys.stderr.write(
+            "\n\033[33m[!] NOTICE: Operation signed with unaccredited demonstration key (demo_issuer_private.pem).\n"
+            "    DO NOT use this certificate for legal chain-of-custody or regulatory compliance.\033[0m\n\n"
+        )
 
 
 def _resolve_target(path: str) -> DevTarget:
@@ -262,6 +273,7 @@ def cmd_wipe(args) -> int:
                 return 2
 
         key_path = default_issuer_key(args.key)
+        _warn_if_demo_key(key_path)
         res_win, cert = wipe_drive_or_partition_windows(
             target=target.path,
             passes=args.passes,
@@ -321,6 +333,7 @@ def cmd_wipe(args) -> int:
                 return 2
 
         key_path = default_issuer_key(args.key)
+        _warn_if_demo_key(key_path)
         res_mac, cert = wipe_drive_or_partition_macos(
             target=target.path,
             passes=args.passes,
@@ -482,6 +495,7 @@ def cmd_wipe(args) -> int:
         )
 
     key_path = default_issuer_key(args.key)
+    _warn_if_demo_key(key_path)
     if key_path is None:
         print("error: no issuer signing key found.", file=sys.stderr)
         return 2
@@ -559,6 +573,7 @@ def cmd_erase_files(args) -> int:
     print(f"==> S0 Module 2: Secure File & Folder Eraser")
 
     key_path = default_issuer_key(args.key)
+    _warn_if_demo_key(key_path)
     if key_path is None and not getattr(args, "no_certificate", False):
         print(
             "error: no issuer signing key found.\n"
@@ -640,6 +655,7 @@ def cmd_carve(args) -> int:
     print(f"==> S0 Module 3: Advanced File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
+    _warn_if_demo_key(key_path)
     if key_path is None and not getattr(args, "no_certificate", False):
         print(
             "error: no issuer signing key found.\n"

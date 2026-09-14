@@ -103,6 +103,33 @@ def generate_pdf(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
     ]))
     story.append(banner)
+
+    from .crypto import DEMO_KEY_FINGERPRINT
+    is_demo = (
+        sig.get("public_key_fingerprint") == DEMO_KEY_FINGERPRINT
+        or "demo" in cert.get("issuer", {}).get("organization", "").lower()
+        or any("demo" in str(n).lower() for n in cert.get("notes", []))
+    )
+    if is_demo:
+        demo_banner = Table(
+            [[Paragraph(
+                "<para color='#990000' align='center'><b>⚠️ DEMONSTRATION CERTIFICATE — SIGNED WITH PUBLIC DEMO KEY</b><br/>"
+                "<font size='7.5'>This certificate was signed with an unaccredited public demonstration key. "
+                "DO NOT use for legal chain-of-custody or regulatory compliance.</font></para>",
+                styles["Normal"])]],
+            colWidths=[170 * mm],
+        )
+        demo_banner.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff3cd")),
+            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#ffeeba")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(Spacer(1, 3 * mm))
+        story.append(demo_banner)
+
     story.append(Spacer(1, 6 * mm))
 
     def rows(pairs):

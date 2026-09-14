@@ -291,5 +291,30 @@ def test_carve_with_custom_signatures(client, tmp_path):
     assert any(f["ext"] == "svt" for f in result["carved_files"])
 
 
+def test_browse_endpoint_traversal_restricted(client):
+    """Attempting to browse unauthorized directories falls back to REPO root."""
+    r = client.get("/api/browse?path=/etc")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["current"] == str(gui_app.REPO.resolve())
 
 
+def test_custom_key_isolated_from_out_dir(tmp_path):
+    """Custom pasted key data is written to ~/.s0/keys/, NOT the evidence out_dir."""
+    out_dir = tmp_path / "evidence_output"
+    out_dir.mkdir()
+    sample_pem = (
+        "-----BEGIN PRIVATE KEY-----\n"
+        "MC4CAQAwBQYDK2VwBCIEIPz5W2a/Jt5+3E8qg9v+8n8bQeZqR2m8/0j5c7X7n7xL\n"
+        "-----END PRIVATE KEY-----\n"
+    )
+    resolved_key, is_demo = gui_app._resolve_key(None, sample_pem, out_dir)
+    assert resolved_key is not None
+    assert resolved_key.exists()
+    assert not (out_dir / "custom_issuer_private.pem").exists()
+    assert ".s0" in str(resolved_key)
+    # Cleanup temp file
+    try:
+        resolved_key.unlink()
+    except Exception:
+        pass

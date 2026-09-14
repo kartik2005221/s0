@@ -83,16 +83,27 @@ fetch("keys.json")
 function renderPinnedKeys() {
   var el = document.getElementById("pinnedKeysList");
   if (!el) return;
-  var html = "";
+  el.textContent = "";
   PINNED_KEYS.forEach(function(k) {
-    html += '<div class="key-box">' +
-              '<div class="key-header">' +
-                '<strong>' + (k.issuer || "Pinned Key") + '</strong>' +
-              '</div>' +
-              '<div style="color: var(--primary); font-size: 0.78rem; word-break: break-all;">' + k.fingerprint + '</div>' +
-            '</div>';
+    var box = document.createElement("div");
+    box.className = "key-box";
+
+    var hdr = document.createElement("div");
+    hdr.className = "key-header";
+    var str = document.createElement("strong");
+    str.textContent = k.issuer || "Pinned Key";
+    hdr.appendChild(str);
+
+    var fp = document.createElement("div");
+    fp.style.color = "var(--primary)";
+    fp.style.fontSize = "0.78rem";
+    fp.style.wordBreak = "break-all";
+    fp.textContent = k.fingerprint || "";
+
+    box.appendChild(hdr);
+    box.appendChild(fp);
+    el.appendChild(box);
   });
-  el.innerHTML = html;
 }
 
 // Drag & drop and file input handlers
@@ -298,17 +309,60 @@ function processQrPayload(payload, sourceDesc) {
 }
 
 function handleCertLocator(uuid, sourceDesc) {
-  document.getElementById("emptyState").style.display = "block";
+  var emptyState = document.getElementById("emptyState");
+  emptyState.style.display = "block";
   document.getElementById("resultContainer").style.display = "none";
-  document.getElementById("emptyState").innerHTML =
-    '<span class="empty-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>' +
-    '<h3 style="margin-top: 10px; color: var(--primary);">Certificate UUID Detected: ' + uuid + '</h3>' +
-    '<p style="margin-top: 6px; font-size: 0.84rem; color: var(--text-secondary);">Source: ' + (sourceDesc || "Optical QR / PDF Scan") + '</p>' +
-    '<div style="max-width: 600px; margin: 16px auto; padding: 14px; background: rgba(255, 101, 0, 0.08); border: 1px solid rgba(255, 101, 0, 0.3); border-radius: 8px; text-align: left; font-size: 0.85rem;">' +
-      '<strong>Zero-Trust Offline Architecture Notice:</strong><br>' +
-      'S0 does not maintain a centralized telemetry server that stores customer wipe records. The physical certificate remains cryptographically sealed in your local forensic artifact repository.<br><br>' +
-      'To cryptographically audit and verify the Ed25519 signature of this certificate, please drag &amp; drop <code>certificate_' + uuid.substring(0, 8) + '.json</code>.' +
-    '</div>';
+  emptyState.textContent = "";
+
+  var iconSpan = document.createElement("span");
+  iconSpan.className = "empty-icon";
+  iconSpan.innerHTML = '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+
+  var h3 = document.createElement("h3");
+  h3.style.marginTop = "10px";
+  h3.style.color = "var(--primary)";
+  h3.textContent = "Certificate UUID Detected: " + uuid;
+
+  var p = document.createElement("p");
+  p.style.marginTop = "6px";
+  p.style.fontSize = "0.84rem";
+  p.style.color = "var(--text-secondary)";
+  p.textContent = "Source: " + (sourceDesc || "Optical QR / PDF Scan");
+
+  var box = document.createElement("div");
+  box.style.maxWidth = "600px";
+  box.style.margin = "16px auto";
+  box.style.padding = "14px";
+  box.style.background = "rgba(255, 101, 0, 0.08)";
+  box.style.border = "1px solid rgba(255, 101, 0, 0.3)";
+  box.style.borderRadius = "8px";
+  box.style.textAlign = "left";
+  box.style.fontSize = "0.85rem";
+
+  var strong = document.createElement("strong");
+  strong.textContent = "Zero-Trust Offline Architecture Notice:";
+  box.appendChild(strong);
+  box.appendChild(document.createElement("br"));
+
+  var noticeText1 = document.createTextNode(
+    "S0 does not maintain a centralized telemetry server that stores customer wipe records. The physical certificate remains cryptographically sealed in your local forensic artifact repository."
+  );
+  box.appendChild(noticeText1);
+  box.appendChild(document.createElement("br"));
+  box.appendChild(document.createElement("br"));
+
+  var noticeText2 = document.createTextNode("To cryptographically audit and verify the Ed25519 signature of this certificate, please drag & drop ");
+  box.appendChild(noticeText2);
+
+  var code = document.createElement("code");
+  code.textContent = "certificate_" + String(uuid).substring(0, 8) + ".json";
+  box.appendChild(code);
+  box.appendChild(document.createTextNode("."));
+
+  emptyState.appendChild(iconSpan);
+  emptyState.appendChild(h3);
+  emptyState.appendChild(p);
+  emptyState.appendChild(box);
 }
 
 document.getElementById("btnVerify").addEventListener("click", runVerification);
@@ -450,9 +504,14 @@ function showResult(res, cert) {
     document.getElementById("resMethod").textContent = methodStr + (wipe.passes ? " (" + wipe.passes + " pass)" : "");
     document.getElementById("metricMethod").textContent = methodStr.replace("OVERWRITE_", "").replace("_1PASS", "");
 
-    var tier = wipe.nist_category || "Unknown";
-    var tierClass = "badge-" + tier.toLowerCase();
-    document.getElementById("resNistTier").innerHTML = "<span class='badge " + tierClass + "'>" + tier + "</span>";
+    var tier = String(wipe.nist_category || "Unknown");
+    var safeTierClass = "badge-" + tier.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    var badgeSpan = document.createElement("span");
+    badgeSpan.className = "badge " + safeTierClass;
+    badgeSpan.textContent = tier;
+    var nistContainer = document.getElementById("resNistTier");
+    nistContainer.textContent = "";
+    nistContainer.appendChild(badgeSpan);
 
     var verif = (cert.result && cert.result.verification) || {};
     var verifText = verif.samples_checked ? (verif.samples_checked + " samples checked (100% match wipe pattern)") : "Standard verification";

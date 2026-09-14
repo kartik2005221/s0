@@ -359,6 +359,22 @@ async function startDriveWipe() {
   }
 }
 
+function renderDemoKeyNotice(container, isDemo) {
+  if (!isDemo || !container) return;
+  const alert = document.createElement("div");
+  alert.style.cssText = "width: 100%; margin-top: 10px; padding: 8px 12px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; color: var(--warning); font-size: 0.8rem; font-family: var(--font-sans); display: flex; align-items: center; gap: 8px;";
+  const icon = document.createElement("span");
+  icon.textContent = "⚠️";
+  const text = document.createElement("span");
+  const strong = document.createElement("strong");
+  strong.textContent = "Notice: ";
+  text.appendChild(strong);
+  text.appendChild(document.createTextNode("Certificate signed with unaccredited public demonstration key. Do not use for legal chain-of-custody."));
+  alert.appendChild(icon);
+  alert.appendChild(text);
+  container.appendChild(alert);
+}
+
 function onDriveWipeDone(job) {
   const resCard = document.getElementById("driveResultCard");
   const actionBox = document.getElementById("driveActionButtons");
@@ -379,6 +395,7 @@ function onDriveWipeDone(job) {
     btnPdf.textContent = "Download PDF Certificate";
     actionBox.appendChild(btnPdf);
   }
+  renderDemoKeyNotice(actionBox, job.demo_key_warning);
 }
 
 // --- Module 2: File & Folder Eraser ---
@@ -510,6 +527,7 @@ function onFileEraseDone(job) {
       btnPdf.textContent = "Download PDF Certificate";
       actionBox.appendChild(btnPdf);
     }
+    renderDemoKeyNotice(actionBox, job.demo_key_warning);
   }
 }
 
@@ -754,6 +772,7 @@ function onCarveDone(job) {
       btn.textContent = "Download Signed Manifest";
       btnBox.appendChild(btn);
     }
+    renderDemoKeyNotice(btnBox, job.demo_key_warning);
 
     const files = job.result.carved_files || [];
     if (files.length === 0) {
@@ -936,6 +955,7 @@ function onImagingDone(job) {
       btnCert.textContent = "Download Certificate";
       actionBox.appendChild(btnCert);
     }
+    renderDemoKeyNotice(actionBox, job.demo_key_warning);
   }
 }
 
@@ -966,7 +986,7 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
           }
           setHeaderJobStatus("COMPLETE", "success");
           setTimeout(() => setHeaderJobStatus("IDLE", "idle"), 8000);
-          if (onDoneCallback) onDoneCallback({ id: jobId, result: data.result });
+          if (onDoneCallback) onDoneCallback({ id: jobId, result: data.result, demo_key_warning: data.demo_key_warning });
         } else {
           if (badge) {
             badge.className = "badge badge-red";
