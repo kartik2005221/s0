@@ -17,6 +17,20 @@ timeline
 
 ---
 
+## [2.1.1] — 2026-09-14
+
+### Security & Hardening
+- **Verification Portal Stored XSS Remediation & CSP:** Remediated stored cross-site scripting vulnerability in `showResult()` by building badge DOM elements using `textContent` instead of string-concatenated `innerHTML`. Audited and secured `handleCertLocator()` and `renderPinnedKeys()`. Added strict Content-Security-Policy (CSP) meta tag preventing external script execution and inline evaluation.
+- **Custom Key Isolation:** Restricted pasted custom private key writing to protected `~/.s0/keys/` directory with `0o700`/`0o600` permissions, ensuring user signing keys are never saved into deliverables/evidence output directories.
+- **Unaccredited Demonstration Key Warning:** Added conspicuous warnings whenever operations fall back to the public demo key (`demo_issuer_private.pem`): emitted to `sys.stderr` in all CLI commands, highlighted via an amber notice in the Web Dashboard, and stamped as a prominent warning header banner in generated PDF certificates.
+- **Directory Browse Allowlist (`/api/browse`):** Restricted Web Dashboard file picker directory traversal to authorized roots (`REPO`, user home, `/media`, `/mnt`), preventing arbitrary host inspection.
+
+### Fixed
+- **Mobile Navigation Drawer Scroll:** Resolved mobile navigation drawer clipping by offsetting `.md-sidebar--primary` below the sticky top header (`top: var(--s0-header-height)` and `height: calc(100dvh - var(--s0-header-height))`), restoring full scrollability to the top `Home` item.
+- **Callout Box Color Unification:** Unified admonition styles in `docs/stylesheets/extra.css` so that each callout type (`info`, `note`, `tip`, `warning`, `danger`, `success`, `important`) strictly uses a single harmonious color across its left border, box border, icon mask (`::before`), and title text, eliminating dual-color clashes.
+
+---
+
 ## [2.1.0] — 2026-09-10
 
 ### Added
