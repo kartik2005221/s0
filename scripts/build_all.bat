@@ -79,13 +79,13 @@ echo.
 echo ── [%PHASE%/%TOTAL%] Verifying Documentation Suite
 set "DOC_FAIL=0"
 for %%D in (
-    docs\ARCHITECTURE.md
-    docs\USER_MANUAL.md
-    docs\COMPLIANCE.md
-    docs\TEST_PLAN.md
-    docs\LIMITATIONS.md
-    docs\HANDOVER.md
-    docs\PITCH_OUTLINE.md
+    docs-portal\docs\ARCHITECTURE.md
+    docs-portal\docs\USER_MANUAL.md
+    docs-portal\docs\COMPLIANCE.md
+    docs-portal\docs\TEST_PLAN.md
+    docs-portal\docs\LIMITATIONS.md
+    docs-portal\docs\HANDOVER.md
+    docs-portal\docs\PITCH_OUTLINE.md
 ) do (
     if exist "%%D" (
         echo   [OK] %%D

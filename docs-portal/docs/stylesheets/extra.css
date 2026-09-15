@@ -408,9 +408,48 @@
   padding-left: calc(0.6rem - 3px) !important;
 }
 
-/* Hide redundant site name title from left index pane (already pinned in header) */
-.md-sidebar--primary .md-nav__title {
-  display: none !important;
+/* Hide redundant root site title from left index pane on desktop only */
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title {
+    display: none !important;
+  }
+}
+
+/* Mobile navigation drawer back button and sub-nav titles */
+@media screen and (max-width: 76.1875em) {
+  .md-sidebar--primary .md-nav__title {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    cursor: pointer;
+    color: #FF6500 !important;
+    background: rgba(255, 101, 0, 0.08) !important;
+    border-bottom: 1px solid rgba(255, 101, 0, 0.25) !important;
+    transition: background 0.15s ease;
+  }
+  .md-sidebar--primary .md-nav__title:hover,
+  .md-sidebar--primary .md-nav__title:active {
+    background: rgba(255, 101, 0, 0.16) !important;
+  }
+  .md-sidebar--primary .md-nav__title .md-nav__icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+    color: #FF6500 !important;
+  }
+  .md-sidebar--primary .md-nav__title::after {
+    content: " (Tap to return)";
+    font-size: 0.72rem;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-left: auto;
+  }
 }
 
 .md-nav__title {
@@ -425,6 +464,14 @@
 }
 
 /* ── Light Mode Nav Overrides ── */
+[data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title {
+  color: #CC5200 !important;
+  background: rgba(204, 82, 0, 0.08) !important;
+  border-bottom: 1px solid rgba(204, 82, 0, 0.2) !important;
+}
+[data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title .md-nav__icon {
+  color: #CC5200 !important;
+}
 [data-md-color-scheme="default"] .md-nav--primary .md-nav__title {
   color: #0B192C !important;
 }

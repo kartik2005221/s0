@@ -29,26 +29,31 @@ graph TD
 
 ## 2. Launching the Dashboard
 
-Execute the launcher script from the root of the repository:
+Launch directly using the native `s0 web` command:
 
-=== "Linux & macOS"
+```bash
+# Launch the web dashboard and automatically open in default browser
+s0 web
+```
+
+Or customize port and network binding:
+```bash
+# Launch on custom port without auto-opening browser
+s0 web --port 8080 --no-browser
+```
+
+=== "Script Runner (Linux & macOS)"
     ```bash
-    # Start the FastAPI web console on loopback
-    bash gui/run.sh
+    # Start via standalone script runner
+    bash web/run.sh
     ```
-    The server initializes dependencies, binds to loopback, and prints:
-    ```text
-    INFO:     Started server process
-    INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-    ```
-    Open `http://127.0.0.1:8000` in your web browser.
 
-=== "Windows"
+=== "Script Runner (Windows)"
     ```powershell
-    # Launch Uvicorn server on Windows PowerShell
-    python -m uvicorn gui.app:app --host 127.0.0.1 --port 8000
+    # Launch via PowerShell script runner
+    .\web\run.ps1
+    # Or in CMD: web\run.bat
     ```
-    Or execute `gui\run.bat` if available.
 
 !!! warning "Security & Network Exposure"
     The dashboard is explicitly engineered for **local, single-operator forensic workstations**. By default, it binds strictly to `127.0.0.1` (localhost). Do not bind to `0.0.0.0` or expose the dashboard port to an untrusted local area network without authentication proxies, as it possesses the authority to perform irreversible storage erasure.

@@ -1,5 +1,23 @@
 # Frequently Asked Questions (FAQ)
 
+## 0. Legal & Ethical Use
+
+### Am I legally allowed to wipe or recover data from any device with s0?
+**No.** s0 is a certified digital forensics and data sanitization suite. You are legally required to only operate on storage media and files that you **own** or have **explicit, documented written authorization** to process. Operating on unauthorized devices may constitute a severe criminal offense.
+
+### Which computer crime laws apply?
+Depending on your jurisdiction, unauthorized wiping or unauthorized data recovery may violate:
+- **United States:** Computer Fraud and Abuse Act (CFAA), 18 U.S.C. § 1030 (unauthorized access and damage to protected computers).
+- **United Kingdom:** Computer Misuse Act 1990 (unauthorized acts with intent to impair operation of a computer).
+- **European Union:** Directive 2013/40/EU on attacks against information systems.
+- **India:** Information Technology Act 2000, Section 43 (penalty for damage to computer system) and Section 66 (computer related offenses).
+- **International:** Budapest Convention on Cybercrime.
+
+### What should organizations do prior to sanitizing or imaging media?
+1. **Chain of Custody:** Ensure an asset transfer form or legal clearance document is signed by the device owner or IT asset custodian.
+2. **Litigation Hold Check:** Verify that the media is not subject to a preservation order, court subpoena, or pending legal dispute before initiating `s0 wipe` or `s0 erase`.
+3. **Key Management:** Maintain accredited Ed25519 signing keys for non-repudiation in audit trails.
+
 ---
 
 ## 1. General & Architecture

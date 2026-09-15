@@ -88,9 +88,9 @@ End-Phase
 # ── Phase 4: Documentation Suite ──────────────────────────────────────────────
 Start-Phase "Verifying Documentation Suite"
 $Docs = @(
-    "docs\ARCHITECTURE.md", "docs\USER_MANUAL.md", "docs\COMPLIANCE.md",
-    "docs\TEST_PLAN.md",    "docs\LIMITATIONS.md", "docs\HANDOVER.md",
-    "docs\PITCH_OUTLINE.md"
+    "docs-portal\docs\ARCHITECTURE.md", "docs-portal\docs\USER_MANUAL.md", "docs-portal\docs\COMPLIANCE.md",
+    "docs-portal\docs\TEST_PLAN.md",    "docs-portal\docs\LIMITATIONS.md", "docs-portal\docs\HANDOVER.md",
+    "docs-portal\docs\PITCH_OUTLINE.md"
 )
 foreach ($doc in $Docs) {
     if (Test-Path $doc) {

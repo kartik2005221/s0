@@ -52,58 +52,59 @@ Before installing, confirm that the following are present on your system.
     | List devices (`s0 list`) | No | No | No |
     | Audit / verify | No | No | No |
 
+!!! warning "⚖️ Legal & Responsible Use Requirement"
+    s0 is a certified digital forensic sanitization and recovery tool. You must **only** operate on storage media and files that you **legally own** or have **explicit, documented authorization** to process. Operating on unauthorized systems or drives may violate computer crime laws (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act, IT Act 2000). See the [Legal FAQ](faq.md#0-legal-ethical-use).
+
 ---
 
 ## 2. Installation
 
 === "Linux"
 
-    Run the one-liner installer. It clones the repository, creates a Python virtual environment, installs all dependencies, and adds `s0` to your `PATH` automatically.
+    Run the fast one-line installer. It verifies toolchain prerequisites, bootstraps a dedicated Python virtual environment, installs cryptographic engines, and registers `s0` in your `PATH`.
 
     ```bash
-    # Execute universal Linux installer
-    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+    # Universal Linux installer via s0-install portal
+    curl -fsSL https://s0-install.vercel.app/sh | bash
     ```
 
     !!! tip "What the installer does"
-        The script places the `s0` launcher at `/usr/local/bin/s0` (or `~/.local/bin/s0` for non-root installs) alongside a self-contained `.venv` inside the cloned repository. You do **not** need to activate the virtual environment manually.
+        The script places the `s0` launcher at `~/.local/bin/s0` alongside a self-contained `.venv` inside `~/.s0`. You do **not** need to activate the virtual environment manually.
 
 === "macOS"
 
-    The same installer script works unchanged on macOS (Apple Silicon and Intel):
+    The universal installer works identically across Apple Silicon (M1/M2/M3/M4) and Intel Macs:
 
     ```bash
-    # Execute universal macOS installer
-    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+    # Universal macOS installer via s0-install portal
+    curl -fsSL https://s0-install.vercel.app/sh | bash
     ```
 
     !!! warning "Homebrew Python"
-        If you manage Python with Homebrew, ensure `python3 --version` reports 3.10 or newer before running the installer. The script respects the system's active `python3`.
+        If you manage Python with Homebrew, ensure `python3 --version` reports 3.10 or newer before running the installer.
 
 === "Windows — PowerShell"
 
-    Open **PowerShell as Administrator** (right-click → *Run as administrator*) and run:
+    Open **PowerShell** (run as administrator for physical drive access) and run:
 
     ```powershell
-    # Execute automated Windows PowerShell installer
-    irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
+    # Automated Windows PowerShell installer via s0-install portal
+    irm https://s0-install.vercel.app/ps1 | iex
     ```
 
     !!! warning "Execution policy"
         If you receive a `cannot be loaded because running scripts is disabled` error, temporarily allow remote scripts:
         ```powershell
-        # Temporarily enable execution of signed remote scripts
         Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
         ```
-        Restore it after install with `Set-ExecutionPolicy -Scope CurrentUser Restricted`.
 
 === "Windows — Command Prompt"
 
-    Open **CMD as Administrator** and run:
+    Open **Command Prompt** and run:
 
     ```cmd
-    :: Execute automated Windows CMD installer
-    curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
+    :: Automated Windows CMD installer via s0-install portal
+    curl -fsSL https://s0-install.vercel.app/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
     ```
 
 === "Manual (All Platforms)"
@@ -465,7 +466,7 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "version": "2.0.0",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
-  "documentation_url": "https://s0-docs-ten.vercel.app/",
+  "documentation_url": "https://s0-docs.vercel.app/",
   "verification_portal_url": "https://s0-vp.vercel.app/",
   "github_url": "https://github.com/kartik2005221/s0",
   "default_operator": "op-forensic",

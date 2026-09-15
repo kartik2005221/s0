@@ -106,13 +106,13 @@ phase_ok
 # ── Phase 5: Documentation Suite ──────────────────────────────────────────────
 phase_start "Verifying Documentation Suite"
 DOCS=(
-    "docs/ARCHITECTURE.md"
-    "docs/USER_MANUAL.md"
-    "docs/COMPLIANCE.md"
-    "docs/TEST_PLAN.md"
-    "docs/LIMITATIONS.md"
-    "docs/HANDOVER.md"
-    "docs/PITCH_OUTLINE.md"
+    "docs-portal/docs/ARCHITECTURE.md"
+    "docs-portal/docs/USER_MANUAL.md"
+    "docs-portal/docs/COMPLIANCE.md"
+    "docs-portal/docs/TEST_PLAN.md"
+    "docs-portal/docs/LIMITATIONS.md"
+    "docs-portal/docs/HANDOVER.md"
+    "docs-portal/docs/PITCH_OUTLINE.md"
 )
 for doc in "${DOCS[@]}"; do
     if [ -f "$doc" ]; then
@@ -138,12 +138,12 @@ elif command -v docker >/dev/null 2>&1; then
     step_ok "docker detected — containerized ISO build ready"
     ISO_STATUS="${_green}✅ READY${_reset}     "
 else
-    step_skip "live-build / podman / docker not installed (see docs/LIVE_ISO_BUILD_GUIDE.md)"
+    step_skip "live-build / podman / docker not installed (see docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md)"
 fi
 if command -v qemu-system-x86_64 >/dev/null 2>&1; then
     step_ok "qemu-system-x86_64 detected"
 else
-    step_skip "qemu-system-x86_64 not installed (see docs/LIVE_ISO_BUILD_GUIDE.md)"
+    step_skip "qemu-system-x86_64 not installed (see docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md)"
 fi
 step_info "Bootable Bare-Metal Live ISO target: linux/iso/ or ./scripts/build_iso.sh"
 phase_ok

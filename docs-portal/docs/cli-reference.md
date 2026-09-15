@@ -29,6 +29,7 @@ flowchart TD
     S0 --> VERIFY["verify\n─────────────\nOffline cert check"]
     S0 --> KEYGEN["keygen\n─────────────\nKey pair generation"]
     S0 --> UPGRADE["upgrade\n─────────────\nSuite self-update"]
+    S0 --> WEB["web / gui\n─────────────\nWeb dashboard"]
 
     AUDIT --> AL["audit list"]
     AUDIT --> AV["audit verify"]
@@ -38,7 +39,7 @@ flowchart TD
     classDef leaf fill:#222831,stroke:#393E46,color:#EEEEEE;
 
     class S0 root;
-    class LIST,PLAN,WIPE,ERASE,IMAGE,CARVE,AUDIT,VERIFY,KEYGEN,UPGRADE sub;
+    class LIST,PLAN,WIPE,ERASE,IMAGE,CARVE,AUDIT,VERIFY,KEYGEN,UPGRADE,WEB sub;
     class AL,AV leaf;
 ```
 
@@ -1365,6 +1366,33 @@ When `--json` is passed to `s0 wipe`, each event is a newline-delimited JSON obj
 # Extract certificate path from completed NDJSON wipe log
 grep '"event":"complete"' wipe.log | jq -r '.cert_path'
 ```
+
+---
+
+## `s0 web`
+
+Launch the local interactive s0 Web Dashboard in your default web browser. Binds exclusively to `127.0.0.1` (localhost loopback) for forensic workstation isolation.
+
+### Usage
+```bash
+s0 web [--port PORT] [--host HOST] [--no-browser]
+```
+
+### Options
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--port` | Integer | `8000` | Port to bind local HTTP server |
+| `--host` | String | `127.0.0.1` | Host address to bind (strict loopback isolation) |
+| `--no-browser` | Flag | `false` | Start server without auto-opening default web browser |
+
+### Features
+- **Drive Eraser Tab:** Visual block device selection, real-time overwrite / sanitize progress bar, temperature tracking, and instant signed certificate download.
+- **File Eraser Tab:** Drag-and-drop batch folder/file path selection, NIST pattern picker, and instant metadata sanitization.
+- **Forensic Carver Tab:** Raw image source browsing, file extension filtering, custom signature hex editor, and interactive recovered artifacts inspector.
+- **Blockchain Ledger Tab:** Live block timeline, block detail inspector, and one-click cryptographic hash-chain verification.
+
+### Backward Compatibility Alias
+`s0 gui` is fully supported as an identical alias.
 
 ---
 
