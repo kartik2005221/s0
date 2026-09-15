@@ -33,6 +33,10 @@
   
   --code-bg: #04070D;
   --header-bg: rgba(0, 0, 0, 0.88);
+  --btn-bg: #1e293b;
+  --btn-bg-hover: #27354a;
+  --btn-border: #334155;
+  --btn-text: #FFFFFF;
   --font-mono: "JetBrains Mono", monospace;
   --font-sans: "Rubik", sans-serif;
 }
@@ -72,6 +76,10 @@
   
   --code-bg: #F1F5F9;
   --header-bg: rgba(255, 255, 255, 0.92);
+  --btn-bg: #E2E8F0;
+  --btn-bg-hover: #CBD5E1;
+  --btn-border: #CBD5E1;
+  --btn-text: #0F172A;
 }
 
 [data-theme="light"] body {
@@ -194,7 +202,7 @@ body {
   gap: 7px;
 }
 .nav-btn:hover {
-  color: #FFFFFF;
+  color: var(--text-primary);
   border-color: var(--border-focus);
   background: var(--bg-card-hover);
 }
@@ -286,7 +294,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.2px;
 }
 
@@ -298,7 +306,7 @@ body {
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--code-bg);
   position: relative;
 }
 
@@ -352,7 +360,7 @@ body {
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
 }
@@ -399,9 +407,9 @@ textarea:focus {
 }
 
 button, .btn {
-  background: #1e293b;
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 1px solid var(--btn-border);
   border-radius: 8px;
   padding: 9px 16px;
   font-size: 0.88rem;
@@ -416,8 +424,8 @@ button, .btn {
 }
 
 button:hover, .btn:hover {
-  background: #27354a;
-  border-color: #3b4d66;
+  background: var(--btn-bg-hover);
+  border-color: var(--border-focus);
 }
 
 button.primary {
@@ -557,7 +565,7 @@ button.danger-outline:hover {
   font-weight: 800;
   letter-spacing: -0.2px;
   margin-bottom: 4px;
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 .banner-text p {
@@ -576,7 +584,7 @@ button.danger-outline:hover {
 }
 
 .metric-box {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 10px 12px;
@@ -630,7 +638,7 @@ button.danger-outline:hover {
   border-spacing: 0;
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.15);
+  background: var(--bg-card);
   font-size: 0.86rem;
   min-width: 0;
 }
@@ -648,7 +656,7 @@ button.danger-outline:hover {
   font-size: 0.8rem;
   text-align: left;
   vertical-align: top;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--code-bg);
   white-space: normal;
 }
 
@@ -713,7 +721,7 @@ button.danger-outline:hover {
 
 .tab-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-card-hover);
 }
 
 .tab-btn.active {
@@ -750,7 +758,9 @@ button.danger-outline:hover {
 .btn-copy {
   padding: 4px 10px;
   font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
 }
 
@@ -773,7 +783,7 @@ pre code {
   font-family: var(--font-mono);
   font-size: 0.81rem;
   line-height: 1.55;
-  color: #d1d5db;
+  color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
   overflow-wrap: anywhere;
