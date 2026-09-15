@@ -5,9 +5,9 @@
 **Digital Forensics & Cryptographic Data Sanitization Suite**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1-green.svg)](docs/COMPLIANCE.md)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1-green.svg)](docs-portal/docs/COMPLIANCE.md)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](core/CANONICAL_JSON.md)
-[![Tests](https://img.shields.io/badge/Tests-180%2B_Passed-brightgreen.svg)](docs/TEST_PLAN.md)
+[![Tests](https://img.shields.io/badge/Tests-180%2B_Passed-brightgreen.svg)](docs-portal/docs/TEST_PLAN.md)
 [![Verification Portal](https://img.shields.io/badge/Web_Portal-Live-success.svg)](https://s0-vp.vercel.app/)
 
 *One tool. Two capabilities. Unbreakable audit trail.*
@@ -29,26 +29,57 @@
 
 ---
 
+## ⚖️ Legal & Responsible Use Notice
+
+> **IMPORTANT:** s0 is a certified digital forensics and data sanitization suite.
+
+You must only execute sanitization (wiping/erasing), data carving (recovery), or forensic imaging operations on storage media and files that you **legally own** or for which you have **documented, written authorization** to examine. Unauthorized data destruction or forensic acquisition may constitute severe offenses under international cybercrime legislation, including:
+
+- **United States:** Computer Fraud and Abuse Act (CFAA), 18 U.S.C. § 1030
+- **United Kingdom:** Computer Misuse Act 1990
+- **European Union:** Directive 2013/40/EU
+- **India:** Information Technology Act 2000, §§ 43, 66
+- **Global:** Budapest Convention on Cybercrime
+
+The authors and contributors of s0 assume no liability for misuse, unauthorized data destruction, or unlawful forensic operations. Consult the [Documentation Legal FAQ](https://s0-docs.vercel.app/faq) for responsible use guidance.
+
+---
+
 ## Install
 
 > **Requirements:** Python 3.10+, Git
 
 ### Linux & macOS
 ```bash
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+curl -fsSL https://s0-install.vercel.app/sh | bash
 ```
 
 ### Windows — PowerShell
 ```powershell
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
+irm https://s0-install.vercel.app/ps1 | iex
 ```
 
 ### Windows — Command Prompt
 ```cmd
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
+curl -fsSL https://s0-install.vercel.app/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 ```
 
-After install, `s0` is immediately available in your terminal. Verify with:
+<details>
+<summary>Direct GitHub Raw Fallbacks</summary>
+
+```bash
+# Linux & macOS
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+
+# Windows PowerShell
+irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
+
+# Windows CMD
+curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.cmd | cmd
+```
+</details>
+
+After install, `s0` is immediately available in your terminal:
 ```bash
 s0 --version
 ```
@@ -57,24 +88,24 @@ s0 --version
 
 ## Upgrade
 
-To upgrade an existing S0 installation to the latest version:
+To upgrade an existing S0 installation to the latest release:
 
 ### Linux & macOS
 ```bash
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash
+curl -fsSL https://s0-install.vercel.app/upgrade-sh | bash
 ```
 
 ### Windows — PowerShell
 ```powershell
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex
+irm https://s0-install.vercel.app/upgrade-ps1 | iex
 ```
 
 ### Windows — Command Prompt
 ```cmd
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.cmd | cmd
+curl -fsSL https://s0-install.vercel.app/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 ```
 
-Or directly from your terminal:
+Or directly from any active terminal:
 ```bash
 s0 upgrade
 ```
@@ -85,17 +116,17 @@ s0 upgrade
 
 ### Linux & macOS
 ```bash
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.sh | bash
+curl -fsSL https://s0-install.vercel.app/uninstall-sh | bash
 ```
 
 ### Windows — PowerShell
 ```powershell
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.ps1 | iex
+irm https://s0-install.vercel.app/uninstall-ps1 | iex
 ```
 
 ### Windows — Command Prompt
 ```cmd
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.cmd | cmd
+curl -fsSL https://s0-install.vercel.app/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
 ```
 
 ---
@@ -278,21 +309,28 @@ s0/
 │   └── evals/                # Benchmark evaluation prompts and criteria
 ├── windows/                  # Windows-native Module 2 (Win32 API, ADS scrubbing)
 ├── macos/                    # macOS-native Module 2 (F_FULLFSYNC, xattr, APFS)
-├── gui/                      # FastAPI unified web dashboard (4 forensic tabs)
+├── web/                      # FastAPI unified web dashboard (4 forensic tabs)
+├── docs-portal/              # Production documentation suite (s0-docs.vercel.app)
+├── install-portal/           # Fast one-line installer suite (s0-install.vercel.app)
+├── verification-portal/      # Zero-backend static web certificate verifier (s0-vp.vercel.app)
 ├── linux/iso/                # Debian Live bootable ISO (see docs/LIVE_ISO_BUILD_GUIDE.md)
-├── verification-portal/      # Zero-backend static web certificate verifier
-└── scripts/                  # Install, uninstall, build & test orchestrators
+└── scripts/                  # Build, test, and utility orchestrators
 ```
 
 ---
 
 ## Web Dashboard
 
-Launch the local 4-tab forensic console:
+Launch the local 4-tab forensic console directly from CLI:
 
 ```bash
-bash gui/run.sh
-# Open: http://127.0.0.1:8000
+s0 web
+# Automatically starts local server at 127.0.0.1:8000 and opens browser
+```
+
+Or via direct script runner:
+```bash
+bash web/run.sh
 ```
 
 | Tab | Function |
@@ -322,7 +360,7 @@ bash linux/cli/demo_e2e_ntfs.sh
 
 ---
 
-## Compliance
+## Standards Compliance
 
 | Standard | Coverage |
 |---|---|
@@ -331,7 +369,7 @@ bash linux/cli/demo_e2e_ntfs.sh
 | **ISO/IEC 27037** | Evidence SHA-256 hashing at extraction, operator audit logging, Ed25519 non-repudiation |
 | **DPDPA 2023** | Verifiable sanitization records of personal data on retired media |
 
-See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
+See [docs-portal/docs/COMPLIANCE.md](docs-portal/docs/COMPLIANCE.md) for the full compliance matrix.
 
 ## Agentic AI Skill (`skills/s0-forensics/`)
 
@@ -343,7 +381,7 @@ See [docs/COMPLIANCE.md](docs/COMPLIANCE.md) for the full compliance matrix.
   - `scripts/verify_cert.py`: Standalone certificate verification utility.
   - `evals/evals.json`: Benchmark evaluation suite for automated agent validation.
 
-For complete agent safety protocols and integration examples, see [docs/agentic-ai.md](docs/agentic-ai.md).
+For complete agent safety protocols and integration examples, see [docs-portal/docs/agentic-ai.md](docs-portal/docs/agentic-ai.md).
 
 ---
 
@@ -351,18 +389,17 @@ For complete agent safety protocols and integration examples, see [docs/agentic-
 
 | Document | Contents |
 |---|---|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Subsystem design, threat model, cryptographic flow |
-| [USER_MANUAL.md](docs/USER_MANUAL.md) | Complete CLI reference, web dashboard guide |
-| [COMPLIANCE.md](docs/COMPLIANCE.md) | NIST / IEEE / ISO / DPDPA standards matrix |
-| [agentic-ai.md](docs/agentic-ai.md) | Agentic AI guardrails, skill architecture, and prompt protocols |
-| [PERFORMANCE.md](docs/PERFORMANCE.md) | Throughput benchmarks, scaling projections |
-| [LIMITATIONS.md](docs/LIMITATIONS.md) | Honest scope: SSD FTL, CoW filesystems, journal remnants |
-| [VERIFICATION_AND_DEPLOYMENT.md](docs/VERIFICATION_AND_DEPLOYMENT.md) | Air-gapped verification, key pinning, portal deployment |
-| [HANDOVER.md](docs/HANDOVER.md) | Evaluator quickstart, per-module test commands |
+| [ARCHITECTURE.md](docs-portal/docs/ARCHITECTURE.md) | Subsystem design, threat model, cryptographic flow |
+| [USER_MANUAL.md](docs-portal/docs/USER_MANUAL.md) | Complete CLI reference, web dashboard guide |
+| [COMPLIANCE.md](docs-portal/docs/COMPLIANCE.md) | NIST / IEEE / ISO / DPDPA standards matrix |
+| [agentic-ai.md](docs-portal/docs/agentic-ai.md) | Agentic AI guardrails, skill architecture, and prompt protocols |
+| [PERFORMANCE.md](docs-portal/docs/PERFORMANCE.md) | Throughput benchmarks, scaling projections |
+| [LIMITATIONS.md](docs-portal/docs/LIMITATIONS.md) | Honest scope: SSD FTL, CoW filesystems, journal remnants |
+| [VERIFICATION_AND_DEPLOYMENT.md](docs-portal/docs/VERIFICATION_AND_DEPLOYMENT.md) | Air-gapped verification, key pinning, portal deployment |
+| [HANDOVER.md](docs-portal/docs/HANDOVER.md) | Evaluator quickstart, per-module test commands |
 
 ---
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-

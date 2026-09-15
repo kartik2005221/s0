@@ -1198,7 +1198,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=1,
         help="overwrite passes (default 1 — one pass IS Clear per NIST 800-88)",
     )
-    common.add_argument("--pattern", choices=["zero", "random"], default="zero")
+    common.add_argument(
+        "--pattern",
+        choices=["zero", "random"],
+        default="zero",
+        help="overwrite pattern: 'zero' (single/multi-pass zeros) or 'random' (CSPRNG bytes)",
+    )
     common.add_argument(
         "--no-firmware",
         action="store_true",
@@ -1218,12 +1223,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     wp = sub.add_parser("wipe", parents=[common], help="wipe target, verify, issue signed certificate")
     wp.add_argument("--yes", action="store_true", help="skip interactive WIPE prompt")
-    wp.add_argument("--key", help="issuer private key PEM")
-    wp.add_argument("--out-dir", default=".")
-    wp.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
-    wp.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    wp.add_argument("--no-pdf", action="store_true")
-    wp.add_argument("--verify-samples", type=int, default=64)
+    wp.add_argument("--key", help="issuer private key PEM (default: demo issuer key)")
+    wp.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
+    wp.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
+    wp.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
+    wp.add_argument("--no-pdf", action="store_true", help="skip generating human-readable PDF compliance certificate")
+    wp.add_argument("--verify-samples", type=int, default=64, help="number of readback samples to verify (default: 64)")
     wp.add_argument(
         "--plant-markers",
         action="store_true",
@@ -1233,12 +1238,13 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument(
         "--portal-url",
         default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
-        help="verification portal base URL",
+        help="verification portal base URL (default: https://s0-vp.vercel.app/)",
     )
     wp.add_argument(
         "--qr-url-template",
         dest="qr_url_template",
         default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"),
+        help="URL template for encoded verification QR code",
     )
     wp.set_defaults(func=cmd_wipe)
 
@@ -1247,11 +1253,11 @@ def build_parser() -> argparse.ArgumentParser:
         fe = sub.add_parser(fe_cmd, help="securely erase files and folders with metadata cleansing")
         fe.add_argument("--targets", nargs="+", required=True, help="paths to files or directories to sanitize")
         fe.add_argument("--passes", type=int, default=1, help="number of overwrite passes")
-        fe.add_argument("--pattern", choices=["zero", "random"], default="zero")
-        fe.add_argument("--out-dir", default=".")
-        fe.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
-        fe.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-        fe.add_argument("--key", help="signing key path")
+        fe.add_argument("--pattern", choices=["zero", "random"], default="zero", help="overwrite pattern: 'zero' or 'random'")
+        fe.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
+        fe.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
+        fe.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
+        fe.add_argument("--key", help="signing key path (default: demo issuer key)")
         fe.add_argument(
             "--no-certificate",
             action="store_true",
@@ -1286,9 +1292,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
-    crv.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"))
-    crv.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    crv.add_argument("--key", help="signing key path")
+    crv.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for manifest")
+    crv.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for manifest")
+    crv.add_argument("--key", help="signing key path (default: demo issuer key)")
     crv.add_argument(
         "--no-certificate",
         action="store_true",
