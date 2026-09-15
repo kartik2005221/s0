@@ -9,8 +9,14 @@ echo "==> installing s0 core + CLI + GUI into /opt/s0"
 mkdir -p /opt/s0
 cp -r /root/repo-snapshot/core /opt/s0/
 cp -r /root/repo-snapshot/linux /opt/s0/
-cp -r /root/repo-snapshot/gui /opt/s0/
-rm -rf /opt/s0/core/tests /opt/s0/linux/cli/tests /opt/s0/gui/tests
+if [ -d /root/repo-snapshot/web ]; then
+    cp -r /root/repo-snapshot/web /opt/s0/
+    ln -sfn /opt/s0/web /opt/s0/gui
+elif [ -d /root/repo-snapshot/gui ]; then
+    cp -r /root/repo-snapshot/gui /opt/s0/
+    ln -sfn /opt/s0/gui /opt/s0/web
+fi
+rm -rf /opt/s0/core/tests /opt/s0/linux/cli/tests /opt/s0/web/tests /opt/s0/gui/tests 2>/dev/null || true
 chmod -R go-w /opt/s0
 
 # The GUI imports the CLI package by path; make both importable system-wide.

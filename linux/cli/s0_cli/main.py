@@ -73,6 +73,22 @@ def _warn_if_demo_key(key_path: Path | None) -> None:
         )
 
 
+_LEGAL_NOTICE = (
+    "\n\033[1;33m⚖  LEGAL & RESPONSIBLE USE NOTICE:\033[0m\n"
+    "\033[33m   Only operate on storage media you own or have explicit written authorization\n"
+    "   to process. Unauthorized wiping, erasure, or forensic recovery may violate\n"
+    "   computer crime legislation (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act,\n"
+    "   IT Act 2000 §§ 43/66). s0 is a certified forensic suite for authorized personnel.\033[0m\n\n"
+)
+
+
+def _print_legal_notice() -> None:
+    if os.environ.get("S0_LEGAL_NOTICE_SHOWN"):
+        return
+    os.environ["S0_LEGAL_NOTICE_SHOWN"] = "1"
+    sys.stderr.write(_LEGAL_NOTICE)
+
+
 def _resolve_target(path: str) -> DevTarget:
     if sys.platform == "win32" and (
         (":" in path and len(path.strip()) <= 3)
@@ -246,6 +262,7 @@ def cmd_plan(args) -> int:
 
 
 def cmd_wipe(args) -> int:
+    _print_legal_notice()
     t_start = time.monotonic()
     start_time = _now()
     try:
@@ -267,10 +284,16 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
+            print(f"\ntarget          : {target.path}")
+            print(f"method          : OVERWRITE_ZERO_1PASS (Windows Native)")
+            print(f"nist category   : Clear")
+            print(f"summary         : Windows raw volume overwrite with volume lock and dismount")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (Windows Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
                 return 2
+        else:
+            sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
         _warn_if_demo_key(key_path)
@@ -327,10 +350,16 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
+            print(f"\ntarget          : {target.path}")
+            print(f"method          : OVERWRITE_ZERO_1PASS (macOS Native)")
+            print(f"nist category   : Clear")
+            print(f"summary         : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (macOS Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
                 return 2
+        else:
+            sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
         _warn_if_demo_key(key_path)
@@ -409,6 +438,8 @@ def cmd_wipe(args) -> int:
         if answer.strip() != str(target.path):
             print("aborted — nothing was written", file=sys.stderr)
             return 2
+    else:
+        sys.stderr.write(f"[s0 wipe plan] target={target.path} method={plan.method_id} tier={plan.nist_category}\n")
 
     planted = None
     pre_samples = None
@@ -570,6 +601,7 @@ def cmd_wipe(args) -> int:
 
 
 def cmd_erase_files(args) -> int:
+    _print_legal_notice()
     print(f"==> S0 Module 2: Secure File & Folder Eraser")
 
     key_path = default_issuer_key(args.key)
@@ -652,6 +684,7 @@ def cmd_erase_files(args) -> int:
 
 
 def cmd_carve(args) -> int:
+    _print_legal_notice()
     print(f"==> S0 Module 3: Advanced File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
@@ -945,6 +978,7 @@ def cmd_image(args) -> int:
     """Forensic bit-stream disk acquisition and device cloning."""
     from .imager import ImagingOptions, acquire_image
 
+    _print_legal_notice()
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║      S0 (Sector Zero) — Forensic Disk Imager & Bit-Stream Copy  ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
@@ -1022,6 +1056,116 @@ def cmd_image(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Module 8: Web Dashboard Launcher
+# --------------------------------------------------------------------------- #
+
+
+def cmd_web(args) -> int:
+    """Launch the s0 local Web Dashboard in browser."""
+    import subprocess
+    import time
+    import webbrowser
+    import threading
+
+    port = getattr(args, "port", None) or CONFIG.get("api_port", 8000)
+    host = getattr(args, "host", None) or "127.0.0.1"
+    url = f"http://{host}:{port}"
+
+    # Verify dependencies: fastapi and uvicorn
+    deps_missing = []
+    try:
+        import fastapi  # noqa: F401
+    except ImportError:
+        deps_missing.append("fastapi")
+    try:
+        import uvicorn  # noqa: F401
+    except ImportError:
+        deps_missing.append("uvicorn")
+
+    if deps_missing:
+        print(f"\n[s0 web] Missing required web dashboard dependencies: {', '.join(deps_missing)}", file=sys.stderr)
+        try:
+            ans = input(f"Would you like s0 to install {' '.join(deps_missing)} now? [Y/n]: ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted.", file=sys.stderr)
+            return 1
+        if ans in ("", "y", "yes"):
+            print(f"[s0 web] Installing {' '.join(deps_missing)}...")
+            res = subprocess.run([sys.executable, "-m", "pip", "install", *deps_missing], check=False)
+            if res.returncode != 0:
+                print(f"❌ Failed to install dependencies. Please run: pip install {' '.join(deps_missing)}", file=sys.stderr)
+                return 1
+            print("[s0 web] Dependencies installed successfully.\n")
+        else:
+            print(f"Aborted. Install manually: pip install {' '.join(deps_missing)}", file=sys.stderr)
+            return 1
+
+    # Locate web dashboard app directory
+    possible_roots = [
+        Path(__file__).resolve().parents[3],
+        Path.home() / ".s0",
+        Path("/opt/s0"),
+    ]
+    web_dir = None
+    for root in possible_roots:
+        cand_web = root / "web"
+        cand_gui = root / "gui"
+        if cand_web.is_dir() and (cand_web / "app.py").is_file():
+            web_dir = cand_web
+            break
+        elif cand_gui.is_dir() and (cand_gui / "app.py").is_file():
+            web_dir = cand_gui
+            break
+
+    if not web_dir:
+        print("❌ Error: Could not locate s0 Web Dashboard files (app.py).", file=sys.stderr)
+        return 1
+
+    print("╔══════════════════════════════════════════════════════════════════╗")
+    print("║      S0 (Sector Zero) — Unified Web Forensics Dashboard         ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    print(f"[*] Address : {url}")
+    print(f"[*] Binding : {host} (Strict loopback isolation)")
+    print(f"[*] Status  : Live — Press CTRL+C to stop")
+    print()
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "app:app",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
+
+    proc = subprocess.Popen(cmd, cwd=str(web_dir))
+
+    if not getattr(args, "no_browser", False):
+        def _open():
+            time.sleep(1.2)
+            try:
+                webbrowser.open(url)
+            except Exception:
+                pass
+        threading.Thread(target=_open, daemon=True).start()
+
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        print("\n[s0 web] Stopping web dashboard...")
+        proc.terminate()
+        try:
+            proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        print("[s0 web] Server terminated.")
+
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # CLI Parser Setup
 # --------------------------------------------------------------------------- #
 
@@ -1030,6 +1174,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="s0",
         description="S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI",
+        epilog="⚖ LEGAL: Only operate on storage media you own or have explicit written authorization to process.",
     )
     p.add_argument("--version", action="version", version=f"s0 {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
@@ -1189,6 +1334,14 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
         img.add_argument("--yes", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
         img.set_defaults(func=cmd_image)
+
+    # 9. Web Dashboard Subcommands (web & gui alias)
+    for web_cmd in ("web", "gui"):
+        wb = sub.add_parser(web_cmd, help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
+        wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8000), help="port to bind (default: 8000)")
+        wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
+        wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
+        wb.set_defaults(func=cmd_web)
 
     return p
 

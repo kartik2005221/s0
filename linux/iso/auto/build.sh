@@ -14,7 +14,13 @@ STAGING_DIR="$(pwd)/config/includes.chroot/root/repo-snapshot"
 echo "==> staging repo snapshot ($REPO_ROOT) -> $STAGING_DIR"
 mkdir -p "$STAGING_DIR"
 trap 'rm -rf "$STAGING_DIR"' EXIT INT TERM
-cp -r "$REPO_ROOT/core" "$REPO_ROOT/linux" "$REPO_ROOT/gui" "$STAGING_DIR/"
+cp -r "$REPO_ROOT/core" "$REPO_ROOT/linux" "$STAGING_DIR/"
+if [ -d "$REPO_ROOT/web" ]; then
+    cp -r "$REPO_ROOT/web" "$STAGING_DIR/"
+fi
+if [ -d "$REPO_ROOT/gui" ]; then
+    cp -r "$REPO_ROOT/gui" "$STAGING_DIR/"
+fi
 
 echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
 lb config noauto \

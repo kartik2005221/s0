@@ -64,7 +64,7 @@ phase_ok
 
 # ── Phase 2: Run Pytest Suites ────────────────────────────────────────────────
 phase_start "Executing Automated Pytest Suites"
-SUITES=(core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests)
+SUITES=(core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests)
 for suite in "${SUITES[@]}"; do
     if [ -d "$suite" ]; then
         step_info "Will run: $suite"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the s0 local GUI. Binds 127.0.0.1 only — never expose it.
+# Launch the s0 local Web Dashboard. Binds 127.0.0.1 only — never expose it.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO="$(cd .. && pwd)"

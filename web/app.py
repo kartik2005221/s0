@@ -70,7 +70,9 @@ PORTAL_DIR = REPO / "verification-portal"
 if PORTAL_DIR.is_dir():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
 
-STATIC_DIR = REPO / "gui" / "static"
+STATIC_DIR = REPO / "web" / "static"
+if not STATIC_DIR.is_dir():
+    STATIC_DIR = REPO / "gui" / "static"
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 _jobs: dict[str, dict] = {}

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-GUI_DIR = Path(__file__).resolve().parents[1]
-REPO = GUI_DIR.parent
-sys.path.insert(0, str(GUI_DIR))
+WEB_DIR = Path(__file__).resolve().parents[1]
+REPO = WEB_DIR.parent
+sys.path.insert(0, str(WEB_DIR))
 sys.path.insert(0, str(REPO / "linux" / "cli"))
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -196,8 +196,8 @@ def test_download_path_traversal_blocked(client, tmp_path):
 
 
 def test_index_html_safe_rendering():
-    js_file = GUI_DIR / "static" / "js" / "dashboard.js"
-    source = js_file.read_text(encoding="utf-8") if js_file.exists() else (GUI_DIR / "static" / "index.html").read_text(encoding="utf-8")
+    js_file = WEB_DIR / "static" / "js" / "dashboard.js"
+    source = js_file.read_text(encoding="utf-8") if js_file.exists() else (WEB_DIR / "static" / "index.html").read_text(encoding="utf-8")
     assert "function escapeHtml" in source
     # Ensure unescaped injection into innerHTML is absent
     assert "${b.operator}" not in source

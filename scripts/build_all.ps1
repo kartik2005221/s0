@@ -61,7 +61,7 @@ End-Phase
 
 # ── Phase 2: Pytest Suites ────────────────────────────────────────────────────
 Start-Phase "Executing Automated Pytest Suites"
-$Suites = @("core\tests", "linux\cli\tests", "gui\tests", "windows\cli\tests", "macos\cli\tests", "verification-portal\tests")
+$Suites = @("core\tests", "linux\cli\tests", "web\tests", "windows\cli\tests", "macos\cli\tests", "verification-portal\tests")
 foreach ($s in $Suites) {
     if (Test-Path $s) { Write-Step "Will run: $s" }
 }
