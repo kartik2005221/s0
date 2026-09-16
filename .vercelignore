@@ -1,0 +1,16 @@
+.venv
+.git
+.pytest_cache
+__pycache__
+*.pyc
+*.img
+*.iso
+core/
+linux/
+windows/
+macos/
+android/
+web/
+docs-portal/
+scripts/
+tests/

@@ -593,7 +593,8 @@ def dismount_and_lock_windows_volume(volume_path: str) -> bool:
     kernel32 = ctypes.windll.kernel32
     norm_vol = volume_path
     if not norm_vol.startswith(r"\\.\\"):
-        norm_vol = rf"\\.\{norm_vol.rstrip('\\')}"
+        clean_vol = norm_vol.rstrip("\\")
+        norm_vol = rf"\\.\{clean_vol}"
 
     h = kernel32.CreateFileW(
         norm_vol,
@@ -688,7 +689,8 @@ def wipe_drive_or_partition_windows(
 
     device_path = norm
     if target_type == "partition" and not device_path.startswith(r"\\.\\"):
-        device_path = rf"\\.\{norm.rstrip('\\')}"
+        clean_norm = norm.rstrip("\\")
+        device_path = rf"\\.\{clean_norm}"
     elif is_phys and norm.isdigit():
         device_path = rf"\\.\PhysicalDrive{norm}"
 

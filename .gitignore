@@ -36,3 +36,5 @@ tmp/
 skills-lock.json
 
 
+.vercel
+.env*
