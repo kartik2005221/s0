@@ -14,7 +14,13 @@ STAGING_DIR="$(pwd)/config/includes.chroot/root/repo-snapshot"
 echo "==> staging repo snapshot ($REPO_ROOT) -> $STAGING_DIR"
 mkdir -p "$STAGING_DIR"
 trap 'rm -rf "$STAGING_DIR"' EXIT INT TERM
-cp -r "$REPO_ROOT/core" "$REPO_ROOT/linux" "$STAGING_DIR/"
+cp -r "$REPO_ROOT/core" "$STAGING_DIR/"
+mkdir -p "$STAGING_DIR/linux"
+for item in "$REPO_ROOT/linux/"*; do
+    if [ "$(basename "$item")" != "iso" ]; then
+        cp -r "$item" "$STAGING_DIR/linux/"
+    fi
+done
 if [ -d "$REPO_ROOT/web" ]; then
     cp -r "$REPO_ROOT/web" "$STAGING_DIR/"
 fi
@@ -23,6 +29,11 @@ if [ -d "$REPO_ROOT/gui" ]; then
 fi
 
 echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
+if [ "$(id -u)" -eq 0 ]; then
+    lb clean --purge 2>/dev/null || true
+else
+    sudo lb clean --purge 2>/dev/null || true
+fi
 lb config noauto \
     --architecture amd64 \
     --distribution bookworm \

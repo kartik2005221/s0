@@ -1,43 +1,40 @@
 name: Build Bootable Live ISO
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to attach ISO to (e.g. v2.2.1)'
+        required: false
+        default: 'v2.2.1'
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   build-iso:
-    runs-on: ubuntu-22.04
+    name: Build Bare-Metal Live ISO
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Debian live-build & ISO tools
+      - name: Build s0 Live ISO via Docker
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            live-build \
-            xorriso \
-            squashfs-tools \
-            debootstrap \
-            isolinux \
-            syslinux-common \
-            grub-pc-bin \
-            grub-efi-amd64-bin \
-            mtools \
-            dosfstools
-
-      - name: Build s0 Live ISO
-        run: |
-          cd linux/iso
-          chmod +x build.sh auto/build.sh
-          ./build.sh
+          chmod +x scripts/build_iso.sh linux/iso/build.sh linux/iso/auto/build.sh
+          ./scripts/build_iso.sh
+          sudo chown -R runner:runner .
 
       - name: Prepare Artifacts & Checksums
         run: |
-          mv linux/iso/live-image-amd64.hybrid.iso s0-live-amd64.hybrid.iso
-          sha256sum s0-live-amd64.hybrid.iso > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          test -f s0-live-amd64.hybrid.iso || { echo "Error: s0-live-amd64.hybrid.iso not found"; exit 1; }
+          sha256sum s0-live-amd64.hybrid.iso > s0-live-amd64.hybrid.iso.sha256
+          cat s0-live-amd64.hybrid.iso.sha256
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
@@ -45,14 +42,28 @@ jobs:
           name: s0-live-amd64.hybrid.iso
           path: |
             s0-live-amd64.hybrid.iso
-            SHA256SUMS.txt
+            s0-live-amd64.hybrid.iso.sha256
+
+      - name: Update Release Checksums
+        run: |
+          TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          if gh release download "$TAG" -p "SHA256SUMS.txt" --clobber 2>/dev/null; then
+            grep -v "s0-live-amd64.hybrid.iso" SHA256SUMS.txt > SHA256SUMS.tmp || true
+            cat s0-live-amd64.hybrid.iso.sha256 >> SHA256SUMS.tmp
+            mv SHA256SUMS.tmp SHA256SUMS.txt
+          else
+            cat s0-live-amd64.hybrid.iso.sha256 > SHA256SUMS.txt
+          fi
+          cat SHA256SUMS.txt
 
       - name: Attach ISO to Release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
           files: |
             s0-live-amd64.hybrid.iso
+            s0-live-amd64.hybrid.iso.sha256
             SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
