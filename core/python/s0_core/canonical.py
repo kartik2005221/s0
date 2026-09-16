@@ -23,7 +23,9 @@ class CanonicalizationError(ValueError):
     """Raised when a value cannot be represented in s0 Canonical JSON v1."""
 
 
-def _canon(value: Any, out: list[str]) -> None:
+def _canon(value: Any, out: list[str], _depth: int = 0) -> None:
+    if _depth > 64:
+        raise CanonicalizationError("data structure exceeds maximum nesting depth (64 levels)")
     # bool must be tested before int: bool is an int subclass in Python.
     if isinstance(value, bool):
         out.append("true" if value else "false")
@@ -48,7 +50,7 @@ def _canon(value: Any, out: list[str]) -> None:
         for i, item in enumerate(value):
             if i:
                 out.append(",")
-            _canon(item, out)
+            _canon(item, out, _depth=_depth + 1)
         out.append("]")
     elif isinstance(value, dict):
         # sorted() on str keys sorts by Unicode code point.
@@ -61,7 +63,7 @@ def _canon(value: Any, out: list[str]) -> None:
                 out.append(",")
             out.append(json.dumps(key, ensure_ascii=False))
             out.append(":")
-            _canon(value[key], out)
+            _canon(value[key], out, _depth=_depth + 1)
         out.append("}")
     else:
         raise CanonicalizationError(
@@ -72,7 +74,10 @@ def _canon(value: Any, out: list[str]) -> None:
 def canonicalize_str(value: Any) -> str:
     """Serialize *value* to s0 Canonical JSON v1 as a str."""
     out: list[str] = []
-    _canon(value, out)
+    try:
+        _canon(value, out)
+    except RecursionError:
+        raise CanonicalizationError("data structure exceeds maximum recursion depth")
     return "".join(out)
 
 

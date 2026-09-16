@@ -20,6 +20,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from xml.sax.saxutils import escape as _xml_escape
 
 from .canonical import canonicalize_str
 
@@ -91,8 +92,8 @@ def generate_pdf(
     story.append(Paragraph("<b>S0 — SECURE WIPE CERTIFICATE</b>", styles["Title"]))
     banner = Table(
         [[Paragraph(
-            f"<para color='white'><b>{status.upper()}</b> — NIST 800-88 category: "
-            f"<b>{wipe.get('nist_category', '?')}</b></para>",
+            f"<para color='white'><b>{_xml_escape(status.upper())}</b> — NIST 800-88 category: "
+            f"<b>{_xml_escape(str(wipe.get('nist_category', '?')))}</b></para>",
             styles["Normal"])]],
         colWidths=[170 * mm],
     )
@@ -136,10 +137,10 @@ def generate_pdf(
         out = []
         for k, v in pairs:
             # Pre-built flowables (e.g. monospace Paragraph for long signatures)
-            # pass through untouched; plain values get wrapped.
+            # pass through untouched; plain values get wrapped and escaped.
             if not isinstance(v, (Paragraph, Table)):
-                v = Paragraph(str(v))
-            out.append([Paragraph(f"<b>{k}</b>"), v])
+                v = Paragraph(_xml_escape(str(v)))
+            out.append([Paragraph(f"<b>{_xml_escape(str(k))}</b>"), v])
         return out
 
     body_style = [
@@ -184,7 +185,7 @@ def generate_pdf(
         story.append(Spacer(1, 4 * mm))
         story.append(Paragraph("Notes", styles["Heading3"]))
         for n in cert["notes"]:
-            story.append(Paragraph(f"• {n}", styles["Normal"]))
+            story.append(Paragraph(f"• {_xml_escape(str(n))}", styles["Normal"]))
 
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph("Cryptographic signature", styles["Heading3"]))
@@ -212,9 +213,10 @@ def generate_pdf(
     verify_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
     if verify_url.startswith("http"):
         story.append(Spacer(1, 4 * mm))
+        escaped_url = _xml_escape(verify_url)
         story.append(Paragraph(
-            f'<font size="8">🔗 <a href="{verify_url}" color="#1d4ed8">'
-            f'<u>Verify this certificate online at {verify_url}</u></a></font>',
+            f'<font size="8">🔗 <a href="{escaped_url}" color="#1d4ed8">'
+            f'<u>Verify this certificate online at {escaped_url}</u></a></font>',
             styles["Normal"],
         ))
 

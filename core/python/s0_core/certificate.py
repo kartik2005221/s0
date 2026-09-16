@@ -95,8 +95,10 @@ def format_utc(dt: datetime) -> str:
 # validation
 # --------------------------------------------------------------------------- #
 
-def _walk_floats(node: Any, path: str) -> list[str]:
+def _walk_floats(node: Any, path: str, *, _depth: int = 0) -> list[str]:
     """Find any float anywhere in the payload — schema v1 is integers-only."""
+    if _depth > 64:
+        return [f"{path}: structure exceeds maximum nesting depth (64 levels)"]
     errors: list[str] = []
     if isinstance(node, bool) or node is None:
         return errors
@@ -104,10 +106,10 @@ def _walk_floats(node: Any, path: str) -> list[str]:
         errors.append(f"{path}: float values are forbidden in schema v1")
     elif isinstance(node, dict):
         for k, v in node.items():
-            errors.extend(_walk_floats(v, f"{path}.{k}"))
+            errors.extend(_walk_floats(v, f"{path}.{k}", _depth=_depth + 1))
     elif isinstance(node, list):
         for i, v in enumerate(node):
-            errors.extend(_walk_floats(v, f"{path}[{i}]"))
+            errors.extend(_walk_floats(v, f"{path}[{i}]", _depth=_depth + 1))
     return errors
 
 
@@ -245,7 +247,10 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
                  "signature.signed_payload_hash: must match 'sha256:<64 hex>'")
 
     # Schema-wide rule: no floats, anywhere (see CANONICAL_JSON.md rule 5).
-    errs.extend(_walk_floats({k: v for k, v in cert.items() if k != "signature"}, "$"))
+    try:
+        errs.extend(_walk_floats({k: v for k, v in cert.items() if k != "signature"}, "$"))
+    except RecursionError:
+        errs.append("structure exceeds recursion limit — likely adversarial input")
 
     return errs
 

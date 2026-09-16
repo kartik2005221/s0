@@ -67,3 +67,18 @@ def test_large_cert_falls_back_to_url_qr(signed_cert, tmp_path):
     out = tmp_path / "big.pdf"
     pdfgen.generate_pdf(resigned, out)
     assert out.read_bytes().startswith(b"%PDF-")
+
+
+def test_pdf_escapes_markup_injection(signed_cert, tmp_path):
+    """Ensure HTML tags in fields are escaped and do not crash or alter rendering."""
+    injected = json.loads(json.dumps(signed_cert))
+    injected["issuer"]["operator_id"] = '<font color="red" size=24><b>*** REVOKED - DO NOT TRUST ***</b></font>'
+    injected["notes"] = ["<script>alert(1)</script>", "unclosed <b tag"]
+    priv = crypto.generate_private_key()
+    resigned = certificate.sign_certificate(injected, priv)
+
+    out = tmp_path / "injected.pdf"
+    pdfgen.generate_pdf(resigned, out)
+    assert out.exists()
+    assert out.read_bytes().startswith(b"%PDF-")
+

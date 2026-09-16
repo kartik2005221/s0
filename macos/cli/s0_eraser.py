@@ -149,8 +149,31 @@ def erase_single_file_macos(
     pattern: str = "zero",
     chunk_size: int = 65536,
 ) -> MacFileEraseResult:
-    path_obj = Path(file_path).resolve()
+    raw_path = Path(file_path)
+    if raw_path.is_symlink() or os.path.islink(str(file_path)):
+        return MacFileEraseResult(
+            path=str(raw_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error="Target is a symbolic link; refusing to follow symlink",
+        )
+
+    path_obj = raw_path.resolve()
     path_str = str(path_obj)
+
+    if os.path.islink(path_str):
+        return MacFileEraseResult(
+            path=path_str,
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error="Target is a symbolic link; refusing to follow symlink",
+        )
 
     if not path_obj.exists() or not path_obj.is_file():
         return MacFileEraseResult(

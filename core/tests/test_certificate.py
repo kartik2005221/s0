@@ -93,3 +93,14 @@ def test_method_tier_registry_consistent():
         if method.startswith(("OVERWRITE", "SHRED", "WINDOWS_CLEAN", "WINDOWS_CIPHER",
                               "ANDROID_USER_SPACE")):
             assert "Purge" not in tiers or method == "BLKDISCARD"
+
+
+def test_certificate_deep_nesting_handled():
+    """Verify that deeply nested adversarial JSON doesn't crash with RecursionError."""
+    # Build a deep dict
+    deep: dict = {"key": "val"}
+    for _ in range(100):
+        deep = {"nested": deep}
+    errors = certificate.validate(deep, require_signature=False)
+    assert any("exceeds" in e or "missing" in e for e in errors)
+

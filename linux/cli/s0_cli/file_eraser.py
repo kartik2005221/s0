@@ -249,7 +249,7 @@ def erase_single_file(
     path_obj = raw_path.resolve()
     path_str = str(path_obj)
 
-    if not path_obj.exists() or not path_obj.is_file():
+    if os.path.islink(path_str):
         return FileEraseResult(
             path=path_str,
             original_size=0,
@@ -257,20 +257,7 @@ def erase_single_file(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error="Target is not an existing regular file",
-        )
-
-    try:
-        file_size = path_obj.stat().st_size
-    except Exception as exc:
-        return FileEraseResult(
-            path=path_str,
-            original_size=0,
-            bytes_overwritten=0,
-            passes=passes,
-            pattern=pattern,
-            status="failure",
-            error=f"Cannot stat target: {exc}",
+            error="Target is a symbolic link; refusing to follow symlink",
         )
 
     # Clear read-only locks, xattrs, and alternate data streams
@@ -282,12 +269,97 @@ def erase_single_file(
     # Detect filesystem & Copy-on-Write (CoW) status (Linux, macOS APFS, Windows ReFS)
     fs_name, cow_warning = detect_cow_and_filesystem(path_str)
 
+    # Open with O_NOFOLLOW to prevent TOCTOU symlink substitution
+    import errno
+    flags = os.O_RDWR
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+
+    try:
+        raw_fd = os.open(path_str, flags)
+    except OSError as exc:
+        if exc.errno in (errno.ELOOP, getattr(errno, "EMLINK", -1)):
+            return FileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is a symbolic link; refusing to follow symlink",
+            )
+        if exc.errno == errno.ENOENT:
+            return FileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is not an existing regular file",
+            )
+        if exc.errno in (errno.EACCES, errno.EPERM):
+            try:
+                os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+                raw_fd = os.open(path_str, flags)
+            except Exception as exc2:
+                return FileEraseResult(
+                    path=path_str,
+                    original_size=0,
+                    bytes_overwritten=0,
+                    passes=passes,
+                    pattern=pattern,
+                    status="failure",
+                    error=f"Cannot open target for writing: {exc2}",
+                )
+        else:
+            return FileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=f"Cannot open target: {exc}",
+            )
+
+    try:
+        st = os.fstat(raw_fd)
+        if not stat.S_ISREG(st.st_mode):
+            os.close(raw_fd)
+            return FileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is not an existing regular file",
+            )
+        file_size = st.st_size
+    except Exception as exc:
+        try:
+            os.close(raw_fd)
+        except Exception:
+            pass
+        return FileEraseResult(
+            path=path_str,
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"Cannot stat target descriptor: {exc}",
+        )
+
     bytes_written_total = 0
 
     try:
         # 1. Overwrite file contents
         if file_size > 0:
-            with open(path_str, "r+b") as f:
+            with os.fdopen(raw_fd, "r+b") as f:
                 for p in range(1, passes + 1):
                     f.seek(0)
                     remaining = file_size
@@ -314,6 +386,9 @@ def erase_single_file(
                 f.truncate(0)
                 f.flush()
                 platform_sync(f.fileno())
+        else:
+            # 0-byte file still needs closing and truncating
+            os.close(raw_fd)
 
         # 2. Metadata Cleansing: reset timestamps to epoch 0
         try:

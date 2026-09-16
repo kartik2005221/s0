@@ -278,8 +278,31 @@ def erase_single_file_windows(
     pattern: str = "zero",
     chunk_size: int = 65536,
 ) -> WinFileEraseResult:
-    path_obj = Path(file_path).resolve()
+    raw_path = Path(file_path)
+    if raw_path.is_symlink() or os.path.islink(str(file_path)):
+        return WinFileEraseResult(
+            path=str(raw_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error="Target is a symbolic link or reparse point; refusing to follow",
+        )
+
+    path_obj = raw_path.resolve()
     path_str = str(path_obj)
+
+    if os.path.islink(path_str):
+        return WinFileEraseResult(
+            path=path_str,
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error="Target is a symbolic link or reparse point; refusing to follow",
+        )
 
     if not path_obj.exists() or not path_obj.is_file():
         return WinFileEraseResult(
