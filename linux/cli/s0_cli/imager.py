@@ -19,6 +19,7 @@ from typing import Callable, Optional
 
 from s0_core import certificate as cert_mod
 from s0_core import crypto as core_crypto
+from s0_core.config import CONFIG
 
 from .audit import record_audit_event
 from .devices import SafetyError, check_safety, get_block_device_size, list_block_targets
@@ -340,7 +341,7 @@ def acquire_image(
             organization=options.organization,
             operator_id=options.operator,
             tool_name="s0-imager",
-            tool_version="2.2.0",
+            tool_version=CONFIG.get("version", "2.2.1"),
             platform="linux" if sys.platform.startswith("linux") else ("windows" if sys.platform == "win32" else "macos"),
             device_id=f"drive-{hashlib.sha256(src_path.encode()).hexdigest()[:16]}",
             device_type="image_file" if src_kind == "image" else "internal_disk",

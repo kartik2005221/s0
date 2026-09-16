@@ -6,7 +6,9 @@ Windows app, Android app) re-implements those rules and is tested against
 certificates produced by this package.
 """
 
-__version__ = "2.2.0"
+from .config import CONFIG
+
+__version__ = CONFIG.get("version", "2.2.1")
 
 from .canonical import CanonicalizationError, canonicalize, canonicalize_str
 from .certificate import (

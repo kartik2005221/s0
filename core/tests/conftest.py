@@ -29,7 +29,7 @@ def base_cert() -> dict:
         organization="s0 Demo Lab",
         operator_id="op-demo-001",
         tool_name="s0-cli",
-        tool_version="2.2.0",
+        tool_version="2.2.1",
         platform="linux",
         device_id="sha256:" + "ab" * 32,
         device_type="image_file",

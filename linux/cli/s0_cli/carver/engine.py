@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 from s0_core import certificate as cert_mod
+from s0_core.config import CONFIG
 from s0_core import crypto as core_crypto
 
 from .exfat_carver import parse_exfat_boot_sector, scan_exfat_deleted_files
@@ -579,7 +580,7 @@ def carve_image(
                     organization=organization,
                     operator_id=operator_id,
                     tool_name="s0-carve",
-                    tool_version="2.2.0",
+                    tool_version=CONFIG.get("version", "2.2.1"),
                     platform="linux",
                     device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",
                     device_type="image_file",

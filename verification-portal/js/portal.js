@@ -28,7 +28,7 @@ var SAMPLE_VALID_CERT = {
   },
   "tool": {
     "name": "s0-cli",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "platform": "linux"
   },
   "device": {

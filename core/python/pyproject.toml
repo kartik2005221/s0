@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "s0-core"
-version = "2.2.0"
+version = "2.2.1"
 description = "s0 shared core: canonical JSON, Ed25519 signing, wipe certificates, PDF generation"
 readme = "../README.md"
 requires-python = ">=3.10"
