@@ -25,9 +25,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /workspace
 
 # Entrypoint script that copies repo to ephemeral build dir, runs lb build, and outputs ISO
-COPY auto/build.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY container_build.sh /container_build.sh
+RUN chmod +x /container_build.sh
 
 VOLUME ["/workspace"]
 
-ENTRYPOINT ["/bin/bash", "-c", "cd /workspace/linux/iso && ./build.sh && cp live-image-amd64.hybrid.iso /workspace/s0-live-amd64.hybrid.iso 2>/dev/null || true"]
+ENTRYPOINT ["/container_build.sh"]
