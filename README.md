@@ -22,14 +22,14 @@
 
 | Capability | What S0 Does |
 |---|---|
-| 🛡️ **Defensive Sanitization** | Irreversibly destroys drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, then issues an Ed25519-signed certificate |
-| 🔍 **Offensive Forensics** | Carves and reconstructs deleted evidence from formatted disks, USB drives, and raw images across ext4, NTFS, FAT32, and exFAT |
-| 🔗 **Blockchain Audit Ledger** | Every operation writes an immutable SHA-256 block-chained entry into a local SQLite ledger — tamper-evident by math |
-| 🌐 **Zero-Trust Verification** | Certificates are verifiable in any browser, fully offline, with zero data ever sent to a server |
+| **[S] Defensive Sanitization** | Irreversibly destroys drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, then issues an Ed25519-signed certificate |
+| **[F] Offensive Forensics** | Carves and reconstructs deleted evidence from formatted disks, USB drives, and raw images across ext4, NTFS, FAT32, and exFAT |
+| **[A] Blockchain Audit Ledger** | Every operation writes an immutable SHA-256 block-chained entry into a local SQLite ledger — tamper-evident by math |
+| **[V] Zero-Trust Verification** | Certificates are verifiable in any browser, fully offline, with zero data ever sent to a server |
 
 ---
 
-## ⚖️ Legal & Responsible Use Notice
+## Legal & Responsible Use Notice
 
 > **IMPORTANT:** s0 is a certified digital forensics and data sanitization suite.
 
@@ -128,6 +128,12 @@ irm https://s0-install.vercel.app/uninstall-ps1 | iex
 ```cmd
 curl -fsSL https://s0-install.vercel.app/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
 ```
+
+Or directly from any active terminal:
+```bash
+s0 uninstall
+```
+
 
 ---
 
