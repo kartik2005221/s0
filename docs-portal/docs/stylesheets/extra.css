@@ -417,38 +417,124 @@
 
 /* Mobile navigation drawer back button and sub-nav titles */
 @media screen and (max-width: 76.1875em) {
-  .md-sidebar--primary .md-nav__title {
+  /* 1. Root Drawer Header (Level 0 - Logo + Site Name) */
+  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] {
     display: flex !important;
-    align-items: center;
-    gap: 8px;
-    padding: 0.75rem 1rem !important;
-    font-size: 0.9rem !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    height: auto !important;
+    min-height: 3.5rem !important;
+    padding: 0.85rem 1rem !important;
+    background-color: #000000 !important;
+    border-bottom: 1px solid #142338 !important;
+    color: #FFFFFF !important;
+    font-size: 0.95rem !important;
     font-weight: 700 !important;
-    cursor: pointer;
-    color: #FF6500 !important;
-    background: rgba(255, 101, 0, 0.08) !important;
-    border-bottom: 1px solid rgba(255, 101, 0, 0.25) !important;
-    transition: background 0.15s ease;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    cursor: pointer !important;
   }
-  .md-sidebar--primary .md-nav__title:hover,
-  .md-sidebar--primary .md-nav__title:active {
-    background: rgba(255, 101, 0, 0.16) !important;
-  }
-  .md-sidebar--primary .md-nav__title .md-nav__icon {
+
+  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo {
+    position: static !important;
     display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-right: 4px;
-    color: #FF6500 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 26px !important;
+    height: 26px !important;
+    flex-shrink: 0 !important;
   }
-  .md-sidebar--primary .md-nav__title::after {
-    content: " (Tap to return)";
-    font-size: 0.72rem;
-    font-weight: 400;
-    opacity: 0.7;
-    margin-left: auto;
+
+  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo svg,
+  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
+
+  /* 2. Sub-Level Navigation Back Bar (Nested Menus & TOC) */
+  .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    height: auto !important;
+    min-height: 3rem !important;
+    line-height: 1.35 !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    color: #FF6500 !important;
+    background: #070D18 !important;
+    border-bottom: 1px solid rgba(255, 101, 0, 0.3) !important;
+    cursor: pointer !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+  }
+
+  .md-sidebar--primary .md-nav__title:not([for="__drawer"]):hover,
+  .md-sidebar--primary .md-nav__title:not([for="__drawer"]):active {
+    background: rgba(255, 101, 0, 0.14) !important;
+    color: #FF8533 !important;
+  }
+
+  /* Back arrow icon styling: cleanly aligned on the left */
+  .md-sidebar--primary .md-nav__title:not([for="__drawer"]) .md-nav__icon {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    margin: 0 !important;
+    color: #FF6500 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .md-sidebar--primary .md-nav__title:not([for="__drawer"]) .md-nav__icon::after {
+    background-color: currentColor !important;
+    content: "" !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    -webkit-mask-image: var(--md-nav-icon--prev) !important;
+    mask-image: var(--md-nav-icon--prev) !important;
+    -webkit-mask-position: center !important;
+    mask-position: center !important;
+    -webkit-mask-repeat: no-repeat !important;
+    mask-repeat: no-repeat !important;
+    -webkit-mask-size: contain !important;
+    mask-size: contain !important;
+  }
+
+  /* Light mode drawer header overrides */
+  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] {
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    color: #0B192C !important;
+  }
+
+  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
+    background: #F1F5F9 !important;
+    border-bottom: 1px solid rgba(204, 82, 0, 0.25) !important;
+    color: #CC5200 !important;
+  }
+
+  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]):hover,
+  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]):active {
+    background: rgba(204, 82, 0, 0.1) !important;
+    color: #993D00 !important;
+  }
+
+  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]) .md-nav__icon {
+    color: #CC5200 !important;
   }
 }
 
@@ -464,14 +550,6 @@
 }
 
 /* ── Light Mode Nav Overrides ── */
-[data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title {
-  color: #CC5200 !important;
-  background: rgba(204, 82, 0, 0.08) !important;
-  border-bottom: 1px solid rgba(204, 82, 0, 0.2) !important;
-}
-[data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title .md-nav__icon {
-  color: #CC5200 !important;
-}
 [data-md-color-scheme="default"] .md-nav--primary .md-nav__title {
   color: #0B192C !important;
 }
