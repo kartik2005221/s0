@@ -149,11 +149,11 @@ Expected output (version numbers may differ):
 
 ```
 # Output verification string
-s0 version 2.0.0
+s0 version 2.2.0
 ```
 
 !!! tip "Shell not finding s0?"
-    If your shell reports `command not found`, open a **new terminal window** first — the installer modifies `PATH` in your shell profile, which only takes effect in new sessions. If the issue persists, check that the install location (e.g. `/usr/local/bin`) is in your `PATH`:
+    If your shell reports `command not found`, open a **new terminal window** first — the installer modifies `PATH` in your shell profile, which only takes effect in new sessions. If the issue persists, check that the install location (e.g. `/usr/local/bin` or `~/.local/bin`) is in your `PATH`:
     ```bash
     # Inspect PATH entries for s0 binaries
     echo $PATH | tr ':' '\n' | grep -E "local/bin|s0"
@@ -161,7 +161,39 @@ s0 version 2.0.0
 
 ---
 
-## 4. Your First Wipe
+## 4. Upgrade & Uninstallation
+
+### Upgrade Suite
+To pull the latest release, verify dependencies, and update in-place:
+
+```bash
+# In-place terminal upgrade
+s0 upgrade
+```
+
+Alternatively, re-run the fast upgrade script:
+```bash
+# Linux / macOS
+curl -fsSL https://s0-install.vercel.app/upgrade-sh | bash
+
+# Windows PowerShell
+irm https://s0-install.vercel.app/upgrade-ps1 | iex
+```
+
+### Uninstallation
+To cleanly remove `s0`, its virtual environment, and PATH symlinks:
+
+```bash
+# Interactive uninstallation (prompts for confirmation)
+s0 uninstall
+
+# Non-interactive with audit ledger backup
+s0 uninstall --yes --keep-audit
+```
+
+---
+
+## 5. Your First Wipe
 
 This walkthrough sanitizes a USB drive or block device. Follow the three steps in sequence: **list → plan → wipe**.
 

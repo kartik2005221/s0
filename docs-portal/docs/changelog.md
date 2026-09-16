@@ -17,6 +17,24 @@ timeline
 
 ---
 
+## [2.2.0] — 2026-09-16
+
+### Security
+- **CRITICAL — TOCTOU Symlink Race Remediation (`file_eraser.py`):** Eliminated time-of-check to time-of-use symlink substitution race (CWE-367) by opening target files with atomic `O_NOFOLLOW` flags and validating regular-file status via `fstat(fd)` on the opened descriptor before data overwrite. Extended symlink and reparse-point rejection across Windows and macOS eraser engines.
+- **HIGH — PDF Certificate Markup Injection Remediation (`pdfgen.py`):** Escaped all user-supplied and dynamic certificate metadata (operator ID, organization, device details, custom notes, and URLs) using `xml.sax.saxutils.escape` prior to ReportLab `Paragraph` construction, preventing visual forgery and malformed tag parsing crashes.
+- **LOW — Recursion Limit Protection (`certificate.py`, `canonical.py`):** Enforced a 64-level maximum nesting depth limit and explicit `RecursionError` guards in `_walk_floats()` and `_canon()`, ensuring adversarial nested JSON inputs produce clean validation rejections rather than unhandled tracebacks.
+
+### Added
+- **`s0 uninstall` CLI Subcommand:** Added native uninstallation command that removes `~/.s0/`, `/usr/local/bin/s0`, and shell environment PATH entries, featuring interactive safety confirmation (`--yes` bypass) and optional blockchain audit ledger preservation (`--keep-audit`).
+- **Install Portal Redesign:** Redesigned `s0-install.vercel.app` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
+- **Automated CI/CD Workflows:** Configured GitHub Actions workflows: `ci.yml` running pytest test suites across Python 3.11 and 3.12 matrices on push and pull requests, and `release.yml` automating release artifact packaging (`.tar.gz`, `SHA256SUMS.txt`), changelog extraction, and GitHub Releases publication.
+
+### Changed
+- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, and documentation to `2.2.0`.
+- **README & Documentation Sanitization:** Stripped extraneous decorative emojis from capability tables and headers in favor of professional technical indicators.
+
+---
+
 ## [2.1.1] — 2026-09-14
 
 ### Security & Hardening
@@ -52,7 +70,7 @@ timeline
 ## [2.0.0] — 2026-09-09
 
 ### Added
-- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs-ten.vercel.app](https://s0-docs-ten.vercel.app/) with automated Vercel CI/CD via standalone `uv` runner.
+- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs.vercel.app](https://s0-docs.vercel.app/) with automated Vercel CI/CD via standalone `uv` runner.
 - **Forensic Color Theme:** Integrated the ColorHunt `#222831` `#393E46` `#00ADB5` `#EEEEEE` palette with customized code blocks, admonitions, and typography.
 - **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.
