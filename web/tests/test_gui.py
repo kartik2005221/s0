@@ -14,11 +14,25 @@ sys.path.insert(0, str(REPO / "linux" / "cli"))
 
 from fastapi.testclient import TestClient  # noqa: E402
 import app as gui_app  # noqa: E402
+from s0_cli.audit import init_audit_db  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def isolate_test_audit_db(tmp_path, monkeypatch):
+    test_db = tmp_path / "test_gui_audit.db"
+    init_audit_db(test_db)
+    monkeypatch.setenv("S0_AUDIT_DB", str(test_db))
+    monkeypatch.setattr("s0_cli.audit.db.DEFAULT_AUDIT_DB", test_db)
+    monkeypatch.setattr("s0_cli.audit.DEFAULT_AUDIT_DB", test_db)
+    monkeypatch.setattr("s0_cli.audit.verify.DEFAULT_AUDIT_DB", test_db)
+    return test_db
 
 
 @pytest.fixture()
 def client():
-    return TestClient(gui_app.app)
+    c = TestClient(gui_app.app)
+    c.headers.update({"X-S0-Auth-Token": gui_app._SESSION_AUTH_TOKEN})
+    return c
 
 
 @pytest.fixture()
@@ -244,7 +258,7 @@ def test_config_endpoint(client):
     r = client.get("/api/config")
     assert r.status_code == 200
     cfg = r.json()
-    assert cfg["version"] == "2.2.0"
+    assert cfg["version"] == "2.2.1"
     assert "documentation_url" in cfg
     assert "verification_portal_url" in cfg
 
@@ -318,3 +332,66 @@ def test_custom_key_isolated_from_out_dir(tmp_path):
         resolved_key.unlink()
     except Exception:
         pass
+
+
+def test_destructive_endpoints_require_auth():
+    unauth = TestClient(gui_app.app)
+    # Missing header
+    r = unauth.post("/api/wipe", json={"target": "/dev/null", "confirm_text": "/dev/null"})
+    assert r.status_code == 401
+    assert "Unauthorized" in r.json()["detail"]
+
+    r = unauth.post("/api/erase-files", json={"targets": ["/dev/null"]})
+    assert r.status_code == 401
+
+    r = unauth.post("/api/carve", json={"target": "/dev/null"})
+    assert r.status_code == 401
+
+    r = unauth.post("/api/image", json={"source": "/dev/null", "destination": "/dev/null"})
+    assert r.status_code == 401
+
+    # Invalid header
+    r = unauth.post(
+        "/api/wipe",
+        json={"target": "/dev/null", "confirm_text": "/dev/null"},
+        headers={"X-S0-Auth-Token": "bad_token_12345"},
+    )
+    assert r.status_code == 401
+
+
+def test_metadata_pipe_rejected(client, tmp_path):
+    target = tmp_path / "sanitize_test.txt"
+    target.write_text("DUMMY")
+
+    # Pipe and dangerous characters must be rejected by validation (422)
+    bad_payloads = [
+        "op|injection",
+        "op<script>",
+        "op>redirect",
+        "op&param",
+        "op\"quote",
+        "op'quote",
+        "op\\backslash",
+    ]
+    for bad in bad_payloads:
+        r = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": bad})
+        assert r.status_code == 422
+
+        r = client.post("/api/erase-files", json={"targets": [str(target)], "organization": bad})
+        assert r.status_code == 422
+
+
+def test_portal_url_validation(client, tmp_path):
+    target = tmp_path / "portal_test.txt"
+    target.write_text("DUMMY")
+
+    bad_urls = [
+        "ftp://example.com",
+        "http://attacker.com",
+        "https://user:pass@attacker.com",
+        "javascript:alert(1)",
+    ]
+    for url in bad_urls:
+        r = client.post("/api/erase-files", json={"targets": [str(target)], "portal_url": url})
+        assert r.status_code == 422
+

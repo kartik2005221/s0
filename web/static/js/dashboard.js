@@ -96,12 +96,21 @@ function readFileAsText(file) {
   });
 }
 
+function getAuthToken() {
+  const meta = document.querySelector('meta[name="s0-auth-token"]');
+  if (meta && meta.content) {
+    return meta.content;
+  }
+  return (window.appConfig && window.appConfig.auth_token) || "";
+}
+
 // --- Dynamic Config Loader ---
 async function loadAppConfig() {
   try {
     const res = await fetch("/api/config");
     if (!res.ok) return;
     appConfig = await res.json();
+    window.appConfig = appConfig;
 
     // Update header links
     const docLink = document.getElementById("navDocLink");
@@ -326,7 +335,10 @@ async function startDriveWipe() {
   try {
     const res = await fetch("/api/wipe", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-S0-Auth-Token": getAuthToken(),
+      },
       body: JSON.stringify({
         target,
         confirm_text,
@@ -472,7 +484,10 @@ async function startFileErase() {
   try {
     const res = await fetch("/api/erase-files", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-S0-Auth-Token": getAuthToken(),
+      },
       body: JSON.stringify({
         targets: lines,
         passes,
@@ -724,7 +739,10 @@ async function startCarve() {
   try {
     const res = await fetch("/api/carve", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-S0-Auth-Token": getAuthToken(),
+      },
       body: JSON.stringify({
         target,
         extensions: exts,
@@ -892,7 +910,10 @@ async function startImaging() {
   try {
     const res = await fetch("/api/image", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-S0-Auth-Token": getAuthToken(),
+      },
       body: JSON.stringify({
         source,
         destination,

@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import shutil
 import subprocess
 import sys as _sys
+import tempfile
 import threading
 import time
+import urllib.parse
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -30,8 +33,8 @@ REPO = Path(__file__).resolve().parents[1]
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
 _sys.path.insert(0, str(REPO / "core" / "python"))
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
@@ -39,6 +42,7 @@ from s0_core.config import CONFIG  # noqa: E402
 from s0_core import pdfgen  # noqa: E402
 from s0_core.temperature import read_temperature  # noqa: E402
 from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
+from s0_cli.audit.verify import get_default_trusted_keys  # noqa: E402
 from s0_cli.carver import carve_image  # noqa: E402
 from s0_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
 from s0_cli.file_eraser import erase_batch  # noqa: E402
@@ -77,6 +81,67 @@ if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
+
+_SESSION_AUTH_TOKEN = secrets.token_hex(32)
+
+
+def _init_session_auth_token() -> None:
+    try:
+        token_path = Path.home() / ".s0" / "web_auth_token"
+        token_path.parent.mkdir(parents=True, exist_ok=True)
+        token_path.write_text(_SESSION_AUTH_TOKEN, encoding="utf-8")
+        try:
+            os.chmod(token_path, 0o600)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+_init_session_auth_token()
+
+
+def verify_auth_token(
+    x_s0_auth_token: Optional[str] = Header(None, alias="X-S0-Auth-Token"),
+) -> None:
+    """Verify per-session authentication token on destructive/action endpoints."""
+    if not x_s0_auth_token or not secrets.compare_digest(x_s0_auth_token, _SESSION_AUTH_TOKEN):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: missing or invalid session authentication token (X-S0-Auth-Token)",
+        )
+
+
+def _validate_metadata_str(field_name: str, v: str, max_len: int = 128) -> str:
+    v = v.strip()
+    if not v:
+        raise ValueError(f"{field_name} cannot be empty")
+    if any(c in v for c in "<>&\"'\\|"):
+        raise ValueError(f"{field_name} contains forbidden characters (<, >, &, \", ', \\, |)")
+    if len(v) > max_len:
+        raise ValueError(f"{field_name} exceeds maximum length of {max_len} characters")
+    return v
+
+
+def _validate_portal_url(v: Optional[str]) -> Optional[str]:
+    if not v:
+        return None
+    v = v.strip()
+    try:
+        parsed = urllib.parse.urlparse(v)
+        if parsed.scheme not in ("https", "http"):
+            raise ValueError("portal_url must use https (or http for localhost)")
+        if parsed.scheme == "http" and parsed.hostname not in ("localhost", "127.0.0.1"):
+            raise ValueError("portal_url http scheme only permitted on localhost")
+        if parsed.username or parsed.password:
+            raise ValueError("portal_url cannot contain credentials")
+        if not parsed.hostname:
+            raise ValueError("portal_url missing hostname")
+        return v
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(f"Invalid portal_url: {exc}")
 
 
 def _get_secure_keys_dir() -> Path:
@@ -137,8 +202,8 @@ class WipeRequest(BaseModel):
     confirm_text: str
     pattern: str = "zero"
     passes: int = 1
-    operator: str = CONFIG.get("default_operator", "op-forensic")
-    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
+    operator: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
+    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     key_path: Optional[str] = None
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
@@ -146,13 +211,28 @@ class WipeRequest(BaseModel):
     verify_samples: int = 64
     portal_url: Optional[str] = None
 
+    @field_validator("operator")
+    @classmethod
+    def validate_operator(cls, v: str) -> str:
+        return _validate_metadata_str("operator", v, 64)
+
+    @field_validator("organization")
+    @classmethod
+    def validate_organization(cls, v: str) -> str:
+        return _validate_metadata_str("organization", v, 128)
+
+    @field_validator("portal_url")
+    @classmethod
+    def validate_portal_url(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_portal_url(v)
+
 
 class FileEraseRequest(BaseModel):
     targets: List[str]
     passes: int = 1
     pattern: str = "zero"
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
+    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     key_path: Optional[str] = None
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
@@ -163,14 +243,17 @@ class FileEraseRequest(BaseModel):
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("operator_id cannot be empty")
-        if any(c in v for c in "<>&\"'\\"):
-            raise ValueError("operator_id contains forbidden characters")
-        if len(v) > 64:
-            raise ValueError("operator_id exceeds maximum length of 64 characters")
-        return v
+        return _validate_metadata_str("operator_id", v, 64)
+
+    @field_validator("organization")
+    @classmethod
+    def validate_organization(cls, v: str) -> str:
+        return _validate_metadata_str("organization", v, 128)
+
+    @field_validator("portal_url")
+    @classmethod
+    def validate_portal_url(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_portal_url(v)
 
 
 class CarveRequest(BaseModel):
@@ -178,7 +261,7 @@ class CarveRequest(BaseModel):
     extensions: Optional[List[str]] = None
     min_confidence: int = 50
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
+    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
@@ -187,14 +270,12 @@ class CarveRequest(BaseModel):
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("operator_id cannot be empty")
-        if any(c in v for c in "<>&\"'\\"):
-            raise ValueError("operator_id contains forbidden characters")
-        if len(v) > 64:
-            raise ValueError("operator_id exceeds maximum length of 64 characters")
-        return v
+        return _validate_metadata_str("operator_id", v, 64)
+
+    @field_validator("organization")
+    @classmethod
+    def validate_organization(cls, v: str) -> str:
+        return _validate_metadata_str("organization", v, 128)
 
 
 class ImageRequest(BaseModel):
@@ -205,7 +286,7 @@ class ImageRequest(BaseModel):
     is_clone: bool = False
     confirm_text: str = ""
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
+    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
@@ -213,14 +294,12 @@ class ImageRequest(BaseModel):
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("operator_id cannot be empty")
-        if any(c in v for c in "<>&\"'\\"):
-            raise ValueError("operator_id contains forbidden characters")
-        if len(v) > 64:
-            raise ValueError("operator_id exceeds maximum length of 64 characters")
-        return v
+        return _validate_metadata_str("operator_id", v, 64)
+
+    @field_validator("organization")
+    @classmethod
+    def validate_organization(cls, v: str) -> str:
+        return _validate_metadata_str("organization", v, 128)
 
 
 def _find_target(path: str):
@@ -240,8 +319,13 @@ def _find_target(path: str):
 
 
 @app.get("/")
-def index() -> FileResponse:
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+def index() -> HTMLResponse:
+    index_path = Path(__file__).parent / "static" / "index.html"
+    content = index_path.read_text(encoding="utf-8")
+    meta_tag = f'<meta name="s0-auth-token" content="{_SESSION_AUTH_TOKEN}">'
+    if "</head>" in content:
+        content = content.replace("</head>", f"  {meta_tag}\n</head>", 1)
+    return HTMLResponse(content)
 
 
 @app.get("/api/devices")
@@ -297,7 +381,9 @@ def plan_payload(target_path: str) -> dict:
 
 @app.get("/api/config")
 def api_config() -> JSONResponse:
-    return JSONResponse(CONFIG)
+    cfg = dict(CONFIG)
+    cfg["auth_token"] = _SESSION_AUTH_TOKEN
+    return JSONResponse(cfg)
 
 
 ALLOWED_BROWSE_ROOTS = [
@@ -351,7 +437,7 @@ def api_plan(req: dict) -> JSONResponse:
     return JSONResponse(plan_payload(req["target"]))
 
 
-@app.post("/api/wipe")
+@app.post("/api/wipe", dependencies=[Depends(verify_auth_token)])
 def start_wipe(req: WipeRequest) -> JSONResponse:
     if req.confirm_text.strip() != req.target.strip():
         raise HTTPException(400, f'confirmation must be exact target path: "{req.target}"')
@@ -440,7 +526,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     return JSONResponse({"job_id": job_id})
 
 
-@app.post("/api/erase-files")
+@app.post("/api/erase-files", dependencies=[Depends(verify_auth_token)])
 def start_erase_files(req: FileEraseRequest) -> JSONResponse:
     if not req.targets:
         raise HTTPException(400, "no file targets provided")
@@ -554,7 +640,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
     return JSONResponse({"job_id": job_id})
 
 
-@app.post("/api/carve")
+@app.post("/api/carve", dependencies=[Depends(verify_auth_token)])
 def start_carve(req: CarveRequest) -> JSONResponse:
     target_p = Path(req.target)
     if not target_p.exists():
@@ -678,7 +764,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
     return JSONResponse({"job_id": job_id})
 
 
-@app.post("/api/image")
+@app.post("/api/image", dependencies=[Depends(verify_auth_token)])
 def start_image(req: ImageRequest) -> JSONResponse:
     if not req.source:
         raise HTTPException(400, "source path required")
@@ -782,6 +868,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
 def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
     blocks = list_audit_blocks(limit=limit, offset=offset)
     return JSONResponse({
+        "total": len(blocks),
         "blocks": [
             {
                 "index": b.block_index,
@@ -804,7 +891,7 @@ def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
 
 @app.get("/api/audit/verify")
 def get_audit_verify() -> JSONResponse:
-    report = verify_audit_ledger()
+    report = verify_audit_ledger(trusted_public_keys=get_default_trusted_keys())
     return JSONResponse({
         "is_valid": report.is_valid,
         "total_blocks": report.total_blocks_verified,

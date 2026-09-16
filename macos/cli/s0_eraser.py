@@ -189,9 +189,38 @@ def erase_single_file_macos(
     xattrs_cleared = macos_clear_attributes(path_str)
     fs_name, cow_warning = detect_macos_filesystem(path_str)
 
+    import errno
+    flags = os.O_RDWR
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+
     try:
-        file_size = path_obj.stat().st_size
-    except Exception as exc:
+        raw_fd = os.open(path_str, flags)
+    except OSError as exc:
+        if exc.errno in (errno.ELOOP, getattr(errno, "EMLINK", -1)):
+            return MacFileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is a symbolic link; refusing to follow symlink",
+                filesystem=fs_name,
+            )
+        if exc.errno == errno.ENOENT:
+            return MacFileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is not an existing regular file",
+                filesystem=fs_name,
+            )
         return MacFileEraseResult(
             path=path_str,
             original_size=0,
@@ -199,14 +228,45 @@ def erase_single_file_macos(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error=f"Cannot stat target: {exc}",
+            error=f"Cannot open target descriptor: {exc}",
+            filesystem=fs_name,
+        )
+
+    try:
+        st = os.fstat(raw_fd)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+            os.close(raw_fd)
+            return MacFileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is not a regular file (symlink, directory, or special device rejected)",
+                filesystem=fs_name,
+            )
+        file_size = st.st_size
+    except Exception as exc:
+        try:
+            os.close(raw_fd)
+        except Exception:
+            pass
+        return MacFileEraseResult(
+            path=path_str,
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"Cannot fstat target descriptor: {exc}",
             filesystem=fs_name,
         )
 
     bytes_written_total = 0
     try:
         if file_size > 0:
-            with open(path_str, "r+b") as f:
+            with open(raw_fd, "r+b", closefd=True) as f:
                 for _ in range(passes):
                     f.seek(0)
                     rem = file_size
@@ -224,6 +284,11 @@ def erase_single_file_macos(
                 f.truncate(0)
                 f.flush()
                 macos_full_fsync(f.fileno())
+        else:
+            try:
+                os.close(raw_fd)
+            except Exception:
+                pass
 
         # Reset timestamps
         try:
@@ -391,7 +456,7 @@ def erase_batch_macos(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-macos-eraser",
-                tool_version="2.2.0",
+                tool_version=CONFIG.get("version", "2.2.1"),
                 platform="macos",
                 device_id=f"mac-batch-{secrets.token_hex(8)}",
                 device_type="internal_disk",
@@ -663,7 +728,7 @@ def wipe_drive_or_partition_macos(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-macos-eraser",
-                tool_version="2.2.0",
+                tool_version=CONFIG.get("version", "2.2.1"),
                 platform="macos",
                 device_id=f"mac-{target_type}-{secrets.token_hex(6)}",
                 device_type=schema_dev_type,

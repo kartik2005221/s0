@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "version": "2.2.0",
+    "version": "2.2.1",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
     "documentation_url": "https://s0-docs.vercel.app/",
@@ -35,7 +35,7 @@ def find_config_file() -> Path | None:
         Path(__file__).resolve().parents[3] / "s0_config.json",
         Path(__file__).resolve().parents[2] / "s0_config.json",
         Path(__file__).resolve().parents[1] / "s0_config.json",
-        Path.cwd() / "s0_config.json",
+        Path.home() / ".s0" / "s0_config.json",
     ]
     for c in candidates:
         if c.is_file():

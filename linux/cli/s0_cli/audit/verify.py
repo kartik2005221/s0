@@ -20,7 +20,9 @@ from .db import (
     DEFAULT_AUDIT_DB,
     GENESIS_PREV_HASH,
     compute_block_hash,
+    compute_legacy_block_hash,
     get_db_connection,
+    get_default_audit_db,
     init_audit_db,
 )
 
@@ -37,25 +39,36 @@ class ChainAuditReport:
 def get_default_trusted_keys() -> List:
     """Retrieve default trusted issuer public keys if available in standard locations."""
     keys = []
-    for cand in [
+    candidates = [
         Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_public.pem",
         Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem",
         Path("core/keys/demo_issuer_public.pem"),
-    ]:
+    ]
+    s0_user_keys = Path.home() / ".s0" / "keys"
+    if s0_user_keys.is_dir():
+        candidates.extend(sorted(s0_user_keys.glob("*.pem")))
+
+    seen_fps = set()
+    for cand in candidates:
         if cand.is_file():
             try:
-                keys.append(load_public_pem(cand))
-                break
+                k = load_public_pem(cand)
+                fp = crypto.public_key_fingerprint(k)
+                if fp not in seen_fps:
+                    seen_fps.add(fp)
+                    keys.append(k)
             except Exception:
                 pass
     return keys
 
 
 def verify_audit_ledger(
-    db_path: str | Path = DEFAULT_AUDIT_DB,
+    db_path: str | Path | None = None,
     trusted_public_keys: Optional[List] = None,
 ) -> ChainAuditReport:
     """Verify 100% cryptographic continuity of the blockchain audit ledger."""
+    if db_path is None:
+        db_path = get_default_audit_db()
     init_audit_db(db_path)
     conn = get_db_connection(db_path)
     cur = conn.execute("SELECT * FROM audit_blocks ORDER BY block_index ASC")
@@ -70,7 +83,7 @@ def verify_audit_ledger(
             details=["Database contains 0 records."],
         )
 
-    keys_to_verify = list(trusted_public_keys) if trusted_public_keys else get_default_trusted_keys()
+    effective_keys = list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
     expected_prev = GENESIS_PREV_HASH
     details = []
 
@@ -95,7 +108,7 @@ def verify_audit_ledger(
                 details=details,
             )
 
-        # Recompute block hash
+        # Recompute block hash (supports Canonical JSON hash and legacy pipe hash)
         computed_hash = compute_block_hash(
             b["block_index"],
             b["timestamp"],
@@ -110,13 +123,28 @@ def verify_audit_ledger(
         )
 
         if computed_hash != b["block_hash"]:
-            return ChainAuditReport(
-                is_valid=False,
-                total_blocks_verified=idx,
-                broken_block_index=block_idx,
-                reason=f"Data tampering detected in block #{block_idx}: recomputed hash {computed_hash} != stored hash {b['block_hash']}.",
-                details=details,
+            legacy_hash = compute_legacy_block_hash(
+                b["block_index"],
+                b["timestamp"],
+                b["operation_type"],
+                b["target_id"],
+                b["operator_id"],
+                b["organization"],
+                b["cert_uuid"],
+                b["payload_hash"],
+                b["signature"],
+                b["prev_hash"],
             )
+            if b["block_hash"] == legacy_hash:
+                computed_hash = legacy_hash
+            else:
+                return ChainAuditReport(
+                    is_valid=False,
+                    total_blocks_verified=idx,
+                    broken_block_index=block_idx,
+                    reason=f"Data tampering detected in block #{block_idx}: recomputed hash {computed_hash} != stored hash {b['block_hash']}.",
+                    details=details,
+                )
 
         # Verify Ed25519 block signature if present or required
         keys_in_row = b.keys() if hasattr(b, "keys") else []
@@ -132,10 +160,10 @@ def verify_audit_ledger(
                     claimed_fp = ""
 
             if block_sig and block_sig != "GENESIS_BLOCK_SIGNATURE":
-                if trusted_public_keys is not None:
-                    matching_keys = [k for k in trusted_public_keys if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp]
+                if effective_keys:
+                    matching_keys = [k for k in effective_keys if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp]
                     if not matching_keys:
-                        matching_keys = list(trusted_public_keys)
+                        matching_keys = list(effective_keys)
                     sig_valid = any(crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig) for k in matching_keys)
                     if not sig_valid:
                         return ChainAuditReport(
@@ -145,20 +173,7 @@ def verify_audit_ledger(
                             reason=f"Block signature tampering detected in block #{block_idx}: block_signature does not match block_hash under trusted public keys.",
                             details=details,
                         )
-                else:
-                    default_keys = get_default_trusted_keys()
-                    matching_default = [k for k in default_keys if crypto.public_key_fingerprint(k) == claimed_fp]
-                    if matching_default:
-                        sig_valid = any(crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig) for k in matching_default)
-                        if not sig_valid:
-                            return ChainAuditReport(
-                                is_valid=False,
-                                total_blocks_verified=idx,
-                                broken_block_index=block_idx,
-                                reason=f"Block signature tampering detected in block #{block_idx}: block_signature does not match recomputed block_hash for authority key.",
-                                details=details,
-                            )
-            elif trusted_public_keys and b["certificate_json"]:
+            elif trusted_public_keys is not None and b["certificate_json"]:
                 try:
                     c_data = json.loads(b["certificate_json"])
                     if c_data.get("signature", {}).get("signature_base64url"):
@@ -172,7 +187,7 @@ def verify_audit_ledger(
                 except Exception:
                     pass
 
-        # Verify embedded certificate structure and payload integrity
+        # Verify embedded certificate structure, payload integrity, and cryptographic signature
         if b["certificate_json"] and b["operation_type"] != "GENESIS":
             try:
                 cert_data = json.loads(b["certificate_json"])
@@ -198,8 +213,9 @@ def verify_audit_ledger(
                         details=details,
                     )
 
-                if trusted_public_keys:
-                    ok, reason = verify_certificate(cert_data, trusted_public_keys)
+                # Cryptographic signature verification using effective trusted keys
+                if effective_keys:
+                    ok, reason = verify_certificate(cert_data, effective_keys)
                     if not ok:
                         return ChainAuditReport(
                             is_valid=False,

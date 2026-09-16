@@ -365,8 +365,12 @@
             parsed.issuer = k.issuer || "Unknown Issuer";
             normKeys.push(parsed);
           } catch (e) {}
-        } else if (k.rawPublicKeyBytes && k.fingerprint) {
-          normKeys.push(k);
+        } else if (k.rawPublicKeyBytes) {
+          try {
+            var pRawBytes = Crypto.rawPublicKeyToSpki(k.rawPublicKeyBytes);
+            pRawBytes.issuer = k.issuer || "Unknown Issuer";
+            normKeys.push(pRawBytes);
+          } catch (e) {}
         } else if (k.public_key_raw_hex) {
           try {
             var pRaw = Crypto.rawPublicKeyToSpki(Crypto.hexToBytes(k.public_key_raw_hex));

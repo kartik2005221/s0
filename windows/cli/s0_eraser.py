@@ -319,9 +319,15 @@ def erase_single_file_windows(
     ads_scrubbed = scrub_alternate_data_streams(path_str)
     fs_name, cow_warning = detect_windows_filesystem(path_str)
 
+    flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+
     try:
-        file_size = path_obj.stat().st_size
-    except Exception as exc:
+        raw_fd = os.open(path_str, flags)
+    except OSError as exc:
         return WinFileEraseResult(
             path=path_str,
             original_size=0,
@@ -329,14 +335,90 @@ def erase_single_file_windows(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error=f"Cannot stat target: {exc}",
+            error=f"Cannot open target descriptor: {exc}",
+            cow_warning=cow_warning,
+            ads_streams_scrubbed=ads_scrubbed,
+            filesystem=fs_name,
+        )
+
+    try:
+        st = os.fstat(raw_fd)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+            os.close(raw_fd)
+            return WinFileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error="Target is a symbolic link or non-regular file; refusing to follow",
+                cow_warning=cow_warning,
+                ads_streams_scrubbed=ads_scrubbed,
+                filesystem=fs_name,
+            )
+
+        if sys.platform == "win32":
+            try:
+                import msvcrt
+                from ctypes import wintypes
+                handle = msvcrt.get_osfhandle(raw_fd)
+                class BY_HANDLE_FILE_INFORMATION(ctypes.Structure):
+                    _fields_ = [
+                        ("dwFileAttributes", wintypes.DWORD),
+                        ("ftCreationTime", wintypes.FILETIME),
+                        ("ftLastAccessTime", wintypes.FILETIME),
+                        ("ftLastWriteTime", wintypes.FILETIME),
+                        ("dwVolumeSerialNumber", wintypes.DWORD),
+                        ("nFileSizeHigh", wintypes.DWORD),
+                        ("nFileSizeLow", wintypes.DWORD),
+                        ("nNumberOfLinks", wintypes.DWORD),
+                        ("nFileIndexHigh", wintypes.DWORD),
+                        ("nFileIndexLow", wintypes.DWORD),
+                    ]
+                info = BY_HANDLE_FILE_INFORMATION()
+                if ctypes.windll.kernel32.GetFileInformationByHandle(handle, ctypes.byref(info)):
+                    FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+                    if info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT:
+                        os.close(raw_fd)
+                        return WinFileEraseResult(
+                            path=path_str,
+                            original_size=0,
+                            bytes_overwritten=0,
+                            passes=passes,
+                            pattern=pattern,
+                            status="failure",
+                            error="Target is a Windows reparse point or junction; refusing to follow",
+                            cow_warning=cow_warning,
+                            ads_streams_scrubbed=ads_scrubbed,
+                            filesystem=fs_name,
+                        )
+            except Exception:
+                pass
+
+        file_size = st.st_size
+    except Exception as exc:
+        try:
+            os.close(raw_fd)
+        except Exception:
+            pass
+        return WinFileEraseResult(
+            path=path_str,
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"Cannot stat target descriptor: {exc}",
+            cow_warning=cow_warning,
+            ads_streams_scrubbed=ads_scrubbed,
             filesystem=fs_name,
         )
 
     bytes_written_total = 0
     try:
         if file_size > 0:
-            with open(path_str, "r+b") as f:
+            with open(raw_fd, "r+b", closefd=True) as f:
                 for _ in range(passes):
                     f.seek(0)
                     rem = file_size
@@ -352,6 +434,11 @@ def erase_single_file_windows(
                 f.seek(0)
                 f.truncate(0)
                 win32_flush_buffers(f)
+        else:
+            try:
+                os.close(raw_fd)
+            except Exception:
+                pass
 
         # Reset timestamps
         try:
@@ -519,7 +606,7 @@ def erase_batch_windows(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-windows-eraser",
-                tool_version="2.2.0",
+                tool_version=CONFIG.get("version", "2.2.1"),
                 platform="windows",
                 device_id=f"win-batch-{secrets.token_hex(8)}",
                 device_type="internal_disk",
@@ -821,7 +908,7 @@ def wipe_drive_or_partition_windows(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-windows-eraser",
-                tool_version="2.2.0",
+                tool_version=CONFIG.get("version", "2.2.1"),
                 platform="windows",
                 device_id=f"win-{target_type}-{secrets.token_hex(6)}",
                 device_type=schema_dev_type,

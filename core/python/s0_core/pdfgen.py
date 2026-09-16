@@ -53,6 +53,25 @@ def _make_qr_image(data: str, out_dir: Path, name: str = "cert_qr.png") -> Path:
     return path
 
 
+import urllib.parse
+
+
+def _sanitize_qr_url(url: str, default: str = QR_URL_TEMPLATE_DEFAULT) -> str:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("https", "http"):
+            return default
+        if parsed.scheme == "http" and parsed.hostname not in ("localhost", "127.0.0.1"):
+            return default
+        if parsed.username or parsed.password:
+            return default
+        if not parsed.hostname:
+            return default
+        return url
+    except Exception:
+        return default
+
+
 def generate_pdf(
     cert: dict,
     out_path: str | Path,
@@ -77,7 +96,9 @@ def generate_pdf(
     if len(full_json.encode("utf-8")) <= 2300:
         qr_data, qr_caption = full_json, "Full signed certificate (offline-verifiable)"
     else:
-        qr_data = qr_url_template.format(cert_uuid=cert["cert_uuid"])
+        raw_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
+        default_url = QR_URL_TEMPLATE_DEFAULT.format(cert_uuid=cert["cert_uuid"])
+        qr_data = _sanitize_qr_url(raw_url, default=default_url)
         qr_caption = "Verification URL (locator only — verify the signature)"
 
     doc = SimpleDocTemplate(
