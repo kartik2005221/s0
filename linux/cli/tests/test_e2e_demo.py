@@ -108,3 +108,21 @@ def test_plan_dry_run_does_not_modify_target(tmp_path, monkeypatch):
 
 def test_wipe_refuses_missing_target():
     assert cli_main.main(["wipe", "--yes", "--target", "/nonexistent/path.img"]) == 2
+
+
+def test_uninstall_cli_subcommand(tmp_path, monkeypatch):
+    dummy_install = tmp_path / ".s0"
+    dummy_install.mkdir()
+    (dummy_install / "dummy.txt").write_text("s0 content")
+    audit_file = dummy_install / "s0_audit.db"
+    audit_file.write_text("sqlite-mock-audit")
+
+    monkeypatch.setenv("S0_INSTALL_DIR", str(dummy_install))
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    # Test uninstall with --yes and --keep-audit
+    rc = cli_main.main(["uninstall", "--yes", "--keep-audit"])
+    assert rc == 0
+    assert not dummy_install.exists()
+    assert (tmp_path / "s0_audit.db.bak").exists()
+

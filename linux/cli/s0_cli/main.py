@@ -19,6 +19,10 @@ Subcommands:
   5. Offline Verification & Key Management:
      s0 verify CERT_JSON           verify signed certificate offline
      s0 keygen                     generate Ed25519 authority/operator keypair
+
+  6. Lifecycle & Management:
+     s0 upgrade                    upgrade s0 suite from GitHub
+     s0 uninstall                  safely remove s0 from the system
 """
 
 from __future__ import annotations
@@ -969,6 +973,92 @@ def cmd_upgrade(args) -> int:
         return 1
 
 
+def cmd_uninstall(args) -> int:
+    """Safely uninstall S0 from the system."""
+    print("╔══════════════════════════════════════════════════════════════════╗")
+    print("║      S0 (Sector Zero) — Uninstallation Tool                      ║")
+    print("╚══════════════════════════════════════════════════════════════════╝")
+    print()
+
+    if sys.platform == "win32":
+        print("[*] On Windows, run the official uninstallation command in PowerShell:")
+        print("    irm https://s0-install.vercel.app/uninstall-ps1 | iex")
+        print("    Or via Command Prompt:")
+        print("    curl -fsSL https://s0-install.vercel.app/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd")
+        return 0
+
+    repo_dir = None
+    env_dir = os.environ.get("S0_INSTALL_DIR")
+    if env_dir and Path(env_dir).is_dir():
+        repo_dir = Path(env_dir)
+    else:
+        home_s0 = Path.home() / ".s0"
+        if home_s0.is_dir():
+            repo_dir = home_s0
+        else:
+            cur = Path(__file__).resolve()
+            for parent in [cur] + list(cur.parents):
+                if (parent / ".git").is_dir():
+                    repo_dir = parent
+                    break
+
+    if not repo_dir:
+        print("[ERROR] Could not locate S0 installation directory.", file=sys.stderr)
+        print("To manually uninstall S0, run:")
+        print("  curl -fsSL https://s0-install.vercel.app/uninstall-sh | bash")
+        return 1
+
+    print(f"[*] Target S0 directory: {repo_dir}")
+    audit_db = Path.home() / ".s0" / "s0_audit.db"
+    if getattr(args, "keep_audit", False) and audit_db.is_file():
+        bak_dest = Path.home() / "s0_audit.db.bak"
+        try:
+            shutil.copy2(audit_db, bak_dest)
+            print(f"[✓] Audit ledger backed up to: {bak_dest}")
+        except Exception as exc:
+            print(f"[!] Warning: Could not back up audit ledger: {exc}", file=sys.stderr)
+
+    if not getattr(args, "yes", False):
+        try:
+            confirm = input("Are you sure you want to uninstall s0? [y/N]: ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted.")
+            return 1
+        if confirm != "y":
+            print("Uninstallation cancelled.")
+            return 0
+
+    print("[*] Removing symlinks...")
+    symlink_candidates = [
+        Path.home() / ".local" / "bin" / "s0",
+        Path.home() / "bin" / "s0",
+        Path("/usr/local/bin/s0"),
+    ]
+    for sym in symlink_candidates:
+        if sym.is_symlink() or sym.exists():
+            try:
+                sym.unlink()
+                print(f"[✓] Removed symlink: {sym}")
+            except Exception as exc:
+                print(f"[!] Could not remove {sym}: {exc}", file=sys.stderr)
+
+    # If repo_dir is ~/.s0 or in S0_INSTALL_DIR, remove it
+    home_s0 = Path.home() / ".s0"
+    if repo_dir == home_s0 or str(repo_dir).endswith("/.s0"):
+        print(f"[*] Removing installation directory: {repo_dir}...")
+        try:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+            print("[✓] Directory removed.")
+        except Exception as exc:
+            print(f"[!] Error removing directory: {exc}", file=sys.stderr)
+    else:
+        print(f"[*] Notice: {repo_dir} is a development checkout or custom repository; files preserved.")
+
+    print()
+    print("✅ S0 uninstalled successfully.")
+    return 0
+
+
 # --------------------------------------------------------------------------- #
 # Module 7: Forensic Bit-Stream Drive Imaging & Cloning
 # --------------------------------------------------------------------------- #
@@ -1326,7 +1416,13 @@ def build_parser() -> argparse.ArgumentParser:
     upg.add_argument("--force", action="store_true", help="force re-installation of dependencies even if up to date")
     upg.set_defaults(func=cmd_upgrade)
 
-    # 8. Forensic Imaging & Cloning Subcommands (image & clone alias)
+    # 8. Uninstall Subcommand
+    uinst = sub.add_parser("uninstall", help="safely remove s0 suite from this system")
+    uinst.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
+    uinst.add_argument("--keep-audit", action="store_true", help="back up audit ledger (~/.s0/s0_audit.db) before removal")
+    uinst.set_defaults(func=cmd_uninstall)
+
+    # 9. Forensic Imaging & Cloning Subcommands (image & clone alias)
     for img_cmd in ("image", "clone"):
         img = sub.add_parser(img_cmd, help="forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition")
         img.add_argument("--source", required=True, help="path to source block device or raw image file")
