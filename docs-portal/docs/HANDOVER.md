@@ -1,7 +1,7 @@
 # s0 — Technical Evaluator & Developer Handover Guide
 
 **Target Audience:** Technical Evaluators, Digital Forensic Engineers, and Maintainers.  
-**Version:** 2.0.0
+**Version:** 2.2.0
 
 ---
 

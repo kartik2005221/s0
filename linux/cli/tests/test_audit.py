@@ -30,7 +30,7 @@ def sample_cert():
         organization="Audit Test Lab",
         operator_id="op-test-1",
         tool_name="s0-cli",
-        tool_version="2.0.0",
+        tool_version="2.2.0",
         platform="linux",
         device_id="drive-12345",
         device_type="image_file",

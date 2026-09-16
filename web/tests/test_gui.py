@@ -244,7 +244,7 @@ def test_config_endpoint(client):
     r = client.get("/api/config")
     assert r.status_code == 200
     cfg = r.json()
-    assert cfg["version"] == "2.0.0"
+    assert cfg["version"] == "2.2.0"
     assert "documentation_url" in cfg
     assert "verification_portal_url" in cfg
 

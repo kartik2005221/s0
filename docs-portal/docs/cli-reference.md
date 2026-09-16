@@ -1175,7 +1175,7 @@ Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`),
     [*] Refreshing dependencies...
     [OK] Dependencies refreshed.
 
-    [OK] S0 upgraded successfully to 2.1.0 (4a9f12c)
+    [OK] S0 upgraded successfully to 2.2.0 (4a9f12c)
     ```
 
     **Force reinstall dependencies**
@@ -1183,6 +1183,30 @@ Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`),
     # Force rebuild and refresh all core packages
     s0 upgrade --force
     ```
+
+### `s0 uninstall`
+
+Safely removes the s0 suite, its dedicated virtual environment, and registered PATH symlinks.
+
+=== "CLI Usage"
+
+    **Interactive confirmation prompt**
+    ```bash
+    s0 uninstall
+    ```
+
+    **Non-interactive removal with audit ledger preservation**
+    ```bash
+    # Preserves ~/.s0/s0_audit.db by backing it up to ~/s0_audit.db.bak
+    s0 uninstall --yes --keep-audit
+    ```
+
+=== "Options"
+
+    | Option | Short | Description |
+    |---|---|---|
+    | `--yes` | `-y` | Skip interactive confirmation prompt |
+    | `--keep-audit` | | Back up blockchain audit ledger to `~/s0_audit.db.bak` before removal |
 
 ---
 

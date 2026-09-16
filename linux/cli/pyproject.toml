@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "s0-cli"
-version = "2.0.0"
+version = "2.2.0"
 description = "S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI"
 requires-python = ">=3.10"
 license = { text = "MIT" }
