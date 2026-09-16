@@ -149,7 +149,7 @@ Expected output (version numbers may differ):
 
 ```
 # Output verification string
-s0 version 2.2.0
+s0 version 2.2.1
 ```
 
 !!! tip "Shell not finding s0?"

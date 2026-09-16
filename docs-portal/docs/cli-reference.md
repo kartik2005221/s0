@@ -1175,7 +1175,7 @@ Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`),
     [*] Refreshing dependencies...
     [OK] Dependencies refreshed.
 
-    [OK] S0 upgraded successfully to 2.2.0 (4a9f12c)
+    [OK] S0 upgraded successfully to 2.2.1 (4a9f12c)
     ```
 
     **Force reinstall dependencies**

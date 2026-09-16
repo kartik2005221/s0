@@ -17,6 +17,30 @@ timeline
 
 ---
 
+## [2.2.1] — 2026-09-16
+
+### Security
+- **CRITICAL — GUI Audit Ledger Signature Verification:** Resolved critical flaw in `verify_audit_ledger()` where default trusted keys were omitted during signature checks, ensuring Ed25519 certificate signatures and authority key pinning are strictly validated during GUI and CLI verification.
+- **HIGH — TOCTOU Symlink & Reparse-Point Eraser Hardening:** Added atomic `O_NOFOLLOW` descriptor opening, `fstat(fd)` regular file validation, Win32 `FILE_ATTRIBUTE_REPARSE_POINT` handle inspection, and direct descriptor overwriting across Windows (`s0_eraser.py`) and macOS (`s0_eraser.py`).
+- **HIGH — Canonical JSON Deterministic Block Hashing:** Migrated blockchain audit ledger block hashing from pipe-delimited string formatting to RFC 8785 Canonical JSON (`s0_core.canonical`), preventing input collisions while maintaining backward-compatible fallback verification for legacy ledgers.
+- **HIGH — Destructive Web API Per-Session Token Authentication:** Protected `/api/wipe`, `/api/erase-files`, `/api/carve`, and `/api/image` with a high-entropy session authentication token (`X-S0-Auth-Token`) saved to `~/.s0/web_auth_token` (mode 0600) and injected via meta tag into the Web Dashboard DOM, blocking unauthorized local script execution.
+- **MEDIUM — QR Verification Portal URL Validation:** Enforced strict URL scheme and hostname sanitization on custom `portal_url` parameters in `pdfgen.py` and API request models, restricting redirection to HTTPS and local loopback.
+- **MEDIUM — Configuration Path Hijacking Remediation:** Removed `Path.cwd()` from `s0_config.json` candidate discovery list, preventing untrusted local directories from overriding cryptographic key paths and authority settings.
+- **LOW — Metadata Pipe & Delimiter Sanitization:** Enforced strict Pydantic model validation rejecting pipe (`|`) and markup characters across operator and organization metadata fields.
+- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `verification-portal/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
+
+### Fixed
+- **Mobile Documentation Navigation & Back Button:** Overhauled the mobile drawer header and sub-menu navigation layout in `extra.css`. Fixed back button arrow alignment, eliminated duplicate text clipping and unnecessary "(Tap to return)" annotations, and restored clean horizontal centering for root branding.
+- **Vercel Monorepo Deployment:** Removed `docs-portal/` from `.vercelignore` at the repository root, ensuring Vercel automated git deployments correctly retain documentation sources and build scripts.
+- **Debian Live ISO Build Workflow (`build-iso.yml`):** Corrected recursive directory self-copy bug in `linux/iso/auto/build.sh` when staging the repository snapshot. Migrated CI runner to use Docker containerization via `scripts/build_iso.sh` for hermetic Debian Bookworm builds, added `permissions: contents: write`, and enabled automated attachment of `s0-live-amd64.hybrid.iso` to GitHub Releases.
+- **Web GUI Missing Import:** Added missing `import tempfile` in `web/app.py` for fallback key directory creation.
+
+### Changed
+- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, test assertions, and documentation to `2.2.1`.
+- **Dynamic Version Resolution:** Refactored CLI and GUI modules to resolve runtime version dynamically from `s0_config.json` as the single source of truth.
+
+---
+
 ## [2.2.0] — 2026-09-16
 
 ### Security
