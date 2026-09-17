@@ -52,5 +52,5 @@ s0 integrates data sanitization, forensic file carving, and blockchain audit log
 
 ### Minute 3: Module 4 (Blockchain Audit Ledger)
 - **Presenter:** *"How do we guarantee unbroken chain-of-custody for compliance audits?"*
-- **Action:** Open GUI or run `s0 audit verify`.
+- **Action:** Open web dashboard or run `s0 audit verify`.
 - **Result:** Displays the SHA-256 hash-chained block ledger. Simulate a tampering attempt in SQLite and show the auditor detecting the exact broken block index immediately.

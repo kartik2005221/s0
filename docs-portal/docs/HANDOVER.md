@@ -19,7 +19,7 @@ bash scripts/build_all.sh
 ### Run All 120 Automated Pytest Tests:
 ```bash
 # Execute comprehensive cross-platform test suite
-.venv/bin/pytest core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 ```
 
 ### Run Module 1: End-to-End Drive Wipe Forensic Demo:
@@ -48,14 +48,14 @@ S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
 ### Launch Unified Web Console:
 ```bash
-bash gui/run.sh
-# Open http://127.0.0.1:8000
+.venv/bin/s0 web
+# Opens http://127.0.0.1:8000
 ```
 
 ### Build & Deploy Bare-Metal Live ISO:
 For offline drive decommissioning per NIST SP 800-88, refer to the complete zero-to-one guide:
 ```bash
 # Full build and deployment documentation
-cat docs/LIVE_ISO_BUILD_GUIDE.md
+cat docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md
 ```
-See [docs/LIVE_ISO_BUILD_GUIDE.md](LIVE_ISO_BUILD_GUIDE.md) for build toolchains, QEMU test commands, and USB flashing instructions.
+See [LIVE_ISO_BUILD_GUIDE.md](LIVE_ISO_BUILD_GUIDE.md) for build toolchains, QEMU test commands, and USB flashing instructions.

@@ -14,7 +14,7 @@ s0 is organized around three vertical layers that cut across all four functional
 graph TB
     subgraph UI["Interface Layer"]
         CLI["s0 CLI<br/><code>linux/cli/s0_cli/main.py</code>"]
-        GUI["Web Dashboard<br/><code>gui/</code> — FastAPI + Browser"]
+        GUI["Web Dashboard<br/><code>web/</code> — FastAPI + Browser"]
         ISO["Bare-Metal Live ISO<br/><code>linux/iso/</code> — Debian Live"]
     end
 
@@ -89,7 +89,7 @@ s0/
 │
 ├── windows/                      #   Module 2 Windows (Win32 API, ADS scrubbing, ReFS)
 ├── macos/                        #   Module 2 macOS (F_FULLFSYNC, xattr, APFS)
-├── gui/                          #   Unified FastAPI web dashboard (4 tabs)
+├── web/                          #   Unified FastAPI web dashboard (4 tabs)
 ├── linux/iso/                    #   Debian Live ISO build scripts
 └── verification-portal/          #   100% static Ed25519 verifier
     ├── verify.js
@@ -464,7 +464,7 @@ Module 4 provides the chain of custody infrastructure that transforms s0's opera
 
 ### Architecture
 
-The audit ledger lives at `~/.s0/s0_audit.db` — a single SQLite file shared by both the CLI and the FastAPI web GUI. There is **one ledger per operator identity**, and every operation — regardless of which interface initiated it — appends to the same chain.
+The audit ledger lives at `~/.s0/s0_audit.db` — a single SQLite file shared by both the CLI and the FastAPI web dashboard. There is **one ledger per operator identity**, and every operation — regardless of which interface initiated it — appends to the same chain.
 
 ```mermaid
 block-beta

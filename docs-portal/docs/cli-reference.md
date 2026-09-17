@@ -1415,9 +1415,6 @@ s0 web [--port PORT] [--host HOST] [--no-browser]
 - **Forensic Carver Tab:** Raw image source browsing, file extension filtering, custom signature hex editor, and interactive recovered artifacts inspector.
 - **Blockchain Ledger Tab:** Live block timeline, block detail inspector, and one-click cryptographic hash-chain verification.
 
-### Backward Compatibility Alias
-`s0 gui` is fully supported as an identical alias.
-
 ---
 
 *CLI Reference · s0 (Sector Zero) · NIST SP 800-88 Rev. 1 Compliant Forensic Sanitization Suite*

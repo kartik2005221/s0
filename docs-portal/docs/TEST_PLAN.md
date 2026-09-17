@@ -64,7 +64,7 @@ graph TD
 | `linux/cli/tests/test_carver.py` | Module 3: File Carver | Tests 3-point Shannon entropy calculations, confidence scoring math, sliding-window header/footer carving, and recovery manifest generation. |
 | `linux/cli/tests/test_ntfs_carver.py` | Module 3: File Carver | Mounts synthetic NTFS images with deleted files; validates $MFT resident extraction and multi-fragment non-resident runlist reassembly. |
 | `linux/cli/tests/test_audit.py` | Module 4: Audit Ledger | Tests genesis block initialization, append-only block insertion, SHA-256 hash chaining, and asserts that modifying a database row breaks verification. |
-| `gui/tests/test_gui.py` | Web Dashboard | Uses FastAPI's `TestClient` to execute end-to-end API calls across all four tabs without launching a live browser. |
+| `web/tests/test_gui.py` | Web Dashboard | Uses FastAPI's `TestClient` to execute end-to-end API calls across all four tabs without launching a live browser. |
 | `verification-portal/tests/test_portal.py`| Verification Portal | Tests that the pure JavaScript verifier (`verify.js`) produces identical verification decisions to the Python reference engine across valid and tampered certificates. |
 | `windows/cli/tests/` | Windows Subsystem | Validates Win32 API interactions, Alternate Data Stream (`:Zone.Identifier`) enumeration, and ReFS CoW detection. |
 | `macos/cli/tests/` | macOS Subsystem | Tests Apple Darwin `fcntl(F_FULLFSYNC)` flushes, `xattr -c` quarantine removal, and APFS snapshot warnings. |
@@ -84,7 +84,7 @@ bash scripts/build_all.sh
 ### Targeted Pytest Execution
 ```bash
 # Run all automated tests with verbose output
-.venv/bin/pytest core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
 # Run only cryptographic core tests
 .venv/bin/pytest core/tests -v

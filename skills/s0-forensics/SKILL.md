@@ -33,6 +33,7 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 | `s0 verify` | Offline verification of Ed25519-signed certificate JSON | **Safe (Read-Only)** | Zero-trust verification of compliance reports |
 | `s0 keygen` | Generate Ed25519 keypair for an authority or operator | **Safe (Creates Files)** | Establishing laboratory cryptographic authority |
 | `s0 upgrade` | Pull latest release from GitHub and rebuild packages | **Maintenance** | Upgrading local toolchain and dependencies |
+| `s0 web` | Launch unified forensic web dashboard (FastAPI loopback) | **Safe (Local UI)** | Interactive multi-tab browser dashboard |
 | `s0 erase` | In-place file/directory overwrite with metadata cleansing | **DESTRUCTIVE (Irreversible)** | Scrubbing individual sensitive files or folders |
 | `s0 wipe` | Physical whole-drive sanitization per NIST SP 800-88 | **HIGH-RISK DESTRUCTIVE** | Decommissioning, repurposing, or sanitized disposal |
 
@@ -172,6 +173,23 @@ s0 verify /evidence/certs/certificate_a1b2c3d4.json --key /path/to/authority_pub
 # Verify unbroken continuity of the SQLite blockchain ledger
 s0 audit verify
 ```
+
+---
+
+### Workflow 6: Bare-Metal Live ISO Deployment
+When internal or system drives cannot be unmounted within a running host operating system:
+
+```bash
+# 1. Download official pre-built Live ISO from GitHub Releases
+gh release download v2.3.0 -R kartik2005221/s0 -p "s0-live-amd64.hybrid.iso*"
+
+# 2. Verify cryptographic SHA-256 integrity
+sha256sum -c s0-live-amd64.hybrid.iso.sha256
+
+# 3. Flash to target USB drive (CONFIRM /dev/sdX FIRST)
+sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
+```
+Boot the target system directly into the air-gapped live environment to access internal drives.
 
 ---
 

@@ -17,8 +17,37 @@ The industry-standard solution is to boot from a separate USB drive into an inde
 
 s0 provides a complete Debian-based Live ISO recipe that boots into an automatic Chromium kiosk displaying the s0 web dashboard — ready to wipe.
 
-!!! warning "Development Status"
-    The ISO build scripts (`linux/iso/`) are fully specified and verified against live-build syntax. However, because development environments lack root/sudo privileges for `debootstrap` and `live-build`, **the ISO has not been built or boot-tested on physical hardware**. Treat the bare-metal artifact as unverified until built and smoke-tested on real hardware. The build scripts and configuration are production-ready for organizations with appropriate build environments.
+!!! tip "Automated Cloud Builds on GitHub Releases"
+    Pre-compiled, ready-to-flash hybrid bootable ISO images are automatically built and published with every official release via GitHub Actions (`.github/workflows/build-iso.yml`). You can download the latest official ISO directly from [GitHub Releases](https://github.com/kartik2005221/s0/releases) without compiling it locally.
+
+---
+
+## Download Pre-Built Live ISO from GitHub Releases
+
+Every tagged release automatically generates and publishes the bootable hybrid ISO (`s0-live-amd64.hybrid.iso`) and accompanying cryptographic hashes:
+
+### 1. Download via GitHub CLI
+```bash
+gh release download v2.3.0 -R kartik2005221/s0 -p "s0-live-amd64.hybrid.iso*"
+```
+
+### 2. Download via curl
+```bash
+curl -fSL -o s0-live-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v2.3.0/s0-live-amd64.hybrid.iso
+curl -fSL -o s0-live-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v2.3.0/s0-live-amd64.hybrid.iso.sha256
+```
+
+### 3. Verify Cryptographic Integrity
+```bash
+sha256sum -c s0-live-amd64.hybrid.iso.sha256
+# Expected output: s0-live-amd64.hybrid.iso: OK
+```
+
+### 4. Flash to USB Drive
+```bash
+# Replace /dev/sdX with your actual USB drive (use lsblk to confirm)
+sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
+```
 
 ---
 
@@ -30,12 +59,12 @@ The ISO uses a deliberate privilege separation model:
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        s0 Bare-Metal Appliance                          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [User Space — Unprivileged: 's0' user]                                  │
+│ [User Space — Unprivileged: 's0' user (group 's0-kiosk')]              │
 │   Chromium Kiosk (Wayland/X11) ──────────────┐                          │
 │   Fullscreen, no address bar, no shell        │ HTTP (127.0.0.1:8000)   │
 │                                               ▼                          │
 │ [Daemon Space — Loopback Root: 'root']                                  │
-│   s0-gui.service (Uvicorn / FastAPI)                                    │
+│   s0-web.service (Uvicorn / FastAPI)                                    │
 │   ├── s0_cli (Device discovery, partition unmounting)                   │
 │   ├── s0_core (Canonical JSON v1, Ed25519 signing, PDF generation)      │
 │   └── Kernel Block & Firmware Access:                                   │
@@ -125,7 +154,7 @@ linux/iso/
 │   │       └── 9000-s0.hook.chroot             # Code snapshot install & systemd service hooks
 │   └── includes.chroot/
 │       └── etc/systemd/system/
-│           ├── s0-gui.service                  # Loopback backend wipe daemon (runs as root)
+│           ├── s0-web.service                  # Loopback backend wipe daemon (runs as root)
 │           └── s0-kiosk.service                # Auto-starting Chromium kiosk (runs as s0 user)
 └── README.md
 ```
@@ -158,7 +187,7 @@ The build script runs through five stages:
 4. **Chroot Staging (`lb chroot`)**:
     - Installs system dependencies from `config/package-lists/s0.list.chroot` (Python 3, Chromium, hdparm, nvme-cli, util-linux, parted)
     - Executes `config/hooks/live/9000-s0.hook.chroot` — copies s0 code to `/opt/s0`, sets up `/usr/local/bin/s0` wrapper, configures `s0` user
-    - Registers `s0-gui.service` and `s0-kiosk.service` in systemd
+    - Registers `s0-web.service` and `s0-kiosk.service` in systemd
 5. **Binary Packaging (`lb binary`)** — Compresses root filesystem into SquashFS, packages into bootable hybrid ISO
 
 ### Output Location
@@ -205,7 +234,7 @@ The resulting `s0-live-amd64.hybrid.iso` is generated directly into your current
 # Install QEMU and disk imaging tools
 sudo dnf install -y qemu-system-x86 qemu-img
 
-# Create a 1 GB dummy drive to test device detection in the s0 GUI
+# Create a 1 GB dummy drive to test device detection in the s0 Web Dashboard
 qemu-img create -f raw test_drive.img 1G
 
 # Boot the ISO with KVM hardware acceleration

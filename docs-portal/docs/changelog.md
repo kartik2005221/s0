@@ -17,6 +17,28 @@ timeline
 
 ---
 
+## [2.3.0] — 2026-09-17
+
+### Security
+- **HIGH — Web Authentication Token Hardening:** Restricted `/run/s0/web_auth_token` permissions from `0644` to `0640` with group ownership assigned to the dedicated `s0-kiosk` security group, preventing unauthorized local processes from reading session tokens.
+- **HIGH — ISO Build Toolchain Integrity Verification:** Hardened `.github/workflows/build-iso.yml` to download Debian live-build packages over HTTPS and enforce strict SHA-256 checksum validation (`db5e5ae5925092066fee0e87e9e274af32c56f7b08db254377e248e95e07efae`) before installation.
+- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `linux/cli/s0_cli/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
+- **MEDIUM — Windows NTFS Alternate Data Stream (ADS) Multi-Chunk Scrubbing:** Upgraded Windows ADS scrubbing in `windows/cli/s0_eraser.py` to zero out entire stream allocations in multi-chunk buffers regardless of size prior to stream unlinking.
+- **LOW — Central Configuration Discovery Path Alignment:** Added `/etc/s0/s0_config.json` to central `find_config_file()` discovery candidates in `s0_core.config`, ensuring live appliances and system-wide installations resolve global configuration without split-brain issues.
+
+### Added
+- **Automated GitHub Actions ISO Releases:** Configured automated bare-metal hybrid ISO generation in GitHub Actions (`build-iso.yml`) on release publication, automatically attaching `s0-live-amd64.hybrid.iso` and cryptographic checksums to GitHub Releases.
+- **Cross-Platform CLI Harmonization:** Fully synced Windows (`windows/cli/s0_eraser.py`) and macOS (`macos/cli/s0_eraser.py`) command-line interfaces to support both modern subcommands (`erase`, `wipe`, `list`, `plan`, `audit`, `verify`, `keygen`, `web`) and legacy flags, standardizing options across platforms (`-y`, `-p`, `-t`, `--key`, `--operator`, `--portal-url`, `--verify-samples`).
+- **Unified Portal Theming & Legal Protection:** Standardized footer layout across Verification Portal, Install Portal, Web Dashboard, and Documentation Portal to vertically stack the statutory legal authorization notice directly below the author accreditation.
+
+### Changed
+- **Total Eradication of Legacy 'GUI' Nomenclature:** Completely transitioned all internal services, directories, scripts, and documentation from `gui` to `web` (`s0 web`). Renamed systemd service to `s0-web.service` and daemon health-check to `s0-wait-web`. Removed legacy alias `s0 gui`.
+- **Documentation Portal Mobile Navigation:** Eliminated duplicate header artifacts on mobile viewports by hiding redundant Level-0 drawer titles while preserving sub-navigation back buttons.
+- **Verification Portal Gradient Styling:** Resolved background gradient cutoff and banding by applying `background-repeat: no-repeat` and pinned canvas backgrounds.
+- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, CI workflows, and documentation to `2.3.0`.
+
+---
+
 ## [2.2.1] — 2026-09-16
 
 ### Security

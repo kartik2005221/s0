@@ -59,7 +59,7 @@ Custom signatures can be provided as a JSON file or inline JSON object with the 
 - **`min_size`** *(integer, optional, default: 32)*: Minimum candidate byte length to consider valid.
 - **`max_size`** *(integer, optional, default: 50MB)*: Maximum allocation window to search for footers.
 
-### Invocation via CLI & GUI
+### Invocation via CLI & Web Dashboard
 
 === "CLI Flag (`--custom-sig`)"
     ```bash

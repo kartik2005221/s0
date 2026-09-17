@@ -19,7 +19,7 @@ Crucially, the Web Dashboard is **not a separate engine**. It runs the exact sam
 ```mermaid
 graph TD
     CLI[s0 Command-Line Interface] --> CORE[s0 Core & Methods Engine]
-    GUI[FastAPI Web Console 127.0.0.1:8000] --> CORE
+    WEB[FastAPI Web Console 127.0.0.1:8000] --> CORE
     
     CORE --> LEDGER[(Shared Blockchain Audit Ledger ~/.s0/s0_audit.db)]
     CORE --> CERTS[Signed Certificates .json / .pdf / .qr.png]
@@ -241,7 +241,7 @@ Both the primary Web Dashboard and the Verification Portal feature an instant th
 
 ### Strict Offline Air-Gapped Typography
 To ensure 100% air-gapped forensic operation without external telemetry leaks:
-- Both GUIs strictly load self-hosted **Rubik** (sans-serif UI) and **JetBrains Mono** (terminal, hexadecimal, hashes, and code metrics).
+- Both web interfaces strictly load self-hosted **Rubik** (sans-serif UI) and **JetBrains Mono** (terminal, hexadecimal, hashes, and code metrics).
 - All Google Fonts CDN links have been removed in favor of local `.woff2` font bundles served directly from `/static/fonts/` and `/fonts/`.
 
 ### Central Workspace Configuration (`s0_config.json`)

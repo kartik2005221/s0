@@ -171,7 +171,7 @@ If a file's clusters are scattered non-contiguously and the FAT chain has been z
 The Live ISO build infrastructure (`linux/iso/`) is fully specified against `live-build` syntax, including:
 
 - Preseed configuration for unattended boot.
-- systemd unit files for privilege-separated GUI launch.
+- systemd unit files for privilege-separated web dashboard launch.
 - Package lists for forensic dependencies.
 
 !!! warning "ISO Has Not Been Boot-Tested on Physical Hardware"

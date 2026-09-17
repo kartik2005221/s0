@@ -56,7 +56,7 @@ s0/
 │       └── verify.py                   # Genesis-to-tip mathematical continuity auditor
 ├── windows/                            # Windows native Module 2 (Win32 FlushFileBuffers, ADS)
 ├── macos/                              # macOS native Module 2 (F_FULLFSYNC, xattr cleansing)
-├── gui/                                # FastAPI unified web dashboard (4 forensic tabs)
+├── web/                                # FastAPI unified web dashboard (4 forensic tabs)
 ├── verification-portal/                # 100% client-side zero-backend static verifier
 ├── docs/                               # MkDocs Material technical documentation suite
 └── scripts/                            # Master build, test, and installer orchestrators
@@ -159,7 +159,7 @@ Always ensure all test suites pass before submitting a pull request:
 
 ```bash
 # Run the complete test suite with verbose output
-.venv/bin/pytest core/tests linux/cli/tests gui/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
 # Run with test coverage report
 .venv/bin/pytest --cov=s0_core --cov=s0_cli --cov-report=term-missing
