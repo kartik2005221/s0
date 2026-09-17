@@ -159,3 +159,34 @@ def test_device_id_prefers_serial_then_hash():
     import hashlib
 
     assert fallback == "sha256:" + hashlib.sha256(b"/dev/sdz").hexdigest()
+
+
+def test_root_disk_protection_falls_back_to_proc_mounts(block_dev, monkeypatch):
+    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    # findmnt fails
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("findmnt not found")))
+    # /proc/mounts returns block_dev.path as root
+    import io
+    fake_mounts = f"{block_dev.path}2 / ext4 rw,relatime 0 0\n"
+    import builtins
+    real_open = builtins.open
+    def mock_open(path, *a, **k):
+        if str(path) == "/proc/mounts":
+            return io.StringIO(fake_mounts)
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr(builtins, "open", mock_open)
+    with pytest.raises(SafetyError, match="ROOT filesystem"):
+        check_safety(block_dev, force=False)
+
+
+def test_root_disk_protection_fails_closed_when_indeterminate(block_dev, monkeypatch):
+    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    # Both findmnt and /proc/mounts fail to resolve
+    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: None)
+    with pytest.raises(SafetyError, match="Cannot verify whether"):
+        check_safety(block_dev, force=False)
+
+    warnings = check_safety(block_dev, force=True)
+    assert any("could not verify whether target hosts the root filesystem" in w for w in warnings)
+

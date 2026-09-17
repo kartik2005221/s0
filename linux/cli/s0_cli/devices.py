@@ -293,11 +293,8 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
             )
         warnings.append(f"proceeding WITH MOUNTED FILESYSTEMS: {', '.join(hits)}")
 
-    try:
-        root_src = os.path.realpath(
-            subprocess.run(["findmnt", "-n", "-o", "SOURCE", "/"],
-                           capture_output=True, text=True, check=True).stdout.strip()
-        )
+    root_src = _get_root_mount_source()
+    if root_src:
         target_real = os.path.realpath(target.path)
         if target_real == root_src or root_src.startswith(target_real):
             if not force:
@@ -307,6 +304,43 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
                 )
             warnings.append("proceeding AGAINST THE RUNNING ROOT FILESYSTEM — this "
                             "will destroy the running system")
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        pass  # no findmnt / no root mount — nothing to protect against here
+    else:
+        if not force:
+            raise SafetyError(
+                f"Cannot verify whether {target.path} hosts the running ROOT filesystem "
+                f"(findmnt unavailable and /proc/mounts could not be verified). "
+                f"Refusing to proceed without --force."
+            )
+        warnings.append("WARNING: could not verify whether target hosts the root filesystem")
+
     return warnings
+
+
+def _get_root_mount_source() -> Optional[str]:
+    """Resolve the real backing device path for the running root filesystem (/),
+    attempting findmnt first with direct /proc/mounts parsing as fallback.
+    """
+    try:
+        res = subprocess.run(
+            ["findmnt", "-n", "-o", "SOURCE", "/"],
+            capture_output=True, text=True, check=True
+        )
+        src = res.stdout.strip()
+        if src:
+            return os.path.realpath(src)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    try:
+        with open("/proc/mounts", "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2 and parts[1] == "/":
+                    src = parts[0]
+                    if src.startswith("/"):
+                        return os.path.realpath(src)
+    except Exception:
+        pass
+
+    return None
+
