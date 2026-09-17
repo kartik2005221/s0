@@ -43,11 +43,17 @@ lb config noauto \
     --distribution bookworm \
     --archive-areas "main contrib" \
     --mode debian \
+    --mirror-bootstrap "http://deb.debian.org/debian" \
+    --mirror-chroot "http://deb.debian.org/debian" \
+    --mirror-binary "http://deb.debian.org/debian" \
+    --security false \
+    --updates true \
     --binary-images iso-hybrid \
     --bootappend-live "boot=live components quiet splash hostname=s0" \
     --debian-installer false \
     --iso-volume "S0" \
     "${@}"
+
 
 if [ "$(id -u)" -eq 0 ]; then
     lb build
