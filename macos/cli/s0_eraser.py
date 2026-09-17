@@ -116,11 +116,14 @@ def detect_macos_filesystem(path_str: str) -> tuple[str, Optional[str]]:
     return fs_name, cow_warning
 
 
-def macos_clear_attributes(path_str: str) -> bool:
+def macos_clear_attributes(path_str: str, fd: Optional[int] = None) -> bool:
     """Clear extended attributes (quarantine, finder info, resource forks)."""
     cleared = False
     try:
-        os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+        if fd is not None:
+            os.chmod(fd, stat.S_IWRITE | stat.S_IREAD)
+        else:
+            os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD, follow_symlinks=False)
     except Exception:
         pass
     try:
@@ -186,7 +189,6 @@ def erase_single_file_macos(
             error="Target is not an existing regular file",
         )
 
-    xattrs_cleared = macos_clear_attributes(path_str)
     fs_name, cow_warning = detect_macos_filesystem(path_str)
 
     import errno
@@ -246,7 +248,9 @@ def erase_single_file_macos(
                 error="Target is not a regular file (symlink, directory, or special device rejected)",
                 filesystem=fs_name,
             )
+        xattrs_cleared = macos_clear_attributes(path_str, fd=raw_fd)
         file_size = st.st_size
+
     except Exception as exc:
         try:
             os.close(raw_fd)

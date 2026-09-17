@@ -242,10 +242,13 @@ def scrub_alternate_data_streams(path_str: str) -> List[str]:
     return scrubbed
 
 
-def win32_clear_attributes(path_str: str) -> None:
+def win32_clear_attributes(path_str: str, fd: Optional[int] = None) -> None:
     """Clear Windows Read-Only and Hidden attributes."""
     try:
-        os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+        if fd is not None:
+            os.chmod(fd, stat.S_IWRITE | stat.S_IREAD)
+        else:
+            os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD, follow_symlinks=False)
     except Exception:
         pass
     try:
@@ -315,8 +318,6 @@ def erase_single_file_windows(
             error="Target is not an existing regular file",
         )
 
-    win32_clear_attributes(path_str)
-    ads_scrubbed = scrub_alternate_data_streams(path_str)
     fs_name, cow_warning = detect_windows_filesystem(path_str)
 
     flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
@@ -337,7 +338,7 @@ def erase_single_file_windows(
             status="failure",
             error=f"Cannot open target descriptor: {exc}",
             cow_warning=cow_warning,
-            ads_streams_scrubbed=ads_scrubbed,
+            ads_streams_scrubbed=[],
             filesystem=fs_name,
         )
 
@@ -354,7 +355,7 @@ def erase_single_file_windows(
                 status="failure",
                 error="Target is a symbolic link or non-regular file; refusing to follow",
                 cow_warning=cow_warning,
-                ads_streams_scrubbed=ads_scrubbed,
+                ads_streams_scrubbed=[],
                 filesystem=fs_name,
             )
 
@@ -390,13 +391,16 @@ def erase_single_file_windows(
                             status="failure",
                             error="Target is a Windows reparse point or junction; refusing to follow",
                             cow_warning=cow_warning,
-                            ads_streams_scrubbed=ads_scrubbed,
+                            ads_streams_scrubbed=[],
                             filesystem=fs_name,
                         )
             except Exception:
                 pass
 
+        win32_clear_attributes(path_str, fd=raw_fd)
+        ads_scrubbed = scrub_alternate_data_streams(path_str)
         file_size = st.st_size
+
     except Exception as exc:
         try:
             os.close(raw_fd)

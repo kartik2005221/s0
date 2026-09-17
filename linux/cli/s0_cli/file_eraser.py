@@ -148,10 +148,13 @@ def platform_sync(fd: int) -> None:
         pass
 
 
-def platform_cleanse_attributes(path_str: str) -> None:
+def platform_cleanse_attributes(path_str: str, fd: Optional[int] = None) -> None:
     """Clear platform-specific file attributes, locks, xattrs, and alternate data streams."""
     try:
-        os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+        if fd is not None:
+            os.chmod(fd, stat.S_IWRITE | stat.S_IREAD)
+        else:
+            os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD, follow_symlinks=False)
     except Exception:
         pass
 
@@ -261,9 +264,6 @@ def erase_single_file(
             error="Target is a symbolic link; refusing to follow symlink",
         )
 
-    # Clear read-only locks, xattrs, and alternate data streams
-    platform_cleanse_attributes(path_str)
-
     # Informational extent mapping
     extents = get_file_extents(path_str)
 
@@ -303,7 +303,20 @@ def erase_single_file(
             )
         if exc.errno in (errno.EACCES, errno.EPERM):
             try:
-                os.chmod(path_str, stat.S_IWRITE | stat.S_IREAD)
+                # Open read-only with O_NOFOLLOW to safely verify inode before fchmod
+                ro_flags = os.O_RDONLY
+                if hasattr(os, "O_NOFOLLOW"):
+                    ro_flags |= os.O_NOFOLLOW
+                if hasattr(os, "O_CLOEXEC"):
+                    ro_flags |= os.O_CLOEXEC
+                ro_fd = os.open(path_str, ro_flags)
+                try:
+                    ro_st = os.fstat(ro_fd)
+                    if not stat.S_ISREG(ro_st.st_mode) or stat.S_ISLNK(ro_st.st_mode):
+                        raise OSError(errno.ELOOP, "Target is not a regular file")
+                    os.chmod(ro_fd, stat.S_IWRITE | stat.S_IREAD)
+                finally:
+                    os.close(ro_fd)
                 raw_fd = os.open(path_str, flags)
             except Exception as exc2:
                 return FileEraseResult(
@@ -337,8 +350,12 @@ def erase_single_file(
                 passes=passes,
                 pattern=pattern,
                 status="failure",
-                error="Target is not an existing regular file",
+                error="Target is not a regular file; refusing to erase",
             )
+
+        # Safely clear locks/xattrs using verified file descriptor (fchmod, no symlink following)
+        platform_cleanse_attributes(path_str, fd=raw_fd)
+
         file_size = st.st_size
     except Exception as exc:
         try:
