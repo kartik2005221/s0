@@ -701,6 +701,15 @@ def cmd_erase_files(args) -> int:
                 print(f"PDF Certificate: {pdf_p}")
             except Exception:
                 pass
+        if getattr(args, "json", False):
+            print(json.dumps({
+                "status": "success" if summary.failed_files == 0 else "failure",
+                "successful_files": summary.successful_files,
+                "failed_files": summary.failed_files,
+                "bytes_overwritten": summary.bytes_overwritten,
+                "certificate": str(cert_p) if summary.certificate else None,
+                "cert_uuid": summary.certificate.get("cert_uuid") if summary.certificate else None
+            }, indent=2))
     elif not getattr(args, "no_certificate", False):
         print("WARNING: Sanitization completed, but certificate generation failed (see warnings).", file=sys.stderr)
 
@@ -1224,12 +1233,8 @@ def cmd_web(args) -> int:
     web_dir = None
     for root in possible_roots:
         cand_web = root / "web"
-        cand_gui = root / "gui"
         if cand_web.is_dir() and (cand_web / "app.py").is_file():
             web_dir = cand_web
-            break
-        elif cand_gui.is_dir() and (cand_gui / "app.py").is_file():
-            web_dir = cand_gui
             break
 
     if not web_dir:
@@ -1330,6 +1335,7 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--target", required=True, help="block device path OR image file path")
     common.add_argument(
         "--passes",
+        "-p",
         type=int,
         default=1,
         help="overwrite passes (default 1 — one pass IS Clear per NIST 800-88)",
@@ -1358,10 +1364,10 @@ def build_parser() -> argparse.ArgumentParser:
     pln.set_defaults(func=cmd_plan)
 
     wp = sub.add_parser("wipe", parents=[common], help="wipe target, verify, issue signed certificate")
-    wp.add_argument("--yes", action="store_true", help="skip interactive WIPE prompt")
-    wp.add_argument("--key", help="issuer private key PEM (default: demo issuer key)")
+    wp.add_argument("--yes", "-y", action="store_true", help="skip interactive WIPE prompt")
+    wp.add_argument("--key", "--signing-key", help="issuer private key PEM (default: demo issuer key)")
     wp.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
-    wp.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
+    wp.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
     wp.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
     wp.add_argument("--no-pdf", action="store_true", help="skip generating human-readable PDF compliance certificate")
     wp.add_argument("--verify-samples", type=int, default=64, help="number of readback samples to verify (default: 64)")
@@ -1387,19 +1393,20 @@ def build_parser() -> argparse.ArgumentParser:
     # 2. File & Folder Eraser Subcommand (erase & erase-files alias)
     for fe_cmd in ("erase", "erase-files"):
         fe = sub.add_parser(fe_cmd, help="securely erase files and folders with metadata cleansing")
-        fe.add_argument("--targets", nargs="+", required=True, help="paths to files or directories to sanitize")
-        fe.add_argument("--passes", type=int, default=1, help="number of overwrite passes")
+        fe.add_argument("--targets", "-t", nargs="+", required=True, help="paths to files or directories to sanitize")
+        fe.add_argument("--passes", "-p", type=int, default=1, help="number of overwrite passes")
         fe.add_argument("--pattern", choices=["zero", "random"], default="zero", help="overwrite pattern: 'zero' or 'random'")
         fe.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
-        fe.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
+        fe.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
         fe.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
-        fe.add_argument("--key", help="signing key path (default: demo issuer key)")
+        fe.add_argument("--key", "--signing-key", help="signing key path (default: demo issuer key)")
         fe.add_argument(
             "--no-certificate",
             action="store_true",
             help="explicitly run without generating an Ed25519 compliance certificate",
         )
         fe.add_argument("--no-pdf", action="store_true", help="skip rendering PDF certificate")
+        fe.add_argument("--json", action="store_true", help="output result as machine-readable JSON")
         fe.add_argument(
             "--portal-url",
             default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
@@ -1428,9 +1435,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
-    crv.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for manifest")
+    crv.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for manifest")
     crv.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for manifest")
-    crv.add_argument("--key", help="signing key path (default: demo issuer key)")
+    crv.add_argument("--key", "--signing-key", help="signing key path (default: demo issuer key)")
     crv.add_argument(
         "--no-certificate",
         action="store_true",
@@ -1476,20 +1483,19 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--block-size", type=int, default=1048576, help="buffer block size in bytes (default: 1048576 / 1MB)")
         img.add_argument("--no-recovery", action="store_true", help="abort on I/O read error instead of zero-filling bad sectors")
         img.add_argument("--out-dir", default=".", help="directory to store acquisition manifest and certificate")
-        img.add_argument("--operator", default=CONFIG.get("default_operator", "op-forensic"), help="operator ID")
+        img.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator ID")
         img.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name")
-        img.add_argument("--key", help="path to Ed25519 issuer private key PEM")
+        img.add_argument("--key", "--signing-key", help="path to Ed25519 issuer private key PEM")
         img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
-        img.add_argument("--yes", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
+        img.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
         img.set_defaults(func=cmd_image)
 
-    # 9. Web Dashboard Subcommands (web & gui alias)
-    for web_cmd in ("web", "gui"):
-        wb = sub.add_parser(web_cmd, help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
-        wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8000), help="port to bind (default: 8000)")
-        wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
-        wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
-        wb.set_defaults(func=cmd_web)
+    # 9. Web Dashboard Subcommand
+    wb = sub.add_parser("web", help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
+    wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8000), help="port to bind (default: 8000)")
+    wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
+    wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
+    wb.set_defaults(func=cmd_web)
 
     return p
 

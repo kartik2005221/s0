@@ -242,3 +242,43 @@ def test_mac_cli_no_pdf_flag(monkeypatch, tmp_path: Path):
     assert len(list(out_dir.glob("*.json"))) == 1
     assert len(list(out_dir.glob("*.pdf"))) == 0
 
+
+def test_mac_cli_subcommand_dispatch(tmp_path: Path):
+    target = tmp_path / "sub_mac_test.txt"
+    target.write_bytes(b"MAC SUBCOMMAND DISPATCH TEST")
+    out_dir = tmp_path / "sub_mac_out"
+
+    # Test invoking with 'erase' subcommand directly via mac_main(argv)
+    code = mac_main([
+        "erase",
+        "--targets", str(target),
+        "--out-dir", str(out_dir),
+        "--no-pdf",
+    ])
+    assert code == 0
+    assert not target.exists()
+
+
+def test_mac_cli_flag_aliases(monkeypatch, tmp_path: Path):
+    target = tmp_path / "alias_mac_test.txt"
+    target.write_bytes(b"MAC FLAG ALIAS TEST")
+    out_dir = tmp_path / "alias_mac_out"
+    key_file = REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "s0_eraser.py",
+            "-t", str(target),
+            "-p", "1",
+            "--key", str(key_file),
+            "--operator", "op-test-mac",
+            "--out-dir", str(out_dir),
+            "--no-pdf",
+        ],
+    )
+    assert mac_main() == 0
+    assert not target.exists()
+
+

@@ -238,3 +238,43 @@ def test_win_cli_no_pdf_flag(monkeypatch, tmp_path: Path):
     assert len(list(out_dir.glob("*.json"))) == 1
     assert len(list(out_dir.glob("*.pdf"))) == 0
 
+
+def test_win_cli_subcommand_dispatch(tmp_path: Path):
+    target = tmp_path / "sub_test.txt"
+    target.write_bytes(b"SUBCOMMAND DISPATCH TEST")
+    out_dir = tmp_path / "sub_out"
+
+    # Test invoking with 'erase' subcommand directly via win_main(argv)
+    code = win_main([
+        "erase",
+        "--targets", str(target),
+        "--out-dir", str(out_dir),
+        "--no-pdf",
+    ])
+    assert code == 0
+    assert not target.exists()
+
+
+def test_win_cli_flag_aliases(monkeypatch, tmp_path: Path):
+    target = tmp_path / "alias_test.txt"
+    target.write_bytes(b"FLAG ALIAS TEST")
+    out_dir = tmp_path / "alias_out"
+    key_file = REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "s0_eraser.py",
+            "-t", str(target),
+            "-p", "1",
+            "--key", str(key_file),
+            "--operator", "op-test-win",
+            "--out-dir", str(out_dir),
+            "--no-pdf",
+        ],
+    )
+    assert win_main() == 0
+    assert not target.exists()
+
+

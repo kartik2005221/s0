@@ -36,6 +36,9 @@ REPO_ROOT = _find_repo_root()
 core_python_dir = REPO_ROOT / "core" / "python"
 if core_python_dir.exists() and str(core_python_dir) not in sys.path:
     sys.path.insert(0, str(core_python_dir))
+cli_dir = REPO_ROOT / "linux" / "cli"
+if cli_dir.exists() and str(cli_dir) not in sys.path:
+    sys.path.insert(0, str(cli_dir))
 
 try:
     from s0_core import certificate as cert_mod
@@ -203,7 +206,11 @@ def scrub_alternate_data_streams(path_str: str) -> List[str]:
         try:
             sz = stream_size if stream_size > 0 else 4096
             with open(target_stream, "r+b") as f:
-                f.write(b"\x00" * min(sz, 65536))
+                remaining = sz
+                while remaining > 0:
+                    chunk = min(remaining, 65536)
+                    f.write(b"\x00" * chunk)
+                    remaining -= chunk
                 f.flush()
                 win32_flush_buffers(f)
             os.unlink(target_stream)
@@ -230,8 +237,12 @@ def scrub_alternate_data_streams(path_str: str) -> List[str]:
         try:
             if os.path.exists(target_stream):
                 with open(target_stream, "r+b") as f:
-                    sz = min(os.path.getsize(target_stream), 4096)
-                    f.write(b"\x00" * max(sz, 1))
+                    sz = max(os.path.getsize(target_stream), 1)
+                    remaining = sz
+                    while remaining > 0:
+                        chunk = min(remaining, 65536)
+                        f.write(b"\x00" * chunk)
+                        remaining -= chunk
                     f.flush()
                     win32_flush_buffers(f)
                 os.unlink(target_stream)
@@ -942,8 +953,22 @@ def wipe_drive_or_partition_windows(
     return result, signed_cert
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    subcommands = {
+        "list", "plan", "wipe", "erase", "erase-files", "carve",
+        "audit", "verify", "keygen", "image", "clone", "upgrade",
+        "uninstall", "web",
+    }
+    if raw_args and raw_args[0] in subcommands:
+        try:
+            from s0_cli.main import main as unified_main
+            return unified_main(raw_args)
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(description="S0 (Sector Zero) Windows Native Forensic Sanitization Suite (Files, Partitions, Drives)")
+    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.3.0')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument("--wipe-partition", help="Drive letter of secondary partition to wipe (e.g. D:, E:)")
     parser.add_argument("--wipe-drive", help="Physical drive path to wipe (e.g. \\\\.\\PhysicalDrive1 or disk number)")
@@ -952,15 +977,17 @@ def main() -> int:
     parser.add_argument("--passes", "-p", type=int, default=1, help="Overwrite passes (default: 1)")
     parser.add_argument("--pattern", choices=["zero", "random"], default="zero", help="Overwrite pattern")
     parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
-    parser.add_argument("--signing-key", help="Path to Ed25519 issuer private key PEM")
-    parser.add_argument("--operator-id", default=CONFIG.get("default_operator", "op-forensic-01"), help="Operator identifier")
+    parser.add_argument("--signing-key", "--key", help="Path to Ed25519 issuer private key PEM")
+    parser.add_argument("--operator-id", "--operator", default=CONFIG.get("default_operator", "op-forensic-01"), help="Operator identifier")
     parser.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="Issuing organization")
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
     parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
+    parser.add_argument("--portal-url", default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"), help="Verification portal base URL")
     parser.add_argument("--qr-url-template", default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"), help="URL template for verification QR")
+    parser.add_argument("--verify-samples", type=int, default=64, help="Number of readback samples for verification (default: 64)")
     parser.add_argument("--json", action="store_true", help="Output JSON result")
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
 
     # Case 1: Drive or partition wipe
     if args.wipe_partition or args.wipe_drive:
