@@ -38,7 +38,7 @@ jobs:
             rsync \
             curl
           curl -sLO https://deb.debian.org/debian/pool/main/l/live-build/live-build_20230502_all.deb
-          echo "db5e5ae5925092066fee0e87e9e274af32c56f7b08db254377e248e95e07efae  live-build_20230502_all.deb" | sha256sum -c -
+          echo "a863905724e7b69d45066ebab113cb6de12a11984349847ad49f6151c10f017d  live-build_20230502_all.deb" | sha256sum -c -
           sudo dpkg -i live-build_20230502_all.deb || sudo apt-get install -fy
 
       - name: Build s0 Live ISO
