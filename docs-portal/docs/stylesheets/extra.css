@@ -414,7 +414,9 @@
   display: none !important;
 }
 
-  /* 2. Sub-Level Navigation Back Bar (Nested Menus & TOC) */
+/* Mobile navigation drawer sub-level back bar */
+@media screen and (max-width: 76.1875em) {
+  /* Sub-Level Navigation Back Bar (Nested Menus & TOC on mobile drawer) */
   .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
     display: flex !important;
     align-items: center !important;
@@ -473,7 +475,6 @@
   }
 
   /* Light mode sub-level back bar */
-
   [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
     background: #F1F5F9 !important;
     border-bottom: 1px solid rgba(204, 82, 0, 0.25) !important;
