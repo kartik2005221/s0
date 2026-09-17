@@ -99,38 +99,42 @@
     }
 
     .site-header-inner {
-      max-width: 1120px;
+      max-width: 1280px;
       margin: 0 auto;
-      padding: 14px 24px;
+      padding: 0 16px;
+      height: 52px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 16px;
     }
 
-    .logo {
-      font-weight: 800;
-      font-size: 1.15rem;
-      text-decoration: none;
-      color: var(--text-primary);
+    .site-logo-link {
       display: flex;
       align-items: center;
       gap: 10px;
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 0.95rem;
       letter-spacing: -0.01em;
     }
-
-    .badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.72rem;
-      background: rgba(255, 101, 0, 0.15);
-      border: 1px solid rgba(255, 101, 0, 0.4);
+    .site-logo-link:hover .site-logo-title {
       color: var(--primary);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: 700;
     }
 
-    nav {
+    .site-logo-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 101, 0, 0.12);
+      border: 1px solid rgba(255, 101, 0, 0.3);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .site-header-nav {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -138,25 +142,62 @@
     }
 
     .nav-btn {
-      color: var(--btn-text);
+      color: var(--text-secondary);
       text-decoration: none;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 500;
-      padding: 6px 12px;
+      padding: 5px 12px;
       border-radius: 6px;
-      border: 1px solid var(--btn-border);
-      background: var(--btn-bg);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       transition: all 0.15s ease;
       font-family: inherit;
     }
 
     .nav-btn:hover {
+      color: var(--text-primary);
       border-color: var(--border-focus);
+      background: var(--bg-card-hover);
+    }
+
+    .nav-github {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+    }
+    .nav-github:hover {
+      border-color: var(--primary);
       color: var(--primary);
+    }
+
+    .sys-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse-green 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
     }
 
     main {
@@ -336,22 +377,26 @@
 
 <header class="site-header">
   <div class="site-header-inner">
-    <a href="/" class="logo">
-      <span>s0 — Sector Zero</span>
-      <span class="badge">Install Portal</span>
+    <a href="/" class="site-logo-link">
+      <span class="site-logo-title">s0 — Sector Zero</span>
+      <span class="site-logo-badge">Install Portal</span>
     </a>
-    <nav>
-      <button class="nav-btn" onclick="toggleTheme()" id="themeToggleBtn" aria-label="Toggle dark/light theme">
+    <nav class="site-header-nav">
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
       </button>
       <a href="https://s0-docs.vercel.app/" target="_blank" class="nav-btn">Documentation</a>
       <a href="https://s0-vp.vercel.app/" target="_blank" class="nav-btn">Verifier</a>
-      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn" aria-label="GitHub Repository">
-        <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span>GitHub</span>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" aria-label="GitHub Repository">
+        <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>kartik2005221/s0</span>
       </a>
+      <div class="sys-pill">
+        <div class="dot-live"></div>
+        <span>OFFICIAL INSTALL PORTAL</span>
+      </div>
     </nav>
   </div>
 </header>
