@@ -82,3 +82,17 @@ def test_pdf_escapes_markup_injection(signed_cert, tmp_path):
     assert out.exists()
     assert out.read_bytes().startswith(b"%PDF-")
 
+
+def test_pdf_sanitizes_malicious_verify_url(signed_cert, tmp_path):
+    """Ensure attacker-controlled verify URL templates are replaced with safe default."""
+    out = tmp_path / "malicious_url.pdf"
+    pdfgen.generate_pdf(
+        signed_cert,
+        out,
+        qr_url_template="http://evil-phish-domain.attacker.example/?cert={cert_uuid}",
+    )
+    pdf_bytes = out.read_bytes()
+    assert b"evil-phish-domain.attacker.example" not in pdf_bytes
+    assert b"s0-vp.vercel.app" in pdf_bytes
+
+

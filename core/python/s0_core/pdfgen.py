@@ -91,15 +91,18 @@ def generate_pdf(
     verif = result.get("verification") or {}
     sig = cert["signature"]
 
+    raw_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
+    default_url = QR_URL_TEMPLATE_DEFAULT.format(cert_uuid=cert["cert_uuid"])
+    sanitized_verify_url = _sanitize_qr_url(raw_url, default=default_url)
+
     # QR content: full signed cert if it fits comfortably in a QR-M symbol.
     full_json = canonicalize_str(cert)
     if len(full_json.encode("utf-8")) <= 2300:
         qr_data, qr_caption = full_json, "Full signed certificate (offline-verifiable)"
     else:
-        raw_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
-        default_url = QR_URL_TEMPLATE_DEFAULT.format(cert_uuid=cert["cert_uuid"])
-        qr_data = _sanitize_qr_url(raw_url, default=default_url)
+        qr_data = sanitized_verify_url
         qr_caption = "Verification URL (locator only — verify the signature)"
+
 
     doc = SimpleDocTemplate(
         str(out_path), pagesize=A4,
@@ -231,7 +234,7 @@ def generate_pdf(
         colWidths=[50 * mm, 120 * mm])
     story.append(qr_tbl)
 
-    verify_url = qr_url_template.format(cert_uuid=cert["cert_uuid"])
+    verify_url = sanitized_verify_url
     if verify_url.startswith("http"):
         story.append(Spacer(1, 4 * mm))
         escaped_url = _xml_escape(verify_url)
