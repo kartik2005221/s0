@@ -47,6 +47,7 @@ lb config noauto \
     --mirror-chroot "http://deb.debian.org/debian" \
     --mirror-binary "http://deb.debian.org/debian" \
     --security false \
+    --apt-indices false \
     --binary-images iso-hybrid \
     --bootappend-live "boot=live components quiet splash hostname=s0" \
     --debian-installer false \

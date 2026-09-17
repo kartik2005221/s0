@@ -28,7 +28,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            live-build \
             debootstrap \
             debian-archive-keyring \
             xorriso \
@@ -39,7 +38,11 @@ jobs:
             grub-efi-amd64-bin \
             mtools \
             dosfstools \
-            rsync
+            rsync \
+            curl
+          curl -sLO http://ftp.debian.org/debian/pool/main/l/live-build/live-build_20230502_all.deb
+          sudo dpkg -i live-build_20230502_all.deb || sudo apt-get install -fy
+
 
       - name: Build s0 Live ISO
         run: |
