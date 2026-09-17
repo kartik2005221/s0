@@ -2,8 +2,21 @@
 set -euo pipefail
 
 echo "==> Preparing clean build directory inside container..."
+mkdir -p /build
+
+# Workaround for Docker overlayfs mounted with nodev:
+# debootstrap requires mknod capability. If nodev prevents mknod, mount a loopback ext4 volume.
+if ! mknod /build/test-nodev c 1 3 2>/dev/null; then
+    echo "==> Docker filesystem has nodev; creating ext4 loopback volume on /build with dev,exec..."
+    truncate -s 8G /tmp_build.img
+    mkfs.ext4 -F -q /tmp_build.img
+    mount -o loop,dev,exec /tmp_build.img /build
+fi
+rm -f /build/test-nodev 2>/dev/null || true
+
 mkdir -p /build/s0
 rsync -a --exclude='.git' --exclude='node_modules' --exclude='.venv' --exclude='demo-out' /workspace/ /build/s0/
+
 
 cd /build/s0/linux/iso
 chmod +x build.sh auto/build.sh

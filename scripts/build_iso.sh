@@ -32,8 +32,21 @@ else
 fi
 printf "  Repository  : %s\n\n" "$REPO_ROOT"
 
-# ── Strategy 1: Podman (Native on Fedora, RHEL, CentOS) ────────────────────
-if command -v podman >/dev/null 2>&1; then
+# ── Strategy 1: Native live-build (Debian / Ubuntu Native) ──────────────────
+if command -v lb >/dev/null 2>&1 && command -v xorriso >/dev/null 2>&1; then
+    printf "${_cyan}[1/3] Checking native Debian live-build toolchain...${_reset} ${_green}found!${_reset}\n"
+    printf "${_yellow}==> Executing native Debian live-build pipeline...${_reset}\n"
+    
+    cd "$REPO_ROOT/linux/iso"
+    if [ "$(id -u)" -eq 0 ]; then
+        ./auto/build.sh
+    else
+        sudo ./auto/build.sh
+    fi
+    cd "$REPO_ROOT"
+
+# ── Strategy 2: Podman (Preferred on Fedora, RHEL, CentOS) ────────────────────
+elif command -v podman >/dev/null 2>&1; then
     printf "${_cyan}[1/3] Checking Podman (Preferred on Fedora / RHEL)...${_reset} ${_green}found!${_reset}\n"
     printf "${_yellow}==> Building S0 Live Builder container image via Podman...${_reset}\n"
     
@@ -44,7 +57,7 @@ if command -v podman >/dev/null 2>&1; then
     
     podman run --rm --privileged -v "${REPO_ROOT}":/workspace:z s0-live-builder
 
-# ── Strategy 2: Docker (Universal Linux / macOS) ───────────────────────────
+# ── Strategy 3: Docker (Universal Linux / macOS) ───────────────────────────
 elif command -v docker >/dev/null 2>&1; then
     printf "${_cyan}[1/3] Podman not found. Checking Docker...${_reset} ${_green}found!${_reset}\n"
     printf "${_yellow}==> Building S0 Live Builder container image via Docker...${_reset}\n"
@@ -54,18 +67,6 @@ elif command -v docker >/dev/null 2>&1; then
     printf "\n${_yellow}==> Running Debian live-build inside privileged Docker container...${_reset}\n"
     docker run --rm --privileged -v "${REPO_ROOT}":/workspace s0-live-builder
 
-# ── Strategy 3: Native live-build (Debian / Ubuntu Native) ──────────────────
-elif command -v lb >/dev/null 2>&1 && command -v xorriso >/dev/null 2>&1; then
-    printf "${_cyan}[1/3] Checking native Debian live-build toolchain...${_reset} ${_green}found!${_reset}\n"
-    printf "${_yellow}==> Executing native Debian live-build pipeline...${_reset}\n"
-    
-    cd "$REPO_ROOT/linux/iso"
-    if [ "$(id -u)" -eq 0 ]; then
-        ./build.sh
-    else
-        sudo ./build.sh
-    fi
-    cd "$REPO_ROOT"
 
 # ── Fallback: Distro-specific guidance ──────────────────────────────────────
 else
