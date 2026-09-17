@@ -27,6 +27,10 @@ fi
 if [ -d "$REPO_ROOT/gui" ]; then
     cp -r "$REPO_ROOT/gui" "$STAGING_DIR/"
 fi
+if [ -f "$REPO_ROOT/s0_config.json" ]; then
+    cp "$REPO_ROOT/s0_config.json" "$STAGING_DIR/"
+fi
+
 
 echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
 if [ "$(id -u)" -eq 0 ]; then

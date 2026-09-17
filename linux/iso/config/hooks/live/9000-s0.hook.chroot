@@ -16,8 +16,14 @@ elif [ -d /root/repo-snapshot/gui ]; then
     cp -r /root/repo-snapshot/gui /opt/s0/
     ln -sfn /opt/s0/gui /opt/s0/web
 fi
+if [ -f /root/repo-snapshot/s0_config.json ]; then
+    mkdir -p /etc/s0
+    cp /root/repo-snapshot/s0_config.json /etc/s0/s0_config.json
+    cp /root/repo-snapshot/s0_config.json /opt/s0/s0_config.json
+fi
 rm -rf /opt/s0/core/tests /opt/s0/linux/cli/tests /opt/s0/web/tests /opt/s0/gui/tests 2>/dev/null || true
 chmod -R go-w /opt/s0
+
 
 # The GUI imports the CLI package by path; make both importable system-wide.
 cat > /usr/lib/python3/dist-packages/s0_path.pth <<'EOF'
