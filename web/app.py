@@ -82,7 +82,7 @@ if STATIC_DIR.is_dir():
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 
-_SESSION_AUTH_TOKEN = secrets.token_hex(32)
+_SESSION_AUTH_TOKEN = os.environ.get("S0_WEB_AUTH_TOKEN") or secrets.token_hex(32)
 
 
 def _init_session_auth_token() -> None:
@@ -94,8 +94,20 @@ def _init_session_auth_token() -> None:
             os.chmod(token_path, 0o600)
         except Exception:
             pass
+
+        # When running as root (e.g. s0-gui daemon on live ISO), make token available to kiosk user
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            try:
+                run_dir = Path("/run/s0")
+                run_dir.mkdir(parents=True, exist_ok=True)
+                run_token = run_dir / "web_auth_token"
+                run_token.write_text(_SESSION_AUTH_TOKEN, encoding="utf-8")
+                os.chmod(run_token, 0o644)
+            except Exception:
+                pass
     except Exception:
         pass
+
 
 
 _init_session_auth_token()
@@ -322,9 +334,6 @@ def _find_target(path: str):
 def index() -> HTMLResponse:
     index_path = Path(__file__).parent / "static" / "index.html"
     content = index_path.read_text(encoding="utf-8")
-    meta_tag = f'<meta name="s0-auth-token" content="{_SESSION_AUTH_TOKEN}">'
-    if "</head>" in content:
-        content = content.replace("</head>", f"  {meta_tag}\n</head>", 1)
     return HTMLResponse(content)
 
 
@@ -382,7 +391,6 @@ def plan_payload(target_path: str) -> dict:
 @app.get("/api/config")
 def api_config() -> JSONResponse:
     cfg = dict(CONFIG)
-    cfg["auth_token"] = _SESSION_AUTH_TOKEN
     return JSONResponse(cfg)
 
 

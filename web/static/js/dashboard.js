@@ -97,6 +97,22 @@ function readFileAsText(file) {
 }
 
 function getAuthToken() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    if (tokenFromUrl) {
+      sessionStorage.setItem("s0_auth_token", tokenFromUrl);
+      const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
+      return tokenFromUrl;
+    }
+  } catch (e) {}
+
+  try {
+    const stored = sessionStorage.getItem("s0_auth_token");
+    if (stored) return stored;
+  } catch (e) {}
+
   const meta = document.querySelector('meta[name="s0-auth-token"]');
   if (meta && meta.content) {
     return meta.content;

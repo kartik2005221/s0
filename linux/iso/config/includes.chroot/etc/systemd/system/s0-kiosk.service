@@ -8,7 +8,7 @@ User=s0
 WorkingDirectory=/home/s0
 Environment=XDG_RUNTIME_DIR=/tmp
 ExecStartPre=/usr/local/bin/s0-wait-gui
-ExecStart=/usr/bin/cage -s -- /usr/bin/chromium --kiosk --noerrdialogs --disable-session-crashed-bubble --ozone-platform=wayland --app=http://127.0.0.1:8000
+ExecStart=/bin/sh -c 'TOKEN=$([ -f /run/s0/web_auth_token ] && cat /run/s0/web_auth_token || true); exec /usr/bin/cage -s -- /usr/bin/chromium --kiosk --noerrdialogs --disable-session-crashed-bubble --ozone-platform=wayland --app="http://127.0.0.1:8000/?token=$TOKEN"'
 Restart=always
 RestartSec=3
 

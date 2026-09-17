@@ -69,6 +69,27 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _validate_portal_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return url
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("https", "http"):
+        sys.stderr.write(f"\n❌ Error: Invalid portal URL scheme '{parsed.scheme}': must be http or https\n")
+        sys.exit(1)
+    if parsed.scheme == "http" and parsed.hostname not in ("localhost", "127.0.0.1"):
+        sys.stderr.write("\n❌ Error: Plaintext HTTP portal URL is restricted to localhost/127.0.0.1; use HTTPS for remote hosts\n")
+        sys.exit(1)
+    if parsed.username or parsed.password:
+        sys.stderr.write("\n❌ Error: Portal URL must not contain embedded user credentials (@)\n")
+        sys.exit(1)
+    if any(c in url for c in '<>"\'`\\| '):
+        sys.stderr.write("\n❌ Error: Portal URL contains disallowed characters\n")
+        sys.exit(1)
+    return url
+
+
+
 def _warn_if_demo_key(key_path: Path | None) -> None:
     if key_path is not None and is_demo_key(key_path):
         sys.stderr.write(
@@ -328,8 +349,9 @@ def cmd_wipe(args) -> int:
         cert_json.write_text(json.dumps(cert, indent=2) + "\n")
 
         qr_url_tpl = args.qr_url_template
-        if getattr(args, "portal_url", None) and "{cert_uuid}" not in args.portal_url:
-            qr_url_tpl = f"{args.portal_url.rstrip('/')}/?cert={{cert_uuid}}"
+        portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+        if portal_url_val and "{cert_uuid}" not in portal_url_val:
+            qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
 
         pdf_path = None
         if not args.no_pdf:
@@ -394,8 +416,9 @@ def cmd_wipe(args) -> int:
         cert_json.write_text(json.dumps(cert, indent=2) + "\n")
 
         qr_url_tpl = args.qr_url_template
-        if getattr(args, "portal_url", None) and "{cert_uuid}" not in args.portal_url:
-            qr_url_tpl = f"{args.portal_url.rstrip('/')}/?cert={{cert_uuid}}"
+        portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+        if portal_url_val and "{cert_uuid}" not in portal_url_val:
+            qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
 
         pdf_path = None
         if not args.no_pdf:
@@ -564,8 +587,9 @@ def cmd_wipe(args) -> int:
 
     # Resolve URL template
     qr_url_tpl = args.qr_url_template
-    if getattr(args, "portal_url", None) and "{cert_uuid}" not in args.portal_url:
-        qr_url_tpl = f"{args.portal_url.rstrip('/')}/?cert={{cert_uuid}}"
+    portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+    if portal_url_val and "{cert_uuid}" not in portal_url_val:
+        qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
 
     pdf_path = None
     if not args.no_pdf:
@@ -667,8 +691,9 @@ def cmd_erase_files(args) -> int:
             try:
                 from s0_core import pdfgen
                 qr_url_tpl = getattr(args, "qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}")
-                if getattr(args, "portal_url", None) and "{cert_uuid}" not in args.portal_url:
-                    qr_url_tpl = f"{args.portal_url.rstrip('/')}/?cert={{cert_uuid}}"
+                portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+                if portal_url_val and "{cert_uuid}" not in portal_url_val:
+                    qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
                 pdf_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.pdf"
                 qr_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.certificate, pdf_p, qr_url_template=qr_url_tpl)
@@ -1211,10 +1236,27 @@ def cmd_web(args) -> int:
         print("❌ Error: Could not locate s0 Web Dashboard files (app.py).", file=sys.stderr)
         return 1
 
+    import secrets
+    session_token = secrets.token_hex(32)
+    token_path = Path.home() / ".s0" / "web_auth_token"
+    try:
+        token_path.parent.mkdir(parents=True, exist_ok=True)
+        token_path.write_text(session_token, encoding="utf-8")
+        try:
+            os.chmod(token_path, 0o600)
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    auth_url = f"{url}/?token={session_token}"
+
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║      S0 (Sector Zero) — Unified Web Forensics Dashboard         ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
     print(f"[*] Address : {url}")
+    print(f"[*] Auth URL: {auth_url}")
+    print(f"[*] Token   : {token_path} (mode 0600)")
     print(f"[*] Binding : {host} (Strict loopback isolation)")
     print(f"[*] Status  : Live — Press CTRL+C to stop")
     print()
@@ -1230,16 +1272,20 @@ def cmd_web(args) -> int:
         str(port),
     ]
 
-    proc = subprocess.Popen(cmd, cwd=str(web_dir))
+    env = dict(os.environ)
+    env["S0_WEB_AUTH_TOKEN"] = session_token
+
+    proc = subprocess.Popen(cmd, cwd=str(web_dir), env=env)
 
     if not getattr(args, "no_browser", False):
         def _open():
             time.sleep(1.2)
             try:
-                webbrowser.open(url)
+                webbrowser.open(auth_url)
             except Exception:
                 pass
         threading.Thread(target=_open, daemon=True).start()
+
 
     try:
         proc.wait()

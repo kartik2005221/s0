@@ -49,6 +49,31 @@ def test_index_serves(client):
     r = client.get("/")
     assert r.status_code == 200
     assert b"s0" in r.content.lower()
+    assert "s0-auth-token" not in r.text
+    assert gui_app._SESSION_AUTH_TOKEN not in r.text
+
+
+def test_api_config_does_not_leak_auth_token(client):
+    r = client.get("/api/config")
+    assert r.status_code == 200
+    assert "auth_token" not in r.json()
+
+
+def test_unauthenticated_destructive_endpoints_fail_401():
+    unauth = TestClient(gui_app.app)
+    r = unauth.post("/api/wipe", json={"target": "/dev/null"})
+    assert r.status_code == 401
+    assert "Unauthorized" in r.json().get("detail", "")
+
+    r = unauth.post("/api/erase-files", json={"paths": ["/tmp/test.txt"]})
+    assert r.status_code == 401
+
+    r = unauth.post("/api/carve", json={"target": "/dev/null"})
+    assert r.status_code == 401
+
+    r = unauth.post("/api/image", json={"source": "/dev/null", "destination": "/tmp/out.dd"})
+    assert r.status_code == 401
+
 
 
 def test_devices_lists_images(client, small_image):
