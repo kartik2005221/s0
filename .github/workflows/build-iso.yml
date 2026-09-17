@@ -68,9 +68,16 @@ jobs:
             s0-live-amd64.hybrid.iso.sha256
 
       - name: Update Release Checksums
+        env:
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          TAG="${RELEASE_TAG_INPUT:-$GITHUB_REF_NAME}"
+          if ! [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid release tag format: '$TAG'"
+            exit 1
+          fi
           if gh release download "$TAG" -p "SHA256SUMS.txt" --clobber 2>/dev/null; then
             grep -v "s0-live-amd64.hybrid.iso" SHA256SUMS.txt > SHA256SUMS.tmp || true
             cat s0-live-amd64.hybrid.iso.sha256 >> SHA256SUMS.tmp
