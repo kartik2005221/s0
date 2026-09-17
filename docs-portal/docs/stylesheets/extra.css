@@ -408,53 +408,11 @@
   padding-left: calc(0.6rem - 3px) !important;
 }
 
-/* Hide redundant root site title from left index pane on desktop only */
-@media screen and (min-width: 76.25em) {
-  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title {
-    display: none !important;
-  }
+/* Hide redundant root site title from left index pane on both desktop and mobile drawer */
+.md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"],
+.md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title {
+  display: none !important;
 }
-
-/* Mobile navigation drawer back button and sub-nav titles */
-@media screen and (max-width: 76.1875em) {
-  /* 1. Root Drawer Header (Level 0 - Logo + Site Name) */
-  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] {
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.75rem !important;
-    height: auto !important;
-    min-height: 3.5rem !important;
-    padding: 0.85rem 1rem !important;
-    background-color: #000000 !important;
-    border-bottom: 1px solid #142338 !important;
-    color: #FFFFFF !important;
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    line-height: 1.4 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    cursor: pointer !important;
-  }
-
-  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo {
-    position: static !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 26px !important;
-    height: 26px !important;
-    flex-shrink: 0 !important;
-  }
-
-  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo svg,
-  .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] .md-logo img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-  }
 
   /* 2. Sub-Level Navigation Back Bar (Nested Menus & TOC) */
   .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
@@ -514,12 +472,7 @@
     mask-size: contain !important;
   }
 
-  /* Light mode drawer header overrides */
-  [data-md-color-scheme="default"] .md-sidebar--primary .md-nav[data-md-level="0"] > .md-nav__title[for="__drawer"] {
-    background-color: #FFFFFF !important;
-    border-bottom: 1px solid #E2E8F0 !important;
-    color: #0B192C !important;
-  }
+  /* Light mode sub-level back bar */
 
   [data-md-color-scheme="default"] .md-sidebar--primary .md-nav__title:not([for="__drawer"]) {
     background: #F1F5F9 !important;

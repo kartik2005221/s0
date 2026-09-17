@@ -7,7 +7,8 @@ site_url: https://s0-docs.vercel.app/
 repo_url: https://github.com/kartik2005221/s0
 repo_name: kartik2005221/s0
 copyright: >-
-  Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a>
+  <div>Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a></div>
+  <div style="margin-top: 4px; font-size: 0.76rem; opacity: 0.7;">⚖ Legal: s0 is a certified forensic sanitization suite. Only operate on media you legally own or have authorization to verify.</div>
 
 docs_dir: docs
 site_dir: public

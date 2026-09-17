@@ -122,6 +122,8 @@ body {
   background-color: var(--bg-canvas);
   background-image: 
     radial-gradient(ellipse 600px 200px at 50% 0%, rgba(255, 101, 0, 0.05), transparent 100%);
+  background-repeat: no-repeat;
+  background-position: top center;
   color: var(--text-primary);
   font-family: var(--font-sans);
   line-height: 1.5;
@@ -799,13 +801,16 @@ pre code {
   text-align: center;
   font-size: 0.84rem;
   color: var(--text-muted);
+  background: var(--bg-canvas);
 }
 .portal-footer .footer-inner {
   max-width: 1280px;
   margin: 0 auto;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 8px;
 }
 .portal-footer a {
   color: var(--primary);

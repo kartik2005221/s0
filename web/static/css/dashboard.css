@@ -259,8 +259,10 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 6px;
 }
 .app-footer a {
   color: var(--accent-cyan);
