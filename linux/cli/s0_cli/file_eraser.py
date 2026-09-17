@@ -160,7 +160,8 @@ def platform_cleanse_attributes(path_str: str, fd: Optional[int] = None) -> None
 
     if sys.platform == "darwin":
         try:
-            subprocess.run(["xattr", "-c", path_str], capture_output=True, check=False)
+            xattr_bin = "/usr/bin/xattr" if os.path.isfile("/usr/bin/xattr") else "xattr"
+            subprocess.run([xattr_bin, "-c", "-s", path_str], capture_output=True, check=False)
         except Exception:
             pass
 
@@ -174,6 +175,13 @@ def platform_cleanse_attributes(path_str: str, fd: Optional[int] = None) -> None
         try:
             zone_stream = f"{path_str}:Zone.Identifier"
             if os.path.exists(zone_stream):
+                try:
+                    with open(zone_stream, "r+b") as zf:
+                        z_sz = max(os.path.getsize(zone_stream), 1)
+                        zf.write(b"\x00" * z_sz)
+                        zf.flush()
+                except Exception:
+                    pass
                 os.unlink(zone_stream)
         except Exception:
             pass

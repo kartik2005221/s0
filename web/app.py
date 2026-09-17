@@ -1,7 +1,7 @@
 """s0 Unified Forensic & Sanitization Web Dashboard.
 
 Endpoints:
-  - GET  /                           -> Multi-tab Forensic GUI
+  - GET  /                           -> Multi-tab Forensic Web Dashboard
   - GET  /api/devices                -> List block devices & test images
   - POST /api/plan                   -> Drive wipe planning preview
   - POST /api/wipe                   -> Execute Drive Sanitization (Module 1)
@@ -75,8 +75,6 @@ if PORTAL_DIR.is_dir():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
 
 STATIC_DIR = REPO / "web" / "static"
-if not STATIC_DIR.is_dir():
-    STATIC_DIR = REPO / "gui" / "static"
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 _jobs: dict[str, dict] = {}
@@ -95,14 +93,22 @@ def _init_session_auth_token() -> None:
         except Exception:
             pass
 
-        # When running as root (e.g. s0-gui daemon on live ISO), make token available to kiosk user
+        # When running as root (e.g. s0-web daemon on live ISO), make token available to kiosk user via s0-kiosk group
         if hasattr(os, "geteuid") and os.geteuid() == 0:
             try:
                 run_dir = Path("/run/s0")
                 run_dir.mkdir(parents=True, exist_ok=True)
                 run_token = run_dir / "web_auth_token"
                 run_token.write_text(_SESSION_AUTH_TOKEN, encoding="utf-8")
-                os.chmod(run_token, 0o644)
+                # Restrict permissions: 0640 (owner root rw, group s0-kiosk r, others none)
+                try:
+                    import grp
+                    kiosk_gid = grp.getgrnam("s0-kiosk").gr_gid
+                    os.chown(run_token, 0, kiosk_gid)
+                    os.chmod(run_token, 0o640)
+                except Exception:
+                    # Fallback if s0-kiosk group does not exist
+                    os.chmod(run_token, 0o600)
             except Exception:
                 pass
     except Exception:
@@ -459,7 +465,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     if req.out_dir and req.out_dir.strip():
         out_dir = Path(req.out_dir.strip()).resolve()
     else:
-        out_dir = REPO / "demo-out" / f"gui-wipe-{job_id}"
+        out_dir = REPO / "demo-out" / f"web-wipe-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
@@ -543,7 +549,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
     if req.out_dir and req.out_dir.strip():
         out_dir = Path(req.out_dir.strip()).resolve()
     else:
-        out_dir = REPO / "demo-out" / f"gui-filewipe-{job_id}"
+        out_dir = REPO / "demo-out" / f"web-filewipe-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
@@ -658,7 +664,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
     if req.out_dir and req.out_dir.strip():
         out_dir = Path(req.out_dir.strip()).resolve()
     else:
-        out_dir = REPO / "demo-out" / f"gui-carve-{job_id}"
+        out_dir = REPO / "demo-out" / f"web-carve-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
@@ -801,7 +807,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
     if req.out_dir and req.out_dir.strip():
         out_dir = Path(req.out_dir.strip()).resolve()
     else:
-        out_dir = REPO / "demo-out" / f"gui-image-{job_id}"
+        out_dir = REPO / "demo-out" / f"web-image-{job_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
