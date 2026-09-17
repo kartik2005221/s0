@@ -215,20 +215,65 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
 # 3. Command: s0 live download
 # ---------------------------------------------------------------------------
 
+def _get_auth_token() -> Optional[str]:
+    """Retrieve GitHub token from environment or gh CLI if available."""
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        return token.strip()
+    if shutil.which("gh"):
+        try:
+            res = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=False)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+    return None
+
+
 def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
-    """Fetch GitHub Release metadata via public API."""
+    """Fetch GitHub Release metadata via public API or gh CLI."""
     if version.lower() == "latest":
         url = f"https://api.github.com/repos/{repo}/releases/latest"
     else:
         tag = version if version.startswith("v") else f"v{version}"
         url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
 
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.0')} (LiveDownloader)", "Accept": "application/vnd.github.v3+json"},
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    headers = {
+        "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.0')} (LiveDownloader)",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    token = _get_auth_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        # Fallback to gh release view if gh is installed
+        if shutil.which("gh"):
+            try:
+                tag_arg = "latest" if version.lower() == "latest" else (version if version.startswith("v") else f"v{version}")
+                gh_cmd = ["gh", "release", "view", tag_arg, "-R", repo, "--json", "tagName,assets"]
+                res = subprocess.run(gh_cmd, capture_output=True, text=True, check=False)
+                if res.returncode == 0 and res.stdout.strip():
+                    data = json.loads(res.stdout.strip())
+                    return {
+                        "tag_name": data.get("tagName", version),
+                        "assets": [
+                            {
+                                "name": a.get("name"),
+                                "size": a.get("size", 0),
+                                "browser_download_url": a.get("url"),
+                                "url": a.get("apiUrl", a.get("url")),
+                            }
+                            for a in data.get("assets", [])
+                        ],
+                    }
+            except Exception:
+                pass
+        raise
 
 
 def cmd_live_download(args: argparse.Namespace) -> int:
@@ -277,8 +322,13 @@ def cmd_live_download(args: argparse.Namespace) -> int:
     print(f"[*] Downloading {iso_name} to {target_iso}...")
     bar = ProgressBar(iso_size, operation="s0 live download")
     downloaded = 0
+    dl_headers = {"User-Agent": "s0-cli"}
+    tok = _get_auth_token()
+    if tok:
+        dl_headers["Authorization"] = f"Bearer {tok}"
+
     try:
-        req = urllib.request.Request(iso_url, headers={"User-Agent": "s0-cli"})
+        req = urllib.request.Request(iso_url, headers=dl_headers)
         with urllib.request.urlopen(req, timeout=60) as response, open(target_iso, "wb") as out_f:
             while True:
                 chunk = response.read(65536)
@@ -290,25 +340,48 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         bar.finish()
     except Exception as e:
         bar.close()
-        if target_iso.exists():
-            target_iso.unlink()
-        print(f"[-] Download failed: {e}", file=sys.stderr)
-        return 1
+        if shutil.which("gh"):
+            try:
+                print(f"[*] Fetching release asset via GitHub CLI...")
+                cmd = ["gh", "release", "download", tag_name, "-R", repo, "-p", iso_name, "--dir", str(out_dir), "--clobber"]
+                res = subprocess.run(cmd, check=False)
+                if res.returncode != 0 or not target_iso.is_file():
+                    raise e
+            except Exception:
+                if target_iso.exists():
+                    target_iso.unlink()
+                print(f"[-] Download failed: {e}", file=sys.stderr)
+                return 1
+        else:
+            if target_iso.exists():
+                target_iso.unlink()
+            print(f"[-] Download failed: {e}", file=sys.stderr)
+            return 1
 
     # Verify Checksum
     expected_sha: Optional[str] = None
     if sha_asset:
         try:
-            req = urllib.request.Request(sha_asset["browser_download_url"], headers={"User-Agent": "s0-cli"})
+            req = urllib.request.Request(sha_asset["browser_download_url"], headers=dl_headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 text = resp.read().decode("utf-8").strip()
                 expected_sha = text.split()[0].lower()
         except Exception:
-            pass
+            if shutil.which("gh"):
+                try:
+                    res = subprocess.run(
+                        ["gh", "release", "download", tag_name, "-R", repo, "-p", sha_asset["name"], "--dir", str(out_dir), "--clobber"],
+                        capture_output=True, check=False
+                    )
+                    local_sha = out_dir / sha_asset["name"]
+                    if local_sha.is_file():
+                        expected_sha = local_sha.read_text(encoding="utf-8").strip().split()[0].lower()
+                except Exception:
+                    pass
 
     if not expected_sha and sha_sums_asset:
         try:
-            req = urllib.request.Request(sha_sums_asset["browser_download_url"], headers={"User-Agent": "s0-cli"})
+            req = urllib.request.Request(sha_sums_asset["browser_download_url"], headers=dl_headers)
             with urllib.request.urlopen(req, timeout=15) as resp:
                 text = resp.read().decode("utf-8")
                 for line in text.splitlines():
@@ -316,7 +389,21 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                         expected_sha = line.split()[0].lower()
                         break
         except Exception:
-            pass
+            if shutil.which("gh"):
+                try:
+                    res = subprocess.run(
+                        ["gh", "release", "download", tag_name, "-R", repo, "-p", "SHA256SUMS.txt", "--dir", str(out_dir), "--clobber"],
+                        capture_output=True, check=False
+                    )
+                    local_sums = out_dir / "SHA256SUMS.txt"
+                    if local_sums.is_file():
+                        text = local_sums.read_text(encoding="utf-8")
+                        for line in text.splitlines():
+                            if iso_name in line or "live-amd64" in line:
+                                expected_sha = line.split()[0].lower()
+                                break
+                except Exception:
+                    pass
 
     print("[*] Verifying cryptographic integrity (SHA-256)...")
     hasher = hashlib.sha256()
