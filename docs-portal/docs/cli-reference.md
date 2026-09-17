@@ -1417,4 +1417,62 @@ s0 web [--port PORT] [--host HOST] [--no-browser]
 
 ---
 
+## `s0 live` (Alias: `s0 iso`)
+
+Acquire, inspect, and deploy bare-metal s0 Live bootable media. Automatically discovers official cloud-built hybrid ISO releases, validates cryptographic SHA-256 signatures, filters out internal OS disks, and writes directly to target USB pendrives without requiring external tools like Rufus or BalenaEtcher.
+
+### Synopsis
+```bash
+# List removable USB storage targets safely
+s0 live devices [--json]
+
+# Download verified hybrid Live ISO from GitHub Releases
+s0 live download [--version TAG] [--out-dir DIR]
+
+# Flash Live ISO directly to USB pendrive
+s0 live flash --target DEVICE [--iso PATH] [-y|--yes] [--force]
+
+# Compile bare-metal Live ISO from source (Linux native)
+s0 live build [--out-dir DIR]
+```
+
+### Subcommands & Options
+
+#### 1. `s0 live devices`
+Inspect connected storage and filter for removable USB flash drives, protecting internal system/OS drives from accidental selection.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--json` | Flag | `false` | Output machine-readable JSON array of discovered USB drives |
+
+#### 2. `s0 live download`
+Fetch official release assets directly from GitHub with automatic SHA-256 integrity validation.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.0`) |
+| `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
+
+#### 3. `s0 live flash`
+Burn the Live ISO to a target USB flash drive with automatic partition unmounting and block-stream progress reporting.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--target`, `-t` | String | *Required* | Target device path (e.g., `/dev/sdb`, `/dev/disk2`, `\\.\PhysicalDrive1`) |
+| `--iso` | Path | Auto-detect | Path to ISO image (defaults to newest `s0-live-*.iso` in current directory) |
+| `--yes`, `-y` | Flag | `false` | Bypass interactive `FLASH` prompt |
+| `--force` | Flag | `false` | Allow write even if device removable flag cannot be confirmed |
+
+#### 4. `s0 live build`
+Execute the Debian Bookworm live-build pipeline natively on Linux to generate a custom hybrid ISO.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--out-dir` | Path | `linux/iso` | Destination directory for compiled `.hybrid.iso` image |
+
+!!! note "Platform Support"
+    `s0 live download`, `s0 live devices`, and `s0 live flash` are supported natively across **Linux, macOS, and Windows**. `s0 live build` requires Debian live-build kernel features and is supported natively on Linux (or inside Docker/WSL2).
+
+---
+
 *CLI Reference · s0 (Sector Zero) · NIST SP 800-88 Rev. 1 Compliant Forensic Sanitization Suite*

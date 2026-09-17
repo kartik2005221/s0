@@ -17,6 +17,23 @@ timeline
 
 ---
 
+## [2.4.0] — 2026-09-17
+
+### Added
+- **`s0 live` & `s0 iso` Command Suite:** Added native CLI subcommands (`download`, `devices`, `flash`, `build`) to manage bare-metal Live ISO acquisition and USB burning directly from the terminal without third-party flashing utilities.
+- **Safe Removable USB Enumeration:** Implemented cross-platform physical USB drive discovery (`s0 live devices`) that automatically filters out internal system, root, and boot disks to prevent destructive misidentification.
+- **Automated ISO Download & Verification:** Built-in public GitHub Releases discovery and streaming download with real-time progress bar (`ProgressBar`) and strict SHA-256 integrity validation against release signatures.
+- **Native Block Flashing Engine:** Cross-platform raw block writer with partition unmounting (`umount`, `diskutil unmountDisk`, Win32 dismount), interactive safety confirmation prompt, and streaming progress bar.
+- **Versioned ISO Release Naming:** Updated `.github/workflows/build-iso.yml` to package and attach versioned hybrid ISOs (`s0-live-v2.4.0-amd64.hybrid.iso`) with corresponding checksum files.
+- **Cross-Platform CLI Context & Tips:** Added intelligent device path error detection (e.g. Linux path on Windows or Windows path on Linux/macOS) with actionable platform syntax tips.
+
+### Fixed
+- **Documentation Portal Desktop Sidebar Navigation:** Fixed desktop sidebar navigation regression by properly scoping mobile drawer drill-down back bars inside `@media screen and (max-width: 76.1875em)`, eliminating unwanted orange back arrows on desktop viewports.
+- **Install Portal Header Harmonization:** Standardized Install Portal header dimensions, typography, button palettes, and status indicators to exactly match the Verification Portal design system.
+- **Debian Live-Build SHA-256 Checksum:** Pinned Debian archive bookworm checksum (`a863905724e7b69d45066ebab113cb6de12a11984349847ad49f6151c10f017d`) ensuring 100% reproducible ISO builds on GitHub Actions.
+
+---
+
 ## [2.3.0] — 2026-09-17
 
 ### Security

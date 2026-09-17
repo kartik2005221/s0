@@ -176,18 +176,18 @@ s0 audit verify
 
 ---
 
-### Workflow 6: Bare-Metal Live ISO Deployment
+### Workflow 7: Bare-Metal Live ISO Deployment (`s0 live`)
 When internal or system drives cannot be unmounted within a running host operating system:
 
 ```bash
-# 1. Download official pre-built Live ISO from GitHub Releases
-gh release download v2.3.0 -R kartik2005221/s0 -p "s0-live-amd64.hybrid.iso*"
+# 1. Download official Live ISO with automatic SHA-256 verification
+s0 live download
 
-# 2. Verify cryptographic SHA-256 integrity
-sha256sum -c s0-live-amd64.hybrid.iso.sha256
+# 2. Inspect connected removable USB flash drives safely (filters out internal drives)
+s0 live devices
 
-# 3. Flash to target USB drive (CONFIRM /dev/sdX FIRST)
-sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
+# 3. Flash to target USB pendrive with real-time progress and confirmation
+sudo s0 live flash --target /dev/sdb -y
 ```
 Boot the target system directly into the air-gapped live environment to access internal drives.
 

@@ -22,31 +22,50 @@ s0 provides a complete Debian-based Live ISO recipe that boots into an automatic
 
 ---
 
-## Download Pre-Built Live ISO from GitHub Releases
+## Recommended Workflow: Automated `s0 live` Command Suite
 
-Every tagged release automatically generates and publishes the bootable hybrid ISO (`s0-live-amd64.hybrid.iso`) and accompanying cryptographic hashes:
+The fastest and safest way to acquire and deploy the Live ISO is using the built-in `s0 live` command suite:
+
+```bash
+# 1. Download official Live ISO with automatic SHA-256 verification
+s0 live download
+
+# 2. Inspect connected removable USB flash drives safely (filters out system disks)
+s0 live devices
+
+# 3. Flash to USB pendrive with real-time progress and confirmation
+sudo s0 live flash --target /dev/sdb
+# (Windows: s0 live flash --target \\.\PhysicalDrive1)
+# (macOS:   sudo s0 live flash --target /dev/disk2)
+```
+
+---
+
+## Alternative: Manual Download from GitHub Releases
+
+You can also manually download the versioned bootable hybrid ISO (`s0-live-v2.4.0-amd64.hybrid.iso`) and accompanying cryptographic hashes:
 
 ### 1. Download via GitHub CLI
 ```bash
-gh release download v2.3.0 -R kartik2005221/s0 -p "s0-live-amd64.hybrid.iso*"
+gh release download v2.4.0 -R kartik2005221/s0 -p "s0-live-*.hybrid.iso*"
 ```
 
 ### 2. Download via curl
 ```bash
-curl -fSL -o s0-live-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v2.3.0/s0-live-amd64.hybrid.iso
-curl -fSL -o s0-live-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v2.3.0/s0-live-amd64.hybrid.iso.sha256
+curl -fSL -o s0-live-v2.4.0-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v2.4.0/s0-live-v2.4.0-amd64.hybrid.iso
+curl -fSL -o s0-live-v2.4.0-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v2.4.0/s0-live-v2.4.0-amd64.hybrid.iso.sha256
 ```
 
 ### 3. Verify Cryptographic Integrity
 ```bash
-sha256sum -c s0-live-amd64.hybrid.iso.sha256
-# Expected output: s0-live-amd64.hybrid.iso: OK
+sha256sum -c s0-live-v2.4.0-amd64.hybrid.iso.sha256
+# Expected output: s0-live-v2.4.0-amd64.hybrid.iso: OK
 ```
 
 ### 4. Flash to USB Drive
 ```bash
-# Replace /dev/sdX with your actual USB drive (use lsblk to confirm)
-sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
+# Manual dd (replace /dev/sdX with verified USB target)
+sudo dd if=s0-live-v2.4.0-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 ---

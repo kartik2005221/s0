@@ -1,7 +1,7 @@
 # s0 (Sector Zero) — Master Engineering Architecture & Blueprint
 
 **Title:** Integrated Secure Data Erasure, Bit-Stream Imaging, File Recovery, and Cryptographic Ledger Suite for Digital Forensics and Media Sanitization  
-**Status:** Production Release (v2.3.0) — All Core Modules, Platform Extensions, and CI Pipelines Fully Delivered & Hardened  
+**Status:** Production Release (v2.4.0) — All Core Modules, Platform Extensions, and CI Pipelines Fully Delivered & Hardened  
 **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)  
 **Documentation:** [s0-docs.vercel.app](https://s0-docs.vercel.app)  
 **Install Portal:** [s0-install.vercel.app](https://s0-install.vercel.app)  
@@ -36,6 +36,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 6** | Blockchain Audit Ledger (Module 5) | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
 | **Phase 7** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`web/`) with session auth token (`X-S0-Auth-Token`, mode 0640), zero-backend static Verification Portal (`verification-portal/`) with WebCrypto and pinned key registry | `web/tests/test_gui.py`<br>`verification-portal/tests/` |
 | **Phase 8** | Cross-Platform Parity & Automation | **DONE** | Full CLI subcommand parity on Windows & macOS (`s0` wrapper suites), automated GitHub Actions Live ISO builder (`build-iso.yml`), automated GitHub release assets, Material for MkDocs suite (`docs-portal/`), Agentic AI Skill (`skills/s0-forensics/`) | `pytest`<br>`mkdocs build` (100% green) |
+| **Phase 9** | Live Media & USB Station (`s0 live`) | **DONE** | Native `s0 live` and `s0 iso` command suite (`download`, `devices`, `flash`, `build`), automated safe USB discovery, versioned release ISO naming, and progress bar burning | `linux/cli/tests/test_live_manager.py` |
 
 ---
 
@@ -52,7 +53,8 @@ s0/
 │   ├── file_eraser.py                  # Module 2: File & folder cluster sanitizer (atomic fd overwrite)
 │   ├── carver/                         # Module 3: ext4, NTFS, FAT32, exFAT, Entropy
 │   ├── imager.py                       # Module 4: Bit-stream acquisition & disk cloning engine
-│   └── audit/                          # Module 5: Append-only SQLite blockchain ledger
+│   ├── audit/                          # Module 5: Append-only SQLite blockchain ledger
+│   └── live_manager.py                 # Live ISO acquisition, safe USB inspection & flashing
 ├── windows/                            # Windows native subsystem & launchers (s0.bat, s0.ps1)
 │   └── cli/s0_eraser.py                # Windows eraser with subcommand dispatch & Win32 API
 ├── macos/                              # macOS native subsystem & launchers (s0.sh)

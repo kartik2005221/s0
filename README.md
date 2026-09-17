@@ -4,7 +4,7 @@
 
 **Unified Forensic Data Sanitization, Bit-Stream Acquisition & Evidence Carving Suite**
 
-[![Release](https://img.shields.io/badge/Release-v2.3.0-blue.svg)](https://github.com/kartik2005221/s0/releases)
+[![Release](https://img.shields.io/badge/Release-v2.4.0-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.vercel.app/COMPLIANCE/)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.vercel.app/CANONICAL_JSON/)
@@ -16,7 +16,7 @@
 
 ---
 
-### 🌐 Official Portals & Live Deployment
+### Official Portals & Live Deployment
 
 | Service | Live URL | Purpose |
 |---|---|---|
@@ -43,7 +43,7 @@
 
 ---
 
-## ⚖ Legal & Responsible Use Notice
+## Legal & Responsible Use Notice
 
 > **IMPORTANT:** s0 is a certified digital forensics and data sanitization suite.
 
@@ -83,7 +83,7 @@ s0 --version
 ```
 
 <details>
-<summary><b>📦 Lifecycle Management (Upgrade & Uninstall)</b></summary>
+<summary><b>Lifecycle Management (Upgrade & Uninstall)</b></summary>
 
 ```bash
 # Upgrade to latest release
@@ -148,6 +148,18 @@ s0 audit verify
 s0 verify certificate_12345678.json --key core/keys/demo_issuer_public.pem
 ```
 
+### 7. Bootable Live Media & USB Station (`s0 live`)
+```bash
+# Download official verified Live ISO with automated SHA-256 verification
+s0 live download
+
+# Inspect connected removable USB flash drives safely
+s0 live devices
+
+# Write Live ISO directly to USB pendrive
+sudo s0 live flash --target /dev/sdb -y
+```
+
 ---
 
 ## Interfaces: CLI, Web Console & Bare-Metal ISO
@@ -161,13 +173,15 @@ The Web Dashboard runs the identical cryptographic and carving engines as the CL
 
 ### 2. Bare-Metal Bootable Live ISO (Debian 12)
 When internal or system drives cannot be unmounted within a running host OS:
-1. Download pre-compiled hybrid ISO from [GitHub Releases](https://github.com/kartik2005221/s0/releases):
+1. Download verified hybrid ISO directly from CLI or GitHub Releases:
    ```bash
-   gh release download v2.3.0 -R kartik2005221/s0 -p "s0-live-amd64.hybrid.iso*"
-   sha256sum -c s0-live-amd64.hybrid.iso.sha256
+   s0 live download
    ```
-2. Flash to USB: `sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync`
-3. Boot target system directly into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.vercel.app/LIVE_ISO_BUILD_GUIDE/) for details.
+2. Flash to USB pendrive:
+   ```bash
+   sudo s0 live flash --target /dev/sdb
+   ```
+3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.vercel.app/LIVE_ISO_BUILD_GUIDE/) for details.
 
 ### 3. Verification Portal ([s0-vp.vercel.app](https://s0-vp.vercel.app/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
