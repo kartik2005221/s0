@@ -4,7 +4,7 @@ reportlab>=4.0.0
 qrcode[pil]>=7.4.2
 Pillow>=10.0.0
 
-# Web Dashboard GUI & API dependencies
+# Web Dashboard & API dependencies
 fastapi>=0.110.0
 uvicorn>=0.28.0
 starlette>=0.36.0

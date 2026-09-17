@@ -129,7 +129,7 @@ Write-Host "  ┌─────────────────────
 Write-Host "  │ Component / Architecture Phase                               │ Status        │"
 Write-Host "  ├─────────────────────────────────────────────────────────────┼───────────────┤"
 Write-Host "  │ Phase 1: Core Crypto, Canonical JSON, PDF Engine             │ " -NoNewline; Write-Host "✅ PASSED" -ForegroundColor Green -NoNewline; Write-Host "     │"
-Write-Host "  │ Phase 2: Linux CLI, Unified Web GUI, e2e Test Suite          │ " -NoNewline; Write-Host "✅ PASSED" -ForegroundColor Green -NoNewline; Write-Host "     │"
+Write-Host "  │ Phase 2: Linux CLI, Unified Web Dashboard, e2e Test Suite    │ " -NoNewline; Write-Host "✅ PASSED" -ForegroundColor Green -NoNewline; Write-Host "     │"
 Write-Host "  │ Phase 3: Cross-Platform Sanitizers (Windows & macOS Native)  │ " -NoNewline; Write-Host "✅ PASSED" -ForegroundColor Green -NoNewline; Write-Host "     │"
 Write-Host "  │ Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)    │ " -NoNewline; Write-Host "⊘ UNVERIFIED" -ForegroundColor Yellow -NoNewline; Write-Host " │"
 Write-Host "  │ Phase 5: Multi-FS Carver (ext4 + NTFS + exFAT + FAT32)      │ " -NoNewline; Write-Host "✅ PASSED" -ForegroundColor Green -NoNewline; Write-Host "     │"

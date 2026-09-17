@@ -1,5 +1,5 @@
 #!/bin/sh
-# Wait until the local s0 GUI answers (max ~30 s), then hand over to kiosk.
+# Wait until the local s0 web dashboard answers (max ~30 s), then hand over to kiosk.
 i=0
 while [ "$i" -lt 60 ]; do
     if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/devices', timeout=1)" 2>/dev/null; then
@@ -8,5 +8,5 @@ while [ "$i" -lt 60 ]; do
     i=$((i + 1))
     sleep 0.5
 done
-echo "s0 GUI did not come up on 127.0.0.1:8000" >&2
+echo "s0 web dashboard did not come up on 127.0.0.1:8000" >&2
 exit 1

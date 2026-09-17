@@ -158,7 +158,7 @@ printf "${_bold}  ┌───────────────────�
 printf "${_bold}  │ Component / Architecture Phase                               │ Status        │${_reset}\n"
 printf "${_bold}  ├─────────────────────────────────────────────────────────────┼───────────────┤${_reset}\n"
 printf "  │ Phase 1: Core Crypto, Canonical JSON, PDF Engine             │ ${_green}✅ PASSED${_reset}     │\n"
-printf "  │ Phase 2: Linux CLI, Unified Web GUI, e2e Test Suite          │ ${_green}✅ PASSED${_reset}     │\n"
+printf "  │ Phase 2: Linux CLI, Unified Web Dashboard, e2e Test Suite    │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 3: Cross-Platform Sanitizers (Windows & macOS Native)  │ ${_green}✅ PASSED${_reset}     │\n"
 printf "  │ Phase 4: Bare-Metal Bootable Live ISO Recipes (linux/iso)    │ %b │\n" "$ISO_STATUS"
 printf "  │ Phase 5: Multi-FS Carver (ext4 + NTFS + exFAT + FAT32)      │ ${_green}✅ PASSED${_reset}     │\n"

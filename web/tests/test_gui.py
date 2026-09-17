@@ -1,4 +1,4 @@
-"""GUI API tests — headless via FastAPI TestClient."""
+"""Web Dashboard API tests — headless via FastAPI TestClient."""
 
 import json
 import sys
