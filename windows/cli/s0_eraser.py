@@ -958,7 +958,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     subcommands = {
         "list", "plan", "wipe", "erase", "erase-files", "carve",
         "audit", "verify", "keygen", "image", "clone", "upgrade",
-        "uninstall", "web", "live", "iso",
+        "uninstall", "web", "live",
     }
     if raw_args and raw_args[0] in subcommands:
         try:

@@ -665,32 +665,31 @@ def cmd_live_build(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
-    """Register 'live' (and alias 'iso') subparsers."""
-    for cmd_name in ("live", "iso"):
-        p = subparsers.add_parser(cmd_name, help="download, inspect, and flash bootable s0 Live ISO to USB")
-        sub = p.add_subparsers(dest="live_action", required=True)
+    """Register 'live' subparser."""
+    p = subparsers.add_parser("live", help="download, inspect, and flash bootable s0 Live ISO to USB")
+    sub = p.add_subparsers(dest="live_action", required=True)
 
-        # download
-        d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
-        d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
-        d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
-        d_p.add_argument("--repo", default=GITHUB_REPO, help=argparse.SUPPRESS)
-        d_p.set_defaults(func=cmd_live_download)
+    # download
+    d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
+    d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
+    d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
+    d_p.add_argument("--repo", default=GITHUB_REPO, help=argparse.SUPPRESS)
+    d_p.set_defaults(func=cmd_live_download)
 
-        # devices
-        dev_p = sub.add_parser("devices", help="safely list connected removable USB flash drives")
-        dev_p.add_argument("--json", action="store_true", help="output JSON array")
-        dev_p.set_defaults(func=cmd_live_devices)
+    # devices
+    dev_p = sub.add_parser("devices", help="safely list connected removable USB flash drives")
+    dev_p.add_argument("--json", action="store_true", help="output JSON array")
+    dev_p.set_defaults(func=cmd_live_devices)
 
-        # flash
-        f_p = sub.add_parser("flash", help="write s0 Live ISO to removable USB drive")
-        f_p.add_argument("--target", "-t", required=True, help="target device path (from 's0 live devices')")
-        f_p.add_argument("--iso", help="path to custom or downloaded ISO (defaults to auto-detecting in current dir)")
-        f_p.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation")
-        f_p.add_argument("--force", action="store_true", help="allow flashing even if drive removable flag is unconfirmed")
-        f_p.set_defaults(func=cmd_live_flash)
+    # flash
+    f_p = sub.add_parser("flash", help="write s0 Live ISO to removable USB drive")
+    f_p.add_argument("--target", "-t", required=True, help="target device path (from 's0 live devices')")
+    f_p.add_argument("--iso", help="path to custom or downloaded ISO (defaults to auto-detecting in current dir)")
+    f_p.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation")
+    f_p.add_argument("--force", action="store_true", help="allow flashing even if drive removable flag is unconfirmed")
+    f_p.set_defaults(func=cmd_live_flash)
 
-        # build
-        b_p = sub.add_parser("build", help="build s0 Live ISO from source (Linux native or Docker/WSL2)")
-        b_p.add_argument("--out-dir", default="linux/iso", help="output destination directory")
-        b_p.set_defaults(func=cmd_live_build)
+    # build
+    b_p = sub.add_parser("build", help="build s0 Live ISO from source (Linux native or Docker/WSL2)")
+    b_p.add_argument("--out-dir", default="linux/iso", help="output destination directory")
+    b_p.set_defaults(func=cmd_live_build)

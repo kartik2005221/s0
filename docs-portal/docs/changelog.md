@@ -20,7 +20,7 @@ timeline
 ## [2.4.0] — 2026-09-17
 
 ### Added
-- **`s0 live` & `s0 iso` Command Suite:** Added native CLI subcommands (`download`, `devices`, `flash`, `build`) to manage bare-metal Live ISO acquisition and USB burning directly from the terminal without third-party flashing utilities.
+- **`s0 live` Command Suite:** Added native CLI subcommands (`download`, `devices`, `flash`, `build`) to manage bare-metal Live ISO acquisition and USB burning directly from the terminal without third-party flashing utilities.
 - **Safe Removable USB Enumeration:** Implemented cross-platform physical USB drive discovery (`s0 live devices`) that automatically filters out internal system, root, and boot disks to prevent destructive misidentification.
 - **Automated ISO Download & Verification:** Built-in public GitHub Releases discovery and streaming download with real-time progress bar (`ProgressBar`) and strict SHA-256 integrity validation against release signatures.
 - **Native Block Flashing Engine:** Cross-platform raw block writer with partition unmounting (`umount`, `diskutil unmountDisk`, Win32 dismount), interactive safety confirmation prompt, and streaming progress bar.

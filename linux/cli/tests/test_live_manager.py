@@ -36,12 +36,6 @@ def test_register_live_parser():
     assert args.live_action == "devices"
     assert args.json is True
 
-    # Test 'iso' alias
-    args_iso = parser.parse_args(["iso", "download", "--version", "v2.4.0"])
-    assert args_iso.command == "iso"
-    assert args_iso.live_action == "download"
-    assert args_iso.version == "v2.4.0"
-
 
 def test_cmd_live_devices_empty():
     with patch("s0_cli.live_manager.get_removable_usb_devices", return_value=[]):

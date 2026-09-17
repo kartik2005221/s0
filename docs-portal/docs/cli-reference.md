@@ -1417,7 +1417,7 @@ s0 web [--port PORT] [--host HOST] [--no-browser]
 
 ---
 
-## `s0 live` (Alias: `s0 iso`)
+## `s0 live`
 
 Acquire, inspect, and deploy bare-metal s0 Live bootable media. Automatically discovers official cloud-built hybrid ISO releases, validates cryptographic SHA-256 signatures, filters out internal OS disks, and writes directly to target USB pendrives without requiring external tools like Rufus or BalenaEtcher.
 

@@ -36,7 +36,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 6** | Blockchain Audit Ledger (Module 5) | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
 | **Phase 7** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`web/`) with session auth token (`X-S0-Auth-Token`, mode 0640), zero-backend static Verification Portal (`verification-portal/`) with WebCrypto and pinned key registry | `web/tests/test_gui.py`<br>`verification-portal/tests/` |
 | **Phase 8** | Cross-Platform Parity & Automation | **DONE** | Full CLI subcommand parity on Windows & macOS (`s0` wrapper suites), automated GitHub Actions Live ISO builder (`build-iso.yml`), automated GitHub release assets, Material for MkDocs suite (`docs-portal/`), Agentic AI Skill (`skills/s0-forensics/`) | `pytest`<br>`mkdocs build` (100% green) |
-| **Phase 9** | Live Media & USB Station (`s0 live`) | **DONE** | Native `s0 live` and `s0 iso` command suite (`download`, `devices`, `flash`, `build`), automated safe USB discovery, versioned release ISO naming, and progress bar burning | `linux/cli/tests/test_live_manager.py` |
+| **Phase 9** | Live Media & USB Station (`s0 live`) | **DONE** | Native `s0 live` command suite (`download`, `devices`, `flash`, `build`), automated safe USB discovery, versioned release ISO naming, and progress bar burning | `linux/cli/tests/test_live_manager.py` |
 
 ---
 
