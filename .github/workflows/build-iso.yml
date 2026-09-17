@@ -24,11 +24,31 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build s0 Live ISO via Docker
+      - name: Install Debian Live-Build Toolchain
         run: |
-          chmod +x scripts/build_iso.sh linux/iso/build.sh linux/iso/auto/build.sh
-          ./scripts/build_iso.sh
-          sudo chown -R runner:runner .
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            live-build \
+            debootstrap \
+            debian-archive-keyring \
+            xorriso \
+            squashfs-tools \
+            isolinux \
+            syslinux-common \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools \
+            rsync
+
+      - name: Build s0 Live ISO
+        run: |
+          chmod +x linux/iso/build.sh linux/iso/auto/build.sh
+          cd linux/iso
+          sudo ./auto/build.sh
+          sudo cp live-image-amd64.hybrid.iso "$GITHUB_WORKSPACE/s0-live-amd64.hybrid.iso"
+          sudo chown runner:runner "$GITHUB_WORKSPACE/s0-live-amd64.hybrid.iso"
+
 
       - name: Prepare Artifacts & Checksums
         run: |
