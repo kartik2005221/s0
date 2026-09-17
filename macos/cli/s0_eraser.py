@@ -771,14 +771,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     subcommands = {
         "list", "plan", "wipe", "erase", "erase-files", "carve",
         "audit", "verify", "keygen", "image", "clone", "upgrade",
-        "uninstall", "web",
+        "uninstall", "web", "live", "iso",
     }
     if raw_args and raw_args[0] in subcommands:
         try:
             from s0_cli.main import main as unified_main
             return unified_main(raw_args)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[-] Error executing '{raw_args[0]}' on macOS: {exc}", file=sys.stderr)
+            return 1
+
+    if raw_args and not raw_args[0].startswith("-") and raw_args[0] not in subcommands:
+        print(f"[-] Error: '{raw_args[0]}' is not a recognized s0 command on macOS.", file=sys.stderr)
+        print(f"    Available commands: {', '.join(sorted(subcommands))}", file=sys.stderr)
+        print("    Tip: Run 's0 --help' to see command documentation and options.", file=sys.stderr)
+        return 2
 
     parser = argparse.ArgumentParser(description="s0 macOS Secure Sanitization Tool (Files, Partitions, Drives)")
     parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.3.0')}")

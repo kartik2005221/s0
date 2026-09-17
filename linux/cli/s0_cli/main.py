@@ -23,6 +23,12 @@ Subcommands:
   6. Lifecycle & Management:
      s0 upgrade                    upgrade s0 suite from GitHub
      s0 uninstall                  safely remove s0 from the system
+
+  7. Bootable Live Media (Live ISO & USB Station):
+     s0 live download              download official s0 Live ISO with SHA-256 check
+     s0 live devices               list removable USB flash drives safely
+     s0 live flash --target DEV    flash bootable Live ISO to USB pendrive
+     s0 live build                 build Live ISO from source
 """
 
 from __future__ import annotations
@@ -115,18 +121,34 @@ def _print_legal_notice() -> None:
 
 
 def _resolve_target(path: str) -> DevTarget:
-    if sys.platform == "win32" and (
-        (":" in path and len(path.strip()) <= 3)
-        or "physicaldrive" in path.lower()
-        or path.startswith(r"\\.\\")
-    ):
-        sz = 0
-        try:
-            from windows.cli.s0_eraser import get_windows_target_size
-            sz = get_windows_target_size(path)
-        except Exception:
-            pass
-        return DevTarget(path=path, kind="block", capacity_bytes=sz, storage_type="UNKNOWN")
+    if sys.platform == "win32":
+        if path.startswith("/dev/"):
+            raise SafetyError(
+                f"'{path}' is a Linux/UNIX device path and is not valid on Windows.\n"
+                f"  Tip: On Windows, use drive letters (e.g. D:, E:) or physical drive paths (\\\\.\\PhysicalDrive1).\n"
+                f"  Run 's0 list' to inspect detected drive targets on this machine."
+            )
+        if (
+            (":" in path and len(path.strip()) <= 3)
+            or "physicaldrive" in path.lower()
+            or path.startswith(r"\\.\\")
+        ):
+            sz = 0
+            try:
+                from windows.cli.s0_eraser import get_windows_target_size
+                sz = get_windows_target_size(path)
+            except Exception:
+                pass
+            return DevTarget(path=path, kind="block", capacity_bytes=sz, storage_type="UNKNOWN")
+
+    if sys.platform != "win32" and ((":" in path and len(path.strip()) <= 3) or path.startswith(r"\\.\\") or "physicaldrive" in path.lower()):
+        os_name = "macOS" if sys.platform == "darwin" else "Linux"
+        tip_example = "/dev/disk2" if sys.platform == "darwin" else "/dev/sdb or /dev/nvme0n1"
+        raise SafetyError(
+            f"'{path}' is a Windows device path and is not valid on {os_name}.\n"
+            f"  Tip: On {os_name}, use block/raw device nodes such as {tip_example}.\n"
+            f"  Run 's0 list' to inspect detected drive targets on this machine."
+        )
 
     if sys.platform == "darwin" and (path.startswith("/dev/rdisk") or path.startswith("/dev/disk")):
         sz = 0
@@ -1496,6 +1518,14 @@ def build_parser() -> argparse.ArgumentParser:
     wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
     wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
     wb.set_defaults(func=cmd_web)
+
+    # 10. Bootable Live Media (Live ISO & USB Station)
+    try:
+        from .live_manager import register_live_parser
+        register_live_parser(sub)
+    except ImportError:
+        from s0_cli.live_manager import register_live_parser
+        register_live_parser(sub)
 
     return p
 
