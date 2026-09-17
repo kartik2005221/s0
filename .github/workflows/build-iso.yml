@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to attach ISO to (e.g. v2.3.0)'
+        description: 'Release tag to attach ISO to (e.g. v2.4.0)'
         required: false
-        default: 'v2.3.0'
+        default: 'v2.4.0'
 
 permissions:
   contents: write
@@ -20,6 +20,24 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Resolve Release Tag & ISO Name
+        id: meta
+        env:
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
+          GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${RELEASE_TAG_INPUT:-${GITHUB_RELEASE_TAG:-$GITHUB_REF_NAME}}"
+          if ! [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid release tag format: '$TAG'"
+            exit 1
+          fi
+          ISO_NAME="s0-live-${TAG}-amd64.hybrid.iso"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "iso_name=$ISO_NAME" >> "$GITHUB_OUTPUT"
+          echo "Target tag: $TAG"
+          echo "ISO name:   $ISO_NAME"
 
       - name: Install Debian Live-Build Toolchain
         run: |
@@ -46,51 +64,47 @@ jobs:
           chmod +x linux/iso/build.sh linux/iso/auto/build.sh
           cd linux/iso
           sudo ./auto/build.sh
-          sudo cp live-image-amd64.hybrid.iso "$GITHUB_WORKSPACE/s0-live-amd64.hybrid.iso"
-          sudo chown runner:runner "$GITHUB_WORKSPACE/s0-live-amd64.hybrid.iso"
+          ISO_TARGET="$GITHUB_WORKSPACE/${{ steps.meta.outputs.iso_name }}"
+          sudo cp live-image-amd64.hybrid.iso "$ISO_TARGET"
+          sudo chown runner:runner "$ISO_TARGET"
 
       - name: Prepare Artifacts & Checksums
         run: |
-          test -f s0-live-amd64.hybrid.iso || { echo "Error: s0-live-amd64.hybrid.iso not found"; exit 1; }
-          sha256sum s0-live-amd64.hybrid.iso > s0-live-amd64.hybrid.iso.sha256
-          cat s0-live-amd64.hybrid.iso.sha256
+          ISO="${{ steps.meta.outputs.iso_name }}"
+          test -f "$ISO" || { echo "Error: $ISO not found"; exit 1; }
+          sha256sum "$ISO" > "${ISO}.sha256"
+          cat "${ISO}.sha256"
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: s0-live-amd64.hybrid.iso
+          name: ${{ steps.meta.outputs.iso_name }}
           path: |
-            s0-live-amd64.hybrid.iso
-            s0-live-amd64.hybrid.iso.sha256
+            ${{ steps.meta.outputs.iso_name }}
+            ${{ steps.meta.outputs.iso_name }}.sha256
 
       - name: Update Release Checksums
         env:
-          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag }}
-          GITHUB_RELEASE_TAG: ${{ github.event.release.tag_name }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          ISO: ${{ steps.meta.outputs.iso_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${RELEASE_TAG_INPUT:-${GITHUB_RELEASE_TAG:-$GITHUB_REF_NAME}}"
-          if ! [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "Error: Invalid release tag format: '$TAG'"
-            exit 1
-          fi
           if gh release download "$TAG" -p "SHA256SUMS.txt" --clobber 2>/dev/null; then
-            grep -v "s0-live-amd64.hybrid.iso" SHA256SUMS.txt > SHA256SUMS.tmp || true
-            cat s0-live-amd64.hybrid.iso.sha256 >> SHA256SUMS.tmp
+            grep -v -E "s0-live-.*\.iso" SHA256SUMS.txt > SHA256SUMS.tmp || true
+            cat "${ISO}.sha256" >> SHA256SUMS.tmp
             mv SHA256SUMS.tmp SHA256SUMS.txt
           else
-            cat s0-live-amd64.hybrid.iso.sha256 > SHA256SUMS.txt
+            cat "${ISO}.sha256" > SHA256SUMS.txt
           fi
           cat SHA256SUMS.txt
 
       - name: Attach ISO to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tag }}
           files: |
-            s0-live-amd64.hybrid.iso
-            s0-live-amd64.hybrid.iso.sha256
+            ${{ steps.meta.outputs.iso_name }}
+            ${{ steps.meta.outputs.iso_name }}.sha256
             SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
