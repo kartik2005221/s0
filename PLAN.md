@@ -3,9 +3,9 @@
 **Title:** Integrated Secure Data Erasure, Bit-Stream Imaging, File Recovery, and Cryptographic Ledger Suite for Digital Forensics and Media Sanitization  
 **Status:** Production Release (v2.4.1) — All Core Modules, Platform Extensions, and CI Pipelines Fully Delivered & Hardened  
 **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)  
-**Documentation:** [s0-docs.vercel.app](https://s0-docs.vercel.app)  
-**Install Portal:** [s0-install.vercel.app](https://s0-install.vercel.app)  
-**Verification Portal:** [s0-vp.vercel.app](https://s0-vp.vercel.app)  
+**Documentation:** [s0-docs.pages.dev](https://s0-docs.pages.dev)  
+**Install Portal:** [s0-install.pages.dev](https://s0-install.pages.dev)  
+**Verification Portal:** [s0-verify.pages.dev](https://s0-verify.pages.dev)  
 
 ---
 
@@ -65,9 +65,9 @@ s0/
 ├── linux/iso/                          # Bare-metal Debian 12 Live bootable ISO recipe
 │   ├── config/                         # live-build chroot hooks, packages & systemd units
 │   └── auto/build.sh                   # ISO compilation script
-├── verification-portal/                # 100% client-side WebCrypto verifier (s0-vp.vercel.app)
-├── install-portal/                     # Resilient web installer portal (s0-install.vercel.app)
-├── docs-portal/                        # Production documentation suite (s0-docs.vercel.app)
+├── verification-portal/                # 100% client-side WebCrypto verifier (s0-verify.pages.dev)
+├── install-portal/                     # Resilient web installer portal (s0-install.pages.dev)
+├── docs-portal/                        # Production documentation suite (s0-docs.pages.dev)
 ├── skills/s0-forensics/                # Agentic AI Skill specification & reference manuals
 └── scripts/                            # Master build, test, install & release orchestrators
 ```

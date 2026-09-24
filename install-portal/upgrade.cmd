@@ -1,6 +1,6 @@
 @echo off
 REM S0 (Sector Zero) — Resilient Upgrader for Windows (CMD)
-REM Usage: curl -fsSL https://s0-install.vercel.app/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
+REM Usage: curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 setlocal EnableDelayedExpansion
 
 set "INSTALL_DIR=%USERPROFILE%\.s0"
@@ -19,7 +19,7 @@ echo [%STEP%/%TOTAL%] Checking existing installation...
 if not exist "%INSTALL_DIR%" (
     echo   [WARNING] S0 is not installed at %INSTALL_DIR%.
     echo   To install S0, run in CMD:
-    echo     curl -fsSL https://s0-install.vercel.app/cmd -o s0-install.cmd ^&^& s0-install.cmd ^&^& del s0-install.cmd
+    echo     curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd ^&^& s0-install.cmd ^&^& del s0-install.cmd
     exit /b 1
 )
 if not exist "%INSTALL_DIR%\.git" (

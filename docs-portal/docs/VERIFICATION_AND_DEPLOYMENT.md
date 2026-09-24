@@ -26,16 +26,16 @@ verification-portal/
 ### 1.2 Deployment Options (Zero-Backend Static Hosting)
 Because the portal contains no server execution code (no Node, no Python, no PHP, no SQL):
 
-1. **Cloudflare Pages:**
+1. **Cloudflare Pages (Official Production):**
+   - *Production instance live at:* [https://s0-verify.pages.dev/](https://s0-verify.pages.dev/)
    - Connect repository or upload `verification-portal/` folder.
-   - Build command: *(leave empty)*
+   - Build command: *(leave empty / static)*
    - Output directory: `verification-portal`
 2. **GitHub Pages:**
    - In repo Settings -> Pages -> Source: Deploy from branch -> Folder: `/verification-portal` (or copy to root of a `gh-pages` branch).
-3. **Vercel / Netlify:**
+3. **Static Edge / Netlify Hosting:**
    - Framework preset: *Other / Static HTML*
    - Root directory: `verification-portal`
-   - *Production instance live at:* [https://s0-vp.vercel.app/](https://s0-vp.vercel.app/)
 4. **Self-Hosted Air-Gapped / Intranet Nginx:**
    ```nginx
    server {

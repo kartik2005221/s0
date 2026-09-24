@@ -89,7 +89,7 @@ timeline
 
 ### Fixed
 - **Mobile Documentation Navigation & Back Button:** Overhauled the mobile drawer header and sub-menu navigation layout in `extra.css`. Fixed back button arrow alignment, eliminated duplicate text clipping and unnecessary "(Tap to return)" annotations, and restored clean horizontal centering for root branding.
-- **Vercel Monorepo Deployment:** Removed `docs-portal/` from `.vercelignore` at the repository root, ensuring Vercel automated git deployments correctly retain documentation sources and build scripts.
+- **Monorepo Production Deployment:** Optimized deployment ignore rules at the repository root, ensuring automated git deployments correctly retain documentation sources and build scripts.
 - **Debian Live ISO Build Workflow (`build-iso.yml`):** Corrected recursive directory self-copy bug in `linux/iso/auto/build.sh` when staging the repository snapshot. Migrated CI runner to use Docker containerization via `scripts/build_iso.sh` for hermetic Debian Bookworm builds, added `permissions: contents: write`, and enabled automated attachment of `s0-live-amd64.hybrid.iso` to GitHub Releases.
 - **Web GUI Missing Import:** Added missing `import tempfile` in `web/app.py` for fallback key directory creation.
 
@@ -108,7 +108,7 @@ timeline
 
 ### Added
 - **`s0 uninstall` CLI Subcommand:** Added native uninstallation command that removes `~/.s0/`, `/usr/local/bin/s0`, and shell environment PATH entries, featuring interactive safety confirmation (`--yes` bypass) and optional blockchain audit ledger preservation (`--keep-audit`).
-- **Install Portal Redesign:** Redesigned `s0-install.vercel.app` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
+- **Install Portal Redesign:** Redesigned `s0-install.pages.dev` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
 - **Automated CI/CD Workflows:** Configured GitHub Actions workflows: `ci.yml` running pytest test suites across Python 3.11 and 3.12 matrices on push and pull requests, and `release.yml` automating release artifact packaging (`.tar.gz`, `SHA256SUMS.txt`), changelog extraction, and GitHub Releases publication.
 
 ### Changed
@@ -152,7 +152,7 @@ timeline
 ## [2.0.0] — 2026-09-09
 
 ### Added
-- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs.vercel.app](https://s0-docs.vercel.app/) with automated Vercel CI/CD via standalone `uv` runner.
+- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs.pages.dev](https://s0-docs.pages.dev/) with automated CI/CD via standalone `uv` runner.
 - **Forensic Color Theme:** Integrated the ColorHunt `#222831` `#393E46` `#00ADB5` `#EEEEEE` palette with customized code blocks, admonitions, and typography.
 - **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.

@@ -6,7 +6,7 @@
 [![NIST SP 800-88](https://img.shields.io/badge/NIST%20SP%20800--88-Rev.1%20Compliant-00ADB5?style=for-the-badge&labelColor=222831)](COMPLIANCE.md)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519%20RFC%208032-00ADB5?style=for-the-badge&labelColor=222831)](certificate-format.md)
 [![Tests](https://img.shields.io/badge/Tests-190%2B%20Passing-4CAF50?style=for-the-badge&labelColor=222831)](TEST_PLAN.md)
-[![Portal](https://img.shields.io/badge/Verification%20Portal-Live-brightgreen?style=for-the-badge&labelColor=222831)](https://s0-vp.vercel.app/)
+[![Portal](https://img.shields.io/badge/Verification%20Portal-Live-brightgreen?style=for-the-badge&labelColor=222831)](https://s0-verify.pages.dev/)
 
 </div>
 
@@ -100,7 +100,7 @@ Most sanitization tools tell you a drive was wiped. s0 **proves it mathematicall
 Every sanitization certificate carries an **Ed25519 digital signature** (RFC 8032) computed over **s0 Canonical JSON v1**. The canonicalization engine eliminates JSON whitespace, key ordering, and floating-point divergences. The certificate content and its signature are mathematically inseparable: if the operation data is modified by even one bit, the signature check fails.
 
 #### :material-wifi-off: Air-Gapped Verification
-The [Verification Portal](https://s0-vp.vercel.app/) runs **100% in browser memory**. It downloads zero external CDN scripts and makes zero server requests. The portal can be saved to a thumb drive and executed via `file:///` on an isolated air-gapped machine in a secure facility or courtroom.
+The [Verification Portal](https://s0-verify.pages.dev/) runs **100% in browser memory**. It downloads zero external CDN scripts and makes zero server requests. The portal can be saved to a thumb drive and executed via `file:///` on an isolated air-gapped machine in a secure facility or courtroom.
 
 #### :material-scale-balance: Absolute Engineering Honesty
 We disclose every technical boundary. Hardware limitations, Flash Translation Layer (FTL) wear-leveling nuances on solid-state media, and Copy-on-Write (Btrfs, ZFS, APFS) filesystem behaviors are logged explicitly as signed warnings in certificates.

@@ -811,7 +811,7 @@ def cmd_erase_files(args) -> int:
         if not getattr(args, "no_pdf", False):
             try:
                 from s0_core import pdfgen
-                qr_url_tpl = getattr(args, "qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}")
+                qr_url_tpl = getattr(args, "qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}")
                 portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
                 if portal_url_val and "{cert_uuid}" not in portal_url_val:
                     qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
@@ -1147,7 +1147,7 @@ def cmd_uninstall(args) -> int:
 
     if sys.platform == "win32":
         print("[*] On Windows, run the official uninstallation script:")
-        print("    curl -fsSL https://s0-install.vercel.app/uninstall-ps1 -o s0-uninstall.ps1")
+        print("    curl -fsSL https://s0-install.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
         print("    # Inspect s0-uninstall.ps1 before running, then run:")
         print("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
         return 0
@@ -1170,7 +1170,7 @@ def cmd_uninstall(args) -> int:
     if not repo_dir:
         print("[ERROR] Could not locate S0 installation directory.", file=sys.stderr)
         print("To manually uninstall S0, download and run the script:")
-        print("  curl -fsSL https://s0-install.vercel.app/uninstall-sh -o s0-uninstall.sh")
+        print("  curl -fsSL https://s0-install.pages.dev/uninstall-sh -o s0-uninstall.sh")
         print("  # Inspect s0-uninstall.sh before running, then run:")
         print("  bash s0-uninstall.sh")
         return 1
@@ -1539,13 +1539,13 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument("--json", action="store_true", help="machine-readable stdout")
     wp.add_argument(
         "--portal-url",
-        default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
-        help="verification portal base URL (default: https://s0-vp.vercel.app/)",
+        default=CONFIG.get("verification_portal_url", "https://s0-verify.pages.dev/"),
+        help="verification portal base URL (default: https://s0-verify.pages.dev/)",
     )
     wp.add_argument(
         "--qr-url-template",
         dest="qr_url_template",
-        default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"),
+        default=CONFIG.get("qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}"),
         help="URL template for encoded verification QR code",
     )
     wp.set_defaults(func=cmd_wipe)

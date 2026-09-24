@@ -65,7 +65,7 @@ Before installing, confirm that the following are present on your system.
 
     ```bash
     # Universal Linux installer via s0-install portal
-    curl -fsSL https://s0-install.vercel.app/sh | bash
+    curl -fsSL https://s0-install.pages.dev/sh | bash
     ```
 
     !!! tip "What the installer does"
@@ -77,7 +77,7 @@ Before installing, confirm that the following are present on your system.
 
     ```bash
     # Universal macOS installer via s0-install portal
-    curl -fsSL https://s0-install.vercel.app/sh | bash
+    curl -fsSL https://s0-install.pages.dev/sh | bash
     ```
 
     !!! warning "Homebrew Python"
@@ -89,7 +89,7 @@ Before installing, confirm that the following are present on your system.
 
     ```powershell
     # Automated Windows PowerShell installer via s0-install portal
-    irm https://s0-install.vercel.app/ps1 | iex
+    irm https://s0-install.pages.dev/ps1 | iex
     ```
 
     !!! warning "Execution policy"
@@ -104,7 +104,7 @@ Before installing, confirm that the following are present on your system.
 
     ```cmd
     :: Automated Windows CMD installer via s0-install portal
-    curl -fsSL https://s0-install.vercel.app/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+    curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
     ```
 
 === "Manual (All Platforms)"
@@ -174,10 +174,10 @@ s0 upgrade
 Alternatively, re-run the fast upgrade script:
 ```bash
 # Linux / macOS
-curl -fsSL https://s0-install.vercel.app/upgrade-sh | bash
+curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 
 # Windows PowerShell
-irm https://s0-install.vercel.app/upgrade-ps1 | iex
+irm https://s0-install.pages.dev/upgrade-ps1 | iex
 ```
 
 ### Uninstallation
@@ -399,7 +399,7 @@ certificate_a3f19c22.pdf       # (2) Official printable PDF with QR
 certificate_a3f19c22.qr.png    # (3) Standalone verification QR code
 ```
 
-1. **Machine-readable** — Canonical JSON payload with Ed25519 signature. Submit to `s0 verify` or drag-and-drop into the [Verification Portal](https://s0-vp.vercel.app/).
+1. **Machine-readable** — Canonical JSON payload with Ed25519 signature. Submit to `s0 verify` or drag-and-drop into the [Verification Portal](https://s0-verify.pages.dev/).
 2. **Human-readable** — Formatted PDF report: operator name, organization, target device, method, sectors verified, timestamp, and embedded QR code. Court-admissible artifact.
 3. **Optical verification** — Standalone QR image. Scan with any smartphone camera → opens the certificate pre-loaded in the Verification Portal.
 
@@ -454,7 +454,7 @@ You have three independent ways to verify any s0 certificate, all of which work 
 
 === "Browser (Drag & Drop)"
 
-    1. Open [s0-vp.vercel.app](https://s0-vp.vercel.app/) — or open `verification-portal/index.html` locally for full air-gap operation.
+    1. Open [s0-verify.pages.dev](https://s0-verify.pages.dev/) — or open `verification-portal/index.html` locally for full air-gap operation.
     2. Drag and drop `certificate_a3f19c22.json` onto the portal.
     3. The portal verifies the Ed25519 signature using pure WebCrypto — **no data is ever uploaded to a server**.
 
@@ -496,18 +496,19 @@ To eliminate the need for passing repeated command-line arguments and ensure org
 
 ```json
 {
-  "version": "2.0.0",
+  "version": "2.4.1",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
-  "documentation_url": "https://s0-docs.vercel.app/",
-  "verification_portal_url": "https://s0-vp.vercel.app/",
+  "documentation_url": "https://s0-docs.pages.dev/",
+  "verification_portal_url": "https://s0-verify.pages.dev/",
+  "install_portal_url": "https://s0-install.pages.dev/",
   "github_url": "https://github.com/kartik2005221/s0",
   "default_operator": "op-forensic",
   "default_organization": "Digital Forensics & Data Sanitization Lab",
   "default_key_path": "core/keys/demo_issuer_private.pem",
   "default_public_key_path": "core/keys/demo_issuer_public.pem",
   "default_out_dir": "demo-out",
-  "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
+  "qr_url_template": "https://s0-verify.pages.dev/?cert={cert_uuid}",
   "api_port": 8669
 }
 ```

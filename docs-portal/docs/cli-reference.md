@@ -313,7 +313,7 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
     | `--no-firmware` | flag | off | no | Skip NVMe/ATA firmware erase; use software overwrite only. |
     | `--force` | flag | off | no | Override safety refusals for mounted or root devices. |
     | `--json` | flag | off | no | Emit structured JSON to stdout throughout execution (for CI/CD pipelines). |
-    | `--portal-url` | URL | `https://s0-vp.vercel.app/` | no | Base URL embedded in the certificate QR code for online verification. |
+    | `--portal-url` | URL | `https://s0-verify.pages.dev/` | no | Base URL embedded in the certificate QR code for online verification. |
     | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. Overrides `--portal-url` when set. |
     | `--plant-markers` | flag | off | no | Write known marker patterns before wiping, then assert zero hits after. Intended for demo/test validation. |
     | `--discard-purge-justification` | string | — | no | Evidence text that lets `BLKDISCARD` be classified as NIST *Purge* rather than *Clear*. |
@@ -477,7 +477,7 @@ Securely erase individual files and directories with full metadata scrubbing usi
     | `--key` | path | auto | no | Signing key PEM path. |
     | `--no-certificate` | flag | off | no | Skip certificate generation entirely. |
     | `--no-pdf` | flag | off | no | Skip PDF rendering; produce JSON certificate only. |
-    | `--portal-url` | URL | `https://s0-vp.vercel.app/` | no | Portal URL embedded in QR code. |
+    | `--portal-url` | URL | `https://s0-verify.pages.dev/` | no | Portal URL embedded in QR code. |
     | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. |
 
 === "Recommendations"

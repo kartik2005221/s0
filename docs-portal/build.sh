@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 echo "========================================="
-echo "==> Building s0 Documentation for Vercel"
+echo "==> Building s0 Documentation for Cloudflare Pages"
 echo "========================================="
 
 # 1. Ensure PATH includes user local bin where uv installs

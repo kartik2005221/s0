@@ -26,8 +26,8 @@ from .canonical import canonicalize_str
 
 __all__ = ["generate_pdf", "QR_URL_TEMPLATE_DEFAULT"]
 
-# Placeholder for a real deployment's portal URL; informational only.
-QR_URL_TEMPLATE_DEFAULT = "https://s0-vp.vercel.app/?cert={cert_uuid}"
+# Canonical deployment verification portal URL; informational only.
+QR_URL_TEMPLATE_DEFAULT = "https://s0-verify.pages.dev/?cert={cert_uuid}"
 
 
 _STATUS_COLORS = {
@@ -248,7 +248,7 @@ def generate_pdf(
     story.append(Paragraph(
         '<font size="6.5" color="#64748b">⚖ LEGAL NOTICE: s0 is a certified digital forensic sanitization suite. '
         'Issued solely for authorized media operations and legal chain of custody. '
-        'Verify authenticity at https://s0-vp.vercel.app/ or via `s0 verify`.</font>',
+        'Verify authenticity at https://s0-verify.pages.dev/ or via `s0 verify`.</font>',
         styles["Normal"]
     ))
 

@@ -6,11 +6,11 @@
 
 [![Release](https://img.shields.io/badge/Release-v2.4.1-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.vercel.app/COMPLIANCE/)
-[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.vercel.app/CANONICAL_JSON/)
-[![Documentation](https://img.shields.io/badge/Docs-s0--docs.vercel.app-orange.svg)](https://s0-docs.vercel.app/)
-[![Verification Portal](https://img.shields.io/badge/Verify-s0--vp.vercel.app-emerald.svg)](https://s0-vp.vercel.app/)
-[![Install Portal](https://img.shields.io/badge/Install-s0--install.vercel.app-indigo.svg)](https://s0-install.vercel.app/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.pages.dev/COMPLIANCE/)
+[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.pages.dev/CANONICAL_JSON/)
+[![Documentation](https://img.shields.io/badge/Docs-s0--docs.pages.dev-orange.svg)](https://s0-docs.pages.dev/)
+[![Verification Portal](https://img.shields.io/badge/Verify-s0--verify.pages.dev-emerald.svg)](https://s0-verify.pages.dev/)
+[![Install Portal](https://img.shields.io/badge/Install-s0--install.pages.dev-indigo.svg)](https://s0-install.pages.dev/)
 
 *One unified toolchain. Five forensic capabilities. Cryptographic chain-of-custody.*
 
@@ -20,9 +20,9 @@
 
 | Service | Live URL | Purpose |
 |---|---|---|
-| **Documentation Portal** | [s0-docs.vercel.app](https://s0-docs.vercel.app/) | Complete engineering manuals, compliance matrices & guides |
-| **Verification Portal** | [s0-vp.vercel.app](https://s0-vp.vercel.app/) | 100% client-side, air-gapped Ed25519 certificate verifier |
-| **Installation Portal** | [s0-install.vercel.app](https://s0-install.vercel.app/) | One-line installation scripts, checksums & release packages |
+| **Documentation Portal** | [s0-docs.pages.dev](https://s0-docs.pages.dev/) | Complete engineering manuals, compliance matrices & guides |
+| **Verification Portal** | [s0-verify.pages.dev](https://s0-verify.pages.dev/) | 100% client-side, air-gapped Ed25519 certificate verifier |
+| **Installation Portal** | [s0-install.pages.dev](https://s0-install.pages.dev/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
 
 </div>
@@ -54,27 +54,27 @@ Only operate on storage media, physical drives, or files that you **legally own*
 - **India:** Information Technology Act 2000, §§ 43, 66
 - **International:** Budapest Convention on Cybercrime
 
-Consult the [Documentation Legal FAQ](https://s0-docs.vercel.app/faq/) for responsible use policies.
+Consult the [Documentation Legal FAQ](https://s0-docs.pages.dev/faq/) for responsible use policies.
 
 ---
 
 ## Quick Installation
 
-Full installation instructions and verification guides are hosted at [s0-install.vercel.app](https://s0-install.vercel.app/).
+Full installation instructions and verification guides are hosted at [s0-install.pages.dev](https://s0-install.pages.dev/).
 
 ### Linux & macOS
 ```bash
-curl -fsSL https://s0-install.vercel.app/sh | bash
+curl -fsSL https://s0-install.pages.dev/sh | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-irm https://s0-install.vercel.app/ps1 | iex
+irm https://s0-install.pages.dev/ps1 | iex
 ```
 
 ### Windows (Command Prompt)
 ```cmd
-curl -fsSL https://s0-install.vercel.app/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 ```
 
 After installation, `s0` is immediately registered on your system `PATH`:
@@ -88,11 +88,11 @@ s0 --version
 ```bash
 # Upgrade to latest release
 s0 upgrade
-# Or: curl -fsSL https://s0-install.vercel.app/upgrade-sh | bash
+# Or: curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 
 # Uninstall s0 suite cleanly
 s0 uninstall
-# Or: curl -fsSL https://s0-install.vercel.app/uninstall-sh | bash
+# Or: curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
 ```
 </details>
 
@@ -183,9 +183,9 @@ When internal or system drives cannot be unmounted within a running host OS:
    ```bash
    sudo s0 live flash --target /dev/sdb
    ```
-3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.vercel.app/LIVE_ISO_BUILD_GUIDE/) for details.
+3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE/) for details.
 
-### 3. Verification Portal ([s0-vp.vercel.app](https://s0-vp.vercel.app/))
+### 3. Verification Portal ([s0-verify.pages.dev](https://s0-verify.pages.dev/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
 - Zero data ever leaves your browser.
 - Operates 100% offline — drag and drop `certificate.json` into `verification-portal/index.html`.
@@ -199,7 +199,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 - **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) (also mirrored in `.agents/skills/s0-forensics/SKILL.md`)
 - **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience (no premature aborts during controller sanitization), and post-execution certificate verification.
 - **Reference Manuals:** Comprehensive technical guides covering NIST/IEEE method mappings, hardware safety rules, magic-byte signatures, and cryptographic audit specifications.
-- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://s0-docs.vercel.app/agentic-ai/) on the docs portal.
+- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://s0-docs.pages.dev/agentic-ai/) on the docs portal.
 
 ---
 
@@ -213,7 +213,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 | **RFC 8785** | Canonical JSON (JCS) | Deterministic cryptographic certificate serialization and block hashing. |
 | **RFC 8032** | Digital Signatures | High-performance Ed25519 public-key signature system. |
 
-Full compliance details: [docs-portal/docs/COMPLIANCE.md](https://s0-docs.vercel.app/COMPLIANCE/)
+Full compliance details: [docs-portal/docs/COMPLIANCE.md](https://s0-docs.pages.dev/COMPLIANCE/)
 
 ---
 
@@ -221,14 +221,14 @@ Full compliance details: [docs-portal/docs/COMPLIANCE.md](https://s0-docs.vercel
 
 | Guide | Online URL | Local File |
 |---|---|---|
-| **User & Operator Manual** | [docs.s0.vercel.app/USER_MANUAL](https://s0-docs.vercel.app/USER_MANUAL/) | [`USER_MANUAL.md`](docs-portal/docs/USER_MANUAL.md) |
-| **Architecture Specification** | [docs.s0.vercel.app/ARCHITECTURE](https://s0-docs.vercel.app/ARCHITECTURE/) | [`ARCHITECTURE.md`](docs-portal/docs/ARCHITECTURE.md) |
-| **CLI Complete Reference** | [docs.s0.vercel.app/cli-reference](https://s0-docs.vercel.app/cli-reference/) | [`cli-reference.md`](docs-portal/docs/cli-reference.md) |
-| **Forensic Carving Guide** | [docs.s0.vercel.app/forensic-carving-guide](https://s0-docs.vercel.app/forensic-carving-guide/) | [`forensic-carving-guide.md`](docs-portal/docs/forensic-carving-guide.md) |
-| **Live ISO Build Guide** | [docs.s0.vercel.app/LIVE_ISO_BUILD_GUIDE](https://s0-docs.vercel.app/LIVE_ISO_BUILD_GUIDE/) | [`LIVE_ISO_BUILD_GUIDE.md`](docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md) |
-| **Agentic AI Guide** | [docs.s0.vercel.app/agentic-ai](https://s0-docs.vercel.app/agentic-ai/) | [`agentic-ai.md`](docs-portal/docs/agentic-ai.md) |
-| **Standards Compliance** | [docs.s0.vercel.app/COMPLIANCE](https://s0-docs.vercel.app/COMPLIANCE/) | [`COMPLIANCE.md`](docs-portal/docs/COMPLIANCE.md) |
-| **Engineering Handover** | [docs.s0.vercel.app/HANDOVER](https://s0-docs.vercel.app/HANDOVER/) | [`HANDOVER.md`](docs-portal/docs/HANDOVER.md) |
+| **User & Operator Manual** | [s0-docs.pages.dev/USER_MANUAL](https://s0-docs.pages.dev/USER_MANUAL/) | [`USER_MANUAL.md`](docs-portal/docs/USER_MANUAL.md) |
+| **Architecture Specification** | [s0-docs.pages.dev/ARCHITECTURE](https://s0-docs.pages.dev/ARCHITECTURE/) | [`ARCHITECTURE.md`](docs-portal/docs/ARCHITECTURE.md) |
+| **CLI Complete Reference** | [s0-docs.pages.dev/cli-reference](https://s0-docs.pages.dev/cli-reference/) | [`cli-reference.md`](docs-portal/docs/cli-reference.md) |
+| **Forensic Carving Guide** | [s0-docs.pages.dev/forensic-carving-guide](https://s0-docs.pages.dev/forensic-carving-guide/) | [`forensic-carving-guide.md`](docs-portal/docs/forensic-carving-guide.md) |
+| **Live ISO Build Guide** | [s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE](https://s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE/) | [`LIVE_ISO_BUILD_GUIDE.md`](docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md) |
+| **Agentic AI Guide** | [s0-docs.pages.dev/agentic-ai](https://s0-docs.pages.dev/agentic-ai/) | [`agentic-ai.md`](docs-portal/docs/agentic-ai.md) |
+| **Standards Compliance** | [s0-docs.pages.dev/COMPLIANCE](https://s0-docs.pages.dev/COMPLIANCE/) | [`COMPLIANCE.md`](docs-portal/docs/COMPLIANCE.md) |
+| **Engineering Handover** | [s0-docs.pages.dev/HANDOVER](https://s0-docs.pages.dev/HANDOVER/) | [`HANDOVER.md`](docs-portal/docs/HANDOVER.md) |
 
 ---
 

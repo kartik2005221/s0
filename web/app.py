@@ -665,7 +665,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
                 if not req.no_pdf:
                     try:
-                        qr_url_tpl = CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}")
+                        qr_url_tpl = CONFIG.get("qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}")
                         if req.portal_url and req.portal_url.strip():
                             p_url = req.portal_url.strip()
                             qr_url_tpl = f"{p_url.rstrip('/')}/?cert={{cert_uuid}}" if "{cert_uuid}" not in p_url else p_url

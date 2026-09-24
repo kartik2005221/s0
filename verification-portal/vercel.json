@@ -1,8 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "buildCommand": "echo 'Deploying static verification portal'",
-  "outputDirectory": ".",
-  "cleanUrls": true,
-  "trailingSlash": false
-}

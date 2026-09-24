@@ -3,7 +3,7 @@ site_description: >-
   Forensic-grade drive sanitization, file recovery, and cryptographic audit suite.
   NIST SP 800-88 compliant. Ed25519 signed certificates. Zero-trust verification.
 site_author: Kartik & s0 Contributors
-site_url: https://s0-docs.vercel.app/
+site_url: https://s0-docs.pages.dev/
 repo_url: https://github.com/kartik2005221/s0
 repo_name: kartik2005221/s0
 copyright: >-
@@ -146,4 +146,5 @@ nav:
       - Agentic AI & High-Risk Safety: agentic-ai.md
       - Contributing Guide: contributing.md
       - Changelog & Releases: changelog.md
-  - Verification Portal: https://s0-vp.vercel.app/
+  - Verification Portal: https://s0-verify.pages.dev/
+  - Install Portal: https://s0-install.pages.dev/

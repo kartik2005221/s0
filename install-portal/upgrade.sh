@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # S0 (Sector Zero) — Resilient Upgrader for Linux & macOS
-# Usage: curl -fsSL https://s0-install.vercel.app/upgrade-sh | bash
+# Usage: curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 set -euo pipefail
 
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
@@ -44,7 +44,7 @@ step "Checking existing installation"
 if [ ! -d "$INSTALL_DIR" ]; then
     printf "\n${_yellow}WARNING: S0 is not installed at ${INSTALL_DIR}.${_reset}\n"
     printf "To install S0 from scratch, run:\n"
-    printf "  curl -fsSL https://s0-install.vercel.app/sh | bash\n\n"
+    printf "  curl -fsSL https://s0-install.pages.dev/sh | bash\n\n"
     exit 1
 fi
 if [ ! -d "$INSTALL_DIR/.git" ]; then

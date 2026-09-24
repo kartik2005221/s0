@@ -55,7 +55,8 @@ except ImportError:
     CONFIG = {
         "default_operator": "op-forensic-01",
         "default_organization": "Digital Forensics & Data Sanitization Lab",
-        "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
+        "qr_url_template": "https://s0-verify.pages.dev/?cert={cert_uuid}",
+        "verification_portal_url": "https://s0-verify.pages.dev/",
     }
 
 # Darwin fcntl command for full hardware write cache flush
@@ -803,8 +804,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
     parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
-    parser.add_argument("--portal-url", default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"), help="Verification portal base URL")
-    parser.add_argument("--qr-url-template", default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"), help="URL template for verification QR")
+    parser.add_argument("--portal-url", default=CONFIG.get("verification_portal_url", "https://s0-verify.pages.dev/"), help="Verification portal base URL")
+    parser.add_argument("--qr-url-template", default=CONFIG.get("qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}"), help="URL template for verification QR")
     parser.add_argument("--verify-samples", type=int, default=64, help="Number of readback samples for verification (default: 64)")
     parser.add_argument("--json", action="store_true", help="Output JSON result")
     args = parser.parse_args(raw_args)

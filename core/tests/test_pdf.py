@@ -93,6 +93,6 @@ def test_pdf_sanitizes_malicious_verify_url(signed_cert, tmp_path):
     )
     pdf_bytes = out.read_bytes()
     assert b"evil-phish-domain.attacker.example" not in pdf_bytes
-    assert b"s0-vp.vercel.app" in pdf_bytes
+    assert b"s0-verify.pages.dev" in pdf_bytes
 
 
