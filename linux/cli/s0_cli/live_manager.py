@@ -241,7 +241,7 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
         url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
 
     headers = {
-        "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.0')} (LiveDownloader)",
+        "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.1')} (LiveDownloader)",
         "Accept": "application/vnd.github.v3+json",
     }
     token = _get_auth_token()

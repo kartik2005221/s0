@@ -15,6 +15,25 @@ timeline
         Live ISO Recipe : Material MkDocs Suite : ColorHunt Dark Theme : Verification Portal v2
 ```
 
+## [2.4.1] — 2026-09-24
+
+### Added
+- **Unified Media & File Sanitization (`s0 wipe`):** Merged file/folder erasing into the master `s0 wipe` command with automatic detection of block devices, disk images, single files, and directories. Completely removed obsolete `s0 erase` and `s0 erase-files` commands.
+- **ASCII Art Banner:** Added branded fastfetch-style ASCII art banner for interactive TTY invocations of bare `s0` and `s0 --help`, displaying the active version and repository link while preserving scripted pipeline compatibility.
+- **Hardware Thermal Telemetry:** Added hardware temperature monitoring across both CLI and Web Dashboard (real-time temperature badge with normal, warm, and critical states).
+- **Graceful Signal Handling:** Implemented clean `SIGINT` / Ctrl+C cancellation handlers across all commands (`s0 wipe`, `s0 image`, `s0 carve`, `s0 live flash/download`, `s0 web`), restoring cursor state and terminating workers safely.
+- **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
+- **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
+- **Cloudflare Pages Deployment Support:** Added native Cloudflare Pages configuration files (`_headers`, `_redirects`) and comprehensive deployment guide (`CLOUDFLARE_DEPLOY.md`) for all three static portals.
+
+### Security
+- **Path Traversal Hardening:** Patched potential path traversal vulnerabilities in `cmd_uninstall` directory cleanup and live image downloads.
+- **Subprocess Shell Injection Prevention:** Replaced shell-wrapped execution in Live ISO builder fallbacks with direct argument vector invocations.
+- **Secure File Flush & Plant Marker Progress:** Added visual progress indicators during disk marker planting and hardware `fsync` operations.
+
+### Changed
+- **Default Web Dashboard Port:** Migrated default web dashboard port from `8000` to `8669` across `s0_config.json`, CLI arguments, runner scripts (`run.sh`, `run.bat`, `run.ps1`), and Live ISO systemd services.
+
 ---
 
 ## [2.4.0] — 2026-09-17
