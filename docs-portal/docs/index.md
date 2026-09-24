@@ -43,7 +43,7 @@ Built for security engineers, digital forensic examiners, compliance auditors, a
 
     **Platforms:** Linux · macOS · Windows
 
-    [:octicons-arrow-right-24: File Eraser Docs](USER_MANUAL.md#4-module-2-secure-file-folder-eraser)
+    [:octicons-arrow-right-24: File Eraser Docs](USER_MANUAL.md#4-secure-file-folder-erasure-s0-wipe-targets)
 
 -   :material-magnify-scan:{ .lg .middle } **File Carver**
 
@@ -182,7 +182,7 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 
     In-place cluster overwriting, metadata zeroing, and directory entry scrambling.
 
-    [:octicons-arrow-right-24: File Eraser Manual](USER_MANUAL.md#4-module-2-secure-file-folder-eraser)
+    [:octicons-arrow-right-24: File Eraser Manual](USER_MANUAL.md#4-secure-file-folder-erasure-s0-wipe-targets)
 
 -   :material-magnify-scan: **Forensic File Carver**
 

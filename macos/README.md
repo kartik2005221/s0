@@ -1,4 +1,4 @@
-# s0 — macOS Secure File & Folder Eraser (Module 2)
+# s0 — macOS Secure File & Folder Eraser
 
 **Supported Operating Systems:** macOS Catalina (10.15) through macOS Sequoia (15.x+)  
 **Supported Filesystems:** APFS, HFS+, FAT32, exFAT

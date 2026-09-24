@@ -1,4 +1,4 @@
-"""s0 Module 2: Secure File & Folder Eraser (Windows Native).
+"""s0: Secure File & Folder Eraser (Windows Native).
 
 Forensic-grade selective sanitization for Microsoft Windows (NTFS, ReFS, FAT32, exFAT):
 - In-place cluster overwriting with FILE_FLAG_WRITE_THROUGH and FlushFileBuffers

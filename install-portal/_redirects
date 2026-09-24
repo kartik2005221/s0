@@ -1,0 +1,18 @@
+# Cloudflare Pages Redirects & Rewrites for s0 Install Portal
+/sh /install.sh 200
+/ps1 /install.ps1 200
+/cmd /install.cmd 200
+/upgrade /upgrade.sh 200
+/upgrade-sh /upgrade.sh 200
+/upgrade/sh /upgrade.sh 200
+/upgrade-ps1 /upgrade.ps1 200
+/upgrade/ps1 /upgrade.ps1 200
+/upgrade-cmd /upgrade.cmd 200
+/upgrade/cmd /upgrade.cmd 200
+/uninstall /uninstall.sh 200
+/uninstall-sh /uninstall.sh 200
+/uninstall/sh /uninstall.sh 200
+/uninstall-ps1 /uninstall.ps1 200
+/uninstall/ps1 /uninstall.ps1 200
+/uninstall-cmd /uninstall.cmd 200
+/uninstall/cmd /uninstall.cmd 200

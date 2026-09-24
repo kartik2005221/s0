@@ -35,7 +35,7 @@
 
 | Capability | Module | What S0 Does |
 |---|:---:|---|
-| **Defensive Sanitization** | Module 1 & 2 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
+| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
 | **Offensive Carving** | Module 3 | Reconstructs deleted evidence from raw images, formatted disks, and USB drives across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
 | **Bit-Stream Imaging** | Module 4 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and ddrescue-style bad sector zero-filling. |
 | **Blockchain Audit Ledger** | Module 5 | Records every laboratory operation into an append-only, SHA-256 hash-chained SQLite ledger (`~/.s0/s0_audit.db`) verifiable offline in milliseconds. |
@@ -117,8 +117,8 @@ sudo s0 wipe --target /dev/sdb --yes --operator "analyst-01" --organization "For
 
 ### 3. File & Directory Secure Deletion
 ```bash
-# In-place cluster overwriting with metadata, xattr, and Alternate Data Stream cleansing
-s0 erase --targets /path/to/file.pdf /path/to/sensitive_folder/ --passes 1
+# In-place cluster overwriting with metadata, xattr, and Alternate Data Stream cleansing (auto-detected)
+s0 wipe --targets /path/to/file.pdf /path/to/sensitive_folder/ --passes 1
 ```
 
 ### 4. Forensic File Carving & Recovery
@@ -164,11 +164,13 @@ sudo s0 live flash --target /dev/sdb -y
 
 ## Interfaces: CLI, Web Console & Bare-Metal ISO
 
-### 1. Local Forensic Web Dashboard (`s0 web`)
-Launch the air-gapped 4-tab browser console directly on loopback (`127.0.0.1:8000`):
+### 1. Local Forensic Web Dashboard (`sudo s0 web`)
+Launch the air-gapped 4-tab browser console directly on loopback (`127.0.0.1:8669`):
 ```bash
-s0 web
+sudo s0 web
 ```
+> **Note on Root Privileges:** Direct block device sanitization and raw disk acquisition require root (`sudo`) privileges to access raw storage controllers. Without sudo, unprivileged file/folder wiping remains available, while direct drive wiping is disabled for safety.
+
 The Web Dashboard runs the identical cryptographic and carving engines as the CLI and shares the local SQLite audit ledger.
 
 ### 2. Bare-Metal Bootable Live ISO (Debian 12)

@@ -3,7 +3,7 @@
 > **Interface Type:** Local Forensics Operator Console  
 > **Backend Architecture:** FastAPI (Python 3.10+) asynchronous server  
 > **Frontend Stack:** Vanilla HTML5, CSS3 (Forensic Dark Theme `#222831`), JavaScript (Zero external framework dependencies)  
-> **Default Bind Address:** `127.0.0.1:8000` (Strict loopback isolation)
+> **Default Bind Address:** `127.0.0.1:8669` (Strict loopback isolation)
 
 ---
 
@@ -19,7 +19,7 @@ Crucially, the Web Dashboard is **not a separate engine**. It runs the exact sam
 ```mermaid
 graph TD
     CLI[s0 Command-Line Interface] --> CORE[s0 Core & Methods Engine]
-    WEB[FastAPI Web Console 127.0.0.1:8000] --> CORE
+    WEB[FastAPI Web Console 127.0.0.1:8669] --> CORE
     
     CORE --> LEDGER[(Shared Blockchain Audit Ledger ~/.s0/s0_audit.db)]
     CORE --> CERTS[Signed Certificates .json / .pdf / .qr.png]
@@ -29,31 +29,34 @@ graph TD
 
 ## 2. Launching the Dashboard
 
-Launch directly using the native `s0 web` command:
+Launch directly using the native `sudo s0 web` command:
 
 ```bash
 # Launch the web dashboard and automatically open in default browser
-s0 web
+sudo s0 web
 ```
 
 Or customize port and network binding:
 ```bash
 # Launch on custom port without auto-opening browser
-s0 web --port 8080 --no-browser
+sudo s0 web --port 8669 --no-browser
 ```
 
 === "Script Runner (Linux & macOS)"
     ```bash
     # Start via standalone script runner
-    bash web/run.sh
+    sudo bash web/run.sh
     ```
 
 === "Script Runner (Windows)"
     ```powershell
-    # Launch via PowerShell script runner
+    # Launch via PowerShell script runner (Run as Administrator)
     .\web\run.ps1
     # Or in CMD: web\run.bat
     ```
+
+!!! note "Privilege Requirements & Limited Mode"
+    Direct physical drive sanitization and bit-stream disk imaging require root privileges (`sudo s0 web`) to access raw storage block devices (`/dev/sd*`, `/dev/nvme*`). If launched without `sudo`, the web dashboard automatically operates in **Limited User Mode**: an alert banner appears, direct drive wiping is faded/restricted for safety, while file and directory wiping remains completely functional.
 
 !!! warning "Security & Network Exposure"
     The dashboard is explicitly engineered for **local, single-operator forensic workstations**. By default, it binds strictly to `127.0.0.1` (localhost). Do not bind to `0.0.0.0` or expose the dashboard port to an untrusted local area network without authentication proxies, as it possesses the authority to perform irreversible storage erasure.

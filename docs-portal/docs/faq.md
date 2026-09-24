@@ -15,7 +15,7 @@ Depending on your jurisdiction, unauthorized wiping or unauthorized data recover
 
 ### What should organizations do prior to sanitizing or imaging media?
 1. **Chain of Custody:** Ensure an asset transfer form or legal clearance document is signed by the device owner or IT asset custodian.
-2. **Litigation Hold Check:** Verify that the media is not subject to a preservation order, court subpoena, or pending legal dispute before initiating `s0 wipe` or `s0 erase`.
+2. **Litigation Hold Check:** Verify that the media is not subject to a preservation order, court subpoena, or pending legal dispute before initiating `s0 wipe`.
 3. **Key Management:** Maintain accredited Ed25519 signing keys for non-repudiation in audit trails.
 
 ---
@@ -38,7 +38,7 @@ Yes. s0 is licensed under the permissive **MIT License**. It can be deployed acr
 
 ---
 
-## 2. Secure Data Sanitization (Drive Eraser & File Eraser)
+## 2. Secure Data Sanitization (Drive & File Sanitization)
 
 ### Is a single-pass zero overwrite really enough to destroy data?
 **Yes.** According to **NIST SP 800-88 Rev. 1 (Appendix A)**:
@@ -55,7 +55,7 @@ To sanitize an internal boot drive, boot the computer into the [s0 Bare-Metal Li
 - **Clear (Logical Protection):** Overwriting data across all user-accessible logical blocks using standard read/write commands. Protects against simple, software-based recovery attacks.
 - **Purge (Physical/Firmware Protection):** Executes internal controller commands (`NVME_SANITIZE`, `ATA_SECURE_ERASE`) that reset flash cell voltages or sanitize overprovisioned, retired, and wear-leveled flash blocks inaccessible to standard OS write commands. Protects against advanced laboratory hardware attacks.
 
-### Does s0 erase data hidden in HPA (Host Protected Area) or DCO (Device Configuration Overlay)?
+### Does s0 wipe data hidden in HPA (Host Protected Area) or DCO (Device Configuration Overlay)?
 Yes. When evaluating SATA drives via `hdparm`, s0 probes for active HPA and DCO boundaries. If hidden sectors are detected, s0 reports the exact sector delta, prints the kernel commands required to remove the restriction prior to wiping, and recommends `ATA_SECURE_ERASE_ENHANCED`, which commands the drive controller to sanitize HPA sectors automatically.
 
 ### Can s0 securely erase files on Copy-on-Write (CoW) filesystems (Btrfs, ZFS, APFS)?

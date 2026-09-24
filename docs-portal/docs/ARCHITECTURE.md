@@ -19,10 +19,9 @@ graph TB
     end
 
     subgraph MODULES["Functional Modules"]
-        M1["Module 1 — Drive Eraser<br/><code>methods/</code> · <code>wipe.py</code> · <code>devices.py</code>"]
-        M2["Module 2 — File &amp; Folder Eraser<br/><code>file_eraser.py</code> · <code>windows/</code> · <code>macos/</code>"]
-        M3["Module 3 — File Carver<br/><code>carver/</code> — 5 engines"]
-        M4["Module 4 — Audit Ledger<br/><code>audit/</code> — SQLite + SHA-256 chain"]
+        M1["Module 1 — Media & File Sanitizer<br/><code>methods/</code> · <code>wipe.py</code> · <code>file_eraser.py</code>"]
+        M3["Module 2 — File Carver<br/><code>carver/</code> — 5 engines"]
+        M4["Module 3 — Audit Ledger<br/><code>audit/</code> — SQLite + SHA-256 chain"]
     end
 
     subgraph CORE["Cryptographic Core  <code>core/python/s0_core/</code>"]
@@ -75,8 +74,8 @@ s0/
 │   │   ├── ata.py                #     ATA Secure Erase (Enhanced + Normal)
 │   │   ├── blkdiscard.py         #     BLKDISCARD / TRIM / Unmap
 │   │   └── overwrite.py          #     Multi-pass overwrite engine
-│   ├── file_eraser.py            #   Module 2 — Linux secure file/folder deletion
-│   ├── carver/                   #   Module 3 — forensic carving
+│   ├── file_eraser.py            #   File/folder sanitization engine (routed via s0 wipe)
+│   ├── carver/                   #   Forensic file carving (5 engines)
 │   │   ├── engine.py             #     Dispatcher: routes to correct carver
 │   │   ├── signatures.py         #     Magic-byte signature table
 │   │   ├── ext4_carver.py        #     ext4 structure parser
@@ -85,10 +84,10 @@ s0/
 │   │   ├── exfat_carver.py       #     exFAT VBR + cluster heap walker
 │   │   ├── fragmentation.py      #     Non-resident cluster run reassembly
 │   │   └── scoring.py            #     Multi-factor confidence scoring
-│   └── audit/                    #   Module 4 — blockchain audit ledger
+│   └── audit/                    #   Blockchain audit ledger
 │
-├── windows/                      #   Module 2 Windows (Win32 API, ADS scrubbing, ReFS)
-├── macos/                        #   Module 2 macOS (F_FULLFSYNC, xattr, APFS)
+├── windows/                      #   Windows file/folder sanitizer (Win32 API, ADS scrubbing, ReFS)
+├── macos/                        #   macOS file/folder sanitizer (F_FULLFSYNC, xattr, APFS)
 ├── web/                          #   Unified FastAPI web dashboard (4 tabs)
 ├── linux/iso/                    #   Debian Live ISO build scripts
 └── verification-portal/          #   100% static Ed25519 verifier
@@ -189,9 +188,9 @@ The verification result, including any failed blocks, is embedded in the signed 
 
 ---
 
-## Module 2 — Secure File & Folder Eraser
+## Secure File & Folder Erasure (Unified in `s0 wipe`)
 
-Simple deletion (`rm`, `del`, `Trash`) removes the directory entry but leaves file data on disk, recoverable by any carving tool. Module 2 eliminates recovery at every layer: **data clusters**, **filesystem metadata**, **alternate data streams**, **extended attributes**, and **directory entry filenames** are all sanitized.
+Simple deletion (`rm`, `del`, `Trash`) removes the directory entry but leaves file data on disk, recoverable by any carving tool. `s0 wipe` eliminates recovery at every layer: **data clusters**, **filesystem metadata**, **alternate data streams**, **extended attributes**, and **directory entry filenames** are all sanitized.
 
 ### Platform Implementation
 
@@ -535,7 +534,7 @@ s0 audit verify
 | `op_type` | Triggered by | `payload_hash` covers |
 |---|---|---|
 | `DRIVE_ERASE` | Module 1 wipe completion | Method, passes, verification results, device serial |
-| `FILE_ERASE` | Module 2 file erasure | File path hash, size, platform, CoW status |
+| `FILE_ERASE` | File/folder erasure via `s0 wipe` | File path hash, size, platform, CoW status |
 | `FILE_CARVE` | Module 3 carving session | Target image, engines used, recovered file hashes, confidence scores |
 
 ---
@@ -720,7 +719,7 @@ The portal checks the certificate's `public_key_fingerprint` against every entry
 | **Evidence tampering — certificate forgery** | Adversary with file access | Ed25519 signature over Canonical JSON v1; forging requires the private key | If the operator's private key is compromised, certificates can be forged — key management is the operator's responsibility |
 | **Audit ledger falsification** | Insider with DB access | SHA-256 hash chain with Ed25519 block signing; modifying any block breaks downstream hashes; deleting or replacing blocks fails block signature verification against pinned authority keys | An adversary with local root DB access who completely wipes the database file causes a loss of records; rebuilding a valid forward chain is prevented by Ed25519 block signatures; external tip anchoring provides independent verification |
 | **Verification portal compromise (supply chain)** | CDN hijack, MITM | All crypto runs from vendored `crypto-bundle.js` — no CDN, no external fetch; portal is fully auditable static HTML | If the portal files themselves are replaced on disk before use, integrity is broken — verify portal file hashes out-of-band |
-| **CoW filesystem bypass — file data survives** | Forensic examiner on the same volume | Module 2 detects CoW filesystems at runtime and warns; certificate annotates the limitation | Physical CoW snapshots may retain the original data; Module 2 cannot solve this without Module 1 level access |
+| **CoW filesystem bypass — file data survives** | Forensic examiner on the same volume | `s0 wipe` detects CoW filesystems at runtime and warns; certificate annotates the limitation | Physical CoW snapshots may retain the original data; file erasure cannot solve this without whole-volume wipe access |
 | **Directory entry name reconstruction** | Filesystem journal / log analysis | Filename scrambled to random string before unlink; timestamps zeroed to epoch 0 | Journal-enabled filesystems (ext4 `data=journal`, NTFS) may retain the original name in journal entries not yet overwritten |
 | **Partial readback verification miss** | Physical media defect hiding data | 64-block sampled readback; any mismatching block is a certificate failure | Non-sampled blocks are not verified; statistical, not exhaustive |
 | **Carving evidence chain of custody break** | Defense challenge to carved evidence | Every carved artifact SHA-256 hashed at extraction; session manifest Ed25519-signed; block appended to audit ledger | Confidence score < 100% on reassembled fragments; operator must document scoring threshold policy |

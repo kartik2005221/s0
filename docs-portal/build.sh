@@ -22,6 +22,7 @@ echo "==> uv version: $(uv --version)"
 # 3. Build MkDocs documentation using uv
 echo "==> Compiling MkDocs documentation to public/..."
 uv run --with "mkdocs-material>=9.5.0" mkdocs build -d public
+[ -f "_headers" ] && cp _headers public/_headers
 
 # 4. Sanity verification
 if [ -f "public/index.html" ]; then

@@ -21,8 +21,7 @@ flowchart TD
 
     S0 --> LIST["list\n─────────────\nDiscover targets"]
     S0 --> PLAN["plan\n─────────────\nDry-run strategy"]
-    S0 --> WIPE["wipe\n─────────────\nSanitize drive"]
-    S0 --> ERASE["erase / erase-files\n─────────────\nSecure file deletion"]
+    S0 --> WIPE["wipe\n─────────────\nSanitize drive or files"]
     S0 --> IMAGE["image / clone\n─────────────\nForensic acquisition"]
     S0 --> CARVE["carve\n─────────────\nForensic recovery"]
     S0 --> AUDIT["audit\n─────────────\nAudit ledger"]
@@ -444,35 +443,32 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 
 ---
 
-## s0 erase
+## s0 wipe (Files & Folders)
 
-Securely erase individual files and directories with full metadata scrubbing. Unlike `rm`, `s0 erase` overwrites file data in-place before unlinking, zeroes timestamps and directory entry metadata, and — on Windows — purges Alternate Data Streams. A signed certificate is produced by default.
-
-!!! info "Alias"
-    `s0 erase` and `s0 erase-files` are identical. The alias exists for ergonomic clarity in scripts that make the operation type explicit.
+Securely erase individual files and directories with full metadata scrubbing using the unified `s0 wipe` command. `s0 wipe` automatically detects when target paths are files or folders (or when `--targets` is specified) and routes them through in-place cluster overwrites, zeroing timestamps, directory entry scrambling, and Alternate Data Stream purges. A signed compliance certificate is produced by default without requiring root privileges.
 
 === "Synopsis"
 
     ```bash
-    # Securely erase files and directory trees with metadata scrubbing
-    s0 erase --targets PATH... \
-             [--passes N] \
-             [--pattern zero|random] \
-             [--out-dir DIR] \
-             [--operator ID] \
-             [--organization NAME] \
-             [--key PEM] \
-             [--no-certificate] \
-             [--no-pdf] \
-             [--portal-url URL] \
-             [--qr-url-template TMPL]
+    # Securely erase files and directory trees with metadata scrubbing (auto-detected)
+    s0 wipe --targets PATH... \
+            [--passes N] \
+            [--pattern zero|random] \
+            [--out-dir DIR] \
+            [--operator ID] \
+            [--organization NAME] \
+            [--key PEM] \
+            [--no-certificate] \
+            [--no-pdf] \
+            [--portal-url URL] \
+            [--qr-url-template TMPL]
     ```
 
 === "Flags"
 
     | Flag | Type | Default | Required | Description |
     |------|------|---------|----------|-------------|
-    | `--targets` | path(s) | — | **yes** | One or more file or directory paths to erase. Directories are recursed. |
+    | `--targets` | path(s) | — | no | One or more file or directory paths to erase (or specify via `--target`). Directories are recursed. |
     | `--passes` | integer | `1` | no | Number of overwrite passes per file. |
     | `--pattern` | `zero` \| `random` | `zero` | no | Byte pattern for overwrite passes. |
     | `--out-dir` | path | `.` | no | Directory where the erasure certificate is written. |
@@ -484,53 +480,25 @@ Securely erase individual files and directories with full metadata scrubbing. Un
     | `--portal-url` | URL | `https://s0-vp.vercel.app/` | no | Portal URL embedded in QR code. |
     | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. |
 
-=== "Help Screen"
-
-    ```text
-    usage: s0 erase [-h] --targets TARGETS [TARGETS ...] [--passes PASSES]
-                    [--pattern {zero,random}] [--out-dir OUT_DIR]
-                    [--operator OPERATOR] [--organization ORGANIZATION]
-                    [--key KEY] [--no-certificate] [--no-pdf]
-                    [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
-
-    options:
-      -h, --help            show this help message and exit
-      --targets TARGETS [TARGETS ...]
-                            paths to files or directories to sanitize
-      --passes PASSES       number of overwrite passes
-      --pattern {zero,random}
-      --out-dir OUT_DIR
-      --operator OPERATOR
-      --organization ORGANIZATION
-      --key KEY             signing key path
-      --no-certificate      explicitly run without generating an Ed25519
-                            compliance certificate
-      --no-pdf              skip rendering PDF certificate
-      --portal-url PORTAL_URL
-                            verification portal base URL
-      --qr-url-template QR_URL_TEMPLATE
-                            URL template for verification QR
-    ```
-
 === "Recommendations"
 
     - **Filesystem Context**:
-        - **Standard Filesystems (ext4, NTFS, FAT32)**: `s0 erase` performs direct in-place inode/cluster overwrites with hardware flush (`fsync()` / `FlushFileBuffers()`). Highly effective.
-        - **Copy-on-Write Filesystems (Btrfs, ZFS, APFS, ReFS)**: Operating system CoW mechanics allocate new blocks on write, leaving prior block allocations in storage until garbage collection. When sanitizing files on CoW filesystems, whole-disk/partition wiping (`s0 wipe`) is strongly recommended.
+        - **Standard Filesystems (ext4, NTFS, FAT32)**: Direct in-place inode/cluster overwrites with hardware flush (`fsync()` / `FlushFileBuffers()`). Highly effective.
+        - **Copy-on-Write Filesystems (Btrfs, ZFS, APFS, ReFS)**: Operating system CoW mechanics allocate new blocks on write, leaving prior block allocations in storage until garbage collection. When sanitizing files on CoW filesystems, whole-disk/partition wiping (`s0 wipe --target /dev/...`) is strongly recommended.
     - **Compliance Records**: Keep certificate generation enabled unless running automated tests or batch unlinking temporary staging directories.
 
 === "Examples"
 
     **Erase a single sensitive file**
     ```bash
-    # Securely overwrite and unlink a classified report
-    s0 erase --targets /home/user/secret_report.pdf
+    # Securely overwrite and unlink a classified report (auto-detected)
+    s0 wipe --target /home/user/secret_report.pdf
     ```
 
     **Erase multiple files and an entire directory**
     ```bash
     # Batch sanitize directories and keys with 3 passes
-    s0 erase \
+    s0 wipe \
         --targets /tmp/staging/ /var/log/audit.log /home/user/.ssh/id_rsa \
         --passes 3 \
         --operator "alice@forensics.org"
@@ -539,13 +507,13 @@ Securely erase individual files and directories with full metadata scrubbing. Un
     **Erase without generating a certificate (quick cleanup)**
     ```bash
     # Unlink temporary scratch folder without signing overhead
-    s0 erase --targets /tmp/scratch/ --no-certificate
+    s0 wipe --targets /tmp/scratch/ --no-certificate
     ```
 
     **Use random pattern and save cert to evidence folder**
     ```bash
     # Execute random pattern wipe and export cert to case evidence
-    s0 erase \
+    s0 wipe \
         --targets /data/case_work/temp/ \
         --pattern random \
         --out-dir /evidence/2026-09-09/ \
@@ -553,7 +521,7 @@ Securely erase individual files and directories with full metadata scrubbing. Un
     ```
 
 !!! warning "Filesystem and OS limitations"
-    On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 erase` documents this limitation explicitly in its output. See [`secure-erasure-guide.md`](secure-erasure-guide.md) for the full deep-dive.
+    On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 wipe` documents this limitation explicitly in its output. See [`secure-erasure-guide.md`](secure-erasure-guide.md) for the full deep-dive.
 
 ---
 
@@ -1283,7 +1251,7 @@ s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (e
 | `~/.s0/s0_audit.db` | SQLite database storing the append-only, hash-chained audit ledger. Created automatically on first use. |
 | `core/keys/*_private.pem` | Demo/development Ed25519 private key. Auto-discovered when `--key` is not specified. |
 | `core/keys/*_public.pem` | Corresponding demo public key. Used by `s0 verify` when `--key` is not specified. |
-| `<out-dir>/certificate_<UUID8>.json` | Signed certificate output from `s0 wipe` and `s0 erase`. |
+| `<out-dir>/certificate_<UUID8>.json` | Signed certificate output from `s0 wipe`. |
 | `<out-dir>/certificate_<UUID8>.pdf` | PDF certificate with embedded QR code. |
 | `<out-dir>/certificate_<UUID8>.qr.png` | Standalone QR code PNG. |
 | `<out-dir>/acquisition_manifest_<UUID8>.json` | Signed acquisition manifest (from `s0 image`). |
@@ -1399,15 +1367,17 @@ Launch the local interactive s0 Web Dashboard in your default web browser. Binds
 
 ### Usage
 ```bash
-s0 web [--port PORT] [--host HOST] [--no-browser]
+sudo s0 web [--port PORT] [--host HOST] [--no-browser]
 ```
 
 ### Options
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--port` | Integer | `8000` | Port to bind local HTTP server |
+| `--port` | Integer | `8669` | Port to bind local HTTP server |
 | `--host` | String | `127.0.0.1` | Host address to bind (strict loopback isolation) |
 | `--no-browser` | Flag | `false` | Start server without auto-opening default web browser |
+
+> **Note on Permissions:** Root privileges (`sudo`) are required to open and sanitize raw physical block devices. If launched without sudo, `s0 web` runs in limited mode with a warning banner, allowing file/folder operations while disabling raw block device operations.
 
 ### Features
 - **Drive Eraser Tab:** Visual block device selection, real-time overwrite / sanitize progress bar, temperature tracking, and instant signed certificate download.

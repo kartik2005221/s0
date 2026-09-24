@@ -27,8 +27,8 @@ flowchart TD
     START(["Target Media Identified"]) --> IS_FILE{"File or Full Drive?"}
     
     IS_FILE -->|Individual Files| FILE_COW{"Is Filesystem CoW?<br/>Btrfs / ZFS / APFS"}
-    FILE_COW -->|Yes| COW_WARN["s0 erase with CoW Advisory Warning<br/>Recommendation: Volume Wipe for 100% Assurance"]
-    FILE_COW -->|No| FILE_STD["s0 erase: In-place cluster overwrite<br/>+ Metadata Scrubbing + Epoch Zero"]
+    FILE_COW -->|Yes| COW_WARN["s0 wipe with CoW Advisory Warning<br/>Recommendation: Volume Wipe for 100% Assurance"]
+    FILE_COW -->|No| FILE_STD["s0 wipe: In-place cluster overwrite<br/>+ Metadata Scrubbing + Epoch Zero"]
     
     IS_FILE -->|Whole Physical Drive| DEV_TYPE{"Drive Architecture?"}
     
@@ -48,7 +48,7 @@ flowchart TD
 | **SATA HDD (Fast Decommission)** | `OVERWRITE_ZERO_1PASS` | **Clear** | **(Recommended)** Overwrites all addressable LBAs with zeros. Sufficient per NIST Appendix A. Avoids CSPRNG random bottleneck. |
 | **USB Flash Drives / SD Cards** | `OVERWRITE_ZERO_1PASS` | **Clear** | Firmware erase commands are rarely supported over USB bridge chips; sequential zero overwrite guarantees all accessible blocks are cleared. |
 | **Classified / Defense Contract** | `SHRED_RANDOM_NPASS` (3 passes) | **Clear** | Use only when external contractual compliance mandates multi-pass pseudo-random patterns (e.g. DoD 5220.22-M). Slower (~150 MB/s). |
-| **Sensitive File / Directory** | `s0 erase --targets ...` | **Clear** | In-place cluster overwrite, filename scrambling, timestamp zeroing, and Windows ADS / macOS xattr cleansing. |
+| **Sensitive File / Directory** | `s0 wipe --targets ...` | **Clear** | In-place cluster overwrite, filename scrambling, timestamp zeroing, and Windows ADS / macOS xattr cleansing. |
 
 ---
 
@@ -103,15 +103,15 @@ s0 wipe --target /dev/sdb --pattern random --passes 3
 
 ---
 
-## 4. Module 2: Secure File & Folder Eraser (Deep Dive)
+## 4. Secure File & Folder Erasure (Deep Dive)
 
 Standard file deletion (`rm` or Windows `del`) simply removes the directory entry and marks clusters as unallocated in the filesystem bitmap. The file data remains on disk until overwritten by new files.
 
-`s0 erase` performs true forensic erasure across Linux, Windows, and macOS:
+`s0 wipe` automatically detects files and directories to perform true forensic erasure across Linux, Windows, and macOS:
 
 ```bash
 # Recommendation: Sanitize files with metadata cleansing and certificate issuance
-s0 erase --targets /evidence/suspect_payload.bin /evidence/staging_dir/ --passes 1
+s0 wipe --targets /evidence/suspect_payload.bin /evidence/staging_dir/ --passes 1
 ```
 
 ### 4.1 In-Place Cluster Overwrite Mechanics
@@ -123,16 +123,16 @@ s0 erase --targets /evidence/suspect_payload.bin /evidence/staging_dir/ --passes
    - **Windows:** Win32 `FlushFileBuffers(handle)`.
 
 ### 4.2 Forensic Metadata Cleansing
-Overwriting file content is only half the battle. File metadata stored in directory nodes can leak filenames, file sizes, creation timestamps, and ownership. `s0 erase` scrubs this residue:
+Overwriting file content is only half the battle. File metadata stored in directory nodes can leak filenames, file sizes, creation timestamps, and ownership. `s0 wipe` scrubs this residue:
 
 ```mermaid
 sequenceDiagram
     participant Op as Forensic Operator
-    participant FE as s0 File Eraser Engine
+    participant FE as s0 Sanitizer Engine
     participant FS as Filesystem Inode / Directory
     participant Disk as Physical Storage Clusters
 
-    Op->>FE: s0 erase --targets confidential.docx
+    Op->>FE: s0 wipe --targets confidential.docx
     FE->>Disk: In-place cluster overwrite (0x00)
     FE->>Disk: Hardware cache flush (fsync / F_FULLFSYNC)
     FE->>FS: Truncate file length to 0 bytes

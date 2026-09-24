@@ -28,10 +28,10 @@ bash scripts/build_all.sh
 S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 ```
 
-### Run Module 2: File & Folder Erasure:
+### Run File & Folder Erasure (auto-detected):
 ```bash
 # Securely erase file with single-pass zero overwrite
-.venv/bin/s0 erase --targets /path/to/file.txt --passes 1
+.venv/bin/s0 wipe --targets /path/to/file.txt --passes 1
 ```
 
 ### Run Module 3: Advanced File Carving:
@@ -48,8 +48,8 @@ S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
 ### Launch Unified Web Console:
 ```bash
-.venv/bin/s0 web
-# Opens http://127.0.0.1:8000
+sudo .venv/bin/s0 web
+# Opens http://127.0.0.1:8669
 ```
 
 ### Build & Deploy Bare-Metal Live ISO:

@@ -47,7 +47,7 @@ Before installing, confirm that the following are present on your system.
     | Operation | Linux | macOS | Windows |
     |---|---|---|---|
     | Drive wipe (`s0 wipe`) | `sudo` / root | `sudo` | Administrator |
-    | File erase (`s0 erase`) | No | No | No |
+    | File erase (`s0 wipe --targets`) | No | No | No |
     | Image carve (`s0 carve`) | No | No | No |
     | List devices (`s0 list`) | No | No | No |
     | Audit / verify | No | No | No |
@@ -294,18 +294,18 @@ When complete:
 
 ## 5. Your First File Erasure
 
-`s0 erase` operates on individual files and directories — no root access needed. It overwrites data in-place at the cluster level, zeroes filesystem timestamps, and scrambles directory entry names before unlinking.
+`s0 wipe` seamlessly auto-detects individual files and directories — no root access needed. It overwrites data in-place at the cluster level, zeroes filesystem timestamps, and scrambles directory entry names before unlinking.
 
 ```bash
-# Execute in-place cluster sanitization on target files and directories
-s0 erase \
+# Execute in-place cluster sanitization on target files and directories (auto-detected)
+s0 wipe \
     --targets /path/to/classified_report.pdf /path/to/sensitive_folder/ \
     --passes 1
 ```
 
 | Flag | Purpose |
 |---|---|
-| `--targets` | Space-separated list of files and/or directories |
+| `--targets` | Space-separated list of files and/or directories (or passed as positional target) |
 | `--passes` | Number of overwrite passes (1 = NIST Clear; 3 = additional assurance) |
 
 !!! tip "Batch erasure"
@@ -315,12 +315,13 @@ Sample output:
 
 ```
 # File erasure progress output
-[s0 erase]  Processing 2 target(s)...
-[s0 erase]  [OK]  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
-[s0 erase]  [OK]  sensitive_folder/       — 23 files / 81.4 MB  overwritten (1 pass), metadata scrubbed
-[s0 erase]  Certificate → ./certificate_b88f4d01.json
-[s0 erase]              → ./certificate_b88f4d01.pdf
-[s0 erase]              → ./certificate_b88f4d01.qr.png
+[s0 wipe]  Auto-detected 2 file/directory target(s)
+[s0 wipe]  Processing 2 target(s)...
+[s0 wipe]  [OK]  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
+[s0 wipe]  [OK]  sensitive_folder/       — 23 files / 81.4 MB  overwritten (1 pass), metadata scrubbed
+[s0 wipe]  Certificate → ./certificate_b88f4d01.json
+[s0 wipe]              → ./certificate_b88f4d01.pdf
+[s0 wipe]              → ./certificate_b88f4d01.qr.png
 ```
 
 !!! warning "Copy-on-Write filesystems (Btrfs, ZFS, APFS, ReFS)"
@@ -389,7 +390,7 @@ When complete:
 
 ## 7. Understanding the Output
 
-Every `s0 wipe` and `s0 erase` operation produces a **certificate bundle** — three files tied to a single UUID:
+Every `s0 wipe` operation produces a **certificate bundle** — three files tied to a single UUID:
 
 ```
 # Certificate bundle files
@@ -507,11 +508,11 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "default_public_key_path": "core/keys/demo_issuer_public.pem",
   "default_out_dir": "demo-out",
   "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
-  "api_port": 8000
+  "api_port": 8669
 }
 ```
 
-Every command line interface (`s0 wipe`, `s0 erase`, `s0 carve`, `s0 image`), macOS/Windows CLI tool, Web Dashboard, and Verification Portal automatically derives its operational defaults from this central file.
+Every command line interface (`s0 wipe`, `s0 carve`, `s0 image`), macOS/Windows CLI tool, Web Dashboard, and Verification Portal automatically derives its operational defaults from this central file.
 
 ---
 

@@ -30,7 +30,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 0** | Project Initialization | **DONE** | Repository skeleton, MIT license, engineering standards, single source-of-truth config (`s0_config.json`) | Clean Git repository |
 | **Phase 1** | Cryptographic Foundation | **DONE** | Ed25519 signing/verifying (`s0_core.crypto`), s0 Canonical JSON v1 (`s0_core.canonical`), `core/cert_schema.json`, ReportLab PDF generator with QR (`s0_core.pdfgen`) | `core/tests/test_canonical.py`<br>`core/tests/test_tamper.py` |
 | **Phase 2** | Secure Drive Eraser (Module 1) | **DONE** | NVMe Sanitize (`nvme.py`), ATA Secure Erase (`ata.py`), `BLKDISCARD` ioctl (`blkdiscard.py`), multi-pass zero/random overwriter (`overwrite.py`), 64-block post-wipe readback sampler | `linux/cli/demo_e2e.sh`<br>`linux/cli/tests/test_overwrite.py` |
-| **Phase 3** | Secure File Eraser (Module 2) | **DONE** | Cross-platform cluster overwriting (`file_eraser.py`), `O_NOFOLLOW` atomic opening, POSIX `fsync()`, Windows Win32 `FlushFileBuffers` & multi-chunk ADS scrubbing, macOS `F_FULLFSYNC` & symlink-safe `xattr -s` stripping | `linux/cli/tests/test_file_eraser.py`<br>`windows/cli/tests/`<br>`macos/cli/tests/` |
+| **Phase 3** | File & Folder Erasure | **DONE** | Cross-platform cluster overwriting (`file_eraser.py`, unified into `s0 wipe`), `O_NOFOLLOW` atomic opening, POSIX `fsync()`, Windows Win32 `FlushFileBuffers` & multi-chunk ADS scrubbing, macOS `F_FULLFSYNC` & symlink-safe `xattr -s` stripping | `linux/cli/tests/test_file_eraser.py`<br>`windows/cli/tests/`<br>`macos/cli/tests/` |
 | **Phase 4** | Advanced File Carver (Module 3) | **DONE** | Multi-format sliding-window carver (`engine.py`), ext4 inode extent tree parser (`ext4_carver.py`), NTFS $MFT non-resident runlist carver (`ntfs_carver.py`), FAT32/exFAT carvers, 4-factor Shannon entropy scoring | `linux/cli/tests/test_carver.py`<br>`linux/cli/tests/test_ntfs_carver.py`<br>`linux/cli/demo_e2e_ntfs.sh` |
 | **Phase 5** | Forensic Drive Imager (Module 4) | **DONE** | Fault-tolerant bit-stream acquisition & drive-to-drive cloning (`imager.py`), bad sector zero-fill recovery, dual SHA-256/MD5 hashing, signed acquisition manifest | `linux/cli/tests/test_imager.py` |
 | **Phase 6** | Blockchain Audit Ledger (Module 5) | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
@@ -50,7 +50,7 @@ s0/
 │   └── python/s0_core/                 # Reference Python library (crypto, canonical, pdf, config)
 ├── linux/cli/s0_cli/                   # Master cross-platform CLI suite
 │   ├── methods/                        # Module 1: NVMe, ATA, BLKDISCARD, Overwrite
-│   ├── file_eraser.py                  # Module 2: File & folder cluster sanitizer (atomic fd overwrite)
+│   ├── file_eraser.py                  # File & folder cluster sanitizer (routed via s0 wipe)
 │   ├── carver/                         # Module 3: ext4, NTFS, FAT32, exFAT, Entropy
 │   ├── imager.py                       # Module 4: Bit-stream acquisition & disk cloning engine
 │   ├── audit/                          # Module 5: Append-only SQLite blockchain ledger
@@ -59,7 +59,7 @@ s0/
 │   └── cli/s0_eraser.py                # Windows eraser with subcommand dispatch & Win32 API
 ├── macos/                              # macOS native subsystem & launchers (s0.sh)
 │   └── cli/s0_eraser.py                # macOS eraser with subcommand dispatch & Darwin ioctls
-├── web/                                # FastAPI 4-tab forensic console (127.0.0.1:8000)
+├── web/                                # FastAPI 4-tab forensic console (127.0.0.1:8669)
 │   ├── app.py                          # REST API & WebSocket progress daemon
 │   └── static/                         # Self-contained zero-CDN frontend (HTML, CSS, JS, fonts)
 ├── linux/iso/                          # Bare-metal Debian 12 Live bootable ISO recipe

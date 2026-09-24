@@ -1,4 +1,4 @@
-"""s0 Module 2: Secure File & Folder Eraser (macOS / Darwin Native).
+"""s0: Secure File & Folder Eraser (macOS / Darwin Native).
 
 Forensic-grade selective sanitization for Apple macOS (APFS, HFS+, FAT32, exFAT):
 - In-place cluster overwriting with hardware cache flush via fcntl(F_FULLFSYNC)

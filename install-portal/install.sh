@@ -218,7 +218,7 @@ echo ""
 printf "${_bold}${_green}✅ S0 installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
 printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.1.1")"
-printf "   Web Console: s0 web\n"
+printf "   Web Console: sudo s0 web\n"
 echo ""
 
 # ── legal & authorized use notice ──────────────────────────────────────────

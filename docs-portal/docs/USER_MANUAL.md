@@ -164,20 +164,20 @@ Immediately following the write operation, s0 conducts an automated **64-block s
 
 ---
 
-## 4. Module 2: Secure File & Folder Eraser
+## 4. Secure File & Folder Erasure (`s0 wipe --targets`)
 
-Module 2 provides selective, in-place cluster sanitization for sensitive files and directories without altering the surrounding filesystem.
+Selective, in-place cluster sanitization for sensitive files and directories is seamlessly integrated into `s0 wipe`. Passing file or directory paths to `--targets` (or as target paths) automatically routes the operation to surgical file erasure without wiping the surrounding filesystem or requiring root access.
 
-### 4.1 Basic File Erasure (`s0 erase`)
+### 4.1 Basic File Erasure
 ```bash
-# Securely erase specific target files and directory trees
-s0 erase --targets /evidence/confidential_memo.pdf /evidence/financial_records/
+# Securely erase specific target files and directory trees (auto-detected)
+s0 wipe --targets /evidence/confidential_memo.pdf /evidence/financial_records/
 ```
 
 ### 4.2 Multi-Pass Random Overwrite
 ```bash
 # Multi-pass random sanitization for defense contract compliance
-s0 erase \
+s0 wipe \
     --targets /evidence/suspect_payload.bin \
     --passes 3 \
     --pattern random \

@@ -22,17 +22,17 @@ s0 integrates data sanitization, forensic file carving, and blockchain audit log
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        S0 CORE MODULES                          │
 ├──────────────────────────────────┬─────────────────────────────────────┤
-│ 1. Secure Drive Eraser           │ Firmware Purge (NVMe/ATA), Discard, │
-│    (Module 1)                    │ 1-pass Clear + Forensic Verification│
+│ 1. Media & File Sanitizer        │ Firmware Purge (NVMe/ATA), Discard, │
+│    (Unified Drive/File Wipe)     │ 1-pass Clear + Forensic Verification│
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 2. Secure File & Folder Eraser   │ Extents overwrite, metadata zeroing,│
-│    (Module 2)                    │ directory entry scrambling & batch  │
+│ 2. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
+│    (Recovery Engine)             │ & NTFS MFT parser & entropy scoring │
 ├──────────────────────────────────┼─────────────────────────────────────┤
-│ 3. Advanced File Carving         │ Signature (JPEG/PNG/PDF/ZIP), Ext4  │
-│    (Module 3)                    │ & NTFS MFT parser & entropy scoring │
+│ 3. Bit-Stream Disk Imaging       │ Bad sector zero-filling & dual      │
+│    (Acquisition & Cloning)       │ live SHA-256/MD5 stream hashing     │
 ├──────────────────────────────────┼─────────────────────────────────────┤
 │ 4. Blockchain Audit Ledger       │ Append-only SQLite ledger with      │
-│    (Module 4)                    │ SHA-256 block hash chaining         │
+│    (Cryptographic Ledger)        │ SHA-256 block hash chaining         │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
@@ -40,9 +40,9 @@ s0 integrates data sanitization, forensic file carving, and blockchain audit log
 
 ## 3. Live 3-Minute Demonstration Script
 
-### Minute 1: Module 1 & 2 (Drive & File Sanitization)
+### Minute 1: Drive & File Sanitization (`s0 wipe`)
 - **Presenter:** *"Judges, let us demonstrate irreversible sanitization on sensitive files and storage media."*
-- **Action:** Run `s0 erase --targets classified_intel.pdf` and `demo_e2e.sh`.
+- **Action:** Run `s0 wipe --targets classified_intel.pdf` and `demo_e2e.sh`.
 - **Result:** File clusters overwritten, metadata zeroed, 64-block forensic scan shows 0 hits, Ed25519 signed certificate generated.
 
 ### Minute 2: Module 3 (Advanced File Carving & Recovery)

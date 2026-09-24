@@ -1,4 +1,4 @@
-"""s0 Module 2: Secure Sanitization Platform (macOS Native).
+"""s0: Secure Sanitization Platform (macOS Native).
 
 Backward-compatible re-export module: Implementation lives in macos/cli/s0_eraser.py.
 """

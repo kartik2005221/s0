@@ -34,7 +34,7 @@ s0/
 │   ├── main.py                         # Unified argument parser (all subcommands)
 │   ├── devices.py                      # Block device & raw image inventory
 │   ├── wipe.py                         # Module 1: Drive erasure orchestrator
-│   ├── file_eraser.py                  # Module 2: File & folder cluster sanitizer
+│   ├── file_eraser.py                  # File & folder cluster sanitizer (s0 wipe)
 │   ├── temperature.py                  # Real-time thermal telemetry probe
 │   ├── methods/                        # Sanitization method drivers
 │   │   ├── base.py                     # Method abstract base class & Plan contract
@@ -54,8 +54,8 @@ s0/
 │   └── audit/                          # Module 4: Blockchain audit ledger
 │       ├── ledger.py                   # SQLite3 append-only ledger & hash-chaining
 │       └── verify.py                   # Genesis-to-tip mathematical continuity auditor
-├── windows/                            # Windows native Module 2 (Win32 FlushFileBuffers, ADS)
-├── macos/                              # macOS native Module 2 (F_FULLFSYNC, xattr cleansing)
+├── windows/                            # Windows native file/folder sanitizer (Win32 FlushFileBuffers, ADS)
+├── macos/                              # macOS native file/folder sanitizer (F_FULLFSYNC, xattr cleansing)
 ├── web/                                # FastAPI unified web dashboard (4 forensic tabs)
 ├── verification-portal/                # 100% client-side zero-backend static verifier
 ├── docs/                               # MkDocs Material technical documentation suite

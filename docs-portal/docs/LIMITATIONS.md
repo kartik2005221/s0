@@ -11,7 +11,7 @@
 |---|---|---|
 | **Module 1 — Drive Eraser (CLI)** | Fully validated | Full overwrite on images & block devices; ATA/NVMe coded & fixture-tested |
 | **Module 1 — Live ISO (Bootable USB)** | Scaffolded (bare metal pending) | Build scripts complete; not boot-tested on physical hardware |
-| **Module 2 — File/Folder Eraser** | Fully validated | Linux, Windows, macOS all implemented and exercised |
+| **Media & File Sanitizer (`s0 wipe`)** | Fully validated | Whole drives, images, and Linux, Windows, macOS file/folder wiping |
 | **Module 3 — File Carver** | Fully validated | Multi-format header/footer + multi-filesystem structure carving |
 | **Module 4 — Audit Ledger** | Fully validated | Single-authority hash chain (not distributed consensus — see §9) |
 
@@ -63,7 +63,7 @@ These commands operate at the **controller firmware level**, resetting the FTL m
 
 ### What Happens During File Overwrite
 
-When s0's Module 2 (File Eraser) opens a file on a CoW filesystem and writes overwrite passes, the filesystem does **not** modify the original data blocks in place. Instead it:
+When `s0 wipe` is invoked on files located on a CoW filesystem and writes overwrite passes, the filesystem does **not** modify the original data blocks in place. Instead it:
 
 1. Allocates new blocks for the new (overwritten) content.
 2. Updates the B-tree or extent tree to point the file's inode to the new blocks.
@@ -144,7 +144,7 @@ The NTFS Update Sequence Number Journal records every file operation but is not 
 Only the **primary unnamed `$DATA` stream** is extracted per MFT entry. Secondary named streams (e.g., `file.txt:Zone.Identifier`) are bypassed. If your investigation targets ADS content specifically, use a dedicated NTFS ADS enumeration tool.
 
 !!! info "ADS Enumeration on Live Systems"
-    s0 Module 2's Windows implementation **does** enumerate ADS on live files during secure deletion (to ensure named streams are overwritten). The carver limitation applies only to post-mortem image analysis.
+    s0's Windows file erasure implementation **does** enumerate ADS on live files during secure deletion (to ensure named streams are overwritten). The carver limitation applies only to post-mortem image analysis.
 
 ---
 
@@ -214,9 +214,9 @@ Is the target a solid-state device (SSD, NVMe, eMMC, SD card)?
     │   ├── YES → Wipe the entire volume at block device level.
     │   │         File-level overwrite is ineffective on CoW.
     │   └── NO  (ext4, NTFS, FAT32, XFS, etc.)
-    │       ├── Single file? → Use Module 2 (File Eraser)
+    │       ├── Single file? → Use `s0 wipe --targets` (File & Folder Sanitizer)
     │       │   Note: journal residue window applies on ext4/NTFS
-    │       └── Entire drive? → Use Module 1 (Drive Eraser)
+    │       └── Entire drive? → Use `s0 wipe --target /dev/...` (Whole-Drive Sanitizer)
     │           Select OVERWRITE_ZERO_1PASS (NIST 800-88 Clear) or
     │           OVERWRITE_RANDOM_3PASS (NIST 800-88 Purge for HDDs)
 ```

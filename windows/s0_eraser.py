@@ -1,4 +1,4 @@
-"""s0 Module 2: Secure Sanitization Platform (Windows Native).
+"""s0: Secure Sanitization Platform (Windows Native).
 
 Backward-compatible re-export module: Implementation lives in windows/cli/s0_eraser.py.
 """

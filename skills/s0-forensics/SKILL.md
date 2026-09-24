@@ -33,9 +33,8 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 | `s0 verify` | Offline verification of Ed25519-signed certificate JSON | **Safe (Read-Only)** | Zero-trust verification of compliance reports |
 | `s0 keygen` | Generate Ed25519 keypair for an authority or operator | **Safe (Creates Files)** | Establishing laboratory cryptographic authority |
 | `s0 upgrade` | Pull latest release from GitHub and rebuild packages | **Maintenance** | Upgrading local toolchain and dependencies |
-| `s0 web` | Launch unified forensic web dashboard (FastAPI loopback) | **Safe (Local UI)** | Interactive multi-tab browser dashboard |
-| `s0 erase` | In-place file/directory overwrite with metadata cleansing | **DESTRUCTIVE (Irreversible)** | Scrubbing individual sensitive files or folders |
-| `s0 wipe` | Physical whole-drive sanitization per NIST SP 800-88 | **HIGH-RISK DESTRUCTIVE** | Decommissioning, repurposing, or sanitized disposal |
+| `sudo s0 web` | Launch unified forensic web dashboard (FastAPI loopback) | **Safe (Local UI)** | Interactive multi-tab browser dashboard (requires sudo for direct disk sanitization) |
+| `s0 wipe` | Physical whole-drive sanitization & surgical file/folder erasure | **HIGH-RISK DESTRUCTIVE** | Decommissioning, repurposing, or sanitized file/folder disposal (auto-detects target type) |
 
 ---
 
@@ -146,12 +145,12 @@ s0 carve \
 
 ---
 
-### Workflow 5: Surgical File & Folder Erasure (`s0 erase`)
+### Workflow 5: Surgical File & Folder Erasure (`s0 wipe --targets`)
 To sanitize specific sensitive documents, secret keys, or test directories:
 
 ```bash
-# In-place file scrubbing with metadata zeroing
-s0 erase \
+# In-place file scrubbing with metadata zeroing (auto-detected by s0 wipe)
+s0 wipe \
     --targets /tmp/staging/keys.pem /tmp/confidential/ \
     --passes 1 \
     --operator "analyst-01" \
