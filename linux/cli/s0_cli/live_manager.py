@@ -309,6 +309,73 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         elif name == "SHA256SUMS.txt":
             sha_sums_asset = a
 
+    if not iso_asset and ver_input.lower() == "latest":
+        print(f"[*] Release {tag_name} does not contain a Live ISO; searching previous releases for latest available Live ISO...")
+        headers = {
+            "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.1')} (LiveDownloader)",
+            "Accept": "application/vnd.github.v3+json",
+        }
+        token = _get_auth_token()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        try:
+            url = f"https://api.github.com/repos/{repo}/releases?per_page=10"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                all_releases = json.loads(resp.read().decode("utf-8"))
+            for cand_rel in all_releases:
+                if cand_rel.get("tag_name") == tag_name:
+                    continue
+                cand_assets = cand_rel.get("assets", [])
+                for a in cand_assets:
+                    if a.get("name", "").endswith(".hybrid.iso"):
+                        rel = cand_rel
+                        tag_name = cand_rel.get("tag_name", "")
+                        assets = cand_assets
+                        iso_asset = a
+                        break
+                if iso_asset:
+                    break
+        except Exception:
+            pass
+
+        if not iso_asset and shutil.which("gh"):
+            try:
+                gh_cmd = ["gh", "release", "list", "-R", repo, "--limit", "10", "--json", "tagName"]
+                gh_res = subprocess.run(gh_cmd, capture_output=True, text=True, check=False)
+                if gh_res.returncode == 0 and gh_res.stdout.strip():
+                    items = json.loads(gh_res.stdout.strip())
+                    for item in items:
+                        t = item.get("tagName")
+                        if not t or t == tag_name:
+                            continue
+                        try:
+                            cand_rel = _fetch_github_release(repo, t)
+                            cand_assets = cand_rel.get("assets", [])
+                            for a in cand_assets:
+                                if a.get("name", "").endswith(".hybrid.iso"):
+                                    rel = cand_rel
+                                    tag_name = t
+                                    assets = cand_assets
+                                    iso_asset = a
+                                    break
+                            if iso_asset:
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+
+        if iso_asset:
+            sha_asset = None
+            sha_sums_asset = None
+            for a in assets:
+                name = a.get("name", "")
+                if name.endswith(".hybrid.iso.sha256"):
+                    sha_asset = a
+                elif name == "SHA256SUMS.txt":
+                    sha_sums_asset = a
+
     if not iso_asset:
         print(f"[-] Error: No Live ISO asset (.hybrid.iso) found in release {tag_name}.", file=sys.stderr)
         return 1

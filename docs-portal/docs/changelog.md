@@ -24,7 +24,9 @@ timeline
 - **Graceful Signal Handling:** Implemented clean `SIGINT` / Ctrl+C cancellation handlers across all commands (`s0 wipe`, `s0 image`, `s0 carve`, `s0 live flash/download`, `s0 web`), restoring cursor state and terminating workers safely.
 - **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
 - **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
-- **Cloudflare Pages Deployment Support:** Added native Cloudflare Pages configuration files (`_headers`, `_redirects`) and comprehensive deployment guide (`CLOUDFLARE_DEPLOY.md`) for all three static portals.
+- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`s0-docs.pages.dev`, `s0-verify.pages.dev`, `s0-install.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
+- **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/macOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
+- **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Module 4 (Blockchain Cryptographic Audit Ledger).
 
 ### Security
 - **Path Traversal Hardening:** Patched potential path traversal vulnerabilities in `cmd_uninstall` directory cleanup and live image downloads.
@@ -33,6 +35,7 @@ timeline
 
 ### Changed
 - **Default Web Dashboard Port:** Migrated default web dashboard port from `8000` to `8669` across `s0_config.json`, CLI arguments, runner scripts (`run.sh`, `run.bat`, `run.ps1`), and Live ISO systemd services.
+- **Standalone Software Release Mode:** Decoupled GitHub Releases from the Live ISO generation toolchain to deliver lightweight, fast, pure software distribution without requiring 550MB ISO image generation.
 
 ---
 

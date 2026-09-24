@@ -1,14 +1,12 @@
 name: Build Bootable Live ISO
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to attach ISO to (e.g. v2.4.0)'
+        description: 'Release tag to attach ISO to (e.g. v2.4.1)'
         required: false
-        default: 'v2.4.0'
+        default: 'v2.4.1'
 
 permissions:
   contents: write
@@ -74,14 +72,6 @@ jobs:
           test -f "$ISO" || { echo "Error: $ISO not found"; exit 1; }
           sha256sum "$ISO" > "${ISO}.sha256"
           cat "${ISO}.sha256"
-
-      - name: Upload ISO Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.meta.outputs.iso_name }}
-          path: |
-            ${{ steps.meta.outputs.iso_name }}
-            ${{ steps.meta.outputs.iso_name }}.sha256
 
       - name: Update Release Checksums
         env:
