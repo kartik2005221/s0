@@ -244,9 +244,9 @@ def test_win_cli_subcommand_dispatch(tmp_path: Path):
     target.write_bytes(b"SUBCOMMAND DISPATCH TEST")
     out_dir = tmp_path / "sub_out"
 
-    # Test invoking with 'erase' subcommand directly via win_main(argv)
+    # Test invoking with 'wipe' subcommand directly via win_main(argv)
     code = win_main([
-        "erase",
+        "wipe",
         "--targets", str(target),
         "--out-dir", str(out_dir),
         "--no-pdf",

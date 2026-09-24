@@ -769,7 +769,7 @@ def wipe_drive_or_partition_macos(
 def main(argv: Optional[List[str]] = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     subcommands = {
-        "list", "plan", "wipe", "erase", "erase-files", "carve",
+        "list", "plan", "wipe", "carve",
         "audit", "verify", "keygen", "image", "clone", "upgrade",
         "uninstall", "web", "live",
     }

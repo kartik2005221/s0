@@ -426,7 +426,7 @@ function onDriveWipeDone(job) {
   renderDemoKeyNotice(actionBox, job.demo_key_warning);
 }
 
-// --- Module 2: File & Folder Eraser ---
+// --- File & Folder Sanitizer ---
 function addSampleFileTarget() {
   const area = document.getElementById("fileTargets");
   const sample = "/tmp/confidential_memo_" + Math.floor(Math.random() * 1000) + ".txt";

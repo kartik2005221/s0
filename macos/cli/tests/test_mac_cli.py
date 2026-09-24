@@ -248,9 +248,9 @@ def test_mac_cli_subcommand_dispatch(tmp_path: Path):
     target.write_bytes(b"MAC SUBCOMMAND DISPATCH TEST")
     out_dir = tmp_path / "sub_mac_out"
 
-    # Test invoking with 'erase' subcommand directly via mac_main(argv)
+    # Test invoking with 'wipe' subcommand directly via mac_main(argv)
     code = mac_main([
-        "erase",
+        "wipe",
         "--targets", str(target),
         "--out-dir", str(out_dir),
         "--no-pdf",

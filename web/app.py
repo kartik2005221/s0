@@ -591,9 +591,9 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
                 w_mb = written_bytes / (1024 * 1024)
                 tot_mb = total_bytes / (1024 * 1024)
-                msg = f"[s0 erase] | {pct:3d}% | {w_mb:.1f} MiB / {tot_mb:.1f} MiB | {speed_str} | ETA: {eta_str}{temp_str} ({Path(fpath).name[:20]})"
+                msg = f"[s0 wipe] | {pct:3d}% | {w_mb:.1f} MiB / {tot_mb:.1f} MiB | {speed_str} | ETA: {eta_str}{temp_str} ({Path(fpath).name[:20]})"
                 with _lock:
-                    if not _jobs[job_id]["log"] or not _jobs[job_id]["log"][-1].startswith("[s0 erase]"):
+                    if not _jobs[job_id]["log"] or not _jobs[job_id]["log"][-1].startswith("[s0 wipe]"):
                         _jobs[job_id]["log"].append(msg)
                     else:
                         _jobs[job_id]["log"][-1] = msg

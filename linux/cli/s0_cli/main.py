@@ -1,15 +1,13 @@
 """S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI.
 
 Subcommands:
-  1. Drive Eraser:
+  1. Secure Sanitization (Unified Wipe):
      s0 list                       inventory of block devices
      s0 plan  --target PATH        dry-run: method, tier, warnings
-     s0 wipe  --target PATH        sanitize drive, verify, issue certificate
+     s0 wipe  --target PATH        sanitize drive, file, or folder, verify, issue certificate
+              --targets PATH...    batch sanitize multiple files and folders
 
-  2. File & Folder Eraser:
-     s0 erase --targets PATH...    secure deletion & metadata scrubbing
-
-  3. Advanced File Carving & Recovery:
+  2. Advanced File Carving & Recovery:
      s0 carve --target PATH --out-dir DIR   signature & structure recovery
 
   4. Blockchain Audit Ledger:
@@ -308,6 +306,10 @@ def cmd_list(args) -> int:
 
 
 def cmd_plan(args) -> int:
+    if not getattr(args, "target", None):
+        print("error: the following arguments are required: --target", file=sys.stderr)
+        return 2
+
     try:
         target = _resolve_target(args.target)
     except (FileNotFoundError, SafetyError) as exc:
@@ -357,6 +359,37 @@ def cmd_plan(args) -> int:
 
 def cmd_wipe(args) -> int:
     _print_legal_notice()
+
+    targets = getattr(args, "targets", None)
+    target_arg = getattr(args, "target", None)
+
+    if not targets and not target_arg:
+        print("error: one of --target or --targets is required", file=sys.stderr)
+        return 2
+
+    is_file_mode = False
+    if targets:
+        is_file_mode = True
+        args.targets = targets
+    elif target_arg:
+        t_path = Path(target_arg)
+        is_blk = False
+        try:
+            is_blk = t_path.is_block_device() or (sys.platform == "darwin" and t_path.is_char_device())
+        except Exception:
+            pass
+
+        if not is_blk:
+            if t_path.is_dir():
+                is_file_mode = True
+                args.targets = [target_arg]
+            elif t_path.is_file() and t_path.suffix.lower() not in (".img", ".raw", ".iso", ".bin"):
+                is_file_mode = True
+                args.targets = [target_arg]
+
+    if is_file_mode:
+        return cmd_erase_files(args)
+
     t_start = time.monotonic()
     start_time = _now()
     try:
@@ -706,15 +739,15 @@ def cmd_wipe(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 2: File & Folder Eraser Subcommand
+# File & Folder Sanitization (invoked via s0 wipe)
 # --------------------------------------------------------------------------- #
 
 
 def cmd_erase_files(args) -> int:
     _print_legal_notice()
-    print(f"==> S0 Module 2: Secure File & Folder Eraser")
+    print(f"==> S0: Secure File & Folder Sanitization")
 
-    key_path = default_issuer_key(args.key)
+    key_path = default_issuer_key(getattr(args, "key", None))
     _warn_if_demo_key(key_path)
     if key_path is None and not getattr(args, "no_certificate", False):
         print(
@@ -732,7 +765,7 @@ def cmd_erase_files(args) -> int:
     print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}")
 
     total_est = sum(p.stat().st_size for p in targets if p.is_file()) * getattr(args, "passes", 1)
-    bar = ProgressBar(max(total_est, 1024), operation="s0 erase") if total_est > 0 else None
+    bar = ProgressBar(max(total_est, 1024), operation="s0 wipe") if total_est > 0 else None
 
     def erase_progress_cb(path_str: str, written: int, total_f: int) -> None:
         if bar:
@@ -1437,7 +1470,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--version", action="version", version=f"s0 {__version__}")
-    common.add_argument("--target", required=True, help="block device path OR image file path")
+    common.add_argument("--target", help="target drive, image, file, or directory")
     common.add_argument(
         "--passes",
         "-p",
@@ -1468,12 +1501,18 @@ def build_parser() -> argparse.ArgumentParser:
     pln = sub.add_parser("plan", parents=[common], help="dry-run: show what would happen")
     pln.set_defaults(func=cmd_plan)
 
-    wp = sub.add_parser("wipe", parents=[common], help="wipe target, verify, issue signed certificate")
-    wp.add_argument("--yes", "-y", action="store_true", help="skip interactive WIPE prompt")
+    wp = sub.add_parser("wipe", parents=[common], help="wipe drive, file(s), or folder(s), verify, issue signed certificate")
+    wp.add_argument("--targets", "-t", nargs="+", help="multiple target files or directories to sanitize")
+    wp.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
     wp.add_argument("--key", "--signing-key", help="issuer private key PEM (default: demo issuer key)")
     wp.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
     wp.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
     wp.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
+    wp.add_argument(
+        "--no-certificate",
+        action="store_true",
+        help="explicitly run without generating an Ed25519 compliance certificate",
+    )
     wp.add_argument("--no-pdf", action="store_true", help="skip generating human-readable PDF compliance certificate")
     wp.add_argument("--verify-samples", type=int, default=64, help="number of readback samples to verify (default: 64)")
     wp.add_argument(
@@ -1494,41 +1533,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="URL template for encoded verification QR code",
     )
     wp.set_defaults(func=cmd_wipe)
-
-    # 2. File & Folder Eraser Subcommand (erase & erase-files alias)
-    for fe_cmd in ("erase", "erase-files"):
-        fe = sub.add_parser(fe_cmd, help="securely erase files and folders with metadata cleansing")
-        fe.add_argument("--targets", "-t", nargs="+", required=True, help="paths to files or directories to sanitize")
-        fe.add_argument("--passes", "-p", type=int, default=1, help="number of overwrite passes")
-        fe.add_argument("--pattern", choices=["zero", "random"], default="zero", help="overwrite pattern: 'zero' or 'random'")
-        fe.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
-        fe.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for certificate")
-        fe.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for certificate")
-        fe.add_argument("--key", "--signing-key", help="signing key path (default: demo issuer key)")
-        fe.add_argument(
-            "--no-certificate",
-            action="store_true",
-            help="explicitly run without generating an Ed25519 compliance certificate",
-        )
-        fe.add_argument("--no-pdf", action="store_true", help="skip rendering PDF certificate")
-        fe.add_argument("--json", action="store_true", help="output result as machine-readable JSON")
-        fe.add_argument(
-            "--portal-url",
-            default=CONFIG.get("verification_portal_url", "https://s0-vp.vercel.app/"),
-            help="verification portal base URL",
-        )
-        fe.add_argument(
-            "--qr-url-template",
-            default=CONFIG.get("qr_url_template", "https://s0-vp.vercel.app/?cert={cert_uuid}"),
-            help="URL template for verification QR",
-        )
-        fe.add_argument(
-            "--verify-samples",
-            type=int,
-            default=64,
-            help="number of readback samples for verification (default: 64)",
-        )
-        fe.set_defaults(func=cmd_erase_files)
 
     # 3. File Carving & Recovery Subcommand
     crv = sub.add_parser("carve", help="advanced file carving and recovery from raw images / media")
