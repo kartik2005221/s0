@@ -258,7 +258,7 @@ def _print_plan(
 
 
 # --------------------------------------------------------------------------- #
-# Module 1: Drive Eraser Subcommands
+# Module 1: Media & File Sanitization Subcommands
 # --------------------------------------------------------------------------- #
 
 
@@ -838,13 +838,13 @@ def cmd_erase_files(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 3: File Carving Subcommands
+# Module 2: File Carving Subcommands
 # --------------------------------------------------------------------------- #
 
 
 def cmd_carve(args) -> int:
     _print_legal_notice()
-    print(f"==> S0 Module 3: Advanced File Carving & Recovery")
+    print(f"==> S0 Module 2: Advanced File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
     _warn_if_demo_key(key_path)
@@ -998,7 +998,7 @@ def cmd_audit(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 5: Offline Verification & Key Generation
+# Zero-Trust Verification & Key Generation
 # --------------------------------------------------------------------------- #
 
 
@@ -1064,7 +1064,7 @@ def cmd_keygen(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 6: Upgrade & Maintenance
+# Maintenance & Upgrade Commands
 # --------------------------------------------------------------------------- #
 
 
@@ -1227,7 +1227,7 @@ def cmd_uninstall(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 7: Forensic Bit-Stream Drive Imaging & Cloning
+# Module 3: Forensic Bit-Stream Drive Imaging & Cloning
 # --------------------------------------------------------------------------- #
 
 

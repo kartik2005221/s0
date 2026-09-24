@@ -596,7 +596,7 @@ function onFileEraseDone(job) {
   }
 }
 
-// --- Module 3: Forensic File Carver ---
+// --- Module 2: Forensic File Carver ---
 function initCarverCheckboxes() {
   const grid = document.getElementById("carverExtGrid");
   if (!grid) return;
@@ -899,7 +899,7 @@ function onCarveDone(job) {
   }
 }
 
-// --- Module 4: Forensic Imager & Cloner ---
+// --- Module 3: Forensic Imager & Cloner ---
 function updateClonePrompt() {
   const dest = document.getElementById("imageDestInput").value.trim();
   const promptEl = document.getElementById("cloneConfirmPromptPath");
@@ -1158,7 +1158,7 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
   }, 600);
 }
 
-// --- Module 5: Blockchain Audit Ledger ---
+// --- Module 4: Blockchain Audit Ledger ---
 async function loadAuditBlocks() {
   try {
     const res = await fetch("/api/audit/blocks?limit=150");

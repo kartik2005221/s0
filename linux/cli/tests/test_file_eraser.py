@@ -1,4 +1,4 @@
-"""Unit tests for s0 Module 2: Secure File & Folder Eraser."""
+"""Unit tests for s0 Module 1: Secure File & Folder Eraser."""
 
 import os
 from pathlib import Path

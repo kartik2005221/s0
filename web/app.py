@@ -5,8 +5,9 @@ Endpoints:
   - GET  /api/devices                -> List block devices & test images
   - POST /api/plan                   -> Drive wipe planning preview
   - POST /api/wipe                   -> Execute Drive Sanitization (Module 1)
-  - POST /api/erase-files            -> Execute Secure File & Folder Erasure (Module 2)
-  - POST /api/carve                  -> Execute Advanced File Carving & Recovery (Module 3)
+  - POST /api/erase-files            -> Execute Secure File & Folder Erasure (Module 1)
+  - POST /api/carve                  -> Execute Advanced File Carving & Recovery (Module 2)
+  - POST /api/image                  -> Execute Forensic Bit-Stream Imaging (Module 3)
   - GET  /api/audit/blocks           -> Retrieve Blockchain Audit Ledger (Module 4)
   - GET  /api/audit/verify           -> Verify Hash Chain Integrity (Module 4)
   - GET  /api/job/{job_id}           -> Real-time Job Progress & Output

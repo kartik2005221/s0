@@ -1,4 +1,4 @@
-"""s0 Module 3: Advanced File Carving and Forensic Recovery."""
+"""s0 Module 2: Advanced File Carving and Forensic Recovery."""
 
 from .engine import CarvedFile, CarvingSessionSummary, carve_image, detect_filesystem
 from .ext4_carver import parse_ext4_superblock, scan_ext4_deleted_inodes

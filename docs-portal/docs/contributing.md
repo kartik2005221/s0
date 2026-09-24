@@ -33,8 +33,8 @@ s0/
 ├── linux/cli/s0_cli/                   # Linux & unified CLI suite
 │   ├── main.py                         # Unified argument parser (all subcommands)
 │   ├── devices.py                      # Block device & raw image inventory
-│   ├── wipe.py                         # Module 1: Drive erasure orchestrator
-│   ├── file_eraser.py                  # File & folder cluster sanitizer (s0 wipe)
+│   ├── wipe.py                         # Module 1: Drive & media erasure orchestrator
+│   ├── file_eraser.py                  # Module 1: File & folder cluster sanitizer
 │   ├── temperature.py                  # Real-time thermal telemetry probe
 │   ├── methods/                        # Sanitization method drivers
 │   │   ├── base.py                     # Method abstract base class & Plan contract
@@ -42,7 +42,7 @@ s0/
 │   │   ├── ata.py                      # ATA Secure Erase & HPA/DCO detection
 │   │   ├── blkdiscard.py               # BLKDISCARD ioctl wrapper
 │   │   └── overwrite.py                # Multi-pass zero & CSPRNG random overwriter
-│   ├── carver/                         # Module 3: Forensic file recovery
+│   ├── carver/                         # Module 2: Forensic file recovery
 │   │   ├── engine.py                   # Raw stream & signature sliding window scanner
 │   │   ├── signatures.py               # Magic byte definitions (JPEG, PNG, PDF, etc.)
 │   │   ├── ext4_carver.py              # Superblock, block group & inode extent parser
@@ -51,6 +51,7 @@ s0/
 │   │   ├── exfat_carver.py             # exFAT VBR & directory entry set carver
 │   │   ├── fragmentation.py            # Bifragment stream reassembly
 │   │   └── scoring.py                  # Heuristic & Shannon entropy confidence scorer
+│   ├── imager.py                       # Module 3: Bit-stream forensic imager & cloner
 │   └── audit/                          # Module 4: Blockchain audit ledger
 │       ├── ledger.py                   # SQLite3 append-only ledger & hash-chaining
 │       └── verify.py                   # Genesis-to-tip mathematical continuity auditor
@@ -90,7 +91,7 @@ bash scripts/build_all.sh
 
 ## 4. How to Add a New File Carving Signature
 
-Adding support for a new file format to **Module 3 (File Carver)** requires adding an entry to `linux/cli/s0_cli/carver/signatures.py`:
+Adding support for a new file format to **Module 2 (File Carver)** requires adding an entry to `linux/cli/s0_cli/carver/signatures.py`:
 
 ```python
 from .signatures import FileSignature, SIGNATURES

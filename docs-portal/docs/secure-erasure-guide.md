@@ -3,7 +3,7 @@
 !!! info "Document Scope & Standards"
     - **Primary Focus:** In-depth technical guide to storage sanitization, controller firmware commands, file cluster overwriting, and metadata destruction.
     - **Applicable Standards:** NIST SP 800-88 Rev. 1, IEEE 2883-2022, DoD 5220.22-M
-    - **Modules Covered:** Module 1 (Secure Drive Eraser) & Module 2 (Secure File & Folder Eraser)
+    - **Modules Covered:** Module 1 (Defensive Media & File Sanitizer)
 
 ---
 

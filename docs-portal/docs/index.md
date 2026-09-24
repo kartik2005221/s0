@@ -63,7 +63,7 @@ Built for security engineers, digital forensic examiners, compliance auditors, a
 
     **Capabilities:** Raw Bit-Stream Image · 1:1 Disk Clone · Fault-Tolerant Bad Sector Recovery · Live Dual Hashing
 
-    [:octicons-arrow-right-24: Drive Imager Manual](USER_MANUAL.md#6-module-4-forensic-drive-imager-bit-stream-copy)
+    [:octicons-arrow-right-24: Drive Imager Manual](USER_MANUAL.md#6-module-3-forensic-drive-imager-bit-stream-copy)
 
 -   :material-shield-check:{ .lg .middle } **Blockchain Audit Ledger**
 
@@ -73,7 +73,7 @@ Built for security engineers, digital forensic examiners, compliance auditors, a
 
     **Verification:** Ed25519 · SHA-256 chain · 100% client-side portal
 
-    [:octicons-arrow-right-24: Audit Ledger Specs](USER_MANUAL.md#7-module-5-blockchain-cryptographic-audit-ledger)
+    [:octicons-arrow-right-24: Audit Ledger Specs](USER_MANUAL.md#7-module-4-blockchain-cryptographic-audit-ledger)
 
 </div>
 
@@ -194,13 +194,13 @@ s0's sanitization algorithms and evidence collection protocols are mapped direct
 
     Bit-stream acquisition, 1:1 disk cloning, fault-tolerant zero filling, and dual hashing.
 
-    [:octicons-arrow-right-24: Imager Docs](USER_MANUAL.md#6-module-4-forensic-drive-imager-bit-stream-copy)
+    [:octicons-arrow-right-24: Imager Docs](USER_MANUAL.md#6-module-3-forensic-drive-imager-bit-stream-copy)
 
 -   :material-shield-check: **Blockchain Audit Ledger**
 
     Append-only SQLite architecture, SHA-256 hash chaining, and integrity audits.
 
-    [:octicons-arrow-right-24: Audit Ledger Docs](USER_MANUAL.md#7-module-5-blockchain-cryptographic-audit-ledger)
+    [:octicons-arrow-right-24: Audit Ledger Docs](USER_MANUAL.md#7-module-4-blockchain-cryptographic-audit-ledger)
 
 -   :material-certificate: **Verification & Air-Gapped Trust**
 

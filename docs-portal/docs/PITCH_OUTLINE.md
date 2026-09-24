@@ -45,7 +45,7 @@ s0 integrates data sanitization, forensic file carving, and blockchain audit log
 - **Action:** Run `s0 wipe --targets classified_intel.pdf` and `demo_e2e.sh`.
 - **Result:** File clusters overwritten, metadata zeroed, 64-block forensic scan shows 0 hits, Ed25519 signed certificate generated.
 
-### Minute 2: Module 3 (Advanced File Carving & Recovery)
+### Minute 2: Module 2 (Advanced File Carving & Recovery)
 - **Presenter:** *"Now let us switch to our offensive forensic capability: carving deleted evidence from a formatted raw disk image."*
 - **Action:** Run `s0 carve --target /evidence/suspect_drive.raw --out-dir ./recovered`.
 - **Result:** Carver scans disk, identifies magic headers/footers, calculates Shannon entropy confidence scores (>85%), extracts recovered files, and outputs a signed forensic recovery manifest.

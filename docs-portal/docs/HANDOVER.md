@@ -34,10 +34,16 @@ S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 .venv/bin/s0 wipe --targets /path/to/file.txt --passes 1
 ```
 
-### Run Module 3: Advanced File Carving:
+### Run Module 2: Advanced File Carving:
 ```bash
 # Carve deleted evidence from raw disk image
 .venv/bin/s0 carve --target /path/to/image.raw --out-dir ./recovered
+```
+
+### Run Module 3: Bit-Stream Forensic Imaging:
+```bash
+# Acquire forensic bit-stream image with dual SHA-256/MD5 hashing
+sudo .venv/bin/s0 image /dev/sdb ./evidence.dd
 ```
 
 ### Run Module 4: Blockchain Audit Ledger Verification:

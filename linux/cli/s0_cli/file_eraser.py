@@ -1,4 +1,4 @@
-"""s0 Module 2: Secure File and Folder Eraser.
+"""s0 Module 1: Secure File and Folder Eraser.
 
 Provides selective, forensic-grade file and folder sanitization:
   - In-place cluster data overwriting (zero or multi-pass random) with fsync

@@ -163,7 +163,7 @@ The Carver tab recovers deleted artifacts from disk images (`.raw`, `.img`, `.dd
 
 ### Tab 4: Forensic Imager & Cloner
 
-Module 4 provides bit-stream forensic acquisition (raw `.dd` image creation) and physical disk-to-disk bit-stream cloning with real-time SHA-256 verification:
+Module 3 provides bit-stream forensic acquisition (raw `.dd` image creation) and physical disk-to-disk bit-stream cloning with real-time SHA-256 verification:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐

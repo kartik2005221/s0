@@ -1,4 +1,4 @@
-"""s0 Module 3: Advanced File Carving & Recovery Engine (ext4, NTFS, & Signatures)."""
+"""s0 Module 2: Advanced File Carving & Recovery Engine (ext4, NTFS, & Signatures)."""
 
 from __future__ import annotations
 

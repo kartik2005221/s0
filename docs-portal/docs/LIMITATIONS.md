@@ -9,10 +9,9 @@
 
 | Module | Status | Notes |
 |---|---|---|
-| **Module 1 — Drive Eraser (CLI)** | Fully validated | Full overwrite on images & block devices; ATA/NVMe coded & fixture-tested |
-| **Module 1 — Live ISO (Bootable USB)** | Scaffolded (bare metal pending) | Build scripts complete; not boot-tested on physical hardware |
-| **Media & File Sanitizer (`s0 wipe`)** | Fully validated | Whole drives, images, and Linux, Windows, macOS file/folder wiping |
-| **Module 3 — File Carver** | Fully validated | Multi-format header/footer + multi-filesystem structure carving |
+| **Module 1 — Media & File Sanitizer (`s0 wipe`)** | Fully validated | Whole drives, images, and Linux, Windows, macOS file/folder wiping |
+| **Module 2 — File Carver** | Fully validated | Multi-format header/footer + multi-filesystem structure carving |
+| **Module 3 — Forensic Imager** | Fully validated | Bit-stream disk acquisition, device cloning, and bad sector recovery |
 | **Module 4 — Audit Ledger** | Fully validated | Single-authority hash chain (not distributed consensus — see §9) |
 
 !!! info "Reading the Status Column"
@@ -124,7 +123,7 @@ The journal overwrites itself as new operations fill the circular buffer — but
 
 ## 4. NTFS Carving Limitations
 
-Module 3's NTFS structure-based carver operates on raw images and block devices. The following constraints apply:
+Module 2's NTFS structure-based carver operates on raw images and block devices. The following constraints apply:
 
 ### No Transaction Log Replay
 

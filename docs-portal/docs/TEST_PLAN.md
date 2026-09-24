@@ -61,8 +61,8 @@ graph TD
 | `linux/cli/tests/test_firmware_probes.py`| Module 1: Drive Eraser | Unit tests parser routines for `hdparm -I`, `nvme id-ctrl`, HPA/DCO boundary queries, and ATA Security status flags. |
 | `linux/cli/tests/test_e2e_demo.py` | Module 1: Drive Eraser | Programmatically builds a loopback disk image, plants confidential marker tokens, executes sanitization, performs 64-block sampling, and asserts zero marker hits. |
 | `linux/cli/tests/test_file_eraser.py` | File/Folder Erasure | Tests cluster overwriting, inode timestamp zeroing (`1970-01-01T00:00:00Z`), directory entry scrambling, recursive directory unlinking, and batch certificate generation. |
-| `linux/cli/tests/test_carver.py` | Module 3: File Carver | Tests 3-point Shannon entropy calculations, confidence scoring math, sliding-window header/footer carving, and recovery manifest generation. |
-| `linux/cli/tests/test_ntfs_carver.py` | Module 3: File Carver | Mounts synthetic NTFS images with deleted files; validates $MFT resident extraction and multi-fragment non-resident runlist reassembly. |
+| `linux/cli/tests/test_carver.py` | Module 2: File Carver | Tests 3-point Shannon entropy calculations, confidence scoring math, sliding-window header/footer carving, and recovery manifest generation. |
+| `linux/cli/tests/test_ntfs_carver.py` | Module 2: File Carver | Mounts synthetic NTFS images with deleted files; validates $MFT resident extraction and multi-fragment non-resident runlist reassembly. |
 | `linux/cli/tests/test_audit.py` | Module 4: Audit Ledger | Tests genesis block initialization, append-only block insertion, SHA-256 hash chaining, and asserts that modifying a database row breaks verification. |
 | `web/tests/test_gui.py` | Web Dashboard | Uses FastAPI's `TestClient` to execute end-to-end API calls across all four tabs without launching a live browser. |
 | `verification-portal/tests/test_portal.py`| Verification Portal | Tests that the pure JavaScript verifier (`verify.js`) produces identical verification decisions to the Python reference engine across valid and tampered certificates. |

@@ -1,4 +1,4 @@
-"""Unit tests for s0 Module 3: Advanced File Carving & Recovery."""
+"""Unit tests for s0 Module 2: Advanced File Carving & Recovery."""
 
 import hashlib
 from pathlib import Path

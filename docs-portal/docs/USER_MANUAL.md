@@ -190,9 +190,9 @@ s0 wipe \
 
 ---
 
-## 5. Module 3: Advanced File Carving & Evidence Recovery
+## 5. Module 2: Advanced File Carving & Evidence Recovery
 
-Module 3 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or unmounted partitions without relying on intact filesystem tables.
+Module 2 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or unmounted partitions without relying on intact filesystem tables.
 
 ### 5.1 Basic Carving Operation
 ```bash
@@ -234,7 +234,7 @@ recovered_evidence/
 
 ---
 
-## 6. Module 4: Forensic Drive Imager & Bit-Stream Copy
+## 6. Module 3: Forensic Drive Imager & Bit-Stream Copy
 
 In digital forensics and incident response (**NIST SP 800-86**, **ISO/IEC 27037**), recovery operations or file carving must never be performed directly on original evidence media. 
 
@@ -278,7 +278,7 @@ Degraded or failing drives with unreadable magnetic sectors or worn NAND blocks 
 
 ---
 
-## 7. Module 5: Blockchain Cryptographic Audit Ledger
+## 7. Module 4: Blockchain Cryptographic Audit Ledger
 
 Every wipe, file erasure, carving session, and drive acquisition is appended as an immutable block to `~/.s0/s0_audit.db`.
 

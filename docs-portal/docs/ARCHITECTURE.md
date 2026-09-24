@@ -20,8 +20,9 @@ graph TB
 
     subgraph MODULES["Functional Modules"]
         M1["Module 1 — Media & File Sanitizer<br/><code>methods/</code> · <code>wipe.py</code> · <code>file_eraser.py</code>"]
-        M3["Module 2 — File Carver<br/><code>carver/</code> — 5 engines"]
-        M4["Module 3 — Audit Ledger<br/><code>audit/</code> — SQLite + SHA-256 chain"]
+        M2["Module 2 — File Carver<br/><code>carver/</code> — 5 engines"]
+        M3["Module 3 — Forensic Imager<br/><code>imager.py</code> — Bit-Stream Acquisition"]
+        M4["Module 4 — Audit Ledger<br/><code>audit/</code> — SQLite + SHA-256 chain"]
     end
 
     subgraph CORE["Cryptographic Core  <code>core/python/s0_core/</code>"]
@@ -240,7 +241,7 @@ Simple deletion (`rm`, `del`, `Trash`) removes the directory entry but leaves fi
 !!! danger "CoW Filesystems Break Overwrite Guarantees"
     On **Btrfs**, **ZFS** (Linux), **APFS** (macOS), and **ReFS** (Windows), write operations do not overwrite the original data blocks. Instead, the filesystem writes new data to a fresh location and atomically updates the pointer. The original data blocks remain allocated to snapshots or the extent tree until garbage-collected.
 
-    **In practice:** calling `write()` on a file on these filesystems will overwrite the *logical* data the OS presents, but the *physical* old blocks remain on disk and are recoverable with structure-aware carvers — including s0's own Module 3.
+    **In practice:** calling `write()` on a file on these filesystems will overwrite the *logical* data the OS presents, but the *physical* old blocks remain on disk and are recoverable with structure-aware carvers — including s0's own Module 2.
 
     s0 detects CoW filesystems at runtime and issues a `WARNING` in the certificate. The only reliable file sanitization on CoW filesystems is to **wipe the entire volume** with Module 1.
 
@@ -281,9 +282,9 @@ sequenceDiagram
 
 ---
 
-## Module 3 — File Carver & Recovery Engine
+## Module 2 — File Carver & Recovery Engine
 
-Module 3 is the forensic counterpart to Module 2: it recovers what sanitization tools fail to reach. It implements **five distinct carving strategies**, selected by the engine dispatcher based on device characteristics and user configuration.
+Module 2 is the forensic counterpart to Module 1: it recovers what sanitization tools fail to reach. It implements **five distinct carving strategies**, selected by the engine dispatcher based on device characteristics and user configuration.
 
 ### Engine Selection Logic
 
@@ -535,7 +536,8 @@ s0 audit verify
 |---|---|---|
 | `DRIVE_ERASE` | Module 1 wipe completion | Method, passes, verification results, device serial |
 | `FILE_ERASE` | File/folder erasure via `s0 wipe` | File path hash, size, platform, CoW status |
-| `FILE_CARVE` | Module 3 carving session | Target image, engines used, recovered file hashes, confidence scores |
+| `FILE_CARVE` | Module 2 carving session | Target image, engines used, recovered file hashes, confidence scores |
+| `IMAGE_ACQUIRE`| Module 3 forensic acquisition | Source device, destination, dual hashes, bad sectors |
 
 ---
 
