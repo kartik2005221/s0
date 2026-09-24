@@ -100,7 +100,11 @@ class OverwriteMethod(WipeMethod):
                         f"pass {p + 1}/{self.passes}: {_human(written)} / "
                         f"{_human(size)} ({_human(written / elapsed)}/s)"
                     )
-                os.fsync(fd)
+                try:
+                    os.fsync(fd)
+                except KeyboardInterrupt:
+                    result.notes.append("fsync interrupted — data may not be fully committed to disk")
+                    raise
                 result.bytes_processed += written
             # Best-effort hint that this file's blocks were overwritten; for
             # sparse image targets also punch a hole so the demo doesn't leave
@@ -110,6 +114,10 @@ class OverwriteMethod(WipeMethod):
                     os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
                 except OSError:
                     pass
+        except KeyboardInterrupt:
+            result.status = "interrupted"
+            result.notes.append(f"Interrupted after {result.bytes_processed} bytes")
+            raise
         except OSError as exc:
             result.status = "partial" if result.bytes_processed else "failure"
             result.errors.append(f"write error after {result.bytes_processed} bytes: {exc}")

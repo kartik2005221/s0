@@ -39,11 +39,30 @@ import os
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+_interrupted = threading.Event()
+
+def _sigint_handler(signum, frame):
+    """Set interrupt flag on first Ctrl+C; force-exit on second."""
+    if _interrupted.is_set():
+        sys.stderr.write("\n\n⚠  Forced exit.\n")
+        sys.stderr.flush()
+        os._exit(130)
+    _interrupted.set()
+    raise KeyboardInterrupt
+
+if threading.current_thread() is threading.main_thread():
+    try:
+        signal.signal(signal.SIGINT, _sigint_handler)
+    except (ValueError, AttributeError):
+        pass
 
 from s0_core import certificate as cert_mod
 from s0_core.config import CONFIG
@@ -554,10 +573,15 @@ def cmd_wipe(args) -> int:
             print(f"[{time.monotonic() - t_start:8.1f}s] {msg}", file=sys.stderr)
 
     progress(f"wiping {target.display} with {plan.method_id} (NIST {plan.nist_category})")
-    result = candidate.method.run(target, progress)
-    temp = read_temperature(target.path)
-    temp_str = f"Temp: {temp}°C" if temp is not None else ""
-    bar.finish(extra=temp_str)
+    try:
+        result = candidate.method.run(target, progress)
+        temp = read_temperature(target.path)
+        temp_str = f"Temp: {temp}°C" if temp is not None else ""
+        bar.finish(extra=temp_str)
+    except KeyboardInterrupt:
+        bar.finish(extra="CANCELLED")
+        print("\n⚠  Wipe interrupted by user (Ctrl+C). Target may be partially overwritten.", file=sys.stderr)
+        return 130
     end_time = _now()
 
     verif, _post = verify_wipe(
@@ -678,18 +702,24 @@ def cmd_erase_files(args) -> int:
         if bar:
             bar.update(written, extra=Path(path_str).name[:20])
 
-    summary = erase_batch(
-        targets,
-        passes=args.passes,
-        pattern=args.pattern,
-        operator_id=args.operator,
-        organization=args.organization,
-        signing_key_path=key_path,
-        progress_callback=erase_progress_cb,
-        generate_certificate=not getattr(args, "no_certificate", False),
-    )
-    if bar:
-        bar.finish()
+    try:
+        summary = erase_batch(
+            targets,
+            passes=args.passes,
+            pattern=args.pattern,
+            operator_id=args.operator,
+            organization=args.organization,
+            signing_key_path=key_path,
+            progress_callback=erase_progress_cb,
+            generate_certificate=not getattr(args, "no_certificate", False),
+        )
+        if bar:
+            bar.finish()
+    except KeyboardInterrupt:
+        if bar:
+            bar.finish(extra="CANCELLED")
+        print("\n⚠  Erasure interrupted by user (Ctrl+C). Some files may be partially erased.", file=sys.stderr)
+        return 130
 
     print(f"\nFiles Processed: {summary.total_files}")
     print(f"Successful     : {summary.successful_files}")
@@ -809,20 +839,26 @@ def cmd_carve(args) -> int:
             print(f"error: failed to parse custom signatures from '{args.custom_sig}': {err}", file=sys.stderr)
             return 2
 
-    summary = carve_image(
-        args.target,
-        args.out_dir,
-        extensions=exts,
-        custom_signatures=custom_sigs,
-        min_confidence=args.min_confidence,
-        operator_id=args.operator,
-        organization=args.organization,
-        signing_key_path=key_path,
-        progress_callback=carve_progress_cb,
-        generate_certificate=not getattr(args, "no_certificate", False),
-    )
-    if bar:
-        bar.finish(extra=f"Found: {summary.files_recovered:,}")
+    try:
+        summary = carve_image(
+            args.target,
+            args.out_dir,
+            extensions=exts,
+            custom_signatures=custom_sigs,
+            min_confidence=args.min_confidence,
+            operator_id=args.operator,
+            organization=args.organization,
+            signing_key_path=key_path,
+            progress_callback=carve_progress_cb,
+            generate_certificate=not getattr(args, "no_certificate", False),
+        )
+        if bar:
+            bar.finish(extra=f"Found: {summary.files_recovered:,}")
+    except KeyboardInterrupt:
+        if bar:
+            bar.finish(extra="CANCELLED")
+        print("\n⚠  File carving interrupted by user (Ctrl+C).", file=sys.stderr)
+        return 130
 
     print(f"\nBytes Scanned  : {summary.total_bytes_scanned}")
     print(f"Candidates Found: {summary.total_candidates_found}")
@@ -1184,8 +1220,13 @@ def cmd_image(args) -> int:
     print(f"[*] Fault Tol.  : {'Enabled (Zero-fill bad blocks)' if not args.no_recovery else 'Disabled (Abort on error)'}")
     print()
 
-    result = acquire_image(options, progress_callback=_progress)
-    bar.finish()
+    try:
+        result = acquire_image(options, progress_callback=_progress)
+        bar.finish()
+    except KeyboardInterrupt:
+        bar.finish(extra="CANCELLED")
+        print("\n⚠  Imaging cancelled by user (Ctrl+C). Target may be incomplete.", file=sys.stderr)
+        return 130
     print()
 
     if not result.success:
@@ -1537,8 +1578,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        args = build_parser().parse_args(argv)
+        return args.func(args)
+    except KeyboardInterrupt:
+        print("\n\n⚠  Operation cancelled by user (Ctrl+C).", file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":

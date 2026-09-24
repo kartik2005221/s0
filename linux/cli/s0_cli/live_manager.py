@@ -340,6 +340,15 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                 downloaded += len(chunk)
                 bar.update(downloaded)
         bar.finish()
+    except KeyboardInterrupt:
+        bar.close()
+        if target_iso.exists():
+            try:
+                target_iso.unlink()
+            except OSError:
+                pass
+        print("\n⚠  Download cancelled by user (Ctrl+C).", file=sys.stderr)
+        return 130
     except Exception as e:
         bar.close()
         if shutil.which("gh"):
@@ -594,6 +603,10 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
                 os.fsync(f_out.fileno())
 
         bar.finish()
+    except KeyboardInterrupt:
+        bar.close()
+        print("\n⚠  Flashing interrupted by user (Ctrl+C). USB drive is in an incomplete/unbootable state.", file=sys.stderr)
+        return 130
     except Exception as e:
         bar.close()
         print(f"[-] Flash failed: {e}", file=sys.stderr)
