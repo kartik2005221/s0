@@ -123,6 +123,34 @@ def _warn_if_demo_key(key_path: Path | None) -> None:
         )
 
 
+_S0_ASCII = r"""
+            /$$$$$$ 
+           /$$$_  $$
+  /$$$$$$$| $$$$\ $$
+ /$$_____/| $$ $$ $$
+|  $$$$$$ | $$\ $$$$
+ \____  $$| $$ \ $$$
+ /$$$$$$$/|  $$$$$$/
+|_______/  \______/  
+"""
+
+
+def _print_banner() -> None:
+    """Show ASCII banner only on interactive TTY, bare s0, or s0 --help."""
+    if not sys.stdout.isatty():
+        return
+    cyan = "\033[1;36m"
+    bold = "\033[1m"
+    dim = "\033[2m"
+    link = "\033[4;36m"
+    reset = "\033[0m"
+    for line in _S0_ASCII.strip("\n").split("\n"):
+        print(f"{cyan}{line}{reset}")
+    ver = CONFIG.get("version", __version__)
+    print(f"{bold}  Sector Zero (s0){reset} v{ver}")
+    print(f"  {dim}@kartik2005221{reset}  {link}https://github.com/kartik2005221/s0{reset}\n")
+
+
 _LEGAL_NOTICE = (
     "\n\033[1;33m⚖  LEGAL & RESPONSIBLE USE NOTICE:\033[0m\n"
     "\033[33m   Only operate on storage media you own or have explicit written authorization\n"
@@ -1148,9 +1176,9 @@ def cmd_uninstall(args) -> int:
             except Exception as exc:
                 print(f"[!] Could not remove {sym}: {exc}", file=sys.stderr)
 
-    # If repo_dir is ~/.s0 and has a .git directory, remove it safely
+    # If repo_dir strictly resolves to ~/.s0, remove it safely
     home_s0 = (Path.home() / ".s0").resolve()
-    if repo_dir.resolve() == home_s0 and (repo_dir / ".git").is_dir():
+    if repo_dir.resolve() == home_s0:
         print(f"[*] Removing installation directory: {repo_dir}...")
         try:
             shutil.rmtree(repo_dir, ignore_errors=True)
@@ -1587,6 +1615,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     try:
+        raw_args = sys.argv[1:] if argv is None else list(argv)
+        is_suppressed = any(flag in raw_args for flag in ("--quiet", "-q", "--json"))
+        if not is_suppressed and sys.stdout.isatty():
+            if not raw_args or raw_args in (["--help"], ["-h"]):
+                _print_banner()
+
         args = build_parser().parse_args(argv)
         return args.func(args)
     except KeyboardInterrupt:
