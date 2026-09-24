@@ -745,6 +745,69 @@ textarea {
 .badge-amber { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 .badge-red { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
 .badge-purple { background: rgba(139, 92, 246, 0.12); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); }
+.badge-dim { background: rgba(148, 163, 184, 0.12); color: var(--text-dim); border: 1px solid rgba(148, 163, 184, 0.25); }
+
+/* --- Web Progress Bar --- */
+.web-progress-container {
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.web-progress-bar-track {
+  height: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+
+.web-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF6500, #FF8533);
+  border-radius: 5px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(255, 101, 0, 0.35);
+}
+
+[data-theme="light"] .web-progress-bar-fill {
+  background: linear-gradient(90deg, #E65100, #FF6D00);
+  box-shadow: 0 0 10px rgba(230, 81, 0, 0.25);
+}
+
+.web-progress-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.web-progress-pct {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.web-progress-speed {
+  color: var(--text-muted);
+}
+
+.web-progress-eta {
+  color: var(--text-dim);
+}
+
+.web-progress-temp {
+  color: var(--accent-amber);
+  font-weight: 600;
+}
 
 /* Results Showcase Card */
 .result-showcase {

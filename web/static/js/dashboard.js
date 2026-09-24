@@ -374,7 +374,7 @@ async function startDriveWipe() {
     if (data.job_id) {
       trackJob(data.job_id, "driveStatusBadge", "driveLog", onDriveWipeDone);
     } else {
-      alert(data.detail || "Error starting wipe");
+      alert(formatErrorMessage(data.detail, "Error starting wipe"));
       if (driveBadge) {
         driveBadge.className = "badge badge-red";
         driveBadge.textContent = "STATUS: ERROR";
@@ -382,7 +382,7 @@ async function startDriveWipe() {
       setHeaderJobStatus("ERROR", "error");
     }
   } catch (err) {
-    alert("Failed to communicate with wipe engine: " + err);
+    alert("Failed to communicate with wipe engine: " + (err?.message || String(err)));
     setHeaderJobStatus("ERROR", "error");
   }
 }
@@ -522,7 +522,7 @@ async function startFileErase() {
     if (data.job_id) {
       trackJob(data.job_id, "fileStatusBadge", "fileLog", onFileEraseDone);
     } else {
-      alert(data.detail || "Error starting file erase");
+      alert(formatErrorMessage(data.detail, "Error starting file erase"));
       if (fileBadge) {
         fileBadge.className = "badge badge-red";
         fileBadge.textContent = "STATUS: ERROR";
@@ -530,7 +530,7 @@ async function startFileErase() {
       setHeaderJobStatus("ERROR", "error");
     }
   } catch (err) {
-    alert("Failed to trigger file erasure: " + err);
+    alert("Failed to trigger file erasure: " + (err?.message || String(err)));
     setHeaderJobStatus("ERROR", "error");
   }
 }
@@ -775,7 +775,7 @@ async function startCarve() {
     if (data.job_id) {
       trackJob(data.job_id, "carveStatusBadge", "carveLog", onCarveDone);
     } else {
-      alert(data.detail || "Error starting carver");
+      alert(formatErrorMessage(data.detail, "Error starting carver"));
       if (carveBadge) {
         carveBadge.className = "badge badge-red";
         carveBadge.textContent = "STATUS: ERROR";
@@ -783,7 +783,7 @@ async function startCarve() {
       setHeaderJobStatus("ERROR", "error");
     }
   } catch (err) {
-    alert("Failed to start carving session: " + err);
+    alert("Failed to start carving session: " + (err?.message || String(err)));
     setHeaderJobStatus("ERROR", "error");
   }
 }
@@ -948,7 +948,7 @@ async function startImaging() {
     if (data.job_id) {
       trackJob(data.job_id, "imageStatusBadge", "imageLog", onImagingDone);
     } else {
-      alert(data.detail || "Error starting acquisition");
+      alert(formatErrorMessage(data.detail, "Error starting acquisition"));
       if (imageBadge) {
         imageBadge.className = "badge badge-red";
         imageBadge.textContent = "STATUS: ERROR";
@@ -956,7 +956,7 @@ async function startImaging() {
       setHeaderJobStatus("ERROR", "error");
     }
   } catch (err) {
-    alert("Failed to communicate with imager engine: " + err);
+    alert("Failed to communicate with imager engine: " + (err?.message || String(err)));
     setHeaderJobStatus("ERROR", "error");
   }
 }
@@ -996,11 +996,94 @@ function onImagingDone(job) {
   }
 }
 
+// --- Helper: Format Error Messages ---
+function formatErrorMessage(detail, fallback = "Operation failed") {
+  if (!detail) return fallback;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map(item => {
+        const field = Array.isArray(item.loc) ? item.loc.slice(1).join(".") : "";
+        const msg = item.msg || item.message || JSON.stringify(item);
+        return field ? `${field}: ${msg}` : msg;
+      })
+      .join("\n");
+  }
+  if (typeof detail === "object") {
+    return detail.message || detail.msg || detail.error || JSON.stringify(detail);
+  }
+  return String(detail);
+}
+
+// --- Helper: Visual Progress Rendering ---
+function updateVisualProgress(logId, data) {
+  const prefix = logId.replace("Log", "");
+  const panel = document.getElementById(prefix + "ProgressPanel");
+  const bar = document.getElementById(prefix + "ProgressBar");
+  const pctEl = document.getElementById(prefix + "ProgressPct");
+  const speedEl = document.getElementById(prefix + "ProgressSpeed");
+  const etaEl = document.getElementById(prefix + "ProgressEta");
+  const tempEl = document.getElementById(prefix + "ProgressTemp");
+
+  if (!panel || !bar || !data) return;
+
+  panel.style.display = "block";
+
+  if (data.status === "done") {
+    bar.style.width = "100%";
+    if (pctEl) pctEl.textContent = "100.0%";
+    if (etaEl) etaEl.textContent = "Complete";
+    return;
+  }
+  if (data.status === "error") {
+    bar.style.background = "var(--accent-red)";
+    if (etaEl) etaEl.textContent = "Failed";
+    return;
+  }
+
+  const lines = data.log || [];
+  let progressLine = "";
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].includes("%") || lines[i].includes("[s0")) {
+      progressLine = lines[i];
+      break;
+    }
+  }
+
+  if (progressLine) {
+    const pctMatch = progressLine.match(/(\d+(?:\.\d+)?)\s*%/);
+    if (pctMatch) {
+      const pct = parseFloat(pctMatch[1]);
+      bar.style.width = Math.min(100, Math.max(0, pct)) + "%";
+      if (pctEl) pctEl.textContent = pct.toFixed(1) + "%";
+    }
+
+    const speedMatch = progressLine.match(/([\d.]+\s*(?:MB\/s|MiB\/s|KB\/s|KiB\/s|GB\/s|GiB\/s|B\/s))/i);
+    if (speedMatch && speedEl) {
+      speedEl.textContent = speedMatch[1];
+    }
+
+    const etaMatch = progressLine.match(/ETA:\s*([^\s|)]+)/i);
+    if (etaMatch && etaEl) {
+      etaEl.textContent = "ETA: " + etaMatch[1];
+    }
+
+    const tempMatch = progressLine.match(/Temp:\s*(\d+°C)/i);
+    if (tempMatch && tempEl) {
+      tempEl.textContent = "🌡️ " + tempMatch[1];
+    }
+  }
+}
+
 // --- Job Poller Engine ---
 function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
   currentJobId = jobId;
   const badge = statusBadgeId ? document.getElementById(statusBadgeId) : null;
   const logEl = document.getElementById(logId);
+  if (badge) {
+    badge.className = "badge badge-cyan";
+    badge.textContent = "STATUS: RUNNING";
+  }
   setHeaderJobStatus("RUNNING", "running");
 
   const timer = setInterval(async () => {
@@ -1013,6 +1096,8 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
         logEl.textContent = data.log.join("\n");
         logEl.scrollTop = logEl.scrollHeight;
       }
+
+      updateVisualProgress(logId, data);
 
       if (data.status === "done" || data.status === "error") {
         clearInterval(timer);

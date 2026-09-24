@@ -126,17 +126,21 @@ class OverwriteMethod(WipeMethod):
         return result
 
 
-def plant_patterns(path: str, markers: list[tuple[int, bytes]]) -> None:
+def plant_patterns(path: str, markers: list[tuple[int, bytes]], progress_fn=None) -> None:
     """Test helper: write marker bytes at absolute offsets (extends file if needed).
 
     Used by tests and the e2e demo to create known recoverable content, so the
     post-wipe grep proves something concrete.
     """
     with open(path, "r+b") as f:
-        for offset, blob in markers:
+        for i, (offset, blob) in enumerate(markers):
             f.seek(offset)
             f.write(blob)
+            if progress_fn:
+                progress_fn(f"Planting marker {i + 1}/{len(markers)}")
         f.flush()
+        if progress_fn:
+            progress_fn("Syncing markers to disk...")
         os.fsync(f.fileno())
 
 

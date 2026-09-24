@@ -515,9 +515,15 @@ def cmd_wipe(args) -> int:
     if args.plant_markers:
         marker = b"S0-DEMO-CONFIDENTIAL-" + secrets.token_hex(8).encode()
         count = max(8, target.capacity_bytes // (4 * 1024 * 1024))
+        if not getattr(args, "json", False):
+            print(f"[s0 wipe] Planting {count} verification markers...", file=sys.stderr)
         plant_patterns(
-            target.path, [(i * (target.capacity_bytes // count), marker) for i in range(count)]
+            target.path,
+            [(i * (target.capacity_bytes // count), marker) for i in range(count)],
+            progress_fn=lambda msg: sys.stderr.write(f"\r[s0 wipe] {msg}  ") if not getattr(args, "json", False) else None,
         )
+        if not getattr(args, "json", False):
+            sys.stderr.write("\n")
         planted = [marker]
         print(f"planted {count} copies of a demo marker (will require 0 hits after)", file=sys.stderr)
 
@@ -578,6 +584,8 @@ def cmd_wipe(args) -> int:
         temp = read_temperature(target.path)
         temp_str = f"Temp: {temp}°C" if temp is not None else ""
         bar.finish(extra=temp_str)
+        if not getattr(args, "json", False):
+            print("[s0 wipe] Sanitization pass complete. Buffers flushed to disk.", file=sys.stderr)
     except KeyboardInterrupt:
         bar.finish(extra="CANCELLED")
         print("\n⚠  Wipe interrupted by user (Ctrl+C). Target may be partially overwritten.", file=sys.stderr)
