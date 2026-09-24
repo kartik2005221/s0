@@ -309,8 +309,16 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         elif name == "SHA256SUMS.txt":
             sha_sums_asset = a
 
-    if not iso_asset and ver_input.lower() == "latest":
-        print(f"[*] Release {tag_name} does not contain a Live ISO; searching previous releases for latest available Live ISO...")
+    if not iso_asset:
+        target_tag = tag_name
+        print(f"\n[!] Notice: Release {target_tag} does not contain a bootable Live ISO asset.", file=sys.stderr)
+        print(f"[*] Checking for the latest available Live ISO from older releases...", file=sys.stderr)
+
+        fallback_rel = None
+        fallback_iso = None
+        fallback_tag = None
+        fallback_assets = []
+
         headers = {
             "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.1')} (LiveDownloader)",
             "Accept": "application/vnd.github.v3+json",
@@ -324,22 +332,22 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             with urllib.request.urlopen(req, timeout=15) as resp:
                 all_releases = json.loads(resp.read().decode("utf-8"))
             for cand_rel in all_releases:
-                if cand_rel.get("tag_name") == tag_name:
+                if cand_rel.get("tag_name") == target_tag:
                     continue
                 cand_assets = cand_rel.get("assets", [])
                 for a in cand_assets:
                     if a.get("name", "").endswith(".hybrid.iso"):
-                        rel = cand_rel
-                        tag_name = cand_rel.get("tag_name", "")
-                        assets = cand_assets
-                        iso_asset = a
+                        fallback_rel = cand_rel
+                        fallback_tag = cand_rel.get("tag_name", "")
+                        fallback_assets = cand_assets
+                        fallback_iso = a
                         break
-                if iso_asset:
+                if fallback_iso:
                     break
         except Exception:
             pass
 
-        if not iso_asset and shutil.which("gh"):
+        if not fallback_iso and shutil.which("gh"):
             try:
                 gh_cmd = ["gh", "release", "list", "-R", repo, "--limit", "10", "--json", "tagName"]
                 gh_res = subprocess.run(gh_cmd, capture_output=True, text=True, check=False)
@@ -347,38 +355,63 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                     items = json.loads(gh_res.stdout.strip())
                     for item in items:
                         t = item.get("tagName")
-                        if not t or t == tag_name:
+                        if not t or t == target_tag:
                             continue
                         try:
                             cand_rel = _fetch_github_release(repo, t)
                             cand_assets = cand_rel.get("assets", [])
                             for a in cand_assets:
                                 if a.get("name", "").endswith(".hybrid.iso"):
-                                    rel = cand_rel
-                                    tag_name = t
-                                    assets = cand_assets
-                                    iso_asset = a
+                                    fallback_rel = cand_rel
+                                    fallback_tag = t
+                                    fallback_assets = cand_assets
+                                    fallback_iso = a
                                     break
-                            if iso_asset:
+                            if fallback_iso:
                                 break
                         except Exception:
                             continue
             except Exception:
                 pass
 
-        if iso_asset:
-            sha_asset = None
-            sha_sums_asset = None
-            for a in assets:
-                name = a.get("name", "")
-                if name.endswith(".hybrid.iso.sha256"):
-                    sha_asset = a
-                elif name == "SHA256SUMS.txt":
-                    sha_sums_asset = a
+        if fallback_iso:
+            print(f"[+] Found available Live ISO in release {fallback_tag}: {fallback_iso['name']} ({_format_size(fallback_iso.get('size', 0))})")
+            accept_redirect = False
+            if getattr(args, "yes", False):
+                accept_redirect = True
+                print(f"[*] Automatically redirecting to {fallback_tag} (--yes specified).")
+            elif not sys.stdin.isatty():
+                print(f"[-] Non-interactive session: specify --yes to automatically redirect to {fallback_tag}.", file=sys.stderr)
+                return 1
+            else:
+                try:
+                    ans = input(f"[?] Would you like to redirect and download the Live ISO from {fallback_tag}? [Y/n]: ").strip().lower()
+                    if ans in ("", "y", "yes"):
+                        accept_redirect = True
+                    else:
+                        print(f"[*] Download cancelled by user (target release {target_tag} has no ISO).")
+                        return 0
+                except (KeyboardInterrupt, EOFError):
+                    print("\n[*] Download cancelled.")
+                    return 130
 
-    if not iso_asset:
-        print(f"[-] Error: No Live ISO asset (.hybrid.iso) found in release {tag_name}.", file=sys.stderr)
-        return 1
+            if accept_redirect:
+                print(f"[+] Redirecting to release {fallback_tag}...")
+                rel = fallback_rel
+                tag_name = fallback_tag
+                assets = fallback_assets
+                iso_asset = fallback_iso
+                sha_asset = None
+                sha_sums_asset = None
+                for a in assets:
+                    name = a.get("name", "")
+                    if name.endswith(".hybrid.iso.sha256"):
+                        sha_asset = a
+                    elif name == "SHA256SUMS.txt":
+                        sha_sums_asset = a
+        else:
+            print(f"[-] Error: No Live ISO asset (.hybrid.iso) found in release {target_tag} or any older release.", file=sys.stderr)
+            return 1
 
     iso_name = iso_asset["name"]
     iso_url = iso_asset["browser_download_url"]
@@ -753,6 +786,7 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
     d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
     d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
     d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
+    d_p.add_argument("--yes", "-y", action="store_true", help="automatically accept redirect to older release if latest lacks ISO")
     d_p.set_defaults(func=cmd_live_download)
 
     # devices

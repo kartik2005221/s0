@@ -91,3 +91,38 @@ def test_cmd_live_flash_safety_refusal(tmp_path, capsys):
             assert rc == 2
             captured = capsys.readouterr()
             assert "Refusing to write to unverified or potentially internal disk" in captured.err
+
+
+def test_cmd_live_download_redirect_decline(tmp_path, monkeypatch, capsys):
+    from s0_cli.live_manager import cmd_live_download
+
+    # Mock latest release with no ISO
+    rel_latest = {"tag_name": "v2.4.1", "assets": []}
+    # Mock older release with ISO
+    rel_older = {
+        "tag_name": "v2.4.0",
+        "assets": [
+            {
+                "name": "s0-live-v2.4.0-amd64.hybrid.iso",
+                "size": 500000000,
+                "browser_download_url": "https://example.com/iso",
+            }
+        ],
+    }
+
+    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel_latest), \
+         patch("urllib.request.urlopen") as mock_url:
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps([rel_latest, rel_older]).encode("utf-8")
+        mock_url.return_value.__enter__.return_value = mock_resp
+
+        # User types 'n' to decline redirect
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+        monkeypatch.setattr("builtins.input", lambda prompt: "n")
+
+        args = argparse.Namespace(version="latest", out_dir=str(tmp_path), yes=False)
+        rc = cmd_live_download(args)
+        assert rc == 0
+        captured = capsys.readouterr()
+        assert "does not contain a bootable Live ISO asset" in captured.err
+        assert "Download cancelled by user" in captured.out
