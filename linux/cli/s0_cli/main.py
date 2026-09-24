@@ -989,9 +989,13 @@ def cmd_upgrade(args) -> int:
         print("[ERROR] Could not locate S0 git installation repository.", file=sys.stderr)
         print("To install or upgrade S0, run:")
         if sys.platform == "win32":
-            print("  irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex")
+            print("  irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 -OutFile s0-upgrade.ps1")
+            print("  # Inspect s0-upgrade.ps1 before running, then run:")
+            print("  powershell -ExecutionPolicy Bypass -File .\\s0-upgrade.ps1")
         else:
-            print("  curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash")
+            print("  curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh -o s0-upgrade.sh")
+            print("  # Inspect s0-upgrade.sh before running, then run:")
+            print("  bash s0-upgrade.sh")
         return 1
 
     print(f"[*] Found S0 installation at: {repo_dir}")
@@ -1037,10 +1041,10 @@ def cmd_uninstall(args) -> int:
     print()
 
     if sys.platform == "win32":
-        print("[*] On Windows, run the official uninstallation command in PowerShell:")
-        print("    irm https://s0-install.vercel.app/uninstall-ps1 | iex")
-        print("    Or via Command Prompt:")
-        print("    curl -fsSL https://s0-install.vercel.app/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd")
+        print("[*] On Windows, run the official uninstallation script:")
+        print("    curl -fsSL https://s0-install.vercel.app/uninstall-ps1 -o s0-uninstall.ps1")
+        print("    # Inspect s0-uninstall.ps1 before running, then run:")
+        print("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
         return 0
 
     repo_dir = None
@@ -1060,8 +1064,10 @@ def cmd_uninstall(args) -> int:
 
     if not repo_dir:
         print("[ERROR] Could not locate S0 installation directory.", file=sys.stderr)
-        print("To manually uninstall S0, run:")
-        print("  curl -fsSL https://s0-install.vercel.app/uninstall-sh | bash")
+        print("To manually uninstall S0, download and run the script:")
+        print("  curl -fsSL https://s0-install.vercel.app/uninstall-sh -o s0-uninstall.sh")
+        print("  # Inspect s0-uninstall.sh before running, then run:")
+        print("  bash s0-uninstall.sh")
         return 1
 
     print(f"[*] Target S0 directory: {repo_dir}")
@@ -1098,9 +1104,9 @@ def cmd_uninstall(args) -> int:
             except Exception as exc:
                 print(f"[!] Could not remove {sym}: {exc}", file=sys.stderr)
 
-    # If repo_dir is ~/.s0 or in S0_INSTALL_DIR, remove it
-    home_s0 = Path.home() / ".s0"
-    if repo_dir == home_s0 or str(repo_dir).endswith("/.s0"):
+    # If repo_dir is ~/.s0 and has a .git directory, remove it safely
+    home_s0 = (Path.home() / ".s0").resolve()
+    if repo_dir.resolve() == home_s0 and (repo_dir / ".git").is_dir():
         print(f"[*] Removing installation directory: {repo_dir}...")
         try:
             shutil.rmtree(repo_dir, ignore_errors=True)

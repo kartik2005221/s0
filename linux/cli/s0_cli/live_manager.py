@@ -62,8 +62,10 @@ def get_removable_usb_devices() -> List[Dict[str, Any]]:
                         m = re.match(r"^/dev/([a-z]+|nvme\d+n\d+)", parts[0])
                         if m:
                             system_disks.add(m.group(1))
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[!] WARNING: Cannot read /proc/mounts to identify system disks: {exc}", file=sys.stderr)
+            print("    Device listing refused for safety (cannot exclude system disk).", file=sys.stderr)
+            return []
 
         for entry in sorted(sys_block.iterdir()):
             name = entry.name
@@ -278,7 +280,7 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
 
 def cmd_live_download(args: argparse.Namespace) -> int:
     """Download official s0 Live ISO and verify SHA-256 checksum."""
-    repo = getattr(args, "repo", None) or GITHUB_REPO
+    repo = GITHUB_REPO
     ver_input = getattr(args, "version", "latest") or "latest"
     out_dir = Path(getattr(args, "out_dir", ".") or ".").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -630,10 +632,8 @@ def cmd_live_build(args: argparse.Namespace) -> int:
 
     build_script = Path(__file__).resolve().parents[3] / "linux" / "iso" / "build.sh"
     if not build_script.is_file():
-        build_script = Path("linux/iso/build.sh").resolve()
-
-    if not build_script.is_file():
-        print(f"[-] Error: Could not find Live ISO build script at {build_script}.", file=sys.stderr)
+        print("[-] Error: build.sh not found in the s0 installation tree.", file=sys.stderr)
+        print(f"    Expected location: {build_script}", file=sys.stderr)
         return 1
 
     print(f"[*] Launching s0 Live ISO build pipeline: {build_script}")
@@ -673,7 +673,6 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
     d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
     d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
     d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
-    d_p.add_argument("--repo", default=GITHUB_REPO, help=argparse.SUPPRESS)
     d_p.set_defaults(func=cmd_live_download)
 
     # devices
