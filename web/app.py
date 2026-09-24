@@ -33,7 +33,7 @@ REPO = Path(__file__).resolve().parents[1]
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
 _sys.path.insert(0, str(REPO / "core" / "python"))
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.staticfiles import StaticFiles
@@ -443,6 +443,51 @@ def api_browse(path: str = ".") -> JSONResponse:
         "current": str(target),
         "parent": str(target.parent) if target.parent != target and _is_safe_browse_path(target.parent) else None,
         "items": items,
+    })
+
+
+@app.get("/api/capabilities")
+def get_capabilities() -> JSONResponse:
+    """Return runtime system capabilities and root/administrator privilege status."""
+    is_root = False
+    if hasattr(os, "geteuid"):
+        is_root = (os.geteuid() == 0)
+    elif _sys.platform == "win32":
+        try:
+            import ctypes
+            is_root = bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            is_root = False
+
+    return JSONResponse({
+        "is_root": is_root,
+        "platform": _sys.platform,
+        "restricted_operations": [] if is_root else ["block_wipe", "disk_image_acquisition"],
+        "message": (
+            "Full root / administrative access granted."
+            if is_root
+            else "Running without root privileges. Direct drive wiping and physical disk acquisition are disabled. For full functionality, launch with: sudo s0 web"
+        ),
+    })
+
+
+@app.get("/api/temperature")
+def get_temperature(path: str = Query(..., description="Target device or file path")) -> JSONResponse:
+    """Read hardware thermal sensor telemetry for a block device or target."""
+    temp = read_temperature(path)
+    status = "unavailable"
+    if temp is not None:
+        if temp < 55:
+            status = "normal"
+        elif temp < 70:
+            status = "warm"
+        else:
+            status = "critical"
+
+    return JSONResponse({
+        "path": path,
+        "temperature_c": temp,
+        "status": status,
     })
 
 

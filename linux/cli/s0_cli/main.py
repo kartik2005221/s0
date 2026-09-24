@@ -1329,9 +1329,25 @@ def cmd_web(args) -> int:
     import webbrowser
     import threading
 
-    port = getattr(args, "port", None) or CONFIG.get("api_port", 8000)
+    port = getattr(args, "port", None) or CONFIG.get("api_port", 8669)
     host = getattr(args, "host", None) or "127.0.0.1"
     url = f"http://{host}:{port}"
+
+    # Sudo / Root privilege detection
+    is_root = False
+    if hasattr(os, "geteuid"):
+        is_root = (os.geteuid() == 0)
+    elif sys.platform == "win32":
+        try:
+            import ctypes
+            is_root = bool(ctypes.windll.shell32.IsUserAnAdmin())
+        except Exception:
+            is_root = False
+
+    if not is_root:
+        print("\033[1;33m[!] WARNING: s0 web is running without root (sudo) privileges.\033[0m")
+        print("\033[33m    Drive wiping and raw disk acquisition will not be available.\033[0m")
+        print("\033[33m    For full forensic drive operations, launch with: sudo s0 web\033[0m\n")
 
     # Verify dependencies: fastapi and uvicorn
     deps_missing = []
@@ -1601,7 +1617,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # 9. Web Dashboard Subcommand
     wb = sub.add_parser("web", help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
-    wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8000), help="port to bind (default: 8000)")
+    wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8669), help="port to bind (default: 8669)")
     wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
     wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
     wb.set_defaults(func=cmd_web)

@@ -20,7 +20,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "default_public_key_path": "core/keys/demo_issuer_public.pem",
     "default_out_dir": "demo-out",
     "qr_url_template": "https://s0-vp.vercel.app/?cert={cert_uuid}",
-    "api_port": 8000,
+    "api_port": 8669,
 }
 
 

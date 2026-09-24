@@ -420,3 +420,23 @@ def test_portal_url_validation(client, tmp_path):
         r = client.post("/api/erase-files", json={"targets": [str(target)], "portal_url": url})
         assert r.status_code == 422
 
+
+def test_capabilities_endpoint(client):
+    r = client.get("/api/capabilities")
+    assert r.status_code == 200
+    data = r.json()
+    assert "is_root" in data
+    assert "platform" in data
+    assert "restricted_operations" in data
+    assert isinstance(data["restricted_operations"], list)
+
+
+def test_temperature_endpoint(client, small_image):
+    r = client.get(f"/api/temperature?path={small_image}")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["path"] == small_image
+    assert "temperature_c" in data
+    assert "status" in data
+
+

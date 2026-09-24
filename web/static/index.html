@@ -43,6 +43,17 @@
 
 <div class="app-container">
 
+  <!-- Sudo Privilege Warning Banner -->
+  <div id="sudoWarningBanner" class="sudo-warning-banner" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="warning-icon">⚠️</span>
+      <div class="warning-content">
+        <strong>Limited User Mode:</strong> s0 web was launched without root/administrator privileges. Direct block device wiping and physical disk acquisition are disabled. For full forensic operations, run: <span class="warning-cmd">sudo s0 web</span>
+      </div>
+    </div>
+    <button class="btn-close-warning" onclick="document.getElementById('sudoWarningBanner').style.display='none'" title="Dismiss">×</button>
+  </div>
+
   <!-- Module Navigation Tabs -->
   <nav class="nav-bar">
     <button class="nav-tab active" data-tab="drive" onclick="switchNav('drive', this)">
@@ -83,7 +94,10 @@
         </div>
 
         <div class="form-group">
-          <label for="driveSelect">Target Storage Media:</label>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="driveSelect" style="margin-bottom: 0;">Target Storage Media:</label>
+            <span class="temp-badge normal" id="driveTempBadge" style="display: none;">🌡️ --°C</span>
+          </div>
           <select id="driveSelect" onchange="onDriveSelected()">
             <option value="">Scanning devices...</option>
           </select>

@@ -275,11 +275,45 @@ async function loadDevices() {
   }
 }
 
+async function updateDeviceTemperature(target) {
+  const badge = document.getElementById("driveTempBadge");
+  if (!badge) return;
+  if (!target) {
+    badge.style.display = "none";
+    return;
+  }
+  try {
+    const res = await fetch(`/api/temperature?path=${encodeURIComponent(target)}`);
+    if (!res.ok) {
+      badge.style.display = "none";
+      return;
+    }
+    const data = await res.json();
+    if (data.temperature_c !== null && data.temperature_c !== undefined) {
+      badge.textContent = `🌡️ ${data.temperature_c}°C`;
+      badge.className = `temp-badge ${data.status || 'normal'}`;
+      badge.title = `Device Thermal Status: ${data.temperature_c}°C (${data.status})`;
+      badge.style.display = "inline-flex";
+    } else {
+      badge.textContent = "🌡️ N/A";
+      badge.className = "temp-badge";
+      badge.title = "Device thermal sensor telemetry unavailable";
+      badge.style.display = "inline-flex";
+    }
+  } catch (e) {
+    badge.style.display = "none";
+  }
+}
+
 async function onDriveSelected() {
   const target = document.getElementById("driveSelect").value;
   const promptEl = document.getElementById("driveConfirmPromptPath");
   if (promptEl) promptEl.textContent = target || "target device path";
-  if (!target) return;
+  if (!target) {
+    updateDeviceTemperature(null);
+    return;
+  }
+  updateDeviceTemperature(target);
   try {
     const res = await fetch("/api/plan", {
       method: "POST",
@@ -1296,10 +1330,35 @@ function toggleTheme() {
   applyTheme(current === "dark" ? "light" : "dark");
 }
 
+async function checkCapabilities() {
+  try {
+    const res = await fetch("/api/capabilities");
+    if (!res.ok) return;
+    const caps = await res.json();
+    if (!caps.is_root) {
+      const banner = document.getElementById("sudoWarningBanner");
+      if (banner) banner.style.display = "flex";
+
+      const driveTab = document.getElementById("tab-drive");
+      if (driveTab && !document.getElementById("driveRestrictedNotice")) {
+        const notice = document.createElement("div");
+        notice.id = "driveRestrictedNotice";
+        notice.className = "restricted-notice";
+        notice.innerHTML = `<span>⚠️ <strong>Root Privileges Required:</strong> Direct block device sanitization requires administrative root permissions. Run <code style="font-family: var(--font-mono); color: var(--accent-cyan);">sudo s0 web</code> to wipe physical disks. File & folder wiping remains fully functional.</span>`;
+        const cardBody = driveTab.querySelector(".card-body") || driveTab;
+        cardBody.insertBefore(notice, cardBody.firstChild);
+      }
+    }
+  } catch (e) {
+    console.warn("Capabilities check note:", e);
+  }
+}
+
 // Initialize on DOM ready
 window.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   initCarverCheckboxes();
+  await checkCapabilities();
   await loadAppConfig();
   await loadDevices();
   handleHashRouting();

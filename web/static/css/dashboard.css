@@ -1143,3 +1143,122 @@ details.advanced-panel[open] summary {
   background: rgba(239, 68, 68, 0.15);
 }
 
+/* --- Sudo Privilege Warning Banner --- */
+.sudo-warning-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: var(--accent-amber);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.sudo-warning-banner .warning-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.sudo-warning-banner .warning-content {
+  flex: 1;
+}
+
+.sudo-warning-banner .warning-content strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+[data-theme="light"] .sudo-warning-banner .warning-content strong {
+  color: #1e293b;
+}
+
+.sudo-warning-banner .warning-cmd {
+  font-family: var(--font-mono);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.sudo-warning-banner .btn-close-warning {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 2px 6px;
+  line-height: 1;
+}
+
+.sudo-warning-banner .btn-close-warning:hover {
+  color: var(--text-main);
+}
+
+/* --- Restricted Operation Fading & Overlay --- */
+.restricted-panel {
+  position: relative;
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+  filter: grayscale(40%);
+}
+
+.restricted-notice {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  color: var(--accent-amber);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Temperature Badge --- */
+.temp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  transition: all 0.2s ease;
+}
+
+.temp-badge.normal {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.temp-badge.warm {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.temp-badge.critical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: pulse-temp 1s infinite alternate;
+}
+
+@keyframes pulse-temp {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+
