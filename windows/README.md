@@ -64,4 +64,4 @@ Instead, operators boot from an **s0 Bare-Metal Live USB**:
    - Select `s0-live-amd64.hybrid.iso`.
    - **Crucial:** When prompted, select **"Write in DD Image mode"** to preserve the hybrid UEFI/BIOS partition layout.
 
-For full step-by-step instructions, see [docs/LIVE_ISO_BUILD_GUIDE.md](../docs/LIVE_ISO_BUILD_GUIDE.md).
+For full step-by-step instructions, see [docs/guides/live-iso.md](../docs/guides/live-iso.md).

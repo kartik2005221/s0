@@ -59,7 +59,7 @@ s0/
 ├── macos/                              # macOS native file/folder sanitizer (F_FULLFSYNC, xattr cleansing)
 ├── web/                                # FastAPI unified web dashboard (4 forensic tabs)
 ├── verification-portal/                # 100% client-side zero-backend static verifier
-├── docs/                               # MkDocs Material technical documentation suite
+├── docs/                               # GitBook technical documentation suite
 └── scripts/                            # Master build, test, and installer orchestrators
 ```
 

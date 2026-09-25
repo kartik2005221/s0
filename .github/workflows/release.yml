@@ -59,7 +59,7 @@ jobs:
 
           tag = os.environ.get("GITHUB_REF_NAME", "")
           ver = tag.lstrip("v")
-          changelog_path = Path("docs-portal/docs/changelog.md")
+          changelog_path = Path("docs/project/changelog.md")
           notes = ""
           if changelog_path.is_file():
               content = changelog_path.read_text(encoding="utf-8")

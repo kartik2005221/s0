@@ -31,7 +31,7 @@ sudo dnf install -y podman qemu-system-x86 qemu-img
 
 Until verified on physical hardware, treat this component as unverified on bare metal.
 
-> 📖 **Complete Step-by-Step Guide:** For a full, zero-to-one walkthrough covering prerequisites, Fedora Podman staging, Debian live-build, Windows Rufus flashing, QEMU smoke-testing, and BIOS/UEFI deployment, read [docs/LIVE_ISO_BUILD_GUIDE.md](../../docs/LIVE_ISO_BUILD_GUIDE.md).
+> 📖 **Complete Step-by-Step Guide:** For a full, zero-to-one walkthrough covering prerequisites, Fedora Podman staging, Debian live-build, Windows Rufus flashing, QEMU smoke-testing, and BIOS/UEFI deployment, read [docs/guides/live-iso.md](../../docs/guides/live-iso.md).
 
 ## Layout
 

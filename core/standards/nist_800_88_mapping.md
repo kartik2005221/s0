@@ -4,7 +4,7 @@
 categories defined in *NIST SP 800-88 Rev.1, Guidelines for Media Sanitization*. It does **not**
 claim NIST certification — no software tool can be "NIST certified"; 800-88 is a decision
 framework an organization applies. Where a method's tier depends on hardware behavior we could
-not observe in the development environment, this document says so, and `docs/COMPLIANCE.md`
+not observe in the development environment, this document says so, and `docs/compliance/nist-compliance.md`
 carries the same caveat in table form.
 
 ---
@@ -101,4 +101,4 @@ statistically strong but not exhaustive — certificates record exactly what was
 - No post-wipe confirmation on Android (the wiped device cannot attest itself); certificates
   say `reset_triggered`.
 - Firmware erase commands are constructed per ATA-8/ACPI and NVMe specs but their on-firmware
-  execution was not observed in development; see docs/LIMITATIONS.md.
+  execution was not observed in development; see `docs/compliance/limitations.md`.

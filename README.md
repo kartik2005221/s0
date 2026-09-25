@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.gitbook.io/COMPLIANCE/)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.gitbook.io/CANONICAL_JSON/)
-[![Documentation](https://img.shields.io/badge/Docs-s0--docs.pages.dev-orange.svg)](https://s0-docs.gitbook.io/)
+[![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://s0-docs.gitbook.io/)
 [![Verification Portal](https://img.shields.io/badge/Verify-s0--verify.pages.dev-emerald.svg)](https://s0-verify.pages.dev/)
 [![Install Portal](https://img.shields.io/badge/Install-s0--install.pages.dev-indigo.svg)](https://s0-install.pages.dev/)
 
@@ -221,14 +221,14 @@ Full compliance details: [docs/compliance/nist-compliance.md](https://s0-docs.gi
 
 | Guide | Online URL | Local File |
 |---|---|---|
-| **User & Operator Manual** | [s0-docs.gitbook.io/USER_MANUAL](https://s0-docs.gitbook.io/USER_MANUAL/) | [`USER_MANUAL.md`](docs/guides/user-manual.md) |
-| **Architecture Specification** | [s0-docs.gitbook.io/ARCHITECTURE](https://s0-docs.gitbook.io/ARCHITECTURE/) | [`ARCHITECTURE.md`](docs/architecture/system-architecture.md) |
-| **CLI Complete Reference** | [s0-docs.gitbook.io/cli-reference](https://s0-docs.gitbook.io/cli-reference/) | [`cli-reference.md`](docs/guides/cli-reference.md) |
-| **Forensic Carving Guide** | [s0-docs.gitbook.io/forensic-carving-guide](https://s0-docs.gitbook.io/forensic-carving-guide/) | [`forensic-carving-guide.md`](docs/guides/forensic-carving.md) |
-| **Live ISO Build Guide** | [s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) | [`LIVE_ISO_BUILD_GUIDE.md`](docs/guides/live-iso.md) |
-| **Agentic AI Guide** | [s0-docs.gitbook.io/agentic-ai](https://s0-docs.gitbook.io/agentic-ai/) | [`agentic-ai.md`](docs/project/agentic-ai.md) |
-| **Standards Compliance** | [s0-docs.gitbook.io/COMPLIANCE](https://s0-docs.gitbook.io/COMPLIANCE/) | [`COMPLIANCE.md`](docs/compliance/nist-compliance.md) |
-| **Engineering Handover** | [s0-docs.gitbook.io/HANDOVER](https://s0-docs.gitbook.io/HANDOVER/) | [`HANDOVER.md`](docs/project/evaluator-guide.md) |
+| **User & Operator Manual** | [s0-docs.gitbook.io/USER_MANUAL](https://s0-docs.gitbook.io/USER_MANUAL/) | [`docs/guides/user-manual.md`](docs/guides/user-manual.md) |
+| **Architecture Specification** | [s0-docs.gitbook.io/ARCHITECTURE](https://s0-docs.gitbook.io/ARCHITECTURE/) | [`docs/architecture/system-architecture.md`](docs/architecture/system-architecture.md) |
+| **CLI Complete Reference** | [s0-docs.gitbook.io/cli-reference](https://s0-docs.gitbook.io/cli-reference/) | [`docs/guides/cli-reference.md`](docs/guides/cli-reference.md) |
+| **Forensic Carving Guide** | [s0-docs.gitbook.io/forensic-carving-guide](https://s0-docs.gitbook.io/forensic-carving-guide/) | [`docs/guides/forensic-carving.md`](docs/guides/forensic-carving.md) |
+| **Live ISO Build Guide** | [s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) | [`docs/guides/live-iso.md`](docs/guides/live-iso.md) |
+| **Agentic AI Guide** | [s0-docs.gitbook.io/agentic-ai](https://s0-docs.gitbook.io/agentic-ai/) | [`docs/project/agentic-ai.md`](docs/project/agentic-ai.md) |
+| **Standards Compliance** | [s0-docs.gitbook.io/COMPLIANCE](https://s0-docs.gitbook.io/COMPLIANCE/) | [`docs/compliance/nist-compliance.md`](docs/compliance/nist-compliance.md) |
+| **Engineering Handover** | [s0-docs.gitbook.io/HANDOVER](https://s0-docs.gitbook.io/HANDOVER/) | [`docs/project/evaluator-guide.md`](docs/project/evaluator-guide.md) |
 
 ---
 
