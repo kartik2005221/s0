@@ -2,8 +2,10 @@
 description: "Forensic-grade digital sanitization, deleted-file recovery, and cryptographic audit ledger suite. NIST SP 800-88 compliant with Ed25519 signed certificates."
 layout:
   width: wide
-  tableOfContents: false
-  outline: false
+  tableOfContents:
+    visible: false
+  outline:
+    visible: false
 ---
 
 # s0 · Sector Zero
