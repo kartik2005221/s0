@@ -14,6 +14,16 @@ Write-Host "╚═════════════════════�
 # Navigate away from InstallDir in case the terminal is currently inside it
 Set-Location $env:USERPROFILE
 
+# Confirmation prompt
+$isYes = ($env:S0_UNINSTALL_YES -eq "1") -or ($args -contains "-y") -or ($args -contains "--yes")
+if (-not $isYes -and [Environment]::UserInteractive) {
+    $confirm = Read-Host "Are you sure you want to completely remove S0 from $InstallDir? [y/N]"
+    if ($confirm -notmatch '^(y|yes)$') {
+        Write-Host "Uninstallation aborted." -ForegroundColor Yellow
+        exit 0
+    }
+}
+
 # 1. Remove from Persistent User PATH (Registry)
 try {
     $userPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
@@ -30,7 +40,7 @@ try {
 
 # 2. Remove from Current Session PATH
 $currentPaths = ($env:PATH -split ';') | Where-Object { 
-    $_ -ne '' -and $_ -ne $BinDir -and $_ -ne "$InstallDir\.venv\Scripts"
+            $_ -ne '' -and $_ -ne $BinDir -and $_ -ne "$InstallDir\.venv\Scripts"
 }
 $env:PATH = $currentPaths -join ';'
 
@@ -44,6 +54,13 @@ if (Get-Command s0 -CommandType Alias -ErrorAction SilentlyContinue) {
 
 # 4. Remove installation directory
 if (Test-Path $InstallDir) {
+    $defaultDir = "$env:USERPROFILE\.s0"
+    $isDefault = ($InstallDir.TrimEnd('\') -eq $defaultDir.TrimEnd('\'))
+    $hasMarker = (Test-Path (Join-Path $InstallDir ".s0_install_marker")) -or (Test-Path (Join-Path $InstallDir "s0_config.json")) -or (Test-Path (Join-Path $InstallDir ".git"))
+    if (-not $isDefault -and -not $hasMarker) {
+        Write-Error "ERROR: Refusing to delete $InstallDir — directory does not appear to be an S0 installation (missing .s0_install_marker, s0_config.json, or .git)."
+        exit 1
+    }
     Write-Host "==> Removing $InstallDir..." -ForegroundColor Yellow
     Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
 }

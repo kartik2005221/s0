@@ -123,6 +123,7 @@ if not exist "%INSTALL_DIR%\bin" mkdir "%INSTALL_DIR%\bin"
     echo "%%~dp0..\\.venv\\Scripts\\s0.exe" %%*
     echo exit /b %%ERRORLEVEL%%
 ) > "%INSTALL_DIR%\bin\s0.cmd"
+type nul > "%INSTALL_DIR%\.s0_install_marker" 2>nul
 echo   [OK] %INSTALL_DIR%\bin\s0.cmd
 
 REM ── Step 8: Update PATH ─────────────────────────────────────────────

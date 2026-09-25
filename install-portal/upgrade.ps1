@@ -72,7 +72,8 @@ Write-Step "Upgrading virtual environment dependencies"
 $VenvPython = Join-Path $InstallDir ".venv\Scripts\python.exe"
 if (-not (Test-Path $VenvPython)) {
     Write-Host "`n[INFO] Virtual environment missing or corrupt, rebuilding..." -ForegroundColor Yellow
-    if (Test-Path (Join-Path $InstallDir ".venv")) {
+    $hasMarker = (Test-Path (Join-Path $InstallDir ".git")) -or (Test-Path (Join-Path $InstallDir "s0_config.json")) -or (Test-Path (Join-Path $InstallDir ".s0_install_marker"))
+    if ($hasMarker -and (Test-Path (Join-Path $InstallDir ".venv"))) {
         Remove-Item -Recurse -Force (Join-Path $InstallDir ".venv") -ErrorAction SilentlyContinue
     }
     python -m venv (Join-Path $InstallDir ".venv")

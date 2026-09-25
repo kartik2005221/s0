@@ -211,13 +211,14 @@ step "Installing s0 command into user bin"
 BIN_DIR="${HOME}/.local/bin"
 mkdir -p "$BIN_DIR"
 ln -sf "$INSTALL_DIR/.venv/bin/s0" "$BIN_DIR/s0"
+touch "$INSTALL_DIR/.s0_install_marker"
 ok; info "symlink: ${BIN_DIR}/s0 → ${INSTALL_DIR}/.venv/bin/s0"
 
 # ── summary ────────────────────────────────────────────────────────────────
 echo ""
 printf "${_bold}${_green}✅ S0 installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
-printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.1.1")"
+printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.1")"
 printf "   Web Console: sudo s0 web\n"
 echo ""
 

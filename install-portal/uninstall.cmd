@@ -11,6 +11,19 @@ echo ==================================================================
 REM Navigate away from INSTALL_DIR in case current directory is inside it
 cd /d "%USERPROFILE%"
 
+if "%S0_UNINSTALL_YES%"=="1" goto :do_uninstall
+if "%1"=="-y" goto :do_uninstall
+if "%1"=="--yes" goto :do_uninstall
+
+set "CONFIRM=n"
+set /p "CONFIRM=Are you sure you want to completely remove S0 from %INSTALL_DIR%? [y/N]: "
+if /i not "%CONFIRM%"=="y" if /i not "%CONFIRM%"=="yes" (
+    echo Uninstallation aborted.
+    exit /b 0
+)
+
+:do_uninstall
+
 REM 1. Remove from Persistent User PATH via PowerShell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = '%BIN_DIR%'; $s = '%INSTALL_DIR%\.venv\Scripts'; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($p) { $new = (($p -split ';') | Where-Object { $_ -ne '' -and $_ -ne $b -and $_ -ne $s }) -join ';'; [Environment]::SetEnvironmentVariable('Path', $new, 'User') }" >nul 2>&1
 

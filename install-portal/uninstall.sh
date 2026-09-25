@@ -43,6 +43,14 @@ fi
 
 # 2. Remove installation directory
 if [ -d "$INSTALL_DIR" ]; then
+    # Security validation: ensure directory is an s0 install before recursive delete
+    REAL_INSTALL_DIR="$(cd "$INSTALL_DIR" 2>/dev/null && pwd -P || echo "$INSTALL_DIR")"
+    DEFAULT_DIR="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")/.s0"
+    if [ "$REAL_INSTALL_DIR" != "$DEFAULT_DIR" ] && [ ! -f "$INSTALL_DIR/.s0_install_marker" ] && [ ! -f "$INSTALL_DIR/s0_config.json" ] && [ ! -d "$INSTALL_DIR/.git" ]; then
+        echo "ERROR: Refusing to delete $INSTALL_DIR — directory does not appear to be an S0 installation." >&2
+        echo "  (Missing .s0_install_marker, s0_config.json, or .git)" >&2
+        exit 1
+    fi
     echo "==> Removing installation directory $INSTALL_DIR..."
     rm -rf "$INSTALL_DIR"
 fi

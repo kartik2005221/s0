@@ -102,7 +102,10 @@ Write-Step "Creating Python virtual environment"
 $VenvDir = Join-Path $InstallDir ".venv"
 $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 if ((Test-Path $VenvDir) -and (-not (Test-Path $VenvPython))) {
-    Remove-Item -Recurse -Force $VenvDir -ErrorAction SilentlyContinue
+    $hasMarker = (Test-Path (Join-Path $InstallDir ".git")) -or (Test-Path (Join-Path $InstallDir "s0_config.json")) -or (Test-Path (Join-Path $InstallDir ".s0_install_marker"))
+    if ($hasMarker) {
+        Remove-Item -Recurse -Force $VenvDir -ErrorAction SilentlyContinue
+    }
 }
 if (-not (Test-Path $VenvPython)) {
     & $PythonCmd ($PythonArgs + @('-m', 'venv', '.venv'))
@@ -160,6 +163,9 @@ try {
 
 # Register instant same-session function
 function global:s0 { & "$InstallDir\.venv\Scripts\s0.exe" @args }
+
+# Create installation marker
+New-Item -Path (Join-Path $InstallDir ".s0_install_marker") -ItemType File -Force -ErrorAction SilentlyContinue | Out-Null
 
 Write-Host ""
 Write-Host "✅ S0 installed successfully!" -ForegroundColor Green
