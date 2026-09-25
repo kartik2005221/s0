@@ -6,9 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to attach ISO to (e.g. v2.4.1)'
-        required: false
-        default: 'v2.4.1'
+        description: 'Release tag to attach ISO to (e.g. v2.5.0)'
+        required: true
+
+concurrency:
+  group: build-iso-${{ github.event.inputs.release_tag || github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -18,9 +21,6 @@ jobs:
     name: Build Bare-Metal Live ISO
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Resolve Release Tag & ISO Name
         id: meta
         env:
@@ -39,7 +39,30 @@ jobs:
           echo "Target tag: $TAG"
           echo "ISO name:   $ISO_NAME"
 
+      - name: Check If ISO Already Attached to Release
+        id: check_iso
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          ISO: ${{ steps.meta.outputs.iso_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Checking if release '$TAG' already contains '$ISO'..."
+          if gh release view "$TAG" --json assets -q ".assets[].name" 2>/dev/null | grep -Fxq "$ISO"; then
+            echo "Notice: Live ISO '$ISO' already exists on release '$TAG'. Skipping build."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Live ISO '$ISO' not found on release '$TAG'. Proceeding with build."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout Repository at Tag
+        if: steps.check_iso.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+
       - name: Install Debian Live-Build Toolchain
+        if: steps.check_iso.outputs.skip != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -60,6 +83,7 @@ jobs:
           sudo dpkg -i live-build_20230502_all.deb || sudo apt-get install -fy
 
       - name: Build s0 Live ISO
+        if: steps.check_iso.outputs.skip != 'true'
         run: |
           chmod +x linux/iso/build.sh linux/iso/auto/build.sh
           cd linux/iso
@@ -69,6 +93,7 @@ jobs:
           sudo chown runner:runner "$ISO_TARGET"
 
       - name: Prepare Artifacts & Checksums
+        if: steps.check_iso.outputs.skip != 'true'
         run: |
           ISO="${{ steps.meta.outputs.iso_name }}"
           test -f "$ISO" || { echo "Error: $ISO not found"; exit 1; }
@@ -76,21 +101,33 @@ jobs:
           cat "${ISO}.sha256"
 
       - name: Update Release Checksums
+        if: steps.check_iso.outputs.skip != 'true'
         env:
           TAG: ${{ steps.meta.outputs.tag }}
           ISO: ${{ steps.meta.outputs.iso_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release download "$TAG" -p "SHA256SUMS.txt" --clobber 2>/dev/null; then
-            grep -v -E "s0-live-.*\.iso" SHA256SUMS.txt > SHA256SUMS.tmp || true
+          # Fetch existing SHA256SUMS.txt from the release to preserve existing tarball hashes
+          if gh release download "$TAG" -p "SHA256SUMS.txt" --clobber 2>/dev/null && [ -s SHA256SUMS.txt ]; then
+            echo "Existing SHA256SUMS.txt found; preserving existing entries:"
+            cat SHA256SUMS.txt
+            grep -v -F "$ISO" SHA256SUMS.txt > SHA256SUMS.tmp || true
             cat "${ISO}.sha256" >> SHA256SUMS.tmp
             mv SHA256SUMS.tmp SHA256SUMS.txt
           else
-            cat "${ISO}.sha256" > SHA256SUMS.txt
+            echo "SHA256SUMS.txt not found on release; attempting to download tarball to preserve checksum..."
+            if gh release download "$TAG" -p "s0-${TAG}.tar.gz" --clobber 2>/dev/null && [ -s "s0-${TAG}.tar.gz" ]; then
+              sha256sum "s0-${TAG}.tar.gz" > SHA256SUMS.txt
+              cat "${ISO}.sha256" >> SHA256SUMS.txt
+            else
+              cat "${ISO}.sha256" > SHA256SUMS.txt
+            fi
           fi
+          echo "Final merged SHA256SUMS.txt:"
           cat SHA256SUMS.txt
 
       - name: Attach ISO to Release
+        if: steps.check_iso.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}

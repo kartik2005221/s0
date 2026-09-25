@@ -375,28 +375,38 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                 pass
 
         if fallback_iso:
-            print(f"[+] Found available Live ISO in release {fallback_tag}: {fallback_iso['name']} ({_format_size(fallback_iso.get('size', 0))})")
+            print(f"[+] Fallback release identified: {fallback_tag} containing '{fallback_iso['name']}' ({_format_size(fallback_iso.get('size', 0))})")
             accept_redirect = False
-            if getattr(args, "yes", False):
+            allow_older = getattr(args, "allow_older", False)
+
+            if not sys.stdin.isatty():
+                if not allow_older:
+                    print(
+                        f"[-] Error: Target release {target_tag} has no Live ISO and environment is non-interactive.\n"
+                        f"    Pass --allow-older to automatically download Live ISO from fallback release {fallback_tag}.",
+                        file=sys.stderr,
+                    )
+                    return 1
+                print(f"[*] Non-interactive mode: proceeding with fallback release {fallback_tag} (--allow-older specified).")
                 accept_redirect = True
-                print(f"[*] Automatically redirecting to {fallback_tag} (--yes specified).")
-            elif not sys.stdin.isatty():
-                print(f"[-] Non-interactive session: specify --yes to automatically redirect to {fallback_tag}.", file=sys.stderr)
-                return 1
             else:
-                try:
-                    ans = input(f"[?] Would you like to redirect and download the Live ISO from {fallback_tag}? [Y/n]: ").strip().lower()
-                    if ans in ("", "y", "yes"):
+                if allow_older:
+                    print(f"[*] Proceeding with fallback release {fallback_tag} (--allow-older specified).")
+                    accept_redirect = True
+                else:
+                    try:
+                        ans = input(f"[?] Would you like to redirect and download the Live ISO from older release {fallback_tag}? [y/N]: ").strip().lower()
+                    except (KeyboardInterrupt, EOFError):
+                        print("\n[*] Download cancelled.")
+                        return 130
+                    if ans in ("y", "yes"):
                         accept_redirect = True
                     else:
-                        print(f"[*] Download cancelled by user (target release {target_tag} has no ISO).")
-                        return 0
-                except (KeyboardInterrupt, EOFError):
-                    print("\n[*] Download cancelled.")
-                    return 130
+                        print(f"[*] Download cancelled by user (declined fallback to {fallback_tag}).")
+                        return 1
 
             if accept_redirect:
-                print(f"[+] Redirecting to release {fallback_tag}...")
+                print(f"[+] Redirecting download to release {fallback_tag}...")
                 rel = fallback_rel
                 tag_name = fallback_tag
                 assets = fallback_assets
@@ -424,10 +434,8 @@ def cmd_live_download(args: argparse.Namespace) -> int:
     print(f"[*] Downloading {iso_name} to {target_iso}...")
     bar = ProgressBar(iso_size, operation="s0 live download")
     downloaded = 0
+    # Use bare headers without Authorization to avoid leaking tokens across redirects to storage CDNs
     dl_headers = {"User-Agent": "s0-cli"}
-    tok = _get_auth_token()
-    if tok:
-        dl_headers["Authorization"] = f"Bearer {tok}"
 
     try:
         req = urllib.request.Request(iso_url, headers=dl_headers)
@@ -533,6 +541,10 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             print(f"[-] Integrity Error: Checksum mismatch!", file=sys.stderr)
             print(f"    Expected: {expected_sha}", file=sys.stderr)
             print(f"    Actual:   {actual_sha}", file=sys.stderr)
+            try:
+                target_iso.unlink()
+            except OSError:
+                pass
             return 1
     else:
         print(f"[!] Warning: No official checksum found to verify against. Computed SHA-256: {actual_sha}")
@@ -786,7 +798,7 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
     d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
     d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
     d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
-    d_p.add_argument("--yes", "-y", action="store_true", help="automatically accept redirect to older release if latest lacks ISO")
+    d_p.add_argument("--allow-older", action="store_true", help="allow downloading Live ISO from older release if target release lacks an ISO")
     d_p.set_defaults(func=cmd_live_download)
 
     # devices
