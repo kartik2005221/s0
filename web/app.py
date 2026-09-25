@@ -293,6 +293,7 @@ class CarveRequest(BaseModel):
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
+    no_pdf: bool = False
     custom_signatures: Optional[List[Dict[str, Any]]] = None
 
     @field_validator("operator_id")
@@ -318,6 +319,7 @@ class ImageRequest(BaseModel):
     out_dir: Optional[str] = None
     key_path: Optional[str] = None
     key_data: Optional[str] = None
+    no_pdf: bool = False
 
     @field_validator("operator_id")
     @classmethod
@@ -791,6 +793,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 progress_callback=carve_progress,
             )
             manifest_filename = None
+            pdf_filename = None
             if summary.manifest_certificate:
                 try:
                     record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key)
@@ -799,6 +802,15 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
                 m_file.write_text(json.dumps(summary.manifest_certificate, indent=2))
                 manifest_filename = m_file.name
+
+                if not req.no_pdf:
+                    try:
+                        pdf_path = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        pdfgen.generate_pdf(summary.manifest_certificate, pdf_path)
+                        pdfgen.write_qr_file(summary.manifest_certificate, out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png")
+                        pdf_filename = pdf_path.name
+                    except Exception:
+                        pass
 
             with _lock:
                 _jobs[job_id].update(
@@ -809,6 +821,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                         "candidates_found": summary.total_candidates_found,
                         "files_recovered": summary.files_recovered,
                         "manifest_filename": manifest_filename,
+                        "pdf_filename": pdf_filename,
                         "carved_files": [
                             {
                                 "id": c.file_id,
@@ -901,8 +914,17 @@ def start_image(req: ImageRequest) -> JSONResponse:
 
             manifest_fn = Path(img_result.manifest_path).name if img_result.manifest_path else None
             cert_fn = None
+            pdf_fn = None
             if img_result.manifest_certificate and "cert_uuid" in img_result.manifest_certificate:
                 cert_fn = f"certificate_{img_result.manifest_certificate['cert_uuid']}.json"
+                if not req.no_pdf:
+                    try:
+                        pdf_path = out_dir / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        pdfgen.generate_pdf(img_result.manifest_certificate, pdf_path)
+                        pdfgen.write_qr_file(img_result.manifest_certificate, out_dir / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.qr.png")
+                        pdf_fn = pdf_path.name
+                    except Exception:
+                        pass
 
             with _lock:
                 _jobs[job_id].update(
@@ -922,6 +944,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
                         "source_md5": img_result.source_md5,
                         "manifest_filename": manifest_fn,
                         "cert_filename": cert_fn,
+                        "pdf_filename": pdf_fn,
                         "error": img_result.error,
                     },
                 )

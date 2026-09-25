@@ -970,6 +970,21 @@ def cmd_carve(args) -> int:
         cert_p.write_text(json.dumps(summary.manifest_certificate, indent=2) + "\n")
         print(f"\nForensic Recovery Manifest: {cert_p}")
 
+        if not getattr(args, "no_pdf", False):
+            try:
+                from s0_core import pdfgen
+                qr_url_tpl = getattr(args, "qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}")
+                portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+                if portal_url_val and "{cert_uuid}" not in portal_url_val:
+                    qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
+                pdf_p = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.pdf"
+                qr_p = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png"
+                pdfgen.generate_pdf(summary.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
+                pdfgen.write_qr_file(summary.manifest_certificate, qr_p)
+                print(f"PDF Certificate           : {pdf_p}")
+            except Exception:
+                pass
+
     return 0
 
 
@@ -1334,6 +1349,21 @@ def cmd_image(args) -> int:
         print(f"   Manifest File   : {result.manifest_path}")
     if result.manifest_certificate:
         print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
+        if not getattr(args, "no_pdf", False):
+            try:
+                from s0_core import pdfgen
+                out_dir_p = Path(args.out_dir)
+                qr_url_tpl = getattr(args, "qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}")
+                portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+                if portal_url_val and "{cert_uuid}" not in portal_url_val:
+                    qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
+                pdf_p = out_dir_p / f"certificate_{result.manifest_certificate['cert_uuid'][:8]}.pdf"
+                qr_p = out_dir_p / f"certificate_{result.manifest_certificate['cert_uuid'][:8]}.qr.png"
+                pdfgen.generate_pdf(result.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
+                pdfgen.write_qr_file(result.manifest_certificate, qr_p)
+                print(f"   PDF Certificate : {pdf_p}")
+            except Exception as exc:
+                print(f"   [!] PDF generation warning: {exc}", file=sys.stderr)
     print()
     return 0
 
@@ -1589,6 +1619,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="explicitly run without generating an Ed25519 forensic manifest certificate",
     )
+    crv.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
     crv.set_defaults(func=cmd_carve)
 
     # 4. Blockchain Audit Ledger Subcommand
@@ -1633,6 +1664,7 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name")
         img.add_argument("--key", "--signing-key", help="path to Ed25519 issuer private key PEM")
         img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
+        img.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
         img.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
         img.set_defaults(func=cmd_image)
 

@@ -555,6 +555,7 @@ Forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition follo
     | `--organization` | string | `Digital Forensics & Incident Response Lab` | no | Issuing organization name. |
     | `--key` | path | auto | no | Path to Ed25519 issuer private key PEM. |
     | `--no-certificate` | flag | off | no | Skip generating signed Ed25519 acquisition certificate and manifest. |
+    | `--no-pdf` | flag | off | no | Skip PDF certificate generation (JSON and manifest are still produced). |
     | `--yes` | flag | off | no | Skip interactive confirmation when cloning to a physical disk. |
 
     **Output files**
@@ -672,6 +673,7 @@ Forensic file carving and recovery from raw disk images or live block devices. `
     | `--organization` | string | `s0_config.json` | no | Issuing organization name (default from central configuration). |
     | `--key` | path | auto (`s0_config.json`) | no | Signing key PEM for the manifest certificate. |
     | `--no-certificate` | flag | off | no | Skip manifest certificate generation. |
+    | `--no-pdf` | flag | off | no | Skip PDF certificate generation (JSON manifest is still produced). |
 
     **Supported file types**
 

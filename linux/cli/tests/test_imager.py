@@ -210,3 +210,35 @@ def test_cli_image_warns_on_default_demo_key(temp_workspace, capsys):
     captured = capsys.readouterr()
     assert "NOTICE: Operation signed with unaccredited demonstration key" in captured.err
 
+
+def test_cli_image_pdf_generation_and_no_pdf_flag(temp_workspace):
+    """R2-5: s0 image must generate a PDF certificate unless --no-pdf is passed."""
+    src_file = temp_workspace / "source_pdf.raw"
+    src_file.write_bytes(b"TESTDATA" * 32)
+
+    # 1. Image with default PDF generation
+    out_pdf = temp_workspace / "out_pdf"
+    ret = main([
+        "image",
+        "--source", str(src_file),
+        "--destination", str(temp_workspace / "dest1.raw"),
+        "--out-dir", str(out_pdf),
+    ])
+    assert ret == 0
+    pdfs = list(out_pdf.glob("certificate_*.pdf"))
+    assert len(pdfs) == 1, "Expected PDF certificate for image acquisition"
+
+    # 2. Image with --no-pdf
+    out_nopdf = temp_workspace / "out_nopdf"
+    ret = main([
+        "image",
+        "--source", str(src_file),
+        "--destination", str(temp_workspace / "dest2.raw"),
+        "--out-dir", str(out_nopdf),
+        "--no-pdf",
+    ])
+    assert ret == 0
+    pdfs_none = list(out_nopdf.glob("certificate_*.pdf"))
+    assert len(pdfs_none) == 0, "Expected no PDF certificate when --no-pdf is specified"
+
+

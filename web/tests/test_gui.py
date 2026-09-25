@@ -167,6 +167,7 @@ def test_carve_api(client, tmp_path):
 
     assert result is not None and result["returncode"] == 0
     assert result["files_recovered"] >= 1
+    assert result.get("pdf_filename") is not None
 
 
 def test_audit_api(client):
@@ -269,6 +270,7 @@ def test_image_api(client, small_image, tmp_path):
     assert result["bytes_copied"] == 4 * 1024 * 1024
     assert result["manifest_filename"] is not None
     assert result["cert_filename"] is not None
+    assert result["pdf_filename"] is not None
     assert dst.exists()
     assert dst.stat().st_size == 4 * 1024 * 1024
 
