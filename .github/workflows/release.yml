@@ -78,7 +78,11 @@ jobs:
 
       - name: Package Source Tarball & Checksums
         run: |
-          TAG="${GITHUB_REF_NAME:-v2.4.1}"
+          TAG="${GITHUB_REF_NAME}"
+          if [ -z "$TAG" ] || ! [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+)+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid or empty release tag: '$TAG'"
+            exit 1
+          fi
           ARCHIVE_NAME="s0-${TAG}.tar.gz"
           git archive --format=tar.gz --prefix="s0-${TAG}/" HEAD -o "$ARCHIVE_NAME"
           sha256sum "$ARCHIVE_NAME" > SHA256SUMS.txt
