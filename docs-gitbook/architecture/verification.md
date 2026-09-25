@@ -119,7 +119,7 @@ An auditor or judge in an air-gapped court or SCIF has three offline options:
    - Run the included offline verification command:
      ```bash
      # Verify certificate offline using trusted public key
-     python -m s0_core.cli verify --cert /path/to/certificate.json --key core/keys/issuer_public_key.pem
+     python -m s0_core.cli verify --cert /path/to/certificate.json --key core/keys/demo_issuer_public.pem
      ```
 3. **Option C — Paper Certificate with Embedded QR Code:**
    - Scan the QR code printed on the official s0 PDF certificate.

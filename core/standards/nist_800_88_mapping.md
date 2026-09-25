@@ -54,8 +54,8 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 | `WINDOWS_CLEAN_ALL` | `diskpart clean all` (zero-fill whole disk) | Clear | Windows app | ❌ source only |
 | `WINDOWS_CIPHER_W` | `cipher /w` free-space overwrite | Clear⁴ | Windows app | ❌ source only |
 | `WINDOWS_SED_KEY_DESTROY` / BitLocker key destruction | cryptographic erase | Purge³ | Windows app | ❌ source only |
-| `ANDROID_FACTORY_RESET_FBE` | `DevicePolicyManager.wipeData()` on FBE device | Purge³ | Android app | ❌ source only + emulator |
-| `ANDROID_USER_SPACE_OVERWRITE` | best-effort file overwrite pre-reset | Clear-at-best | Android app | ❌ source only |
+| `ANDROID_FACTORY_RESET_FBE` | `DevicePolicyManager.wipeData()` on FBE device | Purge³ | Android app | 📋 planned — not yet implemented |
+| `ANDROID_USER_SPACE_OVERWRITE` | best-effort file overwrite pre-reset | Clear-at-best | Android app | 📋 planned — not yet implemented |
 
 ¹ **Conditional:** a discard is a Purge only if the drive guarantees deterministic read-after-
    discard (DRAT/RZAT per its specification). Otherwise treat the outcome as Clear-equivalent at

@@ -317,10 +317,10 @@ def acquire_image(
     # 4. Optional Ed25519 Certificate Signing & Audit Blockchain Recording
     signed_cert = None
     if not options.no_certificate:
-        key_file = Path(options.key_path) if options.key_path else Path("core/keys/demo_issuer_private.pem")
-        if not key_file.is_file():
+        key_file = Path(options.key_path) if options.key_path else None
+        if key_file and not key_file.is_file():
             # Check installed location or repo root
-            cand = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
+            cand = Path(__file__).resolve().parents[3] / "core" / "keys" / key_file.name
             if cand.is_file():
                 key_file = cand
 
@@ -341,7 +341,7 @@ def acquire_image(
             organization=options.organization,
             operator_id=options.operator,
             tool_name="s0-imager",
-            tool_version=CONFIG.get("version", "2.2.1"),
+            tool_version=CONFIG.get("version", "2.4.1"),
             platform="linux" if sys.platform.startswith("linux") else ("windows" if sys.platform == "win32" else "macos"),
             device_id=f"drive-{hashlib.sha256(src_path.encode()).hexdigest()[:16]}",
             device_type="image_file" if src_kind == "image" else "internal_disk",
@@ -361,7 +361,7 @@ def acquire_image(
             notes=notes_list,
         )
 
-        if key_file.is_file():
+        if key_file and key_file.is_file():
             try:
                 priv = core_crypto.load_private_pem(key_file)
                 signed_cert = cert_mod.sign_certificate(cert_dict, priv)

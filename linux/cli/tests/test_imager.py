@@ -192,3 +192,21 @@ def test_cli_clone_alias(temp_workspace):
     ])
     assert ret == 0
     assert dst_file.read_bytes() == src_file.read_bytes()
+
+
+def test_cli_image_warns_on_default_demo_key(temp_workspace, capsys):
+    """R2-2: s0 image without --key must warn that demo key is being used."""
+    src_file = temp_workspace / "source_warn.raw"
+    src_file.write_bytes(b"DATA" * 64)
+    dst_file = temp_workspace / "dest_warn.raw"
+
+    ret = main([
+        "image",
+        "--source", str(src_file),
+        "--destination", str(dst_file),
+        "--out-dir", str(temp_workspace),
+    ])
+    assert ret == 0
+    captured = capsys.readouterr()
+    assert "NOTICE: Operation signed with unaccredited demonstration key" in captured.err
+

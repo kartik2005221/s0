@@ -1271,6 +1271,17 @@ def cmd_image(args) -> int:
             extra += f" | Bad Sectors: {bad_sectors}"
         bar.update(bytes_copied, extra=extra)
 
+    key_path = default_issuer_key(getattr(args, "key", None))
+    _warn_if_demo_key(key_path)
+    if key_path is None and not getattr(args, "no_certificate", False):
+        print(
+            "error: no issuer signing key found.\n"
+            "S0 requires a valid Ed25519 signing key to issue forensic acquisition certificates.\n"
+            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
+            file=sys.stderr,
+        )
+        return 2
+
     options = ImagingOptions(
         source=args.source,
         destination=args.destination,
@@ -1278,7 +1289,7 @@ def cmd_image(args) -> int:
         error_recovery=not args.no_recovery,
         operator=args.operator,
         organization=args.organization,
-        key_path=args.key,
+        key_path=key_path,
         no_certificate=args.no_certificate,
         out_dir=args.out_dir,
     )

@@ -25,11 +25,11 @@ project has ever issued, so it is treated as unacceptable rather than unlikely.
 
 ## In this repository (development)
 
-- `issuer_public_key.pem` — placeholder demo issuer public key, committed so verifiers have
+- `demo_issuer_public.pem` — placeholder demo issuer public key, committed so verifiers have
   something to pin in demos. Clearly labelled DEMO.
-- The matching demo private key is generated locally by whoever needs it:
-  `python -m s0_core.cli keygen --out-dir core/keys --name demo_issuer`
-  It is gitignored. Anyone can generate it — it guards nothing but demo authenticity.
+- The matching demo private key is committed at `demo_issuer_private.pem` for tests and local demos.
+  It is intentionally un-gitignored via `!core/keys/demo_issuer_private.pem` in `.gitignore`.
+  Anyone can regenerate it — it guards nothing but demo authenticity.
 
 ## What this does NOT protect against
 
