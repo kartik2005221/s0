@@ -9,7 +9,7 @@ This guide outlines how to deploy the three static portals of **s0** to **Cloudf
 | Portal | Source Directory | Framework / Build | Output Directory | Notes |
 |---|---|---|---|---|
 | **Verification Portal** | `verification-portal/` | Static HTML / JS | `.` | Completely client-side offline Ed25519 & PDF verification |
-| **Documentation Portal** | `docs-portal/` | MkDocs Material | `public/` | Compiles markdown documentation via `uv` |
+| **Documentation Portal** | `docs-gitbook/` | GitBook | `s0-docs.gitbook.io` | Synchronized from GitHub via Site Git Sync |
 | **Installation Portal** | `install-portal/` | Static HTML / Scripts | `.` | Serves `install.sh`, `install.ps1`, `install.cmd` with clean URLs |
 
 ---
@@ -33,20 +33,9 @@ The Verification Portal (`verification-portal/`) is a standalone, client-side ze
 
 ---
 
-## 2. Deploying the Documentation Portal
+## 2. Documentation Hosting (GitBook)
 
-The Documentation Portal (`docs-portal/`) generates the comprehensive offline/online technical documentation using MkDocs Material.
-
-### Cloudflare Pages Settings:
-- **Project Name:** `s0-docs`
-- **Framework Preset:** `None`
-- **Root Directory:** `docs-portal`
-- **Build Command:** `bash build.sh`
-- **Build Output Directory:** `public`
-- **Environment Variables:**
-  - `PYTHON_VERSION`: `3.11` (or modern Python)
-
-The `build.sh` script automatically installs Astral's `uv`, compiles the documentation, and copies `_headers` into `public/_headers`.
+Documentation has migrated to **GitBook** ([https://s0-docs.gitbook.io](https://s0-docs.gitbook.io)), synchronized directly from GitHub via Site Git Sync (`gitbook-docs.yaml` and `docs-gitbook/`). MkDocs Material (`docs-portal/`) is retired.
 
 ---
 
@@ -75,10 +64,6 @@ You can preview any portal locally using the Cloudflare Wrangler CLI:
 ```bash
 # Preview Verification Portal
 npx wrangler pages dev verification-portal/
-
-# Preview Docs Portal (after build)
-cd docs-portal && bash build.sh
-npx wrangler pages dev public/
 
 # Preview Install Portal
 npx wrangler pages dev install-portal/
