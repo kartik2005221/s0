@@ -458,4 +458,23 @@ def test_image_windows_device_path_confirmation(client, small_image, monkeypatch
     assert "Cloning to target block device requires typing exact destination" in r.json()["detail"]
 
 
+def test_api_plan_validation(client):
+    """Bug #5: Missing target in /api/plan must return clean 422 HTTP validation error, not 500."""
+    r = client.post("/api/plan", json={})
+    assert r.status_code == 422
+
+
+def test_wipe_accepts_operator_alias(client, small_image, monkeypatch):
+    """Bug #6: /api/wipe must accept both 'operator' (alias) and 'operator_id' seamlessly."""
+    # Test model parsing with 'operator'
+    import app as gui_app
+    req1 = gui_app.WipeRequest(target=small_image, confirm_text=small_image, operator="alice")
+    assert req1.operator_id == "alice"
+
+    # Test model parsing with 'operator_id'
+    req2 = gui_app.WipeRequest(target=small_image, confirm_text=small_image, operator_id="bob")
+    assert req2.operator_id == "bob"
+
+
+
 

@@ -36,7 +36,7 @@ _sys.path.insert(0, str(REPO / "core" / "python"))
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
 from s0_core.config import CONFIG  # noqa: E402
@@ -216,12 +216,21 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Opti
     return None, True
 
 
+class PlanRequest(BaseModel):
+    target: str
+
+
 class WipeRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     target: str
     confirm_text: str
     pattern: str = "zero"
     passes: int = 1
-    operator: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
+    operator_id: str = Field(
+        default_factory=lambda: CONFIG.get("default_operator", "op-forensic"),
+        alias="operator"
+    )
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     key_path: Optional[str] = None
     key_data: Optional[str] = None
@@ -230,10 +239,10 @@ class WipeRequest(BaseModel):
     verify_samples: int = 64
     portal_url: Optional[str] = None
 
-    @field_validator("operator")
+    @field_validator("operator_id")
     @classmethod
-    def validate_operator(cls, v: str) -> str:
-        return _validate_metadata_str("operator", v, 64)
+    def validate_operator_id(cls, v: str) -> str:
+        return _validate_metadata_str("operator_id", v, 64)
 
     @field_validator("organization")
     @classmethod
@@ -493,8 +502,8 @@ def get_temperature(path: str = Query(..., description="Target device or file pa
 
 
 @app.post("/api/plan")
-def api_plan(req: dict) -> JSONResponse:
-    return JSONResponse(plan_payload(req["target"]))
+def api_plan(req: PlanRequest) -> JSONResponse:
+    return JSONResponse(plan_payload(req.target))
 
 
 @app.post("/api/wipe", dependencies=[Depends(verify_auth_token)])
@@ -519,7 +528,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     cmd = _get_s0_cmd() + [
         "wipe", "--target", req.target, "--yes",
         "--pattern", req.pattern, "--passes", str(req.passes),
-        "--operator", req.operator,
+        "--operator", req.operator_id,
         "--organization", req.organization,
         "--verify-samples", str(req.verify_samples),
         "--out-dir", str(out_dir), "--json"
