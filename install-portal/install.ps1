@@ -176,5 +176,5 @@ Write-Host "   Web UI  : s0 web" -ForegroundColor Green
 Write-Host ""
 Write-Host "⚖  LEGAL NOTICE: Only operate on storage devices and files you legally own" -ForegroundColor Yellow
 Write-Host "   or have explicit written authorization to process." -ForegroundColor Yellow
-Write-Host "   Legal FAQ: https://s0-docs.pages.dev/faq" -ForegroundColor Gray
+Write-Host "   Legal FAQ: https://s0-docs.gitbook.io/faq" -ForegroundColor Gray
 Write-Host ""

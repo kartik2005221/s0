@@ -43,7 +43,7 @@ flowchart LR
 - **Graceful Signal Handling:** Implemented clean `SIGINT` / Ctrl+C cancellation handlers across all commands (`s0 wipe`, `s0 image`, `s0 carve`, `s0 live flash/download`, `s0 web`), restoring cursor state and terminating workers safely.
 - **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
 - **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
-- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`s0-docs.pages.dev`, `s0-verify.pages.dev`, `s0-install.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
+- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`s0-docs.gitbook.io`, `s0-verify.pages.dev`, `s0-install.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
 - **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/macOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
 - **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Module 4 (Blockchain Cryptographic Audit Ledger).
 
@@ -174,7 +174,7 @@ flowchart LR
 ## [2.0.0] — 2026-09-09
 
 ### Added
-- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs.pages.dev](https://s0-docs.pages.dev/) with automated CI/CD via standalone `uv` runner.
+- **Production Documentation Suite:** Deployed complete Material for MkDocs technical documentation at [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) with automated CI/CD via standalone `uv` runner.
 - **Forensic Color Theme:** Integrated the ColorHunt `#222831` `#393E46` `#00ADB5` `#EEEEEE` palette with customized code blocks, admonitions, and typography.
 - **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.

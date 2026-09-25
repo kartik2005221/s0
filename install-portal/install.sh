@@ -228,7 +228,7 @@ printf "   s0 is a certified digital forensic and media sanitization suite.\n"
 printf "   Only operate on storage devices and files you legally own or have explicit\n"
 printf "   documented authorization to process. Unauthorized use may violate computer\n"
 printf "   crime laws (e.g., CFAA, Computer Misuse Act, IT Act 2000).\n"
-printf "   Documentation & Legal FAQ: https://s0-docs.pages.dev/faq\n\n"
+printf "   Documentation & Legal FAQ: https://s0-docs.gitbook.io/faq\n\n"
 
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     printf "${_yellow}NOTE:${_reset} Add ~/.local/bin to your PATH by adding this to ~/.bashrc or ~/.zshrc:\n"

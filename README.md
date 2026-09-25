@@ -6,9 +6,9 @@
 
 [![Release](https://img.shields.io/badge/Release-v2.4.1-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.pages.dev/COMPLIANCE/)
-[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.pages.dev/CANONICAL_JSON/)
-[![Documentation](https://img.shields.io/badge/Docs-s0--docs.pages.dev-orange.svg)](https://s0-docs.pages.dev/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.gitbook.io/COMPLIANCE/)
+[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.gitbook.io/CANONICAL_JSON/)
+[![Documentation](https://img.shields.io/badge/Docs-s0--docs.pages.dev-orange.svg)](https://s0-docs.gitbook.io/)
 [![Verification Portal](https://img.shields.io/badge/Verify-s0--verify.pages.dev-emerald.svg)](https://s0-verify.pages.dev/)
 [![Install Portal](https://img.shields.io/badge/Install-s0--install.pages.dev-indigo.svg)](https://s0-install.pages.dev/)
 
@@ -20,7 +20,7 @@
 
 | Service | Live URL | Purpose |
 |---|---|---|
-| **Documentation Portal** | [s0-docs.pages.dev](https://s0-docs.pages.dev/) | Complete engineering manuals, compliance matrices & guides |
+| **Documentation Portal** | [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
 | **Verification Portal** | [s0-verify.pages.dev](https://s0-verify.pages.dev/) | 100% client-side, air-gapped Ed25519 certificate verifier |
 | **Installation Portal** | [s0-install.pages.dev](https://s0-install.pages.dev/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
@@ -54,7 +54,7 @@ Only operate on storage media, physical drives, or files that you **legally own*
 - **India:** Information Technology Act 2000, §§ 43, 66
 - **International:** Budapest Convention on Cybercrime
 
-Consult the [Documentation Legal FAQ](https://s0-docs.pages.dev/faq/) for responsible use policies.
+Consult the [Documentation Legal FAQ](https://s0-docs.gitbook.io/faq/) for responsible use policies.
 
 ---
 
@@ -183,7 +183,7 @@ When internal or system drives cannot be unmounted within a running host OS:
    ```bash
    sudo s0 live flash --target /dev/sdb
    ```
-3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE/) for details.
+3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) for details.
 
 ### 3. Verification Portal ([s0-verify.pages.dev](https://s0-verify.pages.dev/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
@@ -199,7 +199,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 - **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) (also mirrored in `.agents/skills/s0-forensics/SKILL.md`)
 - **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience (no premature aborts during controller sanitization), and post-execution certificate verification.
 - **Reference Manuals:** Comprehensive technical guides covering NIST/IEEE method mappings, hardware safety rules, magic-byte signatures, and cryptographic audit specifications.
-- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://s0-docs.pages.dev/agentic-ai/) on the docs portal.
+- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://s0-docs.gitbook.io/agentic-ai/) on the docs portal.
 
 ---
 
@@ -213,7 +213,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 | **RFC 8785** | Canonical JSON (JCS) | Deterministic cryptographic certificate serialization and block hashing. |
 | **RFC 8032** | Digital Signatures | High-performance Ed25519 public-key signature system. |
 
-Full compliance details: [docs-portal/docs/COMPLIANCE.md](https://s0-docs.pages.dev/COMPLIANCE/)
+Full compliance details: [docs-gitbook/compliance/nist-compliance.md](https://s0-docs.gitbook.io/COMPLIANCE/)
 
 ---
 
@@ -221,14 +221,14 @@ Full compliance details: [docs-portal/docs/COMPLIANCE.md](https://s0-docs.pages.
 
 | Guide | Online URL | Local File |
 |---|---|---|
-| **User & Operator Manual** | [s0-docs.pages.dev/USER_MANUAL](https://s0-docs.pages.dev/USER_MANUAL/) | [`USER_MANUAL.md`](docs-portal/docs/USER_MANUAL.md) |
-| **Architecture Specification** | [s0-docs.pages.dev/ARCHITECTURE](https://s0-docs.pages.dev/ARCHITECTURE/) | [`ARCHITECTURE.md`](docs-portal/docs/ARCHITECTURE.md) |
-| **CLI Complete Reference** | [s0-docs.pages.dev/cli-reference](https://s0-docs.pages.dev/cli-reference/) | [`cli-reference.md`](docs-portal/docs/cli-reference.md) |
-| **Forensic Carving Guide** | [s0-docs.pages.dev/forensic-carving-guide](https://s0-docs.pages.dev/forensic-carving-guide/) | [`forensic-carving-guide.md`](docs-portal/docs/forensic-carving-guide.md) |
-| **Live ISO Build Guide** | [s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE](https://s0-docs.pages.dev/LIVE_ISO_BUILD_GUIDE/) | [`LIVE_ISO_BUILD_GUIDE.md`](docs-portal/docs/LIVE_ISO_BUILD_GUIDE.md) |
-| **Agentic AI Guide** | [s0-docs.pages.dev/agentic-ai](https://s0-docs.pages.dev/agentic-ai/) | [`agentic-ai.md`](docs-portal/docs/agentic-ai.md) |
-| **Standards Compliance** | [s0-docs.pages.dev/COMPLIANCE](https://s0-docs.pages.dev/COMPLIANCE/) | [`COMPLIANCE.md`](docs-portal/docs/COMPLIANCE.md) |
-| **Engineering Handover** | [s0-docs.pages.dev/HANDOVER](https://s0-docs.pages.dev/HANDOVER/) | [`HANDOVER.md`](docs-portal/docs/HANDOVER.md) |
+| **User & Operator Manual** | [s0-docs.gitbook.io/USER_MANUAL](https://s0-docs.gitbook.io/USER_MANUAL/) | [`USER_MANUAL.md`](docs-gitbook/guides/user-manual.md) |
+| **Architecture Specification** | [s0-docs.gitbook.io/ARCHITECTURE](https://s0-docs.gitbook.io/ARCHITECTURE/) | [`ARCHITECTURE.md`](docs-gitbook/architecture/system-architecture.md) |
+| **CLI Complete Reference** | [s0-docs.gitbook.io/cli-reference](https://s0-docs.gitbook.io/cli-reference/) | [`cli-reference.md`](docs-gitbook/guides/cli-reference.md) |
+| **Forensic Carving Guide** | [s0-docs.gitbook.io/forensic-carving-guide](https://s0-docs.gitbook.io/forensic-carving-guide/) | [`forensic-carving-guide.md`](docs-gitbook/guides/forensic-carving.md) |
+| **Live ISO Build Guide** | [s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) | [`LIVE_ISO_BUILD_GUIDE.md`](docs-gitbook/guides/live-iso.md) |
+| **Agentic AI Guide** | [s0-docs.gitbook.io/agentic-ai](https://s0-docs.gitbook.io/agentic-ai/) | [`agentic-ai.md`](docs-gitbook/project/agentic-ai.md) |
+| **Standards Compliance** | [s0-docs.gitbook.io/COMPLIANCE](https://s0-docs.gitbook.io/COMPLIANCE/) | [`COMPLIANCE.md`](docs-gitbook/compliance/nist-compliance.md) |
+| **Engineering Handover** | [s0-docs.gitbook.io/HANDOVER](https://s0-docs.gitbook.io/HANDOVER/) | [`HANDOVER.md`](docs-gitbook/project/evaluator-guide.md) |
 
 ---
 

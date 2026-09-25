@@ -11,7 +11,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "version": "2.4.1",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
-    "documentation_url": "https://s0-docs.pages.dev/",
+    "documentation_url": "https://s0-docs.gitbook.io/",
     "verification_portal_url": "https://s0-verify.pages.dev/",
     "install_portal_url": "https://s0-install.pages.dev/",
     "github_url": "https://github.com/kartik2005221/s0",
