@@ -1,0 +1,11 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: s0 · Sector Zero Documentation
+  structure:
+    - type: space
+      key: s0-docs
+      title: s0 Documentation
+      path: docs
+      default: true
+      content:
+        directory: ./docs-gitbook
