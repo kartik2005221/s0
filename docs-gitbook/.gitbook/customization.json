@@ -1,0 +1,107 @@
+{
+  "title": "s0 \u00b7 Sector Zero Documentation",
+  "styling": {
+    "theme": "clean",
+    "primaryColor": {
+      "dark": "#FF6500",
+      "light": "#CC5200"
+    },
+    "tint": {
+      "color": {
+        "dark": "#000000",
+        "light": "#F8FAFC"
+      }
+    },
+    "infoColor": {
+      "dark": "#3B82F6",
+      "light": "#2563EB"
+    },
+    "successColor": {
+      "dark": "#10B981",
+      "light": "#059669"
+    },
+    "warningColor": {
+      "dark": "#F59E0B",
+      "light": "#D97706"
+    },
+    "dangerColor": {
+      "dark": "#EF4444",
+      "light": "#DC2626"
+    },
+    "corners": "straight",
+    "depth": "flat",
+    "links": "default",
+    "font": "Rubik",
+    "monospaceFont": "JetBrainsMono",
+    "icons": "solid",
+    "background": "plain",
+    "sidebar": {
+      "background": "filled",
+      "list": "default"
+    },
+    "search": "prominent"
+  },
+  "header": {
+    "preset": "default",
+    "links": [
+      {
+        "title": "Verification Portal",
+        "style": "link",
+        "to": {
+          "kind": "url",
+          "url": "https://s0-verify.pages.dev/"
+        },
+        "links": [],
+        "localizedTitle": {}
+      },
+      {
+        "title": "Install Portal",
+        "style": "link",
+        "to": {
+          "kind": "url",
+          "url": "https://s0-install.pages.dev/"
+        },
+        "links": [],
+        "localizedTitle": {}
+      },
+      {
+        "title": "GitHub",
+        "style": "button-primary",
+        "to": {
+          "kind": "url",
+          "url": "https://github.com/kartik2005221/s0"
+        },
+        "links": [],
+        "localizedTitle": {}
+      }
+    ]
+  },
+  "footer": {
+    "copyright": "Made by @kartik2005221 \u00b7 Licensed under MIT \u00b7 NIST SP 800-88 & Ed25519 Compliant"
+  },
+  "themes": {
+    "default": "dark",
+    "toggeable": true
+  },
+  "socialAccounts": [
+    {
+      "platform": "github",
+      "handle": "kartik2005221/s0",
+      "display": {
+        "header": true,
+        "footer": true
+      }
+    }
+  ],
+  "git": {
+    "showEditLink": true
+  },
+  "trademark": {
+    "enabled": false
+  },
+  "pageActions": {
+    "markdown": true,
+    "mcp": true,
+    "externalAI": true
+  }
+}
