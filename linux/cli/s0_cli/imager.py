@@ -133,7 +133,7 @@ def acquire_image(
     except Exception:
         pass
 
-    if sys.platform == "win32" and ("physicaldrive" in options.destination.lower() or options.destination.startswith(r"\\.\\")):
+    if sys.platform == "win32" and ("physicaldrive" in options.destination.lower() or options.destination.startswith("\\\\.\\")):
         is_clone = True
 
     if is_clone:

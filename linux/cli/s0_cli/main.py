@@ -176,7 +176,7 @@ def _resolve_target(path: str) -> DevTarget:
         if (
             (":" in path and len(path.strip()) <= 3)
             or "physicaldrive" in path.lower()
-            or path.startswith(r"\\.\\")
+            or path.startswith("\\\\.\\")
         ):
             sz = 0
             try:
@@ -186,7 +186,7 @@ def _resolve_target(path: str) -> DevTarget:
                 pass
             return DevTarget(path=path, kind="block", capacity_bytes=sz, storage_type="UNKNOWN")
 
-    if sys.platform != "win32" and ((":" in path and len(path.strip()) <= 3) or path.startswith(r"\\.\\") or "physicaldrive" in path.lower()):
+    if sys.platform != "win32" and ((":" in path and len(path.strip()) <= 3) or path.startswith("\\\\.\\") or "physicaldrive" in path.lower()):
         os_name = "macOS" if sys.platform == "darwin" else "Linux"
         tip_example = "/dev/disk2" if sys.platform == "darwin" else "/dev/sdb or /dev/nvme0n1"
         raise SafetyError(
@@ -1247,7 +1247,7 @@ def cmd_image(args) -> int:
         is_blk = dst_p.is_block_device() or (sys.platform == "darwin" and dst_p.is_char_device())
     except Exception:
         pass
-    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower() or args.destination.startswith(r"\\.\\")):
+    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower() or args.destination.startswith("\\\\.\\")):
         is_blk = True
 
     if is_blk and not args.yes:

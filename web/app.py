@@ -843,7 +843,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
         is_blk = dst_p.is_block_device() or (_sys.platform == "darwin" and dst_p.is_char_device())
     except Exception:
         pass
-    if _sys.platform == "win32" and ("physicaldrive" in req.destination.lower() or req.destination.startswith(r"\\.\\")):
+    if _sys.platform == "win32" and ("physicaldrive" in req.destination.lower() or req.destination.startswith("\\\\.\\")):
         is_blk = True
 
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
