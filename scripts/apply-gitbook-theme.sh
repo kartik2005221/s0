@@ -18,7 +18,7 @@ if [ -z "${ORG_ID:-}" ] || [ -z "${SITE_ID:-}" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CUSTOMIZATION_FILE="${SCRIPT_DIR}/../docs-gitbook/.gitbook/customization.json"
+CUSTOMIZATION_FILE="${SCRIPT_DIR}/../docs/.gitbook/customization.json"
 
 if [ ! -f "$CUSTOMIZATION_FILE" ]; then
     echo "ERROR: Customization file not found at $CUSTOMIZATION_FILE"

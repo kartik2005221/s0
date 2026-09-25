@@ -9,7 +9,7 @@ This guide outlines how to deploy the three static portals of **s0** to **Cloudf
 | Portal | Source Directory | Framework / Build | Output Directory | Notes |
 |---|---|---|---|---|
 | **Verification Portal** | `verification-portal/` | Static HTML / JS | `.` | Completely client-side offline Ed25519 & PDF verification |
-| **Documentation Portal** | `docs-gitbook/` | GitBook | `s0-docs.gitbook.io` | Synchronized from GitHub via Site Git Sync |
+| **Documentation Portal** | `docs/` | GitBook | `s0-docs.gitbook.io` | Synchronized from GitHub via Site Git Sync |
 | **Installation Portal** | `install-portal/` | Static HTML / Scripts | `.` | Serves `install.sh`, `install.ps1`, `install.cmd` with clean URLs |
 
 ---
@@ -35,7 +35,7 @@ The Verification Portal (`verification-portal/`) is a standalone, client-side ze
 
 ## 2. Documentation Hosting (GitBook)
 
-Documentation has migrated to **GitBook** ([https://s0-docs.gitbook.io](https://s0-docs.gitbook.io)), synchronized directly from GitHub via Site Git Sync (`gitbook-docs.yaml` and `docs-gitbook/`). MkDocs Material (`docs-portal/`) is retired.
+Documentation has migrated to **GitBook** ([https://s0-docs.gitbook.io](https://s0-docs.gitbook.io)), synchronized directly from GitHub via Site Git Sync (`gitbook-docs.yaml` and `docs/`). MkDocs Material (`docs-portal/`) is retired.
 
 ---
 

@@ -106,13 +106,13 @@ phase_ok
 # ── Phase 5: Documentation Suite ──────────────────────────────────────────────
 phase_start "Verifying Documentation Suite"
 DOCS=(
-    "docs-gitbook/architecture/system-architecture.md"
-    "docs-gitbook/guides/user-manual.md"
-    "docs-gitbook/compliance/nist-compliance.md"
-    "docs-gitbook/project/test-plan.md"
-    "docs-gitbook/compliance/limitations.md"
-    "docs-gitbook/project/evaluator-guide.md"
-    "docs-gitbook/guides/cli-reference.md"
+    "docs/architecture/system-architecture.md"
+    "docs/guides/user-manual.md"
+    "docs/compliance/nist-compliance.md"
+    "docs/project/test-plan.md"
+    "docs/compliance/limitations.md"
+    "docs/project/evaluator-guide.md"
+    "docs/guides/cli-reference.md"
 )
 for doc in "${DOCS[@]}"; do
     if [ -f "$doc" ]; then
@@ -122,7 +122,7 @@ for doc in "${DOCS[@]}"; do
         exit 1
     fi
 done
-step_ok "All 7 documentation deliverables present in docs-gitbook"
+step_ok "All 7 documentation deliverables present in docs"
 phase_ok
 
 # ── Phase 6: Optional Toolchain Probes ────────────────────────────────────────
@@ -138,12 +138,12 @@ elif command -v docker >/dev/null 2>&1; then
     step_ok "docker detected — containerized ISO build ready"
     ISO_STATUS="${_green}✅ READY${_reset}     "
 else
-    step_skip "live-build / podman / docker not installed (see docs-gitbook/guides/live-iso.md)"
+    step_skip "live-build / podman / docker not installed (see docs/guides/live-iso.md)"
 fi
 if command -v qemu-system-x86_64 >/dev/null 2>&1; then
     step_ok "qemu-system-x86_64 detected"
 else
-    step_skip "qemu-system-x86_64 not installed (see docs-gitbook/guides/live-iso.md)"
+    step_skip "qemu-system-x86_64 not installed (see docs/guides/live-iso.md)"
 fi
 step_info "Bootable Bare-Metal Live ISO target: linux/iso/ or ./scripts/build_iso.sh"
 phase_ok

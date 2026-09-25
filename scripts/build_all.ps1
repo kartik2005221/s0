@@ -88,9 +88,9 @@ End-Phase
 # ── Phase 4: Documentation Suite ──────────────────────────────────────────────
 Start-Phase "Verifying Documentation Suite"
 $Docs = @(
-    "docs-gitbook\architecture\system-architecture.md", "docs-gitbook\guides\user-manual.md", "docs-gitbook\compliance\nist-compliance.md",
-    "docs-gitbook\project\test-plan.md",               "docs-gitbook\compliance\limitations.md", "docs-gitbook\project\evaluator-guide.md",
-    "docs-gitbook\guides\cli-reference.md"
+    "docs\architecture\system-architecture.md", "docs\guides\user-manual.md", "docs\compliance\nist-compliance.md",
+    "docs\project\test-plan.md",               "docs\compliance\limitations.md", "docs\project\evaluator-guide.md",
+    "docs\guides\cli-reference.md"
 )
 foreach ($doc in $Docs) {
     if (Test-Path $doc) {

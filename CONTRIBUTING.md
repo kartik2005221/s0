@@ -74,7 +74,7 @@ s0/
 ├── web/                          # Local web dashboard console (FastAPI)
 ├── windows/                      # Native Windows Win32 ctypes & ADS drivers
 ├── macos/                        # Native macOS Darwin APFS & F_FULLFSYNC drivers
-├── docs-gitbook/                 # GitBook documentation site (5 sections, 28 pages)
+├── docs/                 # GitBook documentation site (5 sections, 28 pages)
 ├── gitbook-docs.yaml             # GitBook site-wide Git Sync configuration
 ├── verification-portal/          # Standalone client-side zero-trust verifier
 └── install-portal/               # Cross-platform installation scripts
@@ -127,11 +127,11 @@ Sanitization methods inherit from `Method` in `linux/cli/s0_cli/wipe/methods/bas
 
 ## 7. Documentation Contributions
 
-All documentation is maintained in `docs-gitbook/` and published to [https://s0-docs.gitbook.io](https://s0-docs.gitbook.io).
+All documentation is maintained in `docs/` and published to [https://s0-docs.gitbook.io](https://s0-docs.gitbook.io).
 
 When contributing to documentation:
-- Add or edit markdown files inside `docs-gitbook/` under their logical section (`getting-started/`, `guides/`, `architecture/`, `compliance/`, or `project/`).
-- Every new page must be registered in [`docs-gitbook/SUMMARY.md`](docs-gitbook/SUMMARY.md) to appear in sidebar navigation.
+- Add or edit markdown files inside `docs/` under their logical section (`getting-started/`, `guides/`, `architecture/`, `compliance/`, or `project/`).
+- Every new page must be registered in [`docs/SUMMARY.md`](docs/SUMMARY.md) to appear in sidebar navigation.
 - Use `{% hint style="info|success|warning|danger" %}` for callouts and `{% tabs %}` for multi-platform command examples.
 - Use relative markdown links between pages (e.g. `[Manual](../guides/user-manual.md)`).
 
@@ -144,6 +144,6 @@ Before submitting your pull request, please verify:
 - [ ] Code follows PEP 8 conventions, includes strict type annotations (`from __future__ import annotations`), and docstrings.
 - [ ] All 190+ automated unit and integration tests pass (`.venv/bin/pytest`).
 - [ ] Any modifications to `core/cert_schema.json` are reflected in `verification-portal/verify.js` and `core/python/s0_core/`.
-- [ ] New CLI flags, methods, or limitations are documented in `docs-gitbook/guides/cli-reference.md` and related guides.
-- [ ] Added documentation pages are registered in `docs-gitbook/SUMMARY.md`.
+- [ ] New CLI flags, methods, or limitations are documented in `docs/guides/cli-reference.md` and related guides.
+- [ ] Added documentation pages are registered in `docs/SUMMARY.md`.
 - [ ] `bash scripts/build_all.sh` completes cleanly with zero errors.

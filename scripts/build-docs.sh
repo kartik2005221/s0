@@ -3,17 +3,17 @@ set -euo pipefail
 
 # s0 Documentation Validator (GitBook)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-echo "==> Validating GitBook documentation suite at ${REPO_ROOT}/docs-gitbook"
+echo "==> Validating GitBook documentation suite at ${REPO_ROOT}/docs"
 
 [ -f "${REPO_ROOT}/gitbook-docs.yaml" ] || { echo "ERROR: Missing gitbook-docs.yaml"; exit 1; }
-[ -f "${REPO_ROOT}/docs-gitbook/SUMMARY.md" ] || { echo "ERROR: Missing docs-gitbook/SUMMARY.md"; exit 1; }
-[ -f "${REPO_ROOT}/docs-gitbook/README.md" ] || { echo "ERROR: Missing docs-gitbook/README.md"; exit 1; }
+[ -f "${REPO_ROOT}/docs/SUMMARY.md" ] || { echo "ERROR: Missing docs/SUMMARY.md"; exit 1; }
+[ -f "${REPO_ROOT}/docs/README.md" ] || { echo "ERROR: Missing docs/README.md"; exit 1; }
 
 python3 - << 'PYEOF'
 import os, glob, re, sys
 
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-root = os.path.join(repo_root, "docs-gitbook")
+root = os.path.join(repo_root, "docs")
 broken = 0
 for f in glob.glob(root + "/**/*.md", recursive=True):
     with open(f) as fp:
