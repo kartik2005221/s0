@@ -976,7 +976,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     parser = argparse.ArgumentParser(description="S0 (Sector Zero) Windows Native Forensic Sanitization Suite (Files, Partitions, Drives)")
-    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.3.0')}")
+    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.4.1')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument("--wipe-partition", help="Drive letter of secondary partition to wipe (e.g. D:, E:)")
     parser.add_argument("--wipe-drive", help="Physical drive path to wipe (e.g. \\\\.\\PhysicalDrive1 or disk number)")

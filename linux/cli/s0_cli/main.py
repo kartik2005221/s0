@@ -403,7 +403,12 @@ def cmd_wipe(args) -> int:
         return 2
 
     if sys.platform == "win32" and target.kind == "block":
-        from windows.cli.s0_eraser import wipe_drive_or_partition_windows, check_windows_wipe_safety
+        try:
+            from windows.cli.s0_eraser import wipe_drive_or_partition_windows, check_windows_wipe_safety
+        except ImportError:
+            print("error: Windows drive wipe requires the s0 Windows engine (windows.cli.s0_eraser).\n"
+                  "  Ensure the S0 installation includes Windows components or repo root is on sys.path.", file=sys.stderr)
+            return 2
         try:
             check_windows_wipe_safety(target.path, force=args.force)
         except PermissionError as exc:
@@ -470,7 +475,12 @@ def cmd_wipe(args) -> int:
         return 0 if res_win.status == "success" else 1
 
     if sys.platform == "darwin" and target.kind == "block":
-        from macos.cli.s0_eraser import wipe_drive_or_partition_macos, check_macos_wipe_safety
+        try:
+            from macos.cli.s0_eraser import wipe_drive_or_partition_macos, check_macos_wipe_safety
+        except ImportError:
+            print("error: macOS drive wipe requires the s0 macOS engine (macos.cli.s0_eraser).\n"
+                  "  Ensure the S0 installation includes macOS components or repo root is on sys.path.", file=sys.stderr)
+            return 2
         try:
             check_macos_wipe_safety(target.path, force=args.force)
         except PermissionError as exc:
@@ -1626,14 +1636,14 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
         img.set_defaults(func=cmd_image)
 
-    # 9. Web Dashboard Subcommand
+    # 10. Web Dashboard Subcommand
     wb = sub.add_parser("web", help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
     wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8669), help="port to bind (default: 8669)")
     wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
     wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
     wb.set_defaults(func=cmd_web)
 
-    # 10. Bootable Live Media (Live ISO & USB Station)
+    # 11. Bootable Live Media (Live ISO & USB Station)
     try:
         from .live_manager import register_live_parser
         register_live_parser(sub)

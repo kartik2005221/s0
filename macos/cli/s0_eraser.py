@@ -789,7 +789,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     parser = argparse.ArgumentParser(description="s0 macOS Secure Sanitization Tool (Files, Partitions, Drives)")
-    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.3.0')}")
+    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.4.1')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument("--wipe-partition", help="Partition device path to wipe (e.g. /dev/rdisk2s1 or /Volumes/USB)")
     parser.add_argument("--wipe-drive", help="Physical raw drive path to wipe (e.g. /dev/rdisk2)")

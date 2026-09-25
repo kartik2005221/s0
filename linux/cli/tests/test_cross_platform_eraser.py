@@ -323,3 +323,31 @@ def test_macos_cli_main(monkeypatch, tmp_path: Path):
     assert data["signature"]["algorithm"] == "Ed25519"
 
 
+def test_cmd_wipe_cross_platform_import_failure_graceful_exit(monkeypatch, capsys):
+    """Bug #1: Missing windows/macos packages must exit with code 2 and user-friendly error, not unhandled traceback."""
+    from s0_cli.main import main
+
+    monkeypatch.setattr(sys, "platform", "win32")
+
+    # Mock _resolve_target to return a block target
+    from s0_cli.devices import Target as DevTarget
+    monkeypatch.setattr("s0_cli.main._resolve_target", lambda path: DevTarget(path=path, kind="block", capacity_bytes=1000000))
+
+    # Temporarily remove windows from sys.modules and make import fail
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if "windows" in name:
+            raise ImportError("No module named 'windows'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    rc = main(["wipe", "--target", r"\\.\PhysicalDrive1", "--yes"])
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert "error: Windows drive wipe requires the s0 Windows engine" in captured.err
+
+
+
