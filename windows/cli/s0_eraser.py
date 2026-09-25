@@ -695,7 +695,7 @@ def dismount_and_lock_windows_volume(volume_path: str) -> bool:
         return False
     kernel32 = ctypes.windll.kernel32
     norm_vol = volume_path
-    if not norm_vol.startswith(r"\\.\\"):
+    if not norm_vol.startswith("\\\\.\\"):
         clean_vol = norm_vol.rstrip("\\")
         norm_vol = rf"\\.\{clean_vol}"
 
@@ -786,12 +786,12 @@ def wipe_drive_or_partition_windows(
     start_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     norm = target.strip()
-    is_partition = (len(norm) <= 3 and ":" in norm) or norm.startswith(r"\\.\\")
+    is_partition = (len(norm) <= 3 and ":" in norm) or norm.startswith("\\\\.\\")
     is_phys = "physicaldrive" in norm.lower() or norm.isdigit()
     target_type = "physical_drive" if is_phys else ("partition" if is_partition else "image")
 
     device_path = norm
-    if target_type == "partition" and not device_path.startswith(r"\\.\\"):
+    if target_type == "partition" and not device_path.startswith("\\\\.\\"):
         clean_norm = norm.rstrip("\\")
         device_path = rf"\\.\{clean_norm}"
     elif is_phys and norm.isdigit():

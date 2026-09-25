@@ -440,3 +440,22 @@ def test_temperature_endpoint(client, small_image):
     assert "status" in data
 
 
+def test_image_windows_device_path_confirmation(client, small_image, monkeypatch):
+    """Bug #4 / R2-4: Windows raw volume destinations (e.g. \\\\.\\C:) must require exact confirmation."""
+    import app as gui_app
+    monkeypatch.setattr(gui_app, "_sys", type("FakeSys", (), {"platform": "win32"}))
+
+    win_target = r"\\.\C:"
+    # Missing confirmation text for Windows block device target -> 400
+    payload = {
+        "source": small_image,
+        "destination": win_target,
+        "confirm_text": "",
+        "operator_id": "test-op"
+    }
+    r = client.post("/api/image", json=payload)
+    assert r.status_code == 400
+    assert "Cloning to target block device requires typing exact destination" in r.json()["detail"]
+
+
+
