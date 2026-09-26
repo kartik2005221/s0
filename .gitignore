@@ -35,6 +35,4 @@ tmp/
 .agents/
 skills-lock.json
 
-
-.vercel
 .env*
