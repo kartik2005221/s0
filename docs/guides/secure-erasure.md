@@ -50,11 +50,11 @@ flowchart TD
 | **SATA HDD (Fast Decommission)** | `OVERWRITE_ZERO_1PASS` | **Clear** | **(Recommended)** Overwrites all addressable LBAs with zeros. Sufficient per NIST Appendix A. Avoids CSPRNG random bottleneck. |
 | **USB Flash Drives / SD Cards** | `OVERWRITE_ZERO_1PASS` | **Clear** | Firmware erase commands are rarely supported over USB bridge chips; sequential zero overwrite guarantees all accessible blocks are cleared. |
 | **Classified / Defense Contract** | `SHRED_RANDOM_NPASS` (3 passes) | **Clear** | Use only when external contractual compliance mandates multi-pass pseudo-random patterns (e.g. DoD 5220.22-M). Slower (~150 MB/s). |
-| **Sensitive File / Directory** | `s0 wipe --targets ...` | **Clear** | In-place cluster overwrite, filename scrambling, timestamp zeroing, and Windows ADS / macOS xattr cleansing. |
+| **Sensitive File / Directory** | `s0 wipe --target ...` / `--targets ...` | **Clear** | In-place cluster overwrite, filename scrambling, timestamp zeroing, and Windows ADS / macOS xattr cleansing. |
 
 ---
 
-## 3. Module 1: Secure Drive Eraser (Deep Dive)
+## 3. Drive Eraser: Firmware & Overwrite Mechanics
 
 ### 3.1 NVMe Controller-Level Sanitization
 NVMe drives manage flash cells using an internal Flash Translation Layer (FTL). When an operating system writes to a logical sector, the FTL directs that write to any available physical cell for wear-leveling. Standard OS-level overwriting cannot reach:
@@ -69,7 +69,7 @@ To overcome this, s0 executes direct NVMe Admin commands:
 sudo s0 wipe --target /dev/nvme0n1 --operator "analyst-01"
 ```
 
-Under the hood, s0 selects:
+s0 selects:
 1. **NVMe Sanitize Block Erase (`0x02`):** Low-level electrical block reset across all physical NAND channels.
 2. **NVMe Format Crypto Erase (`0x04`):** If the controller supports cryptographic erase, s0 commands the controller to invalidate and regenerate the Media Encryption Key (MEK).
 
@@ -107,7 +107,7 @@ s0 wipe --target /dev/sdb --pattern random --passes 3
 
 ---
 
-## 4. Secure File & Folder Erasure (Deep Dive)
+## 4. File & Folder Erasure: Cluster Overwrite Mechanics
 
 Standard file deletion (`rm` or Windows `del`) simply removes the directory entry and marks clusters as unallocated in the filesystem bitmap. The file data remains on disk until overwritten by new files.
 

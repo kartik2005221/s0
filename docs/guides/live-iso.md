@@ -9,13 +9,15 @@
 
 ## Why You Need a Bootable USB
 
-When you need to wipe the system drive of a running computer — whether a Windows laptop, a Linux server, or a macOS machine being decommissioned — you face a fundamental problem: **the operating system is using that drive right now**.
+When you need to sanitize or forensically carve the system drive of a computer — whether a Windows workstation, a Linux server, or a Mac being decommissioned — you face a fundamental barrier: **the operating system is using that storage device right now**.
 
-File locks, pagefile/swap usage, Volume Shadow Copies (Windows), kernel hibernation files, and OS-enforced disk access restrictions all prevent thorough sanitization from within the running OS. This isn't a software limitation of s0 — it's an architectural reality of every operating system.
+File locks, active paging/swap, background journal writes, and continuous SSD TRIM commands interfere with low-level disk operations. On live systems:
+- Direct firmware sanitization (`NVME_SANITIZE`, `ATA_SECURE_ERASE`) is blocked by the host OS kernel.
+- File carving yield degrades rapidly because background OS writes overwrite deleted clusters before they can be extracted.
 
-The industry-standard solution is to boot from a separate USB drive into an independent environment where the internal drives are **unmounted and fully accessible** for direct block-level and firmware-level sanitization. This is how tools like DBAN, ShredOS, and enterprise erasure appliances work.
+The industry-standard solution is to boot from an independent USB drive into a dedicated live environment where internal drives are **unmounted, isolated, and fully accessible** for direct firmware-level sanitization (`s0 wipe`), raw bit-stream acquisition (`s0 image`), and deep evidence carving (`s0 carve`).
 
-s0 provides a complete Debian-based Live ISO recipe that boots into an automatic Chromium kiosk displaying the s0 web dashboard — ready to wipe.
+s0 provides a complete Debian-based Live ISO recipe that boots into an automatic Chromium kiosk displaying the full s0 forensic workstation — ready to wipe or carve.
 
 {% hint style="success" %}
 **Automated Cloud Builds on GitHub Releases**

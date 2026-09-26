@@ -318,10 +318,10 @@ s0 wipe --target PATH \
 |------|------|---------|----------|-------------|
 | `--target` | path | — | **yes** | Block device or image file to sanitize. |
 | `--yes` | flag | off | no | Skip the interactive `WIPE` confirmation prompt. |
-| `--key` | path | auto | no | Path to issuer Ed25519 private key PEM. Auto-discovers demo key from `core/keys/` if omitted. |
+| `--key` | path | auto | no, but recommended | Path to issuer Ed25519 private key PEM. Auto-discovers demo key from `core/keys/` if omitted. |
 | `--out-dir` | path | `.` | no | Directory where certificate files are written. |
-| `--operator` | string | `unknown-operator` | no | Operator identity recorded in the certificate payload. |
-| `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no | Issuing organization name recorded in the certificate. |
+| `--operator` | string | `unknown-operator` | no, but recommended | Operator identity recorded in the certificate payload. |
+| `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no, but recommended | Issuing organization name recorded in the certificate. |
 | `--no-pdf` | flag | off | no | Skip PDF certificate generation (JSON and QR are still produced). |
 | `--verify-samples` | integer | `64` | no | Number of 4 096-byte blocks to sample and check post-wipe. |
 | `--passes` | integer | `1` | no | Number of overwrite passes (relevant for software overwrite method). |
@@ -491,13 +491,13 @@ s0 wipe --targets PATH... \
 
 | Flag | Type | Default | Required | Description |
 |------|------|---------|----------|-------------|
-| `--targets` | path(s) | — | no | One or more file or directory paths to erase (or specify via `--target`). Directories are recursed. |
+| `--targets` | path(s) | — | no | One or more file or directory paths to erase (or specify single target via `--target`). Directories are recursed. |
 | `--passes` | integer | `1` | no | Number of overwrite passes per file. |
 | `--pattern` | `zero` \| `random` | `zero` | no | Byte pattern for overwrite passes. |
 | `--out-dir` | path | `.` | no | Directory where the erasure certificate is written. |
-| `--operator` | string | *(empty)* | no | Operator identity recorded in the certificate. |
-| `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no | Issuing organization name. |
-| `--key` | path | auto | no | Signing key PEM path. |
+| `--operator` | string | *(empty)* | no, but recommended | Operator identity recorded in the certificate. |
+| `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no, but recommended | Issuing organization name. |
+| `--key` | path | auto | no, but recommended | Signing key PEM path. |
 | `--no-certificate` | flag | off | no | Skip certificate generation entirely. |
 | `--no-pdf` | flag | off | no | Skip PDF rendering; produce JSON certificate only. |
 | `--portal-url` | URL | `https://s0-verify.pages.dev/` | no | Portal URL embedded in QR code. |
@@ -547,7 +547,7 @@ s0 wipe \
 
 {% hint style="warning" %}
 **Filesystem and OS limitations**
-On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 wipe` documents this limitation explicitly in its output. See [`secure-erasure-guide.md`](secure-erasure.md) for the full deep-dive.
+On **Copy-on-Write filesystems** (Btrfs, ZFS, APFS), the overwrite pass writes to a new block rather than the original LBA. The old data blocks may remain in the CoW snapshot tree. `s0 wipe` documents this limitation explicitly in its output. See [`secure-erasure.md`](secure-erasure.md) for detailed mechanics.
 {% endhint %}
 
 ---
@@ -581,9 +581,9 @@ s0 image --source SOURCE --destination DESTINATION \
 | `--block-size` | integer | `1048576` (1MB) | no | I/O buffer block size in bytes. |
 | `--no-recovery` | flag | off | no | Abort acquisition immediately on first I/O read error instead of zero-filling bad sectors. |
 | `--out-dir` | path | `.` | no | Directory to store acquisition manifest and signed certificate. |
-| `--operator` | string | `op-forensic` | no | Operator identity recorded in the forensic acquisition manifest. |
-| `--organization` | string | `Digital Forensics & Incident Response Lab` | no | Issuing organization name. |
-| `--key` | path | auto | no | Path to Ed25519 issuer private key PEM. |
+| `--operator` | string | `op-forensic` | no, but recommended | Operator identity recorded in the forensic acquisition manifest. |
+| `--organization` | string | `Digital Forensics & Incident Response Lab` | no, but recommended | Issuing organization name. |
+| `--key` | path | auto | no, but recommended | Path to Ed25519 issuer private key PEM. |
 | `--no-certificate` | flag | off | no | Skip generating signed Ed25519 acquisition certificate and manifest. |
 | `--yes` | flag | off | no | Skip interactive confirmation when cloning to a physical disk. |
 
@@ -701,25 +701,31 @@ s0 carve --target PATH \
 | `--extensions` | comma-separated | all | no | Restrict carving to specific types (e.g. `jpg,png,pdf,zip`). |
 | `--custom-sig` | path or JSON | — | no | Path to JSON file (or inline JSON) defining custom file signature(s) with hex magic bytes. |
 | `--min-confidence` | 0–100 | `50` | no | Discard recovered files scoring below this threshold. |
-| `--operator` | string | `s0_config.json` | no | Forensic operator identity for the manifest certificate (default: `op-forensic`). |
-| `--organization` | string | `s0_config.json` | no | Issuing organization name (default from central configuration). |
-| `--key` | path | auto (`s0_config.json`) | no | Signing key PEM for the manifest certificate. |
+| `--operator` | string | `s0_config.json` | no, but recommended | Forensic operator identity for the manifest certificate (default: `op-forensic`). |
+| `--organization` | string | `s0_config.json` | no, but recommended | Issuing organization name (default from central configuration). |
+| `--key` | path | auto (`s0_config.json`) | no, but recommended | Signing key PEM for the manifest certificate. |
 | `--no-certificate` | flag | off | no | Skip manifest certificate generation. |
 
 **Supported file types**
 
-| Extension | Format | Detection Method |
-|-----------|--------|-----------------|
-| `jpg` | JPEG image | `FF D8 FF` header + `FF D9` footer |
-| `png` | PNG image | `89 50 4E 47` header + `49 45 4E 44` footer |
-| `pdf` | PDF document | `%PDF-` header + `%%EOF` footer |
-| `zip` | ZIP archive (+ `.docx` / `.xlsx` / `.pptx`) | `PK\x03\x04` header |
-| `gif` | GIF image | `GIF87a` / `GIF89a` header + `00 3B` footer |
-| `gz` | Gzip archive | `1F 8B` header |
-| `bmp` | BMP image | `42 4D` header; length field cross-checked |
-| `elf` | ELF binary | `7F 45 4C 46` header |
-| `sqlite` | SQLite database | `53 51 4C 69 74 65 20 66 6F 72 6D 61 74 20 33` header |
-| `mp3` | MP3 audio | `FF FB` / `49 44 33` (ID3) header |
+| Extension | Format | Detection Method | Max Size |
+|-----------|--------|-----------------|----------|
+| `jpg` | JPEG image | `FF D8 FF` header + `FF D9` footer | 30 MB |
+| `png` | PNG image | `89 50 4E 47` header + `49 45 4E 44` footer | 30 MB |
+| `pdf` | PDF document | `%PDF-` header + `%%EOF` footer | 50 MB |
+| `zip` | ZIP archive (+ `.docx` / `.xlsx` / `.pptx`) | `PK\x03\x04` header + `PK\x05\x06` footer | 100 MB |
+| `gif` | GIF image | `GIF87a` / `GIF89a` header + `00 3B` footer | 20 MB |
+| `gz` | Gzip archive | `1F 8B 08` header | 50 MB |
+| `bmp` | BMP image | `42 4D` header | 30 MB |
+| `elf` | Linux ELF binary | `7F 45 4C 46` header | 50 MB |
+| `sqlite` | SQLite database | `53 51 4C 69 74 65 20 66 6F 72 6D 61 74 20 33` header | 100 MB |
+| `mp3` | MP3 audio | `ID3` container & MPEG sync frames (`FF FB`, `FF F3`, `FF FA`) | 30 MB |
+| `wav` | WAV audio | `RIFF` header | 50 MB |
+| `flac` | FLAC lossless audio | `fLaC` header | 50 MB |
+| `ogg` | OGG multimedia container | `OggS` header | 50 MB |
+| `7z` | 7-Zip compressed archive | `37 7A BC AF 27 1C` header | 100 MB |
+| `pcap` | PCAP packet capture | `D4 C3 B2 A1` header | 100 MB |
+| `pcapng` | PCAP Next-Gen capture | `0A 0D 0D 0A` header | 100 MB |
 
 **Output files**
 
@@ -1143,7 +1149,7 @@ sudo s0 wipe \
 
 ## s0 upgrade
 
-Seamlessly updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies source integrity, refreshes Python dependencies, updates editable packages (`s0_core` and `s0_cli`), and asserts version parity.
+Updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies source integrity, refreshes Python dependencies, updates editable packages (`s0_core` and `s0_cli`), and asserts version parity.
 
 {% tabs %}
 {% tab title="Synopsis" %}

@@ -172,9 +172,9 @@ s0 sanitization methods and evidence handling protocols are mapped to internatio
       <td><a href="guides/user-manual.md#6-module-3-forensic-drive-imager-bit-stream-copy">Imager Docs</a></td>
     </tr>
     <tr>
-      <td><strong>Blockchain Audit Ledger</strong></td>
+      <td><strong>Hash-Chained Audit Ledger</strong></td>
       <td>Append-only SQLite architecture, SHA-256 hash chaining, and integrity audits.</td>
-      <td><a href="guides/user-manual.md#7-module-4-blockchain-cryptographic-audit-ledger">Audit Ledger Docs</a></td>
+      <td><a href="guides/user-manual.md#7-module-4-hash-chained-cryptographic-audit-ledger">Audit Ledger Docs</a></td>
     </tr>
     <tr>
       <td><strong>Verification &amp; Air-Gapped Trust</strong></td>

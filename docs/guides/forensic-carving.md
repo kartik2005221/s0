@@ -10,18 +10,24 @@ File carving is the process of recovering files from raw storage media — disk 
 
 s0 recognizes the following file types by their binary signatures:
 
-| Extension | Description | Magic Bytes (hex) | Max Carve Size |
-|-----------|-------------|-------------------|----------------|
-| `jpg` | JPEG Image | `FF D8 FF` | 30 MB |
-| `png` | PNG Image | `89 50 4E 47 0D 0A 1A 0A` | 30 MB |
-| `pdf` | PDF Document | `25 50 44 46 2D` (`%PDF-`) | 50 MB |
-| `zip` | ZIP / Office OpenXML | `50 4B 03 04` (`PK\x03\x04`) | 100 MB |
-| `gif` | GIF Image | `47 49 46 38` (`GIF8`) | 20 MB |
-| `gz` | GZIP Archive | `1F 8B 08` | 50 MB |
-| `bmp` | BMP Image | `42 4D` (`BM`) | 30 MB |
-| `elf` | ELF Executable | `7F 45 4C 46` (`\x7fELF`) | 50 MB |
-| `sqlite` | SQLite Database | `53 51 4C 69 74 65 20 66 6F 72 6D 61 74 20 33 00` | 100 MB |
-| `mp3` | MP3 Audio | `49 44 33` (`ID3`) | 15 MB |
+| Extension | Description | Category | Magic Bytes (hex) | Max Carve Size |
+|-----------|-------------|----------|-------------------|----------------|
+| `jpg` | JPEG Image | Image | `FF D8 FF` (footer `FF D9`) | 30 MB |
+| `png` | PNG Image | Image | `89 50 4E 47 0D 0A 1A 0A` (footer `49 45 4E 44 AE 42 60 82`) | 30 MB |
+| `pdf` | PDF Document | Document | `25 50 44 46 2D` (`%PDF-`, footer `%%EOF`) | 50 MB |
+| `zip` | ZIP / Office OpenXML (`.docx`, `.xlsx`, `.pptx`) | Archive | `50 4B 03 04` (`PK\x03\x04`, footer `PK\x05\x06`) | 100 MB |
+| `gif` | GIF Image | Image | `47 49 46 38` (`GIF8`, footer `00 3B`) | 20 MB |
+| `gz` | GZIP Archive | Archive | `1F 8B 08` | 50 MB |
+| `bmp` | BMP Image | Image | `42 4D` (`BM`) | 30 MB |
+| `elf` | Linux ELF Executable | Executable | `7F 45 4C 46` (`\x7fELF`) | 50 MB |
+| `sqlite` | SQLite Database | Document | `53 51 4C 69 74 65 20 66 6F 72 6D 61 74 20 33 00` | 100 MB |
+| `mp3` | MP3 Audio (ID3v2 & MPEG sync frames) | Audio | `49 44 33` (`ID3`), `FF FB`, `FF F3`, `FF FA` | 30 MB |
+| `wav` | WAV Audio | Audio | `52 49 46 46` (`RIFF`) | 50 MB |
+| `flac` | FLAC Lossless Audio | Audio | `66 4C 61 43` (`fLaC`) | 50 MB |
+| `ogg` | OGG Multimedia Container | Audio | `4F 67 67 53` (`OggS`) | 50 MB |
+| `7z` | 7-Zip Compressed Archive | Archive | `37 7A BC AF 27 1C` (`7z\xbc\xaf'\x1c`) | 100 MB |
+| `pcap` | PCAP Packet Capture | Document | `D4 C3 B2 A1` | 100 MB |
+| `pcapng` | PCAP Next-Generation Capture | Document | `0A 0D 0D 0A` | 100 MB |
 
 {% hint style="info" %}
 **ZIP covers more than ZIP**
@@ -431,6 +437,18 @@ The NTFS engine parses the `$MFT` and handles multi-fragment runlists — files 
 ## Limitations of File Carving
 
 Understanding what carving **cannot** do is as important as knowing what it can.
+
+### Active Host Operating System Drives (Live Root Partitions)
+
+Attempting to carve deleted files from an active, currently running operating system drive is strongly discouraged. On a live host:
+1. **Background Overwrites:** The operating system kernel and background services continuously write log entries, swap/pagefile allocations, browser cache files, and telemetry to disk. These writes immediately claim newly released clusters, destroying deleted data.
+2. **Hardware TRIM / Deallocate:** Modern operating systems immediately issue asynchronous `TRIM` (SATA) or `Deallocate` (NVMe) commands to solid-state drives upon file deletion. The SSD's flash controller wipes or zeroes the underlying NAND blocks in hardware within seconds.
+3. **Forensic Integrity Violation:** Running a scanner directly against a live mounted root partition risks file table race conditions and violates standard chain-of-custody protocols (ISO/IEC 27037).
+
+{% hint style="danger" %}
+**Use the Bare-Metal Live ISO instead**
+If you need to recover evidence from a host machine's internal drive, do not run carving from within the installed OS. Immediately power down the system, boot the air-gapped [s0 Live ISO](live-iso.md), or extract an offline bit-stream image (`s0 image`) via a write blocker.
+{% endhint %}
 
 ### Heavily Fragmented Files
 

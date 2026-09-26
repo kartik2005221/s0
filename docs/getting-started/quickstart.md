@@ -66,40 +66,22 @@ s0 is a certified digital forensic sanitization and recovery tool. You must **on
 ## 2. Installation
 
 {% tabs %}
-{% tab title="Linux" %}
-
-Run the fast one-line installer. It verifies toolchain prerequisites, bootstraps a dedicated Python virtual environment, installs cryptographic engines, and registers `s0` in your `PATH`.
+{% tab title="Linux & macOS" %}
+Run the one-line installer in Bash or Zsh. It verifies prerequisites, sets up an isolated Python virtual environment at `~/.s0`, and registers the `s0` executable in your `PATH`:
 
 ```bash
-# Universal Linux installer via s0-install portal
 curl -fsSL https://s0-install.pages.dev/sh | bash
 ```
 
 {% hint style="success" %}
-**What the installer does**
-The script places the `s0` launcher at `~/.local/bin/s0` alongside a self-contained `.venv` inside `~/.s0`. You do **not** need to activate the virtual environment manually.
-{% endhint %}
-{% endtab %}
-{% tab title="macOS" %}
-
-The universal installer works identically across Apple Silicon (M1/M2/M3/M4) and Intel Macs:
-
-```bash
-# Universal macOS installer via s0-install portal
-curl -fsSL https://s0-install.pages.dev/sh | bash
-```
-
-{% hint style="warning" %}
-**Homebrew Python**
-If you manage Python with Homebrew, ensure `python3 --version` reports 3.10 or newer before running the installer.
+**Apple Silicon & Intel support**
+On macOS, the installer automatically detects Apple Silicon (M1–M4) and Intel architectures. Ensure Python 3.10+ is installed (e.g. via Homebrew: `brew install python3`).
 {% endhint %}
 {% endtab %}
 {% tab title="Windows — PowerShell" %}
-
-Open **PowerShell** (run as administrator for physical drive access) and run:
+Open **PowerShell** (run as administrator for direct physical drive access):
 
 ```powershell
-# Automated Windows PowerShell installer via s0-install portal
 irm https://s0-install.pages.dev/ps1 | iex
 ```
 
@@ -112,31 +94,24 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 {% endhint %}
 {% endtab %}
 {% tab title="Windows — Command Prompt" %}
-
-Open **Command Prompt** and run:
+Open **Command Prompt**:
 
 ```cmd
-:: Automated Windows CMD installer via s0-install portal
 curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 ```
 {% endtab %}
-{% tab title="Manual (All Platforms)" %}
-
-Use this approach when you need offline installation, want to audit the install script first, or intend to contribute to the codebase.
+{% tab title="From Source (All Platforms)" %}
+For offline installation, auditing the codebase, or local development:
 
 ```bash
-# Clone repository and execute master bootstrap orchestrator
 git clone https://github.com/kartik2005221/s0.git
 cd s0
-bash scripts/build_all.sh   # (1)
+bash scripts/build_all.sh
 ```
 
-1. `build_all.sh` creates `.venv`, installs all Python dependencies, and runs the full test suite (180+ tests). Expect 1–3 minutes on first run.
-
-After `build_all.sh` completes, invoke s0 directly through the virtual environment:
+After `build_all.sh` finishes, invoke s0 directly through the virtual environment:
 
 ```bash
-# Verify installation directly via virtualenv binary
 .venv/bin/s0 --version
 ```
 
@@ -144,7 +119,6 @@ After `build_all.sh` completes, invoke s0 directly through the virtual environme
 **Add to PATH manually**
 To use `s0` without the `.venv/bin/` prefix, add the following to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
 ```bash
-# Export s0 binary directory to PATH
 export PATH="/path/to/s0/.venv/bin:$PATH"
 ```
 {% endhint %}
@@ -165,8 +139,7 @@ s0 --version
 Expected output (version numbers may differ):
 
 ```
-# Output verification string
-s0 version 2.2.1
+s0 2.4.3
 ```
 
 {% hint style="success" %}
@@ -312,12 +285,20 @@ When complete:
 
 ---
 
-## 5. Your First File Erasure
+## 6. Your First File & Folder Erasure
 
-`s0 wipe` seamlessly auto-detects individual files and directories — no root access needed. It overwrites data in-place at the cluster level, zeroes filesystem timestamps, and scrambles directory entry names before unlinking.
+`s0 wipe` supports targeted file and directory sanitization without root access. Both single-path and batch-path invocations are supported:
+
+- **Single file or directory:** Pass `--target <path>`. The engine auto-detects that the target is a file or directory rather than a block device and invokes file sanitization mode.
+- **Batch files and directories:** Pass `--targets <path1> <path2> ...`.
+
+The engine overwrites file extents in-place at the cluster level, resets inode/metadata timestamps to Unix epoch zero (1970-01-01), purges NTFS Alternate Data Streams (on Windows), flushes hardware caches, and scrambles directory entry filenames before unlinking.
 
 ```bash
-# Execute in-place cluster sanitization on target files and directories (auto-detected)
+# Single file or directory (auto-detected via --target)
+s0 wipe --target /path/to/classified_report.pdf
+
+# Batch files and directories (via --targets)
 s0 wipe \
     --targets /path/to/classified_report.pdf /path/to/sensitive_folder/ \
     --passes 1
@@ -325,7 +306,8 @@ s0 wipe \
 
 | Flag | Purpose |
 |---|---|
-| `--targets` | Space-separated list of files and/or directories (or passed as positional target) |
+| `--target` | Single file, directory, or storage device |
+| `--targets` | Multiple files and/or directories for batch sanitization |
 | `--passes` | Number of overwrite passes (1 = NIST Clear; 3 = additional assurance) |
 
 {% hint style="success" %}
@@ -336,7 +318,6 @@ You can mix files and directories freely: `--targets file1.pdf dir1/ file2.docx 
 Sample output:
 
 ```
-# File erasure progress output
 [s0 wipe]  Auto-detected 2 file/directory target(s)
 [s0 wipe]  Processing 2 target(s)...
 [s0 wipe]  [OK]  classified_report.pdf   — 4.2 MB  overwritten (1 pass), timestamps zeroed, unlinked
@@ -353,13 +334,13 @@ On CoW filesystems, in-place overwrite may not reach the original data blocks �
 
 ---
 
-## 6. Your First Carve
+## 7. Your First Forensic File Carve
 
-The carver recovers deleted files from raw disk images — no root access needed, and it works entirely on image files, so your original evidence drive is never touched.
+The carver reconstructs deleted files from raw disk images or storage devices. Operating on disk images requires no root access and ensures original evidence media remains strictly write-blocked.
 
-{% hint style="info" %}
-**What is a disk image?**
-A disk image (`.raw`, `.img`, `.dd`) is a byte-for-byte copy of a storage device. You can create one from a physical drive with standard forensic tools (`s0 image`, `dd`, `dcfldd`). s0's carver then operates on this image without any risk of modifying the original evidence.
+{% hint style="warning" %}
+**Live Root Filesystem Advisory**
+Carving against an actively running host operating system drive is strongly discouraged. Continuous OS background writes, journal updates, swap/paging activity, and automatic SSD TRIM commands overwrite deallocated clusters in real time, drastically reducing evidence recovery yield. Always acquire a bit-stream disk image (`s0 image`) or boot the bare-metal [s0 Live ISO](../guides/live-iso.md) for forensic recovery.
 {% endhint %}
 
 ```bash
@@ -373,26 +354,31 @@ s0 carve \
 
 | Flag | Purpose |
 |---|---|
-| `--target` | Path to the disk image (or live block device with root) |
+| `--target` | Path to the disk image (`.raw`, `.img`, `.dd`) or block device |
 | `--out-dir` | Directory where carved files will be written |
-| `--extensions` | Comma-separated list of file types to recover |
+| `--extensions` | Comma-separated list of file extensions to recover (or omit to carve all supported types) |
 | `--min-confidence` | Score threshold 0–100; files scoring below this are discarded |
 
-**Supported file types:** `jpg`, `png`, `pdf`, `zip`, `docx`, `xlsx`, `gif`, `bmp`, `elf`, `mp3`, `sqlite`, `gz`
+**Supported file formats:** s0 includes 19 built-in binary signature definitions across 16 primary formats:
+- **Documents & Data:** `pdf`, `zip` (covers Office OpenXML `.docx`, `.xlsx`, `.pptx`), `sqlite`
+- **Images:** `jpg` (JPEG), `png` (PNG), `gif` (GIF87a/89a), `bmp` (Bitmap)
+- **Audio:** `mp3` (ID3v2 & MPEG sync frames), `wav` (RIFF), `flac` (FLAC), `ogg` (OggS)
+- **Archives & Binaries:** `7z` (7-Zip), `gz` (Gzip), `elf` (Linux ELF binaries)
+- **Network Captures:** `pcap` (Wireshark/tcpdump capture), `pcapng` (Next-Gen capture)
 
-**Supported filesystem structures:** ext4, NTFS (`$MFT`), FAT32, exFAT — plus raw signature carving that works on any filesystem (or no filesystem at all).
+Custom signature definitions can also be supplied via JSON with `--custom-signatures`.
+
+**Filesystem structure parsing:** ext4 (extent trees), NTFS (`$MFT` runlists), FAT32, exFAT — plus raw sliding-window carving with 4-factor Shannon entropy scoring.
 
 Live output streams a progress bar and a rolling found-file counter:
 
 ```
-# Terminal status line output
 [s0 carve]  ████████░░░░░░░░░░░░  35.4%  10.2 GiB / 28.9 GiB  142 MB/s   ETA 02m 10s  Found: 36,790
 ```
 
 When complete:
 
 ```
-# Evidence recovery completion summary
 [s0 carve]  [OK]  Carving complete
 [s0 carve]  Files recovered : 1,247  (above 50% confidence)
 [s0 carve]  Output          : ./recovered_evidence/
@@ -416,12 +402,11 @@ A score of 50 is a reasonable default. Raise to 70–80 for highest-confidence f
 
 ---
 
-## 7. Understanding the Output
+## 8. Understanding the Output
 
 Every `s0 wipe` operation produces a **certificate bundle** — three files tied to a single UUID:
 
 ```
-# Certificate bundle files
 certificate_a3f19c22.json      # (1) Machine-readable canonical payload
 certificate_a3f19c22.pdf       # (2) Official printable PDF with QR
 certificate_a3f19c22.qr.png    # (3) Standalone verification QR code
@@ -434,7 +419,6 @@ certificate_a3f19c22.qr.png    # (3) Standalone verification QR code
 The `carve` command produces a **signed manifest** instead:
 
 ```
-# Forensic carving manifest
 carve_manifest_9e4a1b77.json   # Signed list of all recovered files + SHA-256 hashes
 ```
 
@@ -459,7 +443,7 @@ s0 audit verify
 
 ---
 
-## 8. Verifying a Certificate
+## 9. Verifying a Certificate
 
 You have three independent ways to verify any s0 certificate, all of which work completely offline:
 
@@ -474,7 +458,6 @@ s0 verify certificate_a3f19c22.json --key core/keys/demo_issuer_public.pem
 Expected output on a valid certificate:
 
 ```
-# Cryptographic verification summary
 [s0 verify]  [OK]  Signature VALID
 [s0 verify]  Issuer    : s0 Demo Authority
 [s0 verify]  Target    : /dev/sdb  (SanDisk Ultra, 32.0 GB)
@@ -502,23 +485,24 @@ For classified environments with no internet access, copy the `verification-port
 
 ---
 
-## 9. Uninstallation
+## 10. Uninstallation
 
 {% tabs %}
-{% tab title="Linux / macOS" %}
-
+{% tab title="Linux & macOS" %}
 ```bash
-# Download and run the automated uninstaller
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.sh | bash
+curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
 ```
 
-This removes the `s0` launcher from `PATH` and optionally removes the cloned repository. Your audit database at `~/.s0/s0_audit.db` is **not** deleted by default — preserve it for chain-of-custody records.
+This removes the `s0` launcher from `PATH` and removes the local virtual environment. Your audit database at `~/.s0/s0_audit.db` is **not** deleted by default — preserve it for chain-of-custody records.
 {% endtab %}
 {% tab title="Windows — PowerShell" %}
-
 ```powershell
-# Execute the Windows PowerShell automated uninstaller
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/uninstall.ps1 | iex
+irm https://s0-install.pages.dev/uninstall-ps1 | iex
+```
+{% endtab %}
+{% tab title="Windows — Command Prompt" %}
+```cmd
+curl -fsSL https://s0-install.pages.dev/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
 ```
 {% endtab %}
 {% endtabs %}
@@ -530,7 +514,7 @@ The ledger at `~/.s0/s0_audit.db` (Linux/macOS) or `%USERPROFILE%\.s0\s0_audit.d
 
 ---
 
-## 10. Workspace Configuration (`s0_config.json`)
+## 11. Workspace Configuration (`s0_config.json`)
 
 To eliminate the need for passing repeated command-line arguments and ensure organizational consistency across all workstation interfaces, `s0` automatically reads `s0_config.json` at the root of the repository or the current working directory (override path via the `S0_CONFIG_PATH` environment variable):
 
@@ -557,7 +541,8 @@ Every command line interface (`s0 wipe`, `s0 carve`, `s0 image`), macOS/Windows 
 
 ---
 
-## 11. Next Steps
+## 12. Next Steps
+
 
 Now that you have s0 installed and have run your first operations, explore the deeper documentation:
 
@@ -582,12 +567,12 @@ Now that you have s0 installed and have run your first operations, explore the d
     </tr>
     <tr>
       <td><strong>System Architecture</strong></td>
-      <td>Subsystem design, cryptographic flow to signed certificates, and blockchain audit ledger block-hash formula.</td>
+      <td>Subsystem design, cryptographic flow to signed certificates, and hash-chained audit ledger block-hash formula.</td>
       <td><a href="../architecture/system-architecture.md">Architecture</a></td>
     </tr>
     <tr>
       <td><strong>Bare-Metal Live ISO</strong></td>
-      <td>Build a bootable Live ISO with s0 pre-installed for offline host drive sanitization.</td>
+      <td>Build a bootable Live ISO with s0 pre-installed for offline host drive sanitization and evidence acquisition.</td>
       <td><a href="../guides/live-iso.md">Live ISO Guide</a></td>
     </tr>
     <tr>

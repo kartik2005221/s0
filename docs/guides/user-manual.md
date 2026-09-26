@@ -2,7 +2,7 @@
 
 {% hint style="info" %}
 **Document Scope: Comprehensive Operator & Field Reference Manual**
-This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, blockchain ledger continuity audits, and regulatory sign-offs.
+This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, audit ledger continuity checks, and regulatory sign-offs.
 
 If you only need to perform a quick 5-minute setup and test run on an image file, refer to the **[Getting Started Guide](../getting-started/quickstart.md)**. For in-depth sanitization physics and firmware mechanics, see the **[Secure Data Erasure Guide](secure-erasure.md)**.
 {% endhint %}
@@ -15,7 +15,7 @@ The **s0 (Sector Zero)** suite unifies offensive and defensive storage operation
 1. **Defensive Anti-Forensics & Sanitization:** Irreversibly destroying digital data across storage drives, individual files, and directory hierarchies in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**.
 2. **Offensive Digital Forensics & Evidence Recovery:** Reconstructing deleted, concealed, or lost files from formatted media and raw disk images across ext4, NTFS, FAT32, and exFAT without mounting the filesystem.
 3. **Forensic Acquisition & Cloning:** Creating bit-stream disk images with live dual hashing (SHA-256 and MD5) and bad-sector fault tolerance per **ISO/IEC 27037**.
-4. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local blockchain ledger**.
+4. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local audit ledger**.
 
 ---
 
@@ -26,25 +26,24 @@ The **s0 (Sector Zero)** suite unifies offensive and defensive storage operation
 {% tabs %}
 {% tab title="Linux & macOS" %}
 ```bash
-# Download and execute the universal Linux/macOS installer
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
-    
-# Confirm installation and print version
+curl -fsSL https://s0-install.pages.dev/sh | bash
 s0 --version
 ```
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-# Execute the Windows PowerShell automated bootstrap installer
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
-    
-# Confirm installation and print version
+irm https://s0-install.pages.dev/ps1 | iex
+s0 --version
+```
+{% endtab %}
+{% tab title="Windows (Command Prompt)" %}
+```cmd
+curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 s0 --version
 ```
 {% endtab %}
 {% tab title="From Source (All Platforms)" %}
 ```bash
-# Clone repository and execute master bootstrap orchestrator
 git clone https://github.com/kartik2005221/s0.git
 cd s0
 bash scripts/build_all.sh
@@ -54,12 +53,11 @@ bash scripts/build_all.sh
 
 ### 2.2 Upgrading s0 to the Latest Version
 
-To keep s0 synchronized with the latest NIST compliance profiles, carving signatures, and patches:
+To keep s0 synchronized with the latest sanitization profiles, carving signatures, and patches:
 
 {% tabs %}
 {% tab title="Command Line (Universal)" %}
 ```bash
-# Check remote repository and upgrade the active installation in-place
 s0 upgrade
 # Use --force to reinstall all virtual environment dependencies
 s0 upgrade --force
@@ -67,20 +65,17 @@ s0 upgrade --force
 {% endtab %}
 {% tab title="Linux & macOS" %}
 ```bash
-# Re-run the automated upgrade pipeline from GitHub master
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh | bash
+curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 ```
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-# Execute remote PowerShell upgrade script
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 | iex
+irm https://s0-install.pages.dev/upgrade-ps1 | iex
 ```
 {% endtab %}
 {% tab title="Windows (Command Prompt)" %}
 ```cmd
-:: Execute CMD batch upgrade pipeline
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.cmd | cmd
+curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 ```
 {% endtab %}
 {% endtabs %}
@@ -174,13 +169,16 @@ Immediately following the write operation, s0 conducts an automated **64-block s
 
 ---
 
-## 4. Secure File & Folder Erasure (`s0 wipe --targets`)
+## 4. Secure File & Folder Erasure
 
-Selective, in-place cluster sanitization for sensitive files and directories is seamlessly integrated into `s0 wipe`. Passing file or directory paths to `--targets` (or as target paths) automatically routes the operation to surgical file erasure without wiping the surrounding filesystem or requiring root access.
+Selective, in-place cluster sanitization for sensitive files and directories is integrated into `s0 wipe`. No root access is required for file-level sanitization:
+
+- **Single Target:** `s0 wipe --target /path/to/file.pdf` auto-detects that the target is a file or directory rather than a block device and invokes file sanitization.
+- **Batch Targets:** `s0 wipe --targets file1.pdf dir1/ file2.docx` processes multiple files and folders in a single pass and emits a consolidated compliance certificate.
 
 ### 4.1 Basic File Erasure
 ```bash
-# Securely erase specific target files and directory trees (auto-detected)
+# Securely erase specific target files and directory trees
 s0 wipe --targets /evidence/confidential_memo.pdf /evidence/financial_records/
 ```
 
@@ -204,7 +202,12 @@ Unless external regulations (such as legacy DoD 5220.22-M mandates) require mult
 
 ## 5. Module 2: Advanced File Carving & Evidence Recovery
 
-Module 2 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or unmounted partitions without relying on intact filesystem tables.
+Module 2 recovers deleted files from disk images (`.raw`, `.dd`, `.img`) or storage media without relying on intact filesystem tables.
+
+{% hint style="warning" %}
+**Advisory on Live Operating System Partitions**
+Carving against an active running OS drive is strongly discouraged. Continuous operating system background writes, pagefile/swap updates, and automatic SSD TRIM overwrite freed clusters in real time, drastically reducing evidence recovery yield. For reliable forensic recovery, capture an offline bit-stream disk image (`s0 image`) or boot the bare-metal [s0 Live ISO](live-iso.md).
+{% endhint %}
 
 ### 5.1 Basic Carving Operation
 ```bash
@@ -224,10 +227,12 @@ s0 carve \
 {% endhint %}
 
 ### 5.2 Supported File Formats
+s0 includes 19 built-in binary signature definitions across 16 primary formats:
 - **Images:** JPEG (`FF D8 FF`), PNG (`89 50 4E 47`), GIF (`GIF8`), BMP (`BM`)
-- **Documents:** PDF (`%PDF-`), Office OpenXML / ZIP (`PK 03 04` covering `.docx`, `.xlsx`, `.pptx`)
-- **Archives & Databases:** GZIP (`1F 8B 08`), SQLite3 (`SQLite format 3\0`)
-- **Executables & Audio:** ELF (`7F ELF`), MP3 (`ID3`)
+- **Documents & Archives:** PDF (`%PDF-`), ZIP / Office OpenXML (`PK 03 04` covering `.docx`, `.xlsx`, `.pptx`), 7-Zip (`7z`), GZIP (`1F 8B 08`), SQLite3 (`SQLite format 3\0`)
+- **Audio:** MP3 (`ID3` and MPEG sync frames), WAV (`RIFF`), FLAC (`fLaC`), OGG (`OggS`)
+- **Binaries & Captures:** ELF (`7F ELF`), PCAP (`D4 C3 B2 A1`), PCAPng (`0A 0D 0D 0A`)
+- **Custom Signatures:** Pass `--custom-signatures <path.json>` to define domain-specific file headers and footers.
 
 ### 5.3 Filesystem Structure Acceleration
 When carving from raw media, s0 automatically detects filesystem signatures:
@@ -237,7 +242,6 @@ When carving from raw media, s0 automatically detects filesystem signatures:
 
 ### 5.4 Carving Output Structure
 ```
-# Layout of recovered evidence directory
 recovered_evidence/
 ├── CRV_0001.pdf
 ├── CRV_0002.jpg
@@ -294,7 +298,7 @@ Degraded or failing drives with unreadable magnetic sectors or worn NAND blocks 
 
 ---
 
-## 7. Module 4: Blockchain Cryptographic Audit Ledger
+## 7. Module 4: Hash-Chained Cryptographic Audit Ledger
 
 Every wipe, file erasure, carving session, and drive acquisition is appended as an immutable block to `~/.s0/s0_audit.db`.
 
@@ -313,7 +317,7 @@ IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BL
 22    2026-09-09T10:14:02Z FILE_CARVE     analyst-42     seized_drive.raw     f100e49ab88190c3...
 ```
 
-### 7.2 Verifying Blockchain Continuity (`s0 audit verify`)
+### 7.2 Verifying Audit Ledger Continuity (`s0 audit verify`)
 Audit the cryptographic continuity from Genesis to Tip:
 
 ```bash
