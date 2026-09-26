@@ -1,0 +1,44 @@
+"""Tests for CLI metadata validation on wipe, carve, image subcommands."""
+
+from types import SimpleNamespace
+from s0_cli.main import cmd_wipe, cmd_carve, cmd_image, cmd_erase_files, _validate_cli_metadata
+
+
+def test_validate_cli_metadata_valid():
+    args = SimpleNamespace(operator="valid_op", operator_id="valid_op", organization="Digital Forensics & Data Sanitization Lab")
+    assert _validate_cli_metadata(args) is True
+    assert args.operator == "valid_op"
+
+
+def test_validate_cli_metadata_xss_rejected(capsys):
+    bad_payloads = [
+        "<script>alert(1)</script>",
+        "op>redirect",
+        "op|pipe",
+        "op\"quote",
+        "op\x27quote",
+    ]
+    for bad in bad_payloads:
+        args = SimpleNamespace(operator=bad, organization="Valid Org")
+        assert _validate_cli_metadata(args) is False
+        err = capsys.readouterr().err
+        assert "error: invalid --operator" in err
+
+        args = SimpleNamespace(operator="valid_op", organization=bad)
+        assert _validate_cli_metadata(args) is False
+        err = capsys.readouterr().err
+        assert "error: invalid --organization" in err
+
+
+def test_cmd_wipe_rejects_bad_operator(capsys):
+    args = SimpleNamespace(
+        operator="bad<script>",
+        organization="Valid Org",
+        targets=["/dev/null"],
+        target="/dev/null",
+        yes=True,
+    )
+    rc = cmd_wipe(args)
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "error: invalid --operator" in err

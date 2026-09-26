@@ -121,6 +121,21 @@ def _warn_if_demo_key(key_path: Path | None) -> None:
         )
 
 
+def _validate_cli_metadata(args) -> bool:
+    """Validate operator and organization metadata arguments. Returns False on validation error."""
+    from s0_core.validation import validate_metadata_str
+    for attr, max_len in (("operator", 64), ("operator_id", 64), ("organization", 128)):
+        val = getattr(args, attr, None)
+        if val is not None:
+            try:
+                cleaned = validate_metadata_str(attr, val, max_len=max_len)
+                setattr(args, attr, cleaned)
+            except ValueError as exc:
+                print(f"error: invalid --{attr.replace('_', '-')}: {exc}", file=sys.stderr)
+                return False
+    return True
+
+
 _S0_ASCII = r"""
             /$$$$$$ 
            /$$$_  $$
@@ -359,6 +374,8 @@ def cmd_plan(args) -> int:
 
 def cmd_wipe(args) -> int:
     _print_legal_notice()
+    if not _validate_cli_metadata(args):
+        return 2
 
     targets = getattr(args, "targets", None)
     target_arg = getattr(args, "target", None)
@@ -755,6 +772,8 @@ def cmd_wipe(args) -> int:
 
 def cmd_erase_files(args) -> int:
     _print_legal_notice()
+    if not _validate_cli_metadata(args):
+        return 2
     print(f"==> S0: Secure File & Folder Sanitization")
 
     key_path = default_issuer_key(getattr(args, "key", None))
@@ -854,6 +873,8 @@ def cmd_erase_files(args) -> int:
 
 def cmd_carve(args) -> int:
     _print_legal_notice()
+    if not _validate_cli_metadata(args):
+        return 2
     print(f"==> S0 Module 2: Advanced File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
@@ -1261,6 +1282,8 @@ def cmd_image(args) -> int:
     from .imager import ImagingOptions, acquire_image
 
     _print_legal_notice()
+    if not _validate_cli_metadata(args):
+        return 2
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║      S0 (Sector Zero) — Forensic Disk Imager & Bit-Stream Copy  ║")
     print("╚══════════════════════════════════════════════════════════════════╝")

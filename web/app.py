@@ -42,6 +42,7 @@ from starlette.staticfiles import StaticFiles
 from s0_core.config import CONFIG  # noqa: E402
 from s0_core import pdfgen  # noqa: E402
 from s0_core.temperature import read_temperature  # noqa: E402
+from s0_core.validation import validate_metadata_str  # noqa: E402
 from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
 from s0_cli.audit.verify import get_default_trusted_keys  # noqa: E402
 from s0_cli.carver import carve_image  # noqa: E402
@@ -132,14 +133,10 @@ def verify_auth_token(
 
 
 def _validate_metadata_str(field_name: str, v: str, max_len: int = 128) -> str:
-    v = v.strip()
-    if not v:
+    res = validate_metadata_str(field_name, v, max_len)
+    if res is None:
         raise ValueError(f"{field_name} cannot be empty")
-    if any(c in v for c in "<>&\"'\\|"):
-        raise ValueError(f"{field_name} contains forbidden characters (<, >, &, \", ', \\, |)")
-    if len(v) > max_len:
-        raise ValueError(f"{field_name} exceeds maximum length of {max_len} characters")
-    return v
+    return res
 
 
 def _validate_portal_url(v: Optional[str]) -> Optional[str]:

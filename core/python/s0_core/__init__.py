@@ -23,6 +23,7 @@ from .progress import ProgressBar
 from .temperature import read_temperature
 from . import crypto
 from .config import CONFIG, load_config
+from .validation import validate_metadata_str
 
 __all__ = [
     "CanonicalizationError",
@@ -34,6 +35,7 @@ __all__ = [
     "sign_certificate",
     "validate",
     "verify_certificate",
+    "validate_metadata_str",
     "ProgressBar",
     "crypto",
     "CONFIG",
