@@ -34,6 +34,26 @@ flowchart LR
     M1 --> M2 --> M3 --> M4
 ```
 
+## [2.4.2] — 2026-09-26
+
+### Security
+- **Audit Ledger Unsigned-Block Detection:** Fixed verification vulnerability in `verify_audit_ledger()` where unsigned blocks slipped past default verification because checks evaluated original parameters instead of resolved effective trusted keys. Default audit verification now strictly catches unsigned or invalid blocks.
+- **Uninstaller Safety Hardening:** Hardened `uninstall.sh` and `uninstall.ps1` against arbitrary directory deletion; uninstallation now requires verifying valid `s0` install markers and core project signatures rather than allowing `.git` directory presence alone.
+- **Shared Metadata Input Validation:** Unified input validation across CLI (`--operator`, `--operator-id`, `--organization`) and Web REST API via `s0_core.validation` to prevent control character injection, header splitting, and malformed audit metadata.
+
+### Added
+- **Unaccredited Demo Key Transparency:** Added explicit visual warnings across the Web Verification Portal (`portal.js`, `verify.js`) and forensic scripts (`verify_cert.py`) when certificates are cryptographically valid but signed using the unaccredited testing key pair (`demo_issuer`).
+- **Device Sizing Fallback Warnings:** Added diagnostic warning logging when storage device capacity probes encounter zero-sized descriptors or non-standard sysfs entries in `devices.py`.
+
+### Fixed
+- **Cross-Platform Engine Resolution:** Resolved `sys.path` auto-resolution for Windows and macOS erasure engines when executing within nested virtual environments and multi-package layouts.
+- **CLI Subcommand Numbering:** Cleaned up subparser metadata, help text documentation, and sequential forensic capability references across all CLI modules.
+
+### Removed
+- **Legacy Vercel Configuration Purge:** Completely removed deprecated Vercel configuration files and deployment artifacts in adherence to the Cloudflare Zero-Trust hosting architecture.
+
+---
+
 ## [2.4.1] — 2026-09-24
 
 ### Added

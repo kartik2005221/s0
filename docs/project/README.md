@@ -41,7 +41,7 @@ Resources for evaluators, security auditors, autonomous AI agents, and open-sour
     </tr>
     <tr>
       <td><strong>Changelog &amp; Releases</strong></td>
-      <td>Engineering release notes detailing the evolution of s0 from v0.9.0 foundations to the current v2.4.1 release.</td>
+      <td>Engineering release notes detailing the evolution of s0 from v0.9.0 foundations to the current v2.4.2 release.</td>
       <td><a href="changelog.md">Changelog</a></td>
     </tr>
   </tbody>

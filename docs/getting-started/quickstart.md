@@ -541,7 +541,7 @@ To eliminate the need for passing repeated command-line arguments and ensure org
 
 ```json
 {
-  "version": "2.4.1",
+  "version": "2.4.2",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
   "documentation_url": "https://s0-docs.gitbook.io/",
