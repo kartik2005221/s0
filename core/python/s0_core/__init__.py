@@ -8,7 +8,7 @@ certificates produced by this package.
 
 from .config import CONFIG
 
-__version__ = CONFIG.get("version", "2.2.1")
+__version__ = CONFIG.get("version", "2.4.2")
 
 from .canonical import CanonicalizationError, canonicalize, canonicalize_str
 from .certificate import (
