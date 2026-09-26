@@ -56,9 +56,9 @@ if (Get-Command s0 -CommandType Alias -ErrorAction SilentlyContinue) {
 if (Test-Path $InstallDir) {
     $defaultDir = "$env:USERPROFILE\.s0"
     $isDefault = ($InstallDir.TrimEnd('\') -eq $defaultDir.TrimEnd('\'))
-    $hasMarker = (Test-Path (Join-Path $InstallDir ".s0_install_marker")) -or (Test-Path (Join-Path $InstallDir "s0_config.json")) -or (Test-Path (Join-Path $InstallDir ".git"))
+    $hasMarker = (Test-Path (Join-Path $InstallDir ".s0_install_marker")) -or (Test-Path (Join-Path $InstallDir "s0_config.json"))
     if (-not $isDefault -and -not $hasMarker) {
-        Write-Error "ERROR: Refusing to delete $InstallDir — directory does not appear to be an S0 installation (missing .s0_install_marker, s0_config.json, or .git)."
+        Write-Error "ERROR: Refusing to delete $InstallDir — directory does not appear to be an S0 installation (missing .s0_install_marker or s0_config.json)."
         exit 1
     }
     Write-Host "==> Removing $InstallDir..." -ForegroundColor Yellow
