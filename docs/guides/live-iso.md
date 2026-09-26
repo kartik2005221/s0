@@ -309,12 +309,22 @@ The resulting `s0-live-amd64.hybrid.iso` will be generated directly into your cu
 
 ### Option 3: Download Pre-Built Verified ISO (1-Line Command)
 
-If you do not have Docker or WSL2 installed on Windows, you can download the latest official release directly with automatic SHA-256 integrity verification:
+If you do not have Docker or local build tools installed, you can download the latest official release directly with automatic SHA-256 integrity verification:
 
+{% tabs %}
+{% tab title="Windows (PowerShell)" %}
 ```powershell
 # Download official verified release with SHA-256 integrity check
 irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex
 ```
+{% endtab %}
+{% tab title="Linux & macOS (Bash)" %}
+```bash
+# Download official verified release with SHA-256 integrity check
+curl -fsSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.sh | bash
+```
+{% endtab %}
+{% endtabs %}
 
 ### Flashing from Windows (Rufus)
 
