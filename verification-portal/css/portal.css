@@ -544,6 +544,13 @@ button.danger-outline:hover {
   color: #fde68a;
 }
 
+.result-banner.demo-key {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.06) 100%);
+  border-color: var(--warning-border);
+  color: #fde68a;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.2);
+}
+
 .result-banner.custom-key {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(59, 130, 246, 0.06) 100%);
   border-color: var(--info-border);

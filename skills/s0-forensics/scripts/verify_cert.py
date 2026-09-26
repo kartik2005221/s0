@@ -95,7 +95,12 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
             pubkey = crypto.load_public_pem(resolved_key)
             ok, reason = certificate.verify_certificate(cert_data, [pubkey])
             if ok:
-                print("  ✅ STATUS: CRYPTOGRAPHICALLY VALID & TAMPER-FREE")
+                if crypto.is_demo_key(resolved_key):
+                    print("  ⚠️  STATUS: VALID SIGNATURE — UNACCREDITED DEMO KEY")
+                    print("     This certificate was signed with the bundled demonstration key.")
+                    print("     DO NOT use for legal chain-of-custody or regulatory compliance.")
+                else:
+                    print("  ✅ STATUS: CRYPTOGRAPHICALLY VALID & TAMPER-FREE")
                 print(f"  Key File: {resolved_key}")
                 print(f"  Evidence: {reason}")
                 return 0

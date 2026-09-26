@@ -457,6 +457,13 @@ function showResult(res, cert) {
     desc.textContent = res.reason;
     document.getElementById("metricIntegrity").textContent = "Custom Key";
     document.getElementById("metricIntegrity").style.color = "var(--info)";
+  } else if (res.ok && (res.isDemoKey || res.status === "VERIFIED_DEMO_KEY" || (res.matchedKey && res.matchedKey.issuer && (res.matchedKey.issuer.toLowerCase().indexOf("unaccredited") !== -1 || res.matchedKey.issuer.toLowerCase().indexOf("demo") !== -1)) || res.fingerprint === "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06")) {
+    banner.classList.add("demo-key");
+    icon.textContent = "[!]";
+    title.textContent = "VALID SIGNATURE — UNACCREDITED DEMO KEY";
+    desc.textContent = res.reason + " NOTICE: Demo-key signatures are unaccredited development keys and MUST NOT be used for legal chain-of-custody or regulatory compliance.";
+    document.getElementById("metricIntegrity").textContent = "Demo Key";
+    document.getElementById("metricIntegrity").style.color = "var(--warning)";
   } else if (res.ok) {
     banner.classList.add("authentic");
     icon.textContent = "[OK]";
@@ -490,7 +497,7 @@ function showResult(res, cert) {
   if (cert) {
     document.getElementById("resUuid").textContent = cert.cert_uuid || "-";
     document.getElementById("resIssuedAt").textContent = cert.issued_at || "-";
-    document.getElementById("resIssuer").textContent = (cert.issuer && cert.issuer.organization) || "-";
+    document.getElementById("resIssuer").textContent = (res.matchedKey && res.matchedKey.issuer) ? res.matchedKey.issuer : ((cert.issuer && cert.issuer.organization) || "-");
     document.getElementById("resOperator").textContent = (cert.issuer && cert.issuer.operator_id) || "-";
     document.getElementById("resTool").textContent = cert.tool ? (cert.tool.name + " v" + cert.tool.version + " (" + cert.tool.platform + ")") : "-";
 
