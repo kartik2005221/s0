@@ -34,6 +34,25 @@ flowchart LR
     M1 --> M2 --> M3 --> M4
 ```
 
+## [2.4.3] — 2026-09-26
+
+### Security & Safety
+- **Host OS Drive Protection (`is_os_device`):** Added root filesystem detection across Linux and Windows mount tables. In `s0 list`, added the `OS_DRIVE?` column (`YES [OS]` / `-`) and JSON boolean `os_drive` to prevent accidental sanitization of active system drives.
+- **Batch Targets Block Device Guard:** Enforced strict parameter validation in `s0 wipe --targets`, rejecting raw block device paths (`/dev/*`, `\\.\*`) to prevent inadvertent whole-drive sanitization during batch file or directory wiping.
+- **Active OS Carving Advisory:** Implemented an automated runtime warning in `s0 carve` when targeting a running OS root disk, explaining TRIM and background write overwrite risks, and advising the use of the bare-metal Live ISO or an offline bit-stream disk image.
+
+### Added
+- **Dynamic Dark/Light Favicons:** Integrated custom dark and light favicons across Install Portal, Verification Portal, Web Dashboard, and GitBook documentation with real-time browser theme listeners (`prefers-color-scheme`).
+- **Unified Release Automation Tooling (`scripts/release.py`):** Added synchronized release script and automated test suite (`linux/cli/tests/test_release_script.py`) ensuring semver compliance and multi-file version synchronization.
+
+### Changed
+- **Documentation Overhaul & Navigation:** Restored left navigation sidebar on the documentation home page (`tableOfContents.visible: true`), removed badge chips, normalized repetitive compliance terminology, transitioned "blockchain" to "hash-chained audit ledger", and updated all command outputs to match actual CLI outputs.
+- **Carving Signature Specification:** Documented all 19 binary signature rules across 16 file formats in forensic carving documentation.
+- **Install Portal Code Organization:** Extracted inline CSS and JavaScript into modular `css/install.css` and `js/install.js` files, significantly reducing `index.html` size.
+- **Cloudflare Pages Routing:** Updated CLI upgrade notices and documentation links to use `s0-install.pages.dev` endpoints.
+
+---
+
 ## [2.4.2] — 2026-09-26
 
 ### Security

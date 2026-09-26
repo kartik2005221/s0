@@ -1,7 +1,7 @@
 # s0 (Sector Zero) — Master Engineering Architecture & Blueprint
 
 **Title:** Integrated Secure Data Erasure, Bit-Stream Imaging, File Recovery, and Cryptographic Ledger Suite for Digital Forensics and Media Sanitization  
-**Status:** Production Release (v2.4.2) — All Core Modules, Platform Extensions, and CI Pipelines Fully Delivered & Hardened  
+**Status:** Production Release (v2.4.3) — All Core Modules, Platform Extensions, and CI Pipelines Fully Delivered & Hardened  
 **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)  
 **Documentation:** [s0-docs.gitbook.io](https://s0-docs.gitbook.io)  
 **Install Portal:** [s0-install.pages.dev](https://s0-install.pages.dev)  
