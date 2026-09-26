@@ -230,16 +230,11 @@ s0 list
 
 This command enumerates all block devices visible to the operating system and presents a formatted table:
 
-```
-┌───────────────────────────────────────────────────────────────────┐
-│  s0 — Device Inventory                                            │
-├─────────────┬─────────┬───────────────┬─────────────┬────────────┤
-│  Device     │  Type   │  Size         │  Model      │  Removable │
-├─────────────┼─────────┼───────────────┼─────────────┼────────────┤
-│  /dev/sda   │  HDD    │  500.1 GB     │  Samsung …  │  No        │
-│  /dev/sdb   │  USB    │   32.0 GB     │  SanDisk …  │  Yes       │
-│  /dev/nvme0 │  NVMe   │    1.0 TB     │  WD Black … │  No        │
-└─────────────┴─────────┴───────────────┴─────────────┴────────────┘
+```text
+PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL           MOUNTED?  OS_DRIVE?
+/dev/sda       block   SSD           465.8 GiB  Samsung SSD 870 EVO      S5YANG0N123456K  YES       -
+/dev/nvme0n1   block   NVMe          931.5 GiB  Samsung SSD 980 PRO 1TB  S464NX0M789012A  YES       YES [OS]
+/dev/sdb       block   USB            28.9 GiB  SanDisk Ultra Fit        4C5300012309181  -         -
 ```
 
 {% hint style="info" %}

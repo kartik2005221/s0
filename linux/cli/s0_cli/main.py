@@ -73,7 +73,14 @@ from s0_core.progress import ProgressBar
 from . import __version__
 from .audit import init_audit_db, list_audit_blocks, record_audit_event, verify_audit_ledger
 from .carver import carve_image, signature_from_dict
-from .devices import SafetyError, check_safety, get_block_device_size, image_target, list_block_targets
+from .devices import (
+    SafetyError,
+    check_safety,
+    get_block_device_size,
+    image_target,
+    is_os_device,
+    list_block_targets,
+)
 from .devices import Target as DevTarget
 from .file_eraser import erase_batch
 from .methods.ata import AtaSecureEraseMethod, hpa_dco_report
@@ -300,6 +307,7 @@ def cmd_list(args) -> int:
                 "model": t.model,
                 "serial": t.serial,
                 "mounted": any(m.startswith(t.path) for m in mounted),
+                "os_drive": is_os_device(t.path),
             }
             for t in targets
         ]
@@ -311,14 +319,15 @@ def cmd_list(args) -> int:
         return 0
     print(
         f"{'PATH':<14} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
-        f"{'MODEL':<24} {'SERIAL':<16} MOUNTED?"
+        f"{'MODEL':<24} {'SERIAL':<16} {'MOUNTED?':<9} OS_DRIVE?"
     )
     for t in targets:
         cap = f"{t.capacity_bytes / 2**30:.1f} GiB"
         is_mounted = "YES" if any(m.startswith(t.path) for m in mounted) else "-"
+        is_os = "YES [OS]" if is_os_device(t.path) else "-"
         print(
             f"{t.path:<14} {t.kind:<7} {t.storage_type:<10} {cap:>12}  "
-            f"{(t.model or '—')[:24]:<24} {(t.serial or '—')[:16]:<16} {is_mounted}"
+            f"{(t.model or '—')[:24]:<24} {(t.serial or '—')[:16]:<16} {is_mounted:<9} {is_os}"
         )
     print("\nImage-file targets work too (no root needed): use --target /path/to/file.img")
     return 0
@@ -390,6 +399,17 @@ def cmd_wipe(args) -> int:
 
     is_file_mode = False
     if targets:
+        for tgt in targets:
+            try:
+                p = Path(tgt)
+                if p.is_block_device() or (sys.platform == "darwin" and p.is_char_device()) or (sys.platform == "win32" and str(tgt).lower().startswith(("\\\\.\\", "//./"))):
+                    print(
+                        f"error: '{tgt}' is a block storage device. Use '--target {tgt}' for whole-drive sanitization. '--targets' is strictly for files and directories.",
+                        file=sys.stderr,
+                    )
+                    return 2
+            except Exception:
+                pass
         is_file_mode = True
         args.targets = targets
     elif target_arg:
@@ -901,6 +921,13 @@ def cmd_carve(args) -> int:
     target_path = Path(args.target)
     target_size = 0
     if target_path.is_block_device():
+        if is_os_device(str(target_path)):
+            sys.stderr.write(
+                "\n\033[33m[!] ADVISORY: Target hosts the active running operating system / root filesystem.\n"
+                "    Live OS background writes, swap/pagefile activity, and SSD TRIM will overwrite deleted\n"
+                "    clusters in real time, degrading recovery yield. For forensically sound recovery,\n"
+                "    boot the s0 Live ISO or acquire an offline bit-stream image (s0 image).\033[0m\n\n"
+            )
         try:
             target_size = get_block_device_size(target_path)
         except Exception:
@@ -1144,11 +1171,11 @@ def cmd_upgrade(args) -> int:
         print("[ERROR] Could not locate S0 git installation repository.", file=sys.stderr)
         print("To install or upgrade S0, run:")
         if sys.platform == "win32":
-            print("  irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.ps1 -OutFile s0-upgrade.ps1")
+            print("  irm https://s0-install.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
             print("  # Inspect s0-upgrade.ps1 before running, then run:")
             print("  powershell -ExecutionPolicy Bypass -File .\\s0-upgrade.ps1")
         else:
-            print("  curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/upgrade.sh -o s0-upgrade.sh")
+            print("  curl -fsSL https://s0-install.pages.dev/upgrade-sh -o s0-upgrade.sh")
             print("  # Inspect s0-upgrade.sh before running, then run:")
             print("  bash s0-upgrade.sh")
         return 1

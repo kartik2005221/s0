@@ -101,10 +101,10 @@ s0 list
 
 Example Output:
 ```
-PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL           MOUNTED?
-/dev/sda       disk    SSD           465.8 GiB  Samsung SSD 870 EVO      S5YANG0N123456K  YES
-/dev/sdb       disk    NVMe          931.5 GiB  Samsung SSD 980 PRO 1TB  S464NX0M789012A  -
-/dev/sdc       disk    USB            28.9 GiB  SanDisk Ultra Fit        4C5300012309181  -
+PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL           MOUNTED?  OS_DRIVE?
+/dev/sda       block   SSD           465.8 GiB  Samsung SSD 870 EVO      S5YANG0N123456K  YES       -
+/dev/sdb       block   NVMe          931.5 GiB  Samsung SSD 980 PRO 1TB  S464NX0M789012A  YES       YES [OS]
+/dev/sdc       block   USB            28.9 GiB  SanDisk Ultra Fit        4C5300012309181  -         -
 
 Image-file targets work too (no root needed): use --target /path/to/file.img
 ```

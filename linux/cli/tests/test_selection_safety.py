@@ -190,3 +190,33 @@ def test_root_disk_protection_fails_closed_when_indeterminate(block_dev, monkeyp
     warnings = check_safety(block_dev, force=True)
     assert any("could not verify whether target hosts the root filesystem" in w for w in warnings)
 
+
+def test_is_os_device_detection(monkeypatch):
+    from s0_cli.devices import is_os_device
+    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: "/dev/sda2")
+    assert is_os_device("/dev/sda2") is True
+    assert is_os_device("/dev/sda") is True
+    assert is_os_device("/dev/sdb") is False
+    assert is_os_device("") is False
+
+
+def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
+    from types import SimpleNamespace
+    from pathlib import Path
+    import s0_cli.main as main_mod
+
+    args = SimpleNamespace(
+        targets=["/dev/sdb"],
+        target=None,
+        yes=True,
+        key=None,
+        out_dir=".",
+        operator="test",
+        organization="test",
+    )
+    monkeypatch.setattr(Path, "is_block_device", lambda self: True)
+    rc = main_mod.cmd_wipe(args)
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert "is a block storage device" in captured.err
+

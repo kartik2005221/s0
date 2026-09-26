@@ -348,3 +348,25 @@ def _get_root_mount_source() -> Optional[str]:
 
     return None
 
+
+def is_os_device(device_path: str) -> bool:
+    """Return True if device_path hosts the running root/OS filesystem or is a parent/child of it."""
+    if not device_path:
+        return False
+    if sys.platform == "win32":
+        sys_drive = os.environ.get("SystemDrive", "C:").upper()
+        norm = device_path.replace("\\", "/").rstrip("/")
+        if norm.upper().startswith(sys_drive) or norm.upper() == sys_drive:
+            return True
+        return False
+    root_src = _get_root_mount_source()
+    if not root_src:
+        return False
+    try:
+        dev_real = os.path.realpath(device_path)
+        if dev_real == root_src or root_src.startswith(dev_real):
+            return True
+        return _is_dev_or_subpartition(dev_real, root_src)
+    except Exception:
+        return False
+

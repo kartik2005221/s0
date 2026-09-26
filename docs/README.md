@@ -3,24 +3,12 @@ description: "Forensic-grade digital sanitization, deleted-file recovery, and cr
 layout:
   width: wide
   tableOfContents:
-    visible: false
+    visible: true
   outline:
     visible: false
 ---
 
 # s0 · Sector Zero
-
-<div align="center">
-
-[![License](https://img.shields.io/github/license/kartik2005221/s0?style=for-the-badge&color=00ADB5&labelColor=222831)](https://github.com/kartik2005221/s0/blob/master/LICENSE)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST%20SP%20800--88-Rev.1%20Compliant-00ADB5?style=for-the-badge&labelColor=222831)](compliance/nist-compliance.md)
-[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519%20RFC%208032-00ADB5?style=for-the-badge&labelColor=222831)](architecture/certificate-spec.md)
-[![Tests](https://img.shields.io/badge/Tests-190%2B%20Passing-4CAF50?style=for-the-badge&labelColor=222831)](project/test-plan.md)
-[![Portal](https://img.shields.io/badge/Verification%20Portal-Live-brightgreen?style=for-the-badge&labelColor=222831)](https://s0-verify.pages.dev/)
-
-</div>
-
----
 
 **s0 (Sector Zero)** is an open-source, forensic-grade command-line suite and web console for **secure digital sanitization** and **deleted-file recovery**. Every wipe operation produces a cryptographically signed, hash-chained audit certificate — verifiable offline, forever, by anyone — delivering mathematical proof of data destruction rather than an unverified log entry.
 
@@ -51,23 +39,18 @@ s0 is a certified digital forensic sanitization and recovery tool. You must **on
     </tr>
     <tr>
       <td><strong>File &amp; Folder Eraser</strong></td>
-      <td>Cross-platform native cluster sanitization. Overwrites file extents in-place, truncates files to 0 bytes, resets inode timestamps to Unix epoch zero (1970-01-01), purges Windows Alternate Data Streams, flushes Darwin hardware caches (F_FULLFSYNC), and scrambles directory entry filenames before unlinking.</td>
+      <td>Cross-platform native cluster sanitization via <code>--target</code> (single path) or <code>--targets</code> (batch). Overwrites file extents in-place, truncates files to 0 bytes, resets inode timestamps to Unix epoch zero (1970-01-01), purges Windows Alternate Data Streams, flushes hardware caches, and scrambles directory entries before unlinking.</td>
       <td><a href="guides/user-manual.md#4-secure-file-folder-erasure-s0-wipe-targets">File Eraser Manual</a></td>
     </tr>
     <tr>
       <td><strong>File Carver</strong></td>
-      <td>Forensic deleted file recovery engine. Reconstructs lost evidence directly from filesystem structures (ext4 inode extent trees, NTFS $MFT multi-fragment runlists, FAT32 directory entries, and exFAT cluster heaps) alongside raw sliding-window signature carving with 4-factor Shannon entropy scoring.</td>
+      <td>Forensic deleted file recovery engine supporting 19 binary signature definitions. Reconstructs lost evidence directly from filesystem structures (ext4 inode extent trees, NTFS $MFT runlists, FAT32 directory entries, and exFAT cluster heaps) alongside raw signature carving with 4-factor Shannon entropy scoring.</td>
       <td><a href="guides/forensic-carving.md">File Carver Guide</a></td>
     </tr>
     <tr>
       <td><strong>Drive Imager &amp; Cloner</strong></td>
       <td>Forensic bit-stream disk acquisition engine compliant with NIST SP 800-86 and ISO/IEC 27037. Creates forensically sound raw images (.raw, .img, .dd) or 1:1 hardware disk clones with real-time simultaneous SHA-256/MD5 hashing, write-blocking safety refusals, and fault-tolerant zero-filling for failing storage media.</td>
       <td><a href="guides/user-manual.md#6-module-3-forensic-drive-imager-bit-stream-copy">Drive Imager Manual</a></td>
-    </tr>
-    <tr>
-      <td><strong>Blockchain Audit Ledger</strong></td>
-      <td>Every operation is permanently recorded in a SHA-256 block hash-chained SQLite ledger (~/.s0/s0_audit.db). Altering any past block invalidates all subsequent hashes, providing local, mathematically provable tamper evidence without external internet dependencies.</td>
-      <td><a href="guides/user-manual.md#7-module-4-blockchain-cryptographic-audit-ledger">Audit Ledger Specs</a></td>
     </tr>
   </tbody>
 </table>
@@ -83,22 +66,19 @@ Most sanitization tools tell you a drive was wiped. s0 **proves it mathematicall
 | **NIST SP 800-88 Rev.1 Purge & Clear** | Yes (Automatic selection) | Varies |
 | **Ed25519 Asymmetric Digital Signatures** | Yes (Built-in RFC 8032) | No (Closed proprietary signatures) |
 | **Deterministic s0 Canonical JSON v1** | Yes (Strict integer discipline) | No (Unstandardized XML/CSV) |
-| **SHA-256 Hash-Chained Blockchain Ledger**| Yes (Tamper-evident) | No (Plain text / mutable logs) |
+| **SHA-256 Hash-Chained Audit Ledger** | Yes (Tamper-evident SQLite) | No (Plain text / mutable logs) |
 | **Offline Air-Gapped Verification** | Yes (100% client-side WebCrypto) | No (Requires central cloud server) |
 | **Offensive Forensics in Same Binary** | Yes (ext4, NTFS, FAT32 carvers) | No (Separate, costly software needed) |
 | **Zero External Network Exfiltration** | Yes (Strict SCIF/air-gap compliant) | No (Telemetry beacons) |
 | **Permissive Open Source License** | Yes (MIT License) | No (Expensive per-wipe paywalls) |
 
-### Three Architectural Pillars
+### Core Architectural Mechanisms
 
 #### Mathematical Non-Repudiation
 Every sanitization certificate carries an **Ed25519 digital signature** (RFC 8032) computed over **s0 Canonical JSON v1**. The canonicalization engine eliminates JSON whitespace, key ordering, and floating-point divergences. The certificate content and its signature are mathematically inseparable: if the operation data is modified by even one bit, the signature check fails.
 
 #### Air-Gapped Verification
 The [Verification Portal](https://s0-verify.pages.dev/) runs **100% in browser memory**. It downloads zero external CDN scripts and makes zero server requests. The portal can be saved to a thumb drive and executed via `file:///` on an isolated air-gapped machine in a secure facility or courtroom.
-
-#### Absolute Engineering Honesty
-We disclose every technical boundary. Hardware limitations, Flash Translation Layer (FTL) wear-leveling nuances on solid-state media, and Copy-on-Write (Btrfs, ZFS, APFS) filesystem behaviors are logged explicitly as signed warnings in certificates.
 
 ---
 
@@ -113,7 +93,7 @@ The installer runs on Linux, macOS, and Windows. No root is required for install
 {% tab title="Linux / macOS" %}
 ```bash
 # 1. Install s0
-curl -sSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.sh | bash
+curl -fsSL https://s0-install.pages.dev/sh | bash
 
 # 2. Inventory attached block devices
 s0 list
@@ -129,7 +109,7 @@ sudo s0 wipe --target /dev/sdb --operator "analyst-01" --organization "Forensics
 {% tab title="Windows (PowerShell)" %}
 ```powershell
 # 1. Install s0
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/install.ps1 | iex
+irm https://s0-install.pages.dev/ps1 | iex
 
 # 2. Inventory drives
 s0 list
@@ -152,15 +132,7 @@ s0 wipe --target \\.\PhysicalDrive1 --operator "analyst-01" --organization "Fore
 
 ## Standards & Compliance
 
-s0 algorithm implementations and evidence collection protocols are mapped directly to international standards:
-
-| Standard | Coverage Tier | Legal & Evidentiary Role |
-|---|---|---|
-| **NIST SP 800-88 Rev. 1** | **Clear & Purge** | Automated controller firmware purge and multi-pass logical clearing |
-| **IEEE 2883-2022** | **Clear & Purge** | Sanitization method definitions and verification readback standards |
-| **ISO/IEC 27037:2012** | **Evidence Handling** | Cryptographic SHA-256 evidence hashing and immutable audit logging |
-| **DPDPA 2023** | **Data Destruction** | Verifiable sanitization records of hardware containing personal digital data |
-
+s0 sanitization methods and evidence handling protocols are mapped to international standards including **NIST SP 800-88 Rev. 1**, **IEEE 2883-2022**, and **ISO/IEC 27037**. For full technical mappings and court-admissibility checklists, see the [Compliance Guide](compliance/nist-compliance.md).
 ---
 
 ## Documentation Directory

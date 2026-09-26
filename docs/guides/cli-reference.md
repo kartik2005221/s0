@@ -75,12 +75,13 @@ s0 list [--output-format {text,json}]
 | Column | Description |
 |--------|-------------|
 | `PATH` | Kernel device path (e.g. `/dev/sda`, `/dev/nvme0n1`) |
-| `TYPE` | Bus/interface type: `NVMe`, `ATA`, `SCSI`, `USB`, `loop`, … |
-| `STORAGE` | Storage medium: `SSD`, `HDD`, `eMMC`, `SD`, `unknown` |
-| `CAPACITY` | Human-formatted size (e.g. `512.1 GB`) |
-| `MODEL` | Drive model string from kernel |
-| `SERIAL` | Drive serial number from kernel |
-| `MOUNTED?` | `yes` / `no` — whether any partition is currently mounted |
+| `TYPE` | Target kind: `block` (hardware disk or partition) or `image` (disk image file) |
+| `STORAGE` | Storage bus/medium: `NVMe`, `SSD`, `HDD`, `eMMC`, `IMAGE_FILE`, `UNKNOWN` |
+| `CAPACITY` | Formatted size (e.g. `465.8 GiB`, `931.5 GiB`) |
+| `MODEL` | Drive model string from kernel / sysfs |
+| `SERIAL` | Drive serial number from kernel / sysfs |
+| `MOUNTED?` | `YES` / `-` — whether any partition is currently mounted |
+| `OS_DRIVE?` | `YES [OS]` / `-` — whether target hosts the running root/OS filesystem |
 {% endtab %}
 {% tab title="Help Screen" %}
 
@@ -107,10 +108,10 @@ options:
 s0 list
 ```
 ```text
-PATH            TYPE   STORAGE  CAPACITY   MODEL                  SERIAL        MOUNTED?
-/dev/sda        ATA    HDD      1.0 TB     WDC WD10EZEX-00BN5A0   WD-WCC3F...   no
-/dev/nvme0n1    NVMe   SSD      512.1 GB   Samsung SSD 980 PRO    S5GXNX...     yes
-/dev/sdb        USB    SSD      64.0 GB    SanDisk Extreme        AA010...       no
+PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL           MOUNTED?  OS_DRIVE?
+/dev/sda       block   SSD           465.8 GiB  Samsung SSD 870 EVO      S5YANG0N123456K  YES       -
+/dev/nvme0n1   block   NVMe          931.5 GiB  Samsung SSD 980 PRO 1TB  S464NX0M789012A  YES       YES [OS]
+/dev/sdb       block   USB            28.9 GiB  SanDisk Ultra Fit        4C5300012309181  -         -
 ```
 
 **JSON output for scripting**
@@ -121,14 +122,14 @@ s0 list --output-format json | jq '.[] | select(.mounted == false)'
 ```json
 [
   {
-    "path": "/dev/sda",
-    "type": "ATA",
-    "storage": "HDD",
-    "capacity_bytes": 1000204886016,
-    "capacity_human": "1.0 TB",
-    "model": "WDC WD10EZEX-00BN5A0",
-    "serial": "WD-WCC3F1234567",
-    "mounted": false
+    "path": "/dev/sdb",
+    "kind": "block",
+    "storage_type": "USB",
+    "capacity_bytes": 31029854208,
+    "model": "SanDisk Ultra Fit",
+    "serial": "4C5300012309181",
+    "mounted": false,
+    "os_drive": false
   }
 ]
 ```
