@@ -225,8 +225,6 @@ def record_audit_event(
         if key_to_use is None:
             # Fall back to default repo demo key if available
             cand = Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_private.pem"
-            if not cand.is_file():
-                cand = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem"
             if cand.is_file():
                 key_to_use = cand
 

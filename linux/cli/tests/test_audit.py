@@ -169,3 +169,47 @@ def test_detect_block_deletion_and_rehash(test_audit_db, sample_cert):
     rep_after_trusted = verify_audit_ledger(test_audit_db, trusted_public_keys=[pub])
     assert rep_after_trusted.is_valid is False
     assert "signature" in rep_after_trusted.reason.lower()
+
+
+def test_detect_tampering_with_blanked_block_signature_default_verify(test_audit_db, sample_cert):
+    """Verify that tampering data, recomputing block_hash, and blanking block_signature is detected by default verify."""
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+
+    # Valid prior to tampering with default verification
+    rep_before = verify_audit_ledger(test_audit_db)
+    assert rep_before.is_valid is True
+    assert rep_before.total_blocks_verified == 2  # Genesis + 1
+
+    conn = sqlite3.connect(str(test_audit_db))
+    conn.row_factory = sqlite3.Row
+    b1_row = conn.execute("SELECT * FROM audit_blocks WHERE block_index = 1").fetchone()
+
+    # Recompute block_hash with tampered target_id
+    tampered_target = "/dev/null-FORGED-TARGET"
+    new_hash = compute_block_hash(
+        1,
+        b1_row["timestamp"],
+        b1_row["operation_type"],
+        tampered_target,
+        b1_row["operator_id"],
+        b1_row["organization"],
+        b1_row["cert_uuid"],
+        b1_row["payload_hash"],
+        b1_row["signature"],
+        b1_row["prev_hash"],
+    )
+
+    # Update database with tampered target, new hash, and blanked block_signature
+    conn.execute(
+        "UPDATE audit_blocks SET target_id = ?, block_hash = ?, block_signature = '' WHERE block_index = 1",
+        (tampered_target, new_hash),
+    )
+    conn.commit()
+    conn.close()
+
+    # Default verification (trusted_public_keys=None) must detect the missing signature
+    rep_after = verify_audit_ledger(test_audit_db)
+    assert rep_after.is_valid is False
+    assert rep_after.broken_block_index == 1
+    assert "unsigned" in rep_after.reason.lower()
+

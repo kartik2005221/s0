@@ -41,7 +41,6 @@ def get_default_trusted_keys() -> List:
     keys = []
     candidates = [
         Path(__file__).resolve().parents[4] / "core" / "keys" / "demo_issuer_public.pem",
-        Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem",
         Path("core/keys/demo_issuer_public.pem"),
     ]
     s0_user_keys = Path.home() / ".s0" / "keys"
@@ -173,7 +172,7 @@ def verify_audit_ledger(
                             reason=f"Block signature tampering detected in block #{block_idx}: block_signature does not match block_hash under trusted public keys.",
                             details=details,
                         )
-            elif trusted_public_keys is not None and b["certificate_json"]:
+            elif effective_keys and b["certificate_json"]:
                 try:
                     c_data = json.loads(b["certificate_json"])
                     if c_data.get("signature", {}).get("signature_base64url"):
