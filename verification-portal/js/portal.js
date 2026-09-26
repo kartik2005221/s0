@@ -652,6 +652,10 @@ function applyTheme(theme) {
   if (lbl) {
     lbl.textContent = theme === "light" ? "Dark" : "Light";
   }
+  var fav = document.getElementById("dynamic-favicon");
+  if (fav) {
+    fav.href = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+  }
 }
 
 function toggleTheme() {

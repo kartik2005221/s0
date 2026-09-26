@@ -1,5 +1,13 @@
 {
   "title": "s0 \u00b7 Sector Zero Documentation",
+  "favicon": {
+    "dark": ".gitbook/assets/favicons/s0-dark/favicon-32x32.png",
+    "light": ".gitbook/assets/favicons/s0-light/favicon-32x32.png"
+  },
+  "logo": {
+    "dark": ".gitbook/assets/favicons/s0-dark/android-chrome-512x512.png",
+    "light": ".gitbook/assets/favicons/s0-light/android-chrome-512x512.png"
+  },
   "styling": {
     "theme": "clean",
     "primaryColor": {
@@ -77,7 +85,7 @@
     ]
   },
   "footer": {
-    "copyright": "Made by @kartik2005221 \u00b7 Licensed under MIT \u00b7 NIST SP 800-88 & Ed25519 Compliant"
+    "copyright": "Made by @kartik2005221 \u00b7 Licensed under MIT"
   },
   "themes": {
     "default": "dark",
