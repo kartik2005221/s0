@@ -196,6 +196,42 @@
       </div>
     </div>
   </div>
+
+  <div class="section-title">[o] Bare-Metal Live ISO</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-header-row">
+        <h3>Linux &amp; macOS</h3>
+        <span class="platform-tag">Bash / Zsh</span>
+      </div>
+      <div class="code-box">
+        <span id="cmd-iso-sh">curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash</span>
+        <button class="copy-btn" onclick="copyText('cmd-iso-sh', this)">Copy</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header-row">
+        <h3>Windows</h3>
+        <span class="platform-tag">PowerShell</span>
+      </div>
+      <div class="code-box">
+        <span id="cmd-iso-ps1">irm https://s0-install.pages.dev/download-iso-ps1 | iex</span>
+        <button class="copy-btn" onclick="copyText('cmd-iso-ps1', this)">Copy</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header-row">
+        <h3>CLI In-Place</h3>
+        <span class="platform-tag">Terminal</span>
+      </div>
+      <div class="code-box">
+        <span id="cmd-iso-cli">s0 live download</span>
+        <button class="copy-btn" onclick="copyText('cmd-iso-cli', this)">Copy</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <footer>

@@ -60,6 +60,20 @@ def _mounted_paths() -> set[str]:
                         pass
     except OSError:
         pass
+
+    if not mounts and sys.platform in ("darwin", "freebsd"):
+        try:
+            res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[1] == "on":
+                        mounts.add(parts[0])
+                        rdev = parts[0].replace("/dev/disk", "/dev/rdisk")
+                        mounts.add(rdev)
+        except Exception:
+            pass
+
     return mounts
 
 
@@ -346,6 +360,24 @@ def _get_root_mount_source() -> Optional[str]:
     except Exception:
         pass
 
+    if sys.platform == "darwin":
+        try:
+            res = subprocess.run(["stat", "-f", "%Sd", "/"], capture_output=True, text=True, check=False)
+            if res.returncode == 0 and res.stdout.strip():
+                dev_name = res.stdout.strip()
+                return f"/dev/{dev_name}"
+        except Exception:
+            pass
+        try:
+            res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[1] == "on" and parts[2] == "/":
+                        return parts[0]
+        except Exception:
+            pass
+
     return None
 
 
@@ -366,7 +398,18 @@ def is_os_device(device_path: str) -> bool:
         dev_real = os.path.realpath(device_path)
         if dev_real == root_src or root_src.startswith(dev_real):
             return True
-        return _is_dev_or_subpartition(dev_real, root_src)
+        if _is_dev_or_subpartition(dev_real, root_src):
+            return True
+        if sys.platform == "darwin":
+            d_clean = dev_real.replace("/dev/rdisk", "/dev/disk")
+            r_clean = root_src.replace("/dev/rdisk", "/dev/disk")
+            if d_clean == r_clean or _is_dev_or_subpartition(d_clean, r_clean):
+                return True
+            m_d = re.match(r"^/dev/disk\d+", d_clean)
+            m_r = re.match(r"^/dev/disk\d+", r_clean)
+            if m_d and m_r and m_d.group(0) == m_r.group(0):
+                return True
+        return False
     except Exception:
         return False
 

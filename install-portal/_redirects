@@ -16,3 +16,13 @@
 /uninstall/ps1 /uninstall.ps1 200
 /uninstall-cmd /uninstall.cmd 200
 /uninstall/cmd /uninstall.cmd 200
+/download-iso /download_iso.sh 200
+/download-iso-sh /download_iso.sh 200
+/download-iso/sh /download_iso.sh 200
+/download-iso-ps1 /download_iso.ps1 200
+/download-iso/ps1 /download_iso.ps1 200
+/iso /download_iso.sh 200
+/iso-sh /download_iso.sh 200
+/iso/sh /download_iso.sh 200
+/iso-ps1 /download_iso.ps1 200
+/iso/ps1 /download_iso.ps1 200

@@ -33,3 +33,11 @@
 /uninstall*
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
+
+/download-iso*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+
+/iso*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate

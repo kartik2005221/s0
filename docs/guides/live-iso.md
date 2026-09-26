@@ -315,13 +315,13 @@ If you do not have Docker or local build tools installed, you can download the l
 {% tab title="Windows (PowerShell)" %}
 ```powershell
 # Download official verified release with SHA-256 integrity check
-irm https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.ps1 | iex
+irm https://s0-install.pages.dev/download-iso-ps1 | iex
 ```
 {% endtab %}
 {% tab title="Linux & macOS (Bash)" %}
 ```bash
 # Download official verified release with SHA-256 integrity check
-curl -fsSL https://raw.githubusercontent.com/kartik2005221/s0/master/scripts/download_iso.sh | bash
+curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash
 ```
 {% endtab %}
 {% endtabs %}
