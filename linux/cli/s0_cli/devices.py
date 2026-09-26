@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -13,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .methods.base import Target
+
+logger = logging.getLogger("s0.devices")
 
 
 class SafetyError(RuntimeError):
@@ -126,6 +129,7 @@ def get_block_device_size(device_path: str | Path) -> int:
         except Exception:
             pass
 
+    logger.warning("Could not determine size of block device %s — all detection methods failed; falling back to 0 bytes", p)
     return 0
 
 
@@ -149,8 +153,8 @@ def _windows_disk_targets() -> list[Target]:
                 try:
                     from windows.cli.s0_eraser import get_windows_target_size
                     sz = get_windows_target_size(drive_path)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Could not determine size of Windows volume %s: %s; falling back to 0 bytes", drive_path, exc)
                 targets.append(Target(
                     path=drive_path,
                     kind="block",
@@ -180,8 +184,8 @@ def _macos_disk_targets() -> list[Target]:
                     try:
                         from macos.cli.s0_eraser import get_macos_target_size
                         sz = get_macos_target_size(dev)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("Could not determine size of macOS disk %s: %s; falling back to 0 bytes", dev, exc)
                     targets.append(Target(
                         path=rdev,
                         kind="block",

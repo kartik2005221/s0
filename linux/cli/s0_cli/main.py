@@ -10,17 +10,21 @@ Subcommands:
   2. Advanced File Carving & Recovery:
      s0 carve --target PATH --out-dir DIR   signature & structure recovery
 
-  4. Blockchain Audit Ledger:
+  3. Blockchain Audit Ledger:
      s0 audit list                 display cryptographic audit blocks
      s0 audit verify               verify blockchain hash-chain integrity
 
-  5. Offline Verification & Key Management:
+  4. Offline Verification & Key Management:
      s0 verify CERT_JSON           verify signed certificate offline
      s0 keygen                     generate Ed25519 authority/operator keypair
 
-  6. Lifecycle & Management:
+  5. Lifecycle & Management:
      s0 upgrade                    upgrade s0 suite from GitHub
      s0 uninstall                  safely remove s0 from the system
+
+  6. Forensic Imaging & Cloning:
+     s0 image --source SRC --dest DST       forensic disk copy
+     s0 clone --source SRC --dest DST       device-to-device clone
 
   7. Bootable Live Media (Live ISO & USB Station):
      s0 live download              download official s0 Live ISO with SHA-256 check
@@ -1624,7 +1628,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     wp.set_defaults(func=cmd_wipe)
 
-    # 3. File Carving & Recovery Subcommand
+    # 2. File Carving & Recovery Subcommand
     crv = sub.add_parser("carve", help="advanced file carving and recovery from raw images / media")
     crv.add_argument("--target", required=True, help="raw disk image or block device to scan")
     crv.add_argument("--out-dir", required=True, help="directory to store carved files")
@@ -1645,37 +1649,37 @@ def build_parser() -> argparse.ArgumentParser:
     crv.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
     crv.set_defaults(func=cmd_carve)
 
-    # 4. Blockchain Audit Ledger Subcommand
+    # 3. Blockchain Audit Ledger Subcommand
     aud = sub.add_parser("audit", help="cryptographic audit ledger and blockchain continuity management")
     aud.add_argument("audit_action", choices=["list", "verify"], help="list audit blocks or verify hash chain")
     aud.add_argument("--limit", type=int, default=50, help="limit number of records displayed")
     aud.add_argument("--key", help="path to trusted public key PEM for strict signature verification")
     aud.set_defaults(func=cmd_audit)
 
-    # 5. Offline Verification Subcommand
+    # 4. Offline Verification Subcommand
     vr = sub.add_parser("verify", help="verify a signed certificate offline against trusted public keys")
     vr.add_argument("certificate", help="path to certificate JSON")
     vr.add_argument("--key", help="path to trusted public key PEM")
     vr.set_defaults(func=cmd_verify)
 
-    # 6. Key Generation Subcommand
+    # 5. Key Generation Subcommand
     kg = sub.add_parser("keygen", help="generate Ed25519 signing keypair for an authority or operator")
     kg.add_argument("--out-dir", default=".", help="directory to store private and public keys")
     kg.add_argument("--name", default="operator_key", help="key filename prefix")
     kg.set_defaults(func=cmd_keygen)
 
-    # 7. Upgrade Subcommand
+    # 6. Upgrade Subcommand
     upg = sub.add_parser("upgrade", help="upgrade S0 suite to the latest version from GitHub")
     upg.add_argument("--force", action="store_true", help="force re-installation of dependencies even if up to date")
     upg.set_defaults(func=cmd_upgrade)
 
-    # 8. Uninstall Subcommand
+    # 7. Uninstall Subcommand
     uinst = sub.add_parser("uninstall", help="safely remove s0 suite from this system")
     uinst.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
     uinst.add_argument("--keep-audit", action="store_true", help="back up audit ledger (~/.s0/s0_audit.db) before removal")
     uinst.set_defaults(func=cmd_uninstall)
 
-    # 9. Forensic Imaging & Cloning Subcommands (image & clone alias)
+    # 8. Forensic Imaging & Cloning Subcommands (image & clone alias)
     for img_cmd in ("image", "clone"):
         img = sub.add_parser(img_cmd, help="forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition")
         img.add_argument("--source", required=True, help="path to source block device or raw image file")
@@ -1691,14 +1695,14 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
         img.set_defaults(func=cmd_image)
 
-    # 10. Web Dashboard Subcommand
+    # 9. Web Dashboard Subcommand
     wb = sub.add_parser("web", help="launch local s0 Web Dashboard in browser (FastAPI loopback)")
     wb.add_argument("--port", type=int, default=CONFIG.get("api_port", 8669), help="port to bind (default: 8669)")
     wb.add_argument("--host", default="127.0.0.1", help="host to bind (default: 127.0.0.1 loopback)")
     wb.add_argument("--no-browser", action="store_true", help="start web server without opening browser")
     wb.set_defaults(func=cmd_web)
 
-    # 11. Bootable Live Media (Live ISO & USB Station)
+    # 10. Bootable Live Media (Live ISO & USB Station)
     try:
         from .live_manager import register_live_parser
         register_live_parser(sub)
