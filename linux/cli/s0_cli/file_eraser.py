@@ -63,20 +63,24 @@ def detect_cow_and_filesystem(path_str: str) -> tuple[str, Optional[str]]:
         try:
             res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
             if res.returncode == 0:
+                candidates = []
                 for line in res.stdout.splitlines():
                     if " on " in line and "(" in line:
                         mp = line.split(" on ")[1].split(" (")[0].strip()
                         opts = line.split(" (")[1].rstrip(")")
-                        if path_str.startswith(mp):
-                            if "apfs" in opts.lower():
-                                fs_name = "apfs"
-                                cow_warning = (
-                                    "Target resides on Apple File System (APFS), a Copy-on-Write (CoW) filesystem. "
-                                    "In-place overwrite allocates new blocks; original blocks and snapshots may persist until reclaimed."
-                                )
-                                break
-                            elif "hfs" in opts.lower():
-                                fs_name = "hfs+"
+                        if path_str == mp or mp == "/" or path_str.startswith(mp.rstrip("/") + "/"):
+                            candidates.append((len(mp), mp, opts))
+                if candidates:
+                    candidates.sort(key=lambda c: c[0], reverse=True)
+                    best_opts = candidates[0][2]
+                    if "apfs" in best_opts.lower():
+                        fs_name = "apfs"
+                        cow_warning = (
+                            "Target resides on Apple File System (APFS), a Copy-on-Write (CoW) filesystem. "
+                            "In-place overwrite allocates new blocks; original blocks and snapshots may persist until reclaimed."
+                        )
+                    elif "hfs" in best_opts.lower():
+                        fs_name = "hfs+"
         except Exception:
             pass
 
@@ -103,19 +107,22 @@ def detect_cow_and_filesystem(path_str: str) -> tuple[str, Optional[str]]:
         # Linux: check /proc/mounts for btrfs, zfs, ext4, xfs, etc.
         try:
             with open("/proc/mounts") as mf:
+                candidates = []
                 for mline in mf:
                     mparts = mline.split()
                     if len(mparts) >= 3:
                         fstype = mparts[2].lower()
                         mp = mparts[1]
-                        if path_str.startswith(mp):
-                            fs_name = fstype
-                            if fstype in ("btrfs", "zfs"):
-                                cow_warning = (
-                                    f"Target resides on CoW filesystem ({fstype}). In-place write may allocate "
-                                    "new blocks; original blocks may persist until reclaimed."
-                                )
-                                break
+                        if path_str == mp or mp == "/" or path_str.startswith(mp.rstrip("/") + "/"):
+                            candidates.append((len(mp), mp, fstype))
+                if candidates:
+                    candidates.sort(key=lambda c: c[0], reverse=True)
+                    fs_name = candidates[0][2]
+                    if fs_name in ("btrfs", "zfs"):
+                        cow_warning = (
+                            f"Target resides on CoW filesystem ({fs_name}). In-place write may allocate "
+                            "new blocks; original blocks may persist until reclaimed."
+                        )
         except Exception:
             pass
 
@@ -246,6 +253,17 @@ def erase_single_file(
     chunk_size: int = 65536,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> FileEraseResult:
+    if pattern not in ("zero", "random"):
+        return FileEraseResult(
+            path=str(file_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'",
+        )
+
     raw_path = Path(file_path)
     if raw_path.is_symlink() or os.path.islink(file_path):
         return FileEraseResult(
@@ -396,7 +414,7 @@ def erase_single_file(
                         elif pattern == "random":
                             buf = secrets.token_bytes(to_write)
                         else:
-                            buf = b"\x00" * to_write
+                            raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
 
                         f.write(buf)
                         remaining -= to_write
@@ -483,6 +501,8 @@ def erase_folder(
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> List[FileEraseResult]:
     """Recursively sanitize all files and scrub directories in a folder."""
+    if pattern not in ("zero", "random"):
+        raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
     root_dir = Path(dir_path).resolve()
     results = []
 
@@ -560,6 +580,8 @@ def erase_batch(
     generate_certificate: bool = True,
 ) -> BatchEraseSummary:
     """Execute batch file & folder erasure and generate an Ed25519-signed certificate."""
+    if pattern not in ("zero", "random"):
+        raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
     start_time = cert_mod.now_utc()
     all_results: List[FileEraseResult] = []
 

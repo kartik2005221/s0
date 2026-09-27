@@ -46,19 +46,45 @@ if [ -z "$RELEASE_JSON" ]; then
     exit 1
 fi
 
-# Extract ISO browser download URL
+# Extract ISO browser download URL and Checksum URL
 ISO_URL=""
+ISO_NAME=""
+CHECKSUM_URL=""
 if command -v python3 >/dev/null 2>&1; then
-    ISO_URL=$(python3 -c "import sys, json; data=json.loads(sys.stdin.read()); assets=data.get('assets', []); print(next((a['browser_download_url'] for a in assets if a.get('name', '').endswith('.iso')), ''))" <<< "$RELEASE_JSON" 2>/dev/null || echo "")
+    read -r ISO_URL ISO_NAME CHECKSUM_URL <<< $(python3 -c '
+import sys, json
+data = json.loads(sys.stdin.read())
+assets = data.get("assets", [])
+iso = next((a for a in assets if a.get("name", "").endswith(".iso")), None)
+if not iso:
+    print("   ")
+    sys.exit(0)
+iso_url = iso.get("browser_download_url", "")
+iso_name = iso.get("name", "")
+chk = next((a for a in assets if a.get("name") == f"{iso_name}.sha256"), None)
+if not chk:
+    chk = next((a for a in assets if a.get("name") == "SHA256SUMS.txt"), None)
+if not chk:
+    chk = next((a for a in assets if a.get("name", "").endswith(".sha256")), None)
+chk_url = chk.get("browser_download_url", "") if chk else ""
+print(f"{iso_url} {iso_name} {chk_url}")
+' <<< "$RELEASE_JSON" 2>/dev/null || echo "")
 fi
 
 if [ -z "$ISO_URL" ] && command -v jq >/dev/null 2>&1; then
     ISO_URL=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | endswith(".iso")) | .browser_download_url' 2>/dev/null | head -n 1 || echo "")
+    ISO_NAME=$(echo "$RELEASE_JSON" | jq -r '.assets[] | select(.name | endswith(".iso")) | .name' 2>/dev/null | head -n 1 || echo "")
+    CHECKSUM_URL=$(echo "$RELEASE_JSON" | jq -r --arg n "$ISO_NAME" '.assets[] | select(.name == ($n + ".sha256") or .name == "SHA256SUMS.txt" or (.name | endswith(".sha256"))) | .browser_download_url' 2>/dev/null | head -n 1 || echo "")
 fi
 
 if [ -z "$ISO_URL" ] || [ "$ISO_URL" = "null" ]; then
     # Fallback to grep regex parsing
     ISO_URL=$(echo "$RELEASE_JSON" | grep -o 'https://[^"]*\.iso' | head -n 1 || echo "")
+    ISO_NAME=$(basename "$ISO_URL")
+    CHECKSUM_URL=$(echo "$RELEASE_JSON" | grep -o 'https://[^"]*\.sha256' | head -n 1 || echo "")
+    if [ -z "$CHECKSUM_URL" ]; then
+        CHECKSUM_URL=$(echo "$RELEASE_JSON" | grep -o 'https://[^"]*SHA256SUMS\.txt' | head -n 1 || echo "")
+    fi
 fi
 
 if [ -z "$ISO_URL" ] || [ "$ISO_URL" = "null" ]; then
@@ -89,9 +115,62 @@ if command -v sha256sum >/dev/null 2>&1; then
 elif command -v shasum >/dev/null 2>&1; then
     HASH=$(shasum -a 256 "$OUT_FILE" | awk '{print $1}')
 else
-    HASH="sha256sum not found"
+    echo -e "${RED}[ERROR] Neither sha256sum nor shasum was found on this system.${NC}"
+    rm -f "$OUT_FILE"
+    exit 1
 fi
-echo -e "   ${YELLOW}SHA-256: ${HASH}${NC}"
+echo -e "   ${YELLOW}Computed SHA-256: ${HASH}${NC}"
+
+EXPECTED_HASH=""
+if [ -n "$CHECKSUM_URL" ] && [ "$CHECKSUM_URL" != "null" ]; then
+    echo -e "${CYAN}==> Fetching official release checksum...${NC}"
+    CHECKSUM_CONTENT=$(eval "$FETCH_CMD \"$CHECKSUM_URL\"" 2>/dev/null || echo "")
+    if [ -n "$CHECKSUM_CONTENT" ]; then
+        if command -v python3 >/dev/null 2>&1; then
+            EXPECTED_HASH=$(python3 -c '
+import sys, re
+content = sys.stdin.read()
+iso_name = sys.argv[1] if len(sys.argv) > 1 else ""
+matched = ""
+for line in content.splitlines():
+    if iso_name and iso_name in line:
+        m = re.search(r"([0-9a-fA-F]{64})", line)
+        if m:
+            matched = m.group(1)
+            break
+if not matched:
+    m = re.search(r"([0-9a-fA-F]{64})", content)
+    if m:
+        matched = m.group(1)
+print(matched.lower())
+' "$ISO_NAME" <<< "$CHECKSUM_CONTENT" 2>/dev/null || echo "")
+        else
+            if echo "$CHECKSUM_CONTENT" | grep -F "$ISO_NAME" >/dev/null 2>&1; then
+                EXPECTED_HASH=$(echo "$CHECKSUM_CONTENT" | grep -F "$ISO_NAME" | grep -oE '[0-9a-fA-F]{64}' | head -n 1 || echo "")
+            else
+                EXPECTED_HASH=$(echo "$CHECKSUM_CONTENT" | grep -oE '[0-9a-fA-F]{64}' | head -n 1 || echo "")
+            fi
+        fi
+    fi
+fi
+
+if [ -n "${EXPECTED_HASH:-}" ]; then
+    EXPECTED_HASH=$(echo "$EXPECTED_HASH" | tr '[:upper:]' '[:lower:]')
+    HASH_LOWER=$(echo "$HASH" | tr '[:upper:]' '[:lower:]')
+    echo -e "   ${YELLOW}Official SHA-256: ${EXPECTED_HASH}${NC}"
+    if [ "$HASH_LOWER" = "$EXPECTED_HASH" ]; then
+        echo -e "${GREEN}✅ SHA-256 checksum VERIFIED against official release!${NC}"
+    else
+        echo -e "${RED}❌ [CRITICAL SECURITY ERROR] SHA-256 checksum MISMATCH!${NC}"
+        echo -e "${RED}   Expected: ${EXPECTED_HASH}${NC}"
+        echo -e "${RED}   Computed: ${HASH_LOWER}${NC}"
+        echo -e "${RED}   Removing compromised/corrupted download: ${OUT_FILE}${NC}"
+        rm -f "$OUT_FILE"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠️  [WARNING] Official checksum asset not found on release; manual verification recommended.${NC}"
+fi
 
 echo -e "\n${CYAN}==> Flashing to USB Drive on Linux / macOS:${NC}"
 echo -e "   1. Insert a USB flash drive (>= 4 GB)."

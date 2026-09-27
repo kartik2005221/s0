@@ -120,6 +120,12 @@ function getAuthToken() {
   return (window.appConfig && window.appConfig.auth_token) || "";
 }
 
+function getDownloadUrl(jobId, filename) {
+  const token = getAuthToken();
+  const base = `/api/download/${encodeURIComponent(jobId)}/${encodeURIComponent(filename)}`;
+  return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+}
+
 // --- Dynamic Config Loader ---
 async function loadAppConfig() {
   try {
@@ -317,7 +323,10 @@ async function onDriveSelected() {
   try {
     const res = await fetch("/api/plan", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-S0-Auth-Token": getAuthToken(),
+      },
       body: JSON.stringify({ target })
     });
     if (!res.ok) return;
@@ -446,14 +455,14 @@ function onDriveWipeDone(job) {
   if (job.result && job.result.cert_filename) {
     const btnJson = document.createElement("a");
     btnJson.className = "btn btn-secondary btn-sm";
-    btnJson.href = `/api/download/${job.id}/${job.result.cert_filename}`;
+    btnJson.href = getDownloadUrl(job.id, job.result.cert_filename);
     btnJson.textContent = "Download JSON Certificate";
     actionBox.appendChild(btnJson);
   }
   if (job.result && job.result.pdf_filename) {
     const btnPdf = document.createElement("a");
     btnPdf.className = "btn btn-primary btn-sm";
-    btnPdf.href = `/api/download/${job.id}/${job.result.pdf_filename}`;
+    btnPdf.href = getDownloadUrl(job.id, job.result.pdf_filename);
     btnPdf.textContent = "Download PDF Certificate";
     actionBox.appendChild(btnPdf);
   }
@@ -581,14 +590,14 @@ function onFileEraseDone(job) {
     if (job.result.cert_filename) {
       const btn = document.createElement("a");
       btn.className = "btn btn-secondary btn-sm";
-      btn.href = `/api/download/${job.id}/${job.result.cert_filename}`;
+      btn.href = getDownloadUrl(job.id, job.result.cert_filename);
       btn.textContent = "Download JSON Certificate";
       actionBox.appendChild(btn);
     }
     if (job.result.pdf_filename) {
       const btnPdf = document.createElement("a");
       btnPdf.className = "btn btn-primary btn-sm";
-      btnPdf.href = `/api/download/${job.id}/${job.result.pdf_filename}`;
+      btnPdf.href = getDownloadUrl(job.id, job.result.pdf_filename);
       btnPdf.textContent = "Download PDF Certificate";
       actionBox.appendChild(btnPdf);
     }
@@ -836,7 +845,7 @@ function onCarveDone(job) {
     if (job.result.manifest_filename) {
       const btn = document.createElement("a");
       btn.className = "btn btn-primary btn-sm";
-      btn.href = `/api/download/${job.id}/${job.result.manifest_filename}`;
+      btn.href = getDownloadUrl(job.id, job.result.manifest_filename);
       btn.textContent = "Download Signed Manifest";
       btnBox.appendChild(btn);
     }
@@ -883,7 +892,7 @@ function onCarveDone(job) {
         btnExtract.className = "btn btn-secondary btn-sm";
         btnExtract.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
         btnExtract.textContent = "Extract";
-        btnExtract.href = `/api/download/${encodeURIComponent(job.id)}/${encodeURIComponent(f.filename || "")}`;
+        btnExtract.href = getDownloadUrl(job.id, f.filename || "");
         tdAction.appendChild(btnExtract);
 
         tr.appendChild(tdId);
@@ -1015,14 +1024,14 @@ function onImagingDone(job) {
     if (r.manifest_filename) {
       const btnManifest = document.createElement("a");
       btnManifest.className = "btn btn-secondary btn-sm";
-      btnManifest.href = `/api/download/${job.id}/${r.manifest_filename}`;
+      btnManifest.href = getDownloadUrl(job.id, r.manifest_filename);
       btnManifest.textContent = "Download Manifest";
       actionBox.appendChild(btnManifest);
     }
     if (r.cert_filename) {
       const btnCert = document.createElement("a");
       btnCert.className = "btn btn-primary btn-sm";
-      btnCert.href = `/api/download/${job.id}/${r.cert_filename}`;
+      btnCert.href = getDownloadUrl(job.id, r.cert_filename);
       btnCert.textContent = "Download Certificate";
       actionBox.appendChild(btnCert);
     }
@@ -1276,10 +1285,17 @@ async function verifyLedger() {
     const res = await fetch("/api/audit/verify");
     const data = await res.json();
     if (data.is_valid) {
-      banner.style.background = "rgba(16, 185, 129, 0.15)";
-      banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
-      banner.style.color = "#34d399";
-      banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong></span> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
+      if (data.is_demo_signed) {
+        banner.style.background = "rgba(245, 158, 11, 0.15)";
+        banner.style.border = "1px solid rgba(245, 158, 11, 0.4)";
+        banner.style.color = "#fbbf24";
+        banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> <strong>VALID & CONTINUOUS — UNACCREDITED DEMO KEY:</strong></span> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis. ${escapeHtml(data.demo_key_warning || "Built-in development key in use; production audit trails require accredited Ed25519 issuer key.")})`;
+      } else {
+        banner.style.background = "rgba(16, 185, 129, 0.15)";
+        banner.style.border = "1px solid rgba(16, 185, 129, 0.35)";
+        banner.style.color = "#34d399";
+        banner.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> <strong>CRYPTOGRAPHIC AUDIT CHAIN VALID:</strong></span> ${escapeHtml(data.reason)} (${parseInt(data.total_blocks, 10) || 0} blocks verified unbroken from genesis)`;
+      }
     } else {
       banner.style.background = "rgba(239, 68, 68, 0.15)";
       banner.style.border = "1px solid rgba(239, 68, 68, 0.35)";

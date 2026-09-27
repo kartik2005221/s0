@@ -478,5 +478,63 @@ def test_wipe_accepts_operator_alias(client, small_image, monkeypatch):
     assert req2.operator_id == "bob"
 
 
+def test_endpoints_require_authentication():
+    raw_client = TestClient(gui_app.app)
+    # /api/browse
+    assert raw_client.get("/api/browse").status_code == 401
+    # /api/plan
+    assert raw_client.post("/api/plan", json={"target": "/dev/null"}).status_code == 401
+    # /api/wipe
+    assert raw_client.post("/api/wipe", json={}).status_code == 401
+    # /api/erase-files
+    assert raw_client.post("/api/erase-files", json={}).status_code == 401
+    # /api/carve
+    assert raw_client.post("/api/carve", json={}).status_code == 401
+    # /api/image
+    assert raw_client.post("/api/image", json={}).status_code == 401
+    # /api/download/{job_id}/{filename}
+    assert raw_client.get("/api/download/fakejob/fakefile.json").status_code == 401
+
+
+def test_download_via_query_token(tmp_path):
+    fake_job_id = "job_test_token"
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    test_file = out_dir / "sample.json"
+    test_file.write_text('{"test": true}')
+    with gui_app._lock:
+        gui_app._jobs[fake_job_id] = {
+            "status": "done",
+            "out_dir": str(out_dir),
+            "result": {"cert_filename": "sample.json"},
+        }
+    raw_client = TestClient(gui_app.app)
+    # Without token -> 401
+    r_unauth = raw_client.get(f"/api/download/{fake_job_id}/sample.json")
+    assert r_unauth.status_code == 401
+    # With query parameter token -> 200
+    r_auth = raw_client.get(f"/api/download/{fake_job_id}/sample.json?token={gui_app._SESSION_AUTH_TOKEN}")
+    assert r_auth.status_code == 200
+    assert r_auth.json() == {"test": True}
+
+
+def test_pattern_validation():
+    raw_client = TestClient(gui_app.app)
+    raw_client.headers.update({"X-S0-Auth-Token": gui_app._SESSION_AUTH_TOKEN})
+    r = raw_client.post("/api/erase-files", json={"targets": ["/tmp/test"], "pattern": "bogus"})
+    assert r.status_code == 422
+    r_wipe = raw_client.post("/api/wipe", json={"target": "/dev/null", "pattern": "invalid_pattern"})
+    assert r_wipe.status_code == 422
+
+
+def test_audit_verify_reports_demo_key_status(client):
+    r = client.get("/api/audit/verify")
+    assert r.status_code == 200
+    data = r.json()
+    assert "is_valid" in data
+    assert "is_demo_signed" in data
+
+
+
 
 

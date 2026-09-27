@@ -17,6 +17,21 @@ if (typeof pdfjsLib !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js";
 }
 
+function decodeBase64Utf8(b64) {
+  if (typeof atob === "undefined") return "";
+  try {
+    var bin = atob(b64);
+    if (typeof TextDecoder !== "undefined") {
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+    return decodeURIComponent(escape(bin));
+  } catch (_) {
+    return "";
+  }
+}
+
 // Fallback sample certificates for offline testing
 var SAMPLE_VALID_CERT = {
   "schema_version": "1.0.0",
@@ -284,7 +299,7 @@ function processQrPayload(payload, sourceDesc) {
       try {
         var b64 = certParam.replace(/-/g, "+").replace(/_/g, "/");
         while (b64.length % 4 !== 0) b64 += "=";
-        var decodedStr = (typeof atob !== "undefined") ? decodeURIComponent(escape(atob(b64))) : "";
+        var decodedStr = decodeBase64Utf8(b64);
         if (decodedStr && decodedStr.trim().startsWith("{")) {
           jsonInput.value = decodedStr;
           runVerification();
@@ -601,7 +616,7 @@ document.getElementById("btnVerifyCustomKey").addEventListener("click", function
       try {
         var b64 = certParam.replace(/-/g, "+").replace(/_/g, "/");
         while (b64.length % 4 !== 0) b64 += "=";
-        var decodedStr = (typeof atob !== "undefined") ? decodeURIComponent(escape(atob(b64))) : "";
+        var decodedStr = decodeBase64Utf8(b64);
         if (decodedStr && decodedStr.trim().startsWith("{")) {
           jsonInput.value = decodedStr;
           runVerification();

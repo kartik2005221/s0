@@ -314,7 +314,7 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
     root_src = _get_root_mount_source()
     if root_src:
         target_real = os.path.realpath(target.path)
-        if target_real == root_src or root_src.startswith(target_real):
+        if _is_dev_or_subpartition(target_real, root_src):
             if not force:
                 raise SafetyError(
                     f"{target.path} hosts the running ROOT filesystem. The tool refuses "

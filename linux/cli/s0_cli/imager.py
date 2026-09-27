@@ -71,6 +71,8 @@ class ImagingResult:
     source_md5: str
     manifest_path: Optional[str] = None
     manifest_certificate: Optional[dict] = None
+    audit_ledger_recorded: bool = False
+    audit_ledger_error: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -316,6 +318,8 @@ def acquire_image(
 
     # 4. Optional Ed25519 Certificate Signing & Audit Blockchain Recording
     signed_cert = None
+    audit_ledger_rec = False
+    audit_ledger_err = None
     if not options.no_certificate:
         key_file = Path(options.key_path) if options.key_path else None
         if key_file and not key_file.is_file():
@@ -361,6 +365,8 @@ def acquire_image(
             notes=notes_list,
         )
 
+        audit_ledger_rec = False
+        audit_ledger_err = None
         if key_file and key_file.is_file():
             try:
                 priv = core_crypto.load_private_pem(key_file)
@@ -370,8 +376,11 @@ def acquire_image(
                 # Record to blockchain audit ledger
                 try:
                     record_audit_event(signed_cert, operation_type=method_name, private_key=key_file)
-                except Exception:
-                    pass
+                    audit_ledger_rec = True
+                except Exception as exc:
+                    audit_ledger_rec = False
+                    audit_ledger_err = str(exc)
+                    sys.stderr.write(f"WARNING: failed to record event into audit ledger: {exc}\n")
             except Exception:
                 signed_cert = None
 
@@ -391,4 +400,6 @@ def acquire_image(
         source_md5=source_md5,
         manifest_path=str(manifest_file),
         manifest_certificate=signed_cert,
+        audit_ledger_recorded=audit_ledger_rec,
+        audit_ledger_error=audit_ledger_err,
     )

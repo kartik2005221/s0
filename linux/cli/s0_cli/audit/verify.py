@@ -34,6 +34,8 @@ class ChainAuditReport:
     broken_block_index: Optional[int] = None
     reason: str = "Audit ledger is continuous, unbroken, and mathematically valid."
     details: List[str] = field(default_factory=list)
+    is_demo_signed: bool = False
+    demo_key_warning: Optional[str] = None
 
 
 def get_default_trusted_keys() -> List:
@@ -85,6 +87,7 @@ def verify_audit_ledger(
     effective_keys = list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
     expected_prev = GENESIS_PREV_HASH
     details = []
+    is_demo_signed = False
 
     for idx, b in enumerate(blocks):
         block_idx = b["block_index"]
@@ -163,8 +166,8 @@ def verify_audit_ledger(
                     matching_keys = [k for k in effective_keys if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp]
                     if not matching_keys:
                         matching_keys = list(effective_keys)
-                    sig_valid = any(crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig) for k in matching_keys)
-                    if not sig_valid:
+                    validating_keys = [k for k in matching_keys if crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig)]
+                    if not validating_keys:
                         return ChainAuditReport(
                             is_valid=False,
                             total_blocks_verified=idx,
@@ -172,6 +175,8 @@ def verify_audit_ledger(
                             reason=f"Block signature tampering detected in block #{block_idx}: block_signature does not match block_hash under trusted public keys.",
                             details=details,
                         )
+                    if any(crypto.is_demo_key(k) for k in validating_keys) or claimed_fp == crypto.DEMO_KEY_FINGERPRINT:
+                        is_demo_signed = True
             elif effective_keys and b["certificate_json"]:
                 try:
                     c_data = json.loads(b["certificate_json"])
@@ -223,6 +228,8 @@ def verify_audit_ledger(
                             reason=f"Certificate signature invalid in block #{block_idx}: {reason}",
                             details=details,
                         )
+                    if claimed_fp == crypto.DEMO_KEY_FINGERPRINT:
+                        is_demo_signed = True
             except Exception as e:
                 return ChainAuditReport(
                     is_valid=False,
@@ -235,9 +242,18 @@ def verify_audit_ledger(
         details.append(f"Block #{block_idx} ({b['operation_type']}): Verified (Hash: {b['block_hash'][:16]}...)")
         expected_prev = b["block_hash"]
 
+    demo_warning = None
+    if is_demo_signed:
+        demo_warning = (
+            "Audit chain blocks or certificates were signed with the unaccredited demonstration key. "
+            "Ledger is cryptographically continuous but MUST NOT be used for legal chain-of-custody."
+        )
+
     return ChainAuditReport(
         is_valid=True,
         total_blocks_verified=len(blocks),
         reason=f"Blockchain audit chain verified successfully across {len(blocks)} blocks.",
         details=details,
+        is_demo_signed=is_demo_signed,
+        demo_key_warning=demo_warning,
     )

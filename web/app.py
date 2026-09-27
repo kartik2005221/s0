@@ -123,9 +123,11 @@ _init_session_auth_token()
 
 def verify_auth_token(
     x_s0_auth_token: Optional[str] = Header(None, alias="X-S0-Auth-Token"),
+    token: Optional[str] = Query(None),
 ) -> None:
-    """Verify per-session authentication token on destructive/action endpoints."""
-    if not x_s0_auth_token or not secrets.compare_digest(x_s0_auth_token, _SESSION_AUTH_TOKEN):
+    """Verify per-session authentication token on protected endpoints."""
+    tok = x_s0_auth_token or token
+    if not tok or not secrets.compare_digest(tok, _SESSION_AUTH_TOKEN):
         raise HTTPException(
             status_code=401,
             detail="Unauthorized: missing or invalid session authentication token (X-S0-Auth-Token)",
@@ -236,6 +238,13 @@ class WipeRequest(BaseModel):
     verify_samples: int = 64
     portal_url: Optional[str] = None
 
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        if v not in ("zero", "random"):
+            raise ValueError("pattern must be either 'zero' or 'random'")
+        return v
+
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
@@ -264,6 +273,13 @@ class FileEraseRequest(BaseModel):
     no_pdf: bool = False
     verify_samples: int = 64
     portal_url: Optional[str] = None
+
+    @field_validator("pattern")
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        if v not in ("zero", "random"):
+            raise ValueError("pattern must be either 'zero' or 'random'")
+        return v
 
     @field_validator("operator_id")
     @classmethod
@@ -432,7 +448,7 @@ def _is_safe_browse_path(target: Path) -> bool:
         return False
 
 
-@app.get("/api/browse")
+@app.get("/api/browse", dependencies=[Depends(verify_auth_token)])
 def api_browse(path: str = ".") -> JSONResponse:
     target = Path(path).expanduser().resolve()
     if not target.exists() or not target.is_dir() or not _is_safe_browse_path(target):
@@ -500,7 +516,7 @@ def get_temperature(path: str = Query(..., description="Target device or file pa
     })
 
 
-@app.post("/api/plan")
+@app.post("/api/plan", dependencies=[Depends(verify_auth_token)])
 def api_plan(req: PlanRequest) -> JSONResponse:
     return JSONResponse(plan_payload(req.target))
 
@@ -663,11 +679,17 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
             )
             cert_filename = None
             pdf_filename = None
+            audit_ledger_recorded = False
+            audit_ledger_error = None
             if summary.certificate:
                 try:
                     record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key)
-                except Exception:
-                    pass
+                    audit_ledger_recorded = True
+                except Exception as exc:
+                    audit_ledger_error = str(exc)
+                    print(f"Warning: Failed to append to audit ledger: {exc}", file=_sys.stderr)
+                    with _lock:
+                        _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {exc}")
                 cert_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
                 cert_file.write_text(json.dumps(summary.certificate, indent=2))
                 cert_filename = cert_file.name
@@ -698,6 +720,8 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         "cert_filename": cert_filename,
                         "pdf_filename": pdf_filename,
                         "warnings": summary.warnings,
+                        "audit_ledger_recorded": audit_ledger_recorded,
+                        "audit_ledger_error": audit_ledger_error,
                     },
                 )
         except Exception as exc:
@@ -791,11 +815,17 @@ def start_carve(req: CarveRequest) -> JSONResponse:
             )
             manifest_filename = None
             pdf_filename = None
+            audit_ledger_recorded = False
+            audit_ledger_error = None
             if summary.manifest_certificate:
                 try:
                     record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key)
-                except Exception:
-                    pass
+                    audit_ledger_recorded = True
+                except Exception as exc:
+                    audit_ledger_error = str(exc)
+                    print(f"Warning: Failed to append to audit ledger: {exc}", file=_sys.stderr)
+                    with _lock:
+                        _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {exc}")
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
                 m_file.write_text(json.dumps(summary.manifest_certificate, indent=2))
                 manifest_filename = m_file.name
@@ -819,6 +849,8 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                         "files_recovered": summary.files_recovered,
                         "manifest_filename": manifest_filename,
                         "pdf_filename": pdf_filename,
+                        "audit_ledger_recorded": audit_ledger_recorded,
+                        "audit_ledger_error": audit_ledger_error,
                         "carved_files": [
                             {
                                 "id": c.file_id,
@@ -923,6 +955,10 @@ def start_image(req: ImageRequest) -> JSONResponse:
                     except Exception:
                         pass
 
+            if not img_result.audit_ledger_recorded and img_result.audit_ledger_error:
+                with _lock:
+                    _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {img_result.audit_ledger_error}")
+
             with _lock:
                 _jobs[job_id].update(
                     status="done" if img_result.success else "error",
@@ -942,6 +978,8 @@ def start_image(req: ImageRequest) -> JSONResponse:
                         "manifest_filename": manifest_fn,
                         "cert_filename": cert_fn,
                         "pdf_filename": pdf_fn,
+                        "audit_ledger_recorded": img_result.audit_ledger_recorded,
+                        "audit_ledger_error": img_result.audit_ledger_error,
                         "error": img_result.error,
                     },
                 )
@@ -985,6 +1023,8 @@ def get_audit_verify() -> JSONResponse:
         "is_valid": report.is_valid,
         "total_blocks": report.total_blocks_verified,
         "reason": report.reason,
+        "is_demo_signed": report.is_demo_signed,
+        "demo_key_warning": report.demo_key_warning,
     })
 
 
@@ -1003,7 +1043,7 @@ def job_status(job_id: str) -> JSONResponse:
         })
 
 
-@app.get("/api/download/{job_id}/{filename}")
+@app.get("/api/download/{job_id}/{filename}", dependencies=[Depends(verify_auth_token)])
 def download(job_id: str, filename: str) -> FileResponse:
     with _lock:
         job = _jobs.get(job_id)

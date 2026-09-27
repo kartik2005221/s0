@@ -217,7 +217,7 @@ def generate_pdf(
         ("Algorithm", sig.get("algorithm", "?")),
         ("Issuer key fingerprint", sig.get("public_key_fingerprint", "?")),
         ("Payload SHA-256", sig.get("signed_payload_hash", "(not recorded)")),
-        ("Signature (base64url)", Paragraph(sig["signature_base64url"], mono)),
+        ("Signature (base64url)", Paragraph(_xml_escape(sig.get("signature_base64url", "?")), mono)),
         ("Verify offline", "Scan the QR with any verifier, or run: s0 verify cert.json --key issuer_public.pem"),
     ])
     t = Table(sig_rows, colWidths=[45 * mm, 125 * mm])

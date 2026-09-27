@@ -149,10 +149,20 @@ def sample_offsets(capacity: int, sector_size: int, count: int) -> list[int]:
     offsets = set()
     guard = 0
     max_sector = total_sectors - 1
-    while len(offsets) < num_samples and guard < count * 20:
+    while len(offsets) < num_samples and guard < count * 50:
         sec = secrets.randbelow(max_sector + 1)
         offsets.add(sec * sector_size)
         guard += 1
+
+    # Deterministic fallback fill if rejection sampling exhausted guard limit
+    if len(offsets) < num_samples:
+        stride = max(1, total_sectors // num_samples)
+        for i in range(total_sectors):
+            sec = (i * stride) % total_sectors
+            offsets.add(sec * sector_size)
+            if len(offsets) >= num_samples:
+                break
+
     return sorted(offsets)
 
 

@@ -102,6 +102,7 @@ The ISO uses a deliberate privilege separation model:
 - **Loopback isolation:** The REST backend binds exclusively to `127.0.0.1:8000`. No external network exposure.
 - **Privilege separation:** The Chromium kiosk runs as the unprivileged `s0` user. The wipe daemon runs as `root` to issue hardware ioctls and open raw block devices (`/dev/sd*`, `/dev/nvme*`).
 - **Fully offline:** All UI assets, fonts (Fira Sans / Fira Code), and cryptographic libraries are pre-packaged. No internet connection is required or used at runtime.
+- **Kiosk Trust Boundary:** To enable the unprivileged browser kiosk to interact with the authenticated root REST daemon, the session token is placed in `/run/s0/web_auth_token` with file permissions `0640` and group ownership assigned to `s0-kiosk`. Membership in `s0-kiosk` is intentionally equivalent to wipe authority on the appliance.
 
 ---
 

@@ -39,8 +39,40 @@ try {
     
     # Calculate SHA256
     Write-Host "==> Computing SHA-256 Checksum..." -ForegroundColor Cyan
-    $hash = (Get-FileHash -Path $OutFile -Algorithm SHA256).Hash
-    Write-Host "   SHA-256: $hash" -ForegroundColor Yellow
+    $hash = (Get-FileHash -Path $OutFile -Algorithm SHA256).Hash.ToLower()
+    Write-Host "   Computed SHA-256: $hash" -ForegroundColor Yellow
+    
+    $checksumAsset = $release.assets | Where-Object { $_.name -eq "$($asset.name).sha256" -or $_.name -eq "SHA256SUMS.txt" -or $_.name -like "*.sha256" } | Select-Object -First 1
+    if ($checksumAsset) {
+        Write-Host "==> Fetching official release checksum ($($checksumAsset.name))..." -ForegroundColor Cyan
+        $chkContent = (Invoke-RestMethod -Uri $checksumAsset.browser_download_url -Headers @{ "User-Agent" = "s0-iso-downloader" })
+        $expectedHash = ""
+        foreach ($line in ($chkContent -split "`n")) {
+            if ($line -match "([0-9a-fA-F]{64})") {
+                if ($line -like "*$($asset.name)*" -or [string]::IsNullOrWhiteSpace($expectedHash)) {
+                    $expectedHash = $Matches[1].ToLower()
+                    if ($line -like "*$($asset.name)*") { break }
+                }
+            }
+        }
+        if ($expectedHash) {
+            Write-Host "   Official SHA-256: $expectedHash" -ForegroundColor Yellow
+            if ($hash -eq $expectedHash) {
+                Write-Host "✅ SHA-256 checksum VERIFIED against official release!" -ForegroundColor Green
+            } else {
+                Write-Host "❌ [CRITICAL SECURITY ERROR] SHA-256 checksum MISMATCH!" -ForegroundColor Red
+                Write-Host "   Expected: $expectedHash" -ForegroundColor Red
+                Write-Host "   Computed: $hash" -ForegroundColor Red
+                Write-Host "   Removing compromised/corrupted download: $OutFile" -ForegroundColor Red
+                Remove-Item -Path $OutFile -Force -ErrorAction SilentlyContinue
+                exit 1
+            }
+        } else {
+            Write-Host "⚠️  [WARNING] Could not parse hash from official checksum file." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "⚠️  [WARNING] Official checksum asset not found on release; manual verification recommended." -ForegroundColor Yellow
+    }
     
     Write-Host "`n==> Flashing to USB Drive:" -ForegroundColor Cyan
     Write-Host "   1. Download Rufus from: https://rufus.ie/" -ForegroundColor White

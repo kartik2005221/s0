@@ -261,6 +261,9 @@ def _print_plan(
     print(f"method          : {plan.method_id}")
     print(f"nist category   : {plan.nist_category}")
     print(f"summary         : {plan.summary}")
+    if plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id or getattr(plan, "is_firmware", False):
+        print("firmware note   : Firmware-level Purge methods are simulated/fixture-tested;")
+        print("                  real-world behavior varies across vendors. Verify device support.")
     if plan.commands:
         print("commands        :")
         for c in plan.commands:
@@ -388,6 +391,11 @@ def cmd_plan(args) -> int:
 def cmd_wipe(args) -> int:
     _print_legal_notice()
     if not _validate_cli_metadata(args):
+        return 2
+
+    pattern = getattr(args, "pattern", "zero")
+    if pattern not in ("zero", "random"):
+        print(f"error: invalid --pattern '{pattern}'. Supported patterns: zero, random", file=sys.stderr)
         return 2
 
     targets = getattr(args, "targets", None)
@@ -610,8 +618,30 @@ def cmd_wipe(args) -> int:
         return 2
 
     plan = candidate.method.plan(target)
+
+    hpa_dco = None
+    if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
+        hpa_dco = hpa_dco_report(target)
+        if hpa_dco.get("hpa_present") or hpa_dco.get("dco_present"):
+            if not getattr(plan, "is_firmware", False):
+                hpa_msg = (
+                    f"target {target.path} has an active Host Protected Area (HPA) or Device Configuration Overlay (DCO) "
+                    f"(visible: {hpa_dco.get('visible_max')}, native: {hpa_dco.get('native_max')}). "
+                    f"Overwrite-based sanitization ({plan.method_id}) cannot reach hidden sectors beyond visible capacity."
+                )
+                if not args.force:
+                    print(
+                        f"REFUSED: {hpa_msg}\n  Remove HPA/DCO using '{hpa_dco.get('restore_command')}' or pass --force to proceed anyway.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                warnings.append(hpa_msg)
+
     if not args.yes:
-        _print_plan(target, candidate, alternatives, warnings, None)
+        _print_plan(target, candidate, alternatives, warnings, hpa_dco)
+        if getattr(plan, "is_firmware", False) or "ATA_SECURE_ERASE" in plan.method_id or "NVME" in plan.method_id:
+            print("\n⚠  NOTICE: Firmware-level Purge methods (ATA/NVMe) are simulated/fixture-tested;", file=sys.stderr)
+            print("   real-world behavior varies across vendors. Verify device support prior to production use.", file=sys.stderr)
         answer = input(
             f"\nType '{target.path}' to confirm permanent erasure ({plan.method_id}, NIST {plan.nist_category}): "
         )
@@ -798,6 +828,12 @@ def cmd_erase_files(args) -> int:
     _print_legal_notice()
     if not _validate_cli_metadata(args):
         return 2
+
+    pattern = getattr(args, "pattern", "zero")
+    if pattern not in ("zero", "random"):
+        print(f"error: invalid --pattern '{pattern}'. Supported patterns: zero, random", file=sys.stderr)
+        return 2
+
     print(f"==> S0: Secure File & Folder Sanitization")
 
     key_path = default_issuer_key(getattr(args, "key", None))
@@ -1066,7 +1102,15 @@ def cmd_audit(args) -> int:
 
             trusted_keys = [load_public_pem(args.key)]
         report = verify_audit_ledger(trusted_public_keys=trusted_keys)
-        print(f"Chain Status : {'✅ VALID & CONTINUOUS' if report.is_valid else '❌ BROKEN / TAMPER DETECTED'}")
+        if report.is_valid:
+            if getattr(report, "is_demo_signed", False):
+                print(f"Chain Status : ⚠️ VALID & CONTINUOUS — UNACCREDITED DEMO KEY")
+                if getattr(report, "demo_key_warning", None):
+                    print(f"               {report.demo_key_warning}")
+            else:
+                print(f"Chain Status : ✅ VALID & CONTINUOUS")
+        else:
+            print(f"Chain Status : ❌ BROKEN / TAMPER DETECTED")
         print(f"Blocks Tested: {report.total_blocks_verified}")
         print(f"Details      : {report.reason}")
         return 0 if report.is_valid else 1
@@ -1402,7 +1446,11 @@ def cmd_image(args) -> int:
     if result.manifest_path:
         print(f"   Manifest File   : {result.manifest_path}")
     if result.manifest_certificate:
-        print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
+        if getattr(result, "audit_ledger_recorded", False):
+            print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
+        else:
+            err_suffix = f": {result.audit_ledger_error}" if getattr(result, "audit_ledger_error", None) else ""
+            print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed, WARNING: Audit Ledger write failed{err_suffix})")
         if not getattr(args, "no_pdf", False):
             try:
                 from s0_core import pdfgen
