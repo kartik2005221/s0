@@ -1362,16 +1362,6 @@ async function checkCapabilities() {
     if (!caps.is_root) {
       const banner = document.getElementById("sudoWarningBanner");
       if (banner) banner.style.display = "flex";
-
-      const driveTab = document.getElementById("tab-drive");
-      if (driveTab && !document.getElementById("driveRestrictedNotice")) {
-        const notice = document.createElement("div");
-        notice.id = "driveRestrictedNotice";
-        notice.className = "restricted-notice";
-        notice.innerHTML = `<span>⚠️ <strong>Root Privileges Required:</strong> Direct block device sanitization requires administrative root permissions. Run <code style="font-family: var(--font-mono); color: var(--accent-cyan);">sudo s0 web</code> to wipe physical disks. File & folder wiping remains fully functional.</span>`;
-        const cardBody = driveTab.querySelector(".card-body") || driveTab;
-        cardBody.insertBefore(notice, cardBody.firstChild);
-      }
     }
   } catch (e) {
     console.warn("Capabilities check note:", e);
