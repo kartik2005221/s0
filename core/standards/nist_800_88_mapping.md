@@ -79,10 +79,14 @@ rather explain the trade-off than flatter it.
 ## 5. HPA / DCO
 
 Host Protected Area and Device Configuration Overlay can hide sectors from host-addressable
-overwrites. Before any overwrite-based wipe of an ATA drive, s0 detects HPA/DCO via
-`hdparm -N` / `hdparm --dco-identify` and offers removal (`-N p<visible>` / `--dco-restore`)
-so the subsequent wipe covers the full medium. Loop devices and image files exhibit neither,
-so this path is coded and fixture-tested but **not validated against real ATA firmware**.
+overwrites. Before any overwrite-based wipe of an ATA drive on Linux, `s0 wipe` detects HPA/DCO via
+`hdparm -N` / `hdparm --dco-identify`. If HPA or DCO is present, the wipe is refused unless `--force`
+is passed, and the operator is provided the exact command to remove the hidden area
+(`hdparm -N p<native>` / `--dco-restore`). The operator must execute the removal command manually
+before re-running the wipe; s0 does not auto-execute `hdparm` modifications. On macOS and Windows,
+HPA/DCO detection is not currently performed as native ATA pass-through tools equivalent to `hdparm`
+are not available. Loop devices and image files exhibit neither, so this path is coded and fixture-tested
+but **not validated against real ATA firmware**.
 
 ## 6. Verification approach
 

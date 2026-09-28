@@ -32,7 +32,7 @@ Target paths vary across host operating systems:
 `s0` evaluates four safety rules before executing `wipe` or `plan`:
 
 1. **Root Filesystem Protection**:
-   `s0` inspects `/proc/mounts` (Linux) and system volumes (Windows/macOS). If a target contains the root mount (`/` or `C:\`), execution is immediately aborted with `SafetyError: Refusing to sanitize active operating system drive`.
+   `s0` inspects `/proc/mounts` and `findmnt` (Linux), resolving device-mapper / LUKS encrypted partitions (`/dev/mapper/luks-...`) through sysfs (`/sys/class/block/<dm>/slaves`) and `lsblk` to identify the underlying parent physical disk (e.g. `/dev/nvme0n1` on Fedora, Arch, Debian). If a target contains the root mount (`/` or `C:\`) or is the physical disk hosting an encrypted root volume, execution is immediately aborted with `SafetyError: Refusing to sanitize active operating system drive`.
 2. **Active Mount Guard**:
    If any partition on the target device is mounted, `s0` halts. The operator must unmount the device cleanly (`umount /dev/sdb*`) before continuing.
 3. **Safety Override (`--force`)**:
