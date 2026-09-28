@@ -85,7 +85,7 @@ s0/
 │   │   ├── exfat_carver.py       #     exFAT VBR + cluster heap walker
 │   │   ├── fragmentation.py      #     Non-resident cluster run reassembly
 │   │   └── scoring.py            #     Multi-factor confidence scoring
-│   └── audit/                    #   Blockchain audit ledger
+│   └── audit/                    #   Hash-chained audit ledger
 │
 ├── windows/                      #   Windows file/folder sanitizer (Win32 API, ADS scrubbing, ReFS)
 ├── macos/                        #   macOS file/folder sanitizer (F_FULLFSYNC, xattr, APFS)
@@ -473,7 +473,7 @@ $$
 
 ---
 
-## Module 4 — Blockchain Audit Ledger
+## Module 4 — Hash-Chained Audit Ledger
 
 Module 4 provides the chain of custody infrastructure that transforms s0's operations from "I ran a tool" into cryptographically provable events.
 

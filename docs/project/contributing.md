@@ -52,7 +52,7 @@ s0/
 │   │   ├── fragmentation.py            # Bifragment stream reassembly
 │   │   └── scoring.py                  # Heuristic & Shannon entropy confidence scorer
 │   ├── imager.py                       # Module 3: Bit-stream forensic imager & cloner
-│   └── audit/                          # Module 4: Blockchain audit ledger
+│   └── audit/                          # Module 4: Hash-chained audit ledger
 │       ├── ledger.py                   # SQLite3 append-only ledger & hash-chaining
 │       └── verify.py                   # Genesis-to-tip mathematical continuity auditor
 ├── windows/                            # Windows native file/folder sanitizer (Win32 FlushFileBuffers, ADS)

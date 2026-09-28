@@ -1,6 +1,6 @@
 # Canonical JSON v1, Ed25519 Signatures & Audit Ledger
 
-This reference defines the cryptographic standards, deterministic serialization rules, and blockchain ledger architecture implemented in `s0`.
+This reference defines the cryptographic standards, deterministic serialization rules, and hash-chained ledger architecture implemented in `s0`.
 
 ---
 
@@ -35,7 +35,7 @@ Every certificate emitted by `s0` is signed using Ed25519:
 
 ---
 
-## 3. Blockchain Audit Ledger Hash Formula
+## 3. Hash-Chained Audit Ledger Hash Formula
 
 Every operation appends a cryptographically chained block to `~/.s0/s0_audit.db`. The `block_hash` is computed as:
 

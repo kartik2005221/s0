@@ -38,7 +38,7 @@
 | **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
 | **Offensive Carving** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and USB drives across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
 | **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and ddrescue-style bad sector zero-filling. |
-| **Blockchain Audit Ledger** | Module 4 | Records every laboratory operation into an append-only, SHA-256 hash-chained SQLite ledger (`~/.s0/s0_audit.db`) verifiable offline in milliseconds. |
+| **Hash-Chained Audit Ledger** | Module 4 | Records every laboratory operation into an append-only, SHA-256 hash-chained SQLite ledger (`~/.s0/s0_audit.db`) verifiable offline in milliseconds. |
 | **Zero-Trust Verification** | Portal | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
 
 ---

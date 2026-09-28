@@ -1,4 +1,4 @@
-"""s0 Blockchain Audit Chain Verification Engine."""
+"""s0 Hash-Chained Audit Chain Verification Engine."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def verify_audit_ledger(
     db_path: str | Path | None = None,
     trusted_public_keys: Optional[List] = None,
 ) -> ChainAuditReport:
-    """Verify 100% cryptographic continuity of the blockchain audit ledger."""
+    """Verify 100% cryptographic continuity of the hash-chained audit ledger."""
     if db_path is None:
         db_path = get_default_audit_db()
     init_audit_db(db_path)
@@ -252,7 +252,7 @@ def verify_audit_ledger(
     return ChainAuditReport(
         is_valid=True,
         total_blocks_verified=len(blocks),
-        reason=f"Blockchain audit chain verified successfully across {len(blocks)} blocks.",
+        reason=f"Hash-chained audit chain verified successfully across {len(blocks)} blocks.",
         details=details,
         is_demo_signed=is_demo_signed,
         demo_key_warning=demo_warning,

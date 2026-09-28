@@ -10,9 +10,9 @@ Subcommands:
   2. Advanced File Carving & Recovery:
      s0 carve --target PATH --out-dir DIR   signature & structure recovery
 
-  3. Blockchain Audit Ledger:
+  3. Hash-Chained Audit Ledger:
      s0 audit list                 display cryptographic audit blocks
-     s0 audit verify               verify blockchain hash-chain integrity
+     s0 audit verify               verify hash-chain integrity
 
   4. Offline Verification & Key Management:
      s0 verify CERT_JSON           verify signed certificate offline
@@ -768,7 +768,7 @@ def cmd_wipe(args) -> int:
         extra_notes=warnings + [f"elapsed {time.monotonic() - t_start:.1f}s"],
     )
 
-    # Record in local blockchain audit ledger
+    # Record in local hash-chained audit ledger
     try:
         blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
         if not getattr(args, "json", False):
@@ -1077,14 +1077,14 @@ def cmd_carve(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 4: Blockchain Audit Ledger Subcommands
+# Module 4: Hash-Chained Audit Ledger Subcommands
 # --------------------------------------------------------------------------- #
 
 
 def cmd_audit(args) -> int:
     if args.audit_action == "list":
         blocks = list_audit_blocks(limit=args.limit)
-        print(f"==> S0 Blockchain Cryptographic Audit Ledger ({len(blocks)} blocks)")
+        print(f"==> S0 Hash-Chained Cryptographic Audit Ledger ({len(blocks)} blocks)")
         print(
             f"{'IDX':<5} {'TIMESTAMP':<20} {'OPERATION':<14} {'OPERATOR':<14} {'TARGET_ID':<20} {'BLOCK_HASH':<16}"
         )
@@ -1095,7 +1095,7 @@ def cmd_audit(args) -> int:
         return 0
 
     elif args.audit_action == "verify":
-        print("==> Auditing Blockchain Cryptographic Hash Chain...")
+        print("==> Auditing Hash-Chained Cryptographic Ledger...")
         trusted_keys = None
         if getattr(args, "key", None):
             from s0_core.crypto import load_public_pem
@@ -1724,8 +1724,8 @@ def build_parser() -> argparse.ArgumentParser:
     crv.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
     crv.set_defaults(func=cmd_carve)
 
-    # 3. Blockchain Audit Ledger Subcommand
-    aud = sub.add_parser("audit", help="cryptographic audit ledger and blockchain continuity management")
+    # 3. Hash-Chained Audit Ledger Subcommand
+    aud = sub.add_parser("audit", help="cryptographic audit ledger and hash-chain continuity management")
     aud.add_argument("audit_action", choices=["list", "verify"], help="list audit blocks or verify hash chain")
     aud.add_argument("--limit", type=int, default=50, help="limit number of records displayed")
     aud.add_argument("--key", help="path to trusted public key PEM for strict signature verification")

@@ -6,7 +6,7 @@
 #   3. Run structure & signature carver via CLI (s0 carve)
 #   4. Validate recovered file SHA-256 hashes against original planted evidence
 #   5. Validate Ed25519 signed forensic recovery manifest certificate
-#   6. Verify blockchain audit ledger continuity
+#   6. Verify hash-chained audit ledger continuity
 #
 # Runs entirely without root on a file-backed image.
 set -euo pipefail
@@ -202,7 +202,7 @@ print(f"  Filesystem      : {cert['notes'][1]}")
 PYEOF
 
 echo
-echo "── [6/6] Auditing Blockchain Ledger Integrity ─────────────────────"
+echo "── [6/6] Auditing Hash-Chained Ledger Integrity ─────────────────────"
 "${CLI[@]}" audit verify
 
 echo

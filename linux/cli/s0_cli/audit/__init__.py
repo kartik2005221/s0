@@ -1,4 +1,4 @@
-"""s0 Cryptographic Audit Ledger & Blockchain Management."""
+"""s0 Cryptographic Audit Ledger & Hash-Chain Management."""
 
 from .db import (
     DEFAULT_AUDIT_DB,

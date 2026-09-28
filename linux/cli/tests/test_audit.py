@@ -1,4 +1,4 @@
-"""Unit tests for s0 Audit Management & Blockchain Ledger."""
+"""Unit tests for s0 Audit Management & Hash-Chained Ledger."""
 
 import json
 import sqlite3

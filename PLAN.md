@@ -33,7 +33,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 3** | File & Folder Erasure | **DONE** | Cross-platform cluster overwriting (`file_eraser.py`, unified into `s0 wipe`), `O_NOFOLLOW` atomic opening, POSIX `fsync()`, Windows Win32 `FlushFileBuffers` & multi-chunk ADS scrubbing, macOS `F_FULLFSYNC` & symlink-safe `xattr -s` stripping | `linux/cli/tests/test_file_eraser.py`<br>`windows/cli/tests/`<br>`macos/cli/tests/` |
 | **Phase 4** | Advanced File Carver (Module 2) | **DONE** | Multi-format sliding-window carver (`engine.py`), ext4 inode extent tree parser (`ext4_carver.py`), NTFS $MFT non-resident runlist carver (`ntfs_carver.py`), FAT32/exFAT carvers, 4-factor Shannon entropy scoring | `linux/cli/tests/test_carver.py`<br>`linux/cli/tests/test_ntfs_carver.py`<br>`linux/cli/demo_e2e_ntfs.sh` |
 | **Phase 5** | Forensic Drive Imager (Module 3) | **DONE** | Fault-tolerant bit-stream acquisition & drive-to-drive cloning (`imager.py`), bad sector zero-fill recovery, dual SHA-256/MD5 hashing, signed acquisition manifest | `linux/cli/tests/test_imager.py` |
-| **Phase 6** | Blockchain Audit Ledger (Module 4) | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
+| **Phase 6** | Hash-Chained Audit Ledger (Module 4) | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `linux/cli/tests/test_audit.py` |
 | **Phase 7** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`web/`) with session auth token (`X-S0-Auth-Token`, mode 0640), zero-backend static Verification Portal (`verification-portal/`) with WebCrypto and pinned key registry | `web/tests/test_gui.py`<br>`verification-portal/tests/` |
 | **Phase 8** | Cross-Platform Parity & Automation | **DONE** | Full CLI subcommand parity on Windows & macOS (`s0` wrapper suites), automated GitHub Actions Live ISO builder (`build-iso.yml`), automated GitHub release assets, GitBook documentation suite (`docs/`), Agentic AI Skill (`skills/s0-forensics/`) | `pytest`<br>`bash scripts/build-docs.sh` (100% green) |
 | **Phase 9** | Live Media & USB Station (`s0 live`) | **DONE** | Native `s0 live` command suite (`download`, `devices`, `flash`, `build`), automated safe USB discovery, versioned release ISO naming, and progress bar burning | `linux/cli/tests/test_live_manager.py` |
@@ -53,7 +53,7 @@ s0/
 │   ├── file_eraser.py                  # Module 1: File & folder cluster sanitizer (s0 wipe)
 │   ├── carver/                         # Module 2: ext4, NTFS, FAT32, exFAT, Entropy
 │   ├── imager.py                       # Module 3: Bit-stream acquisition & disk cloning engine
-│   ├── audit/                          # Module 4: Append-only SQLite blockchain ledger
+│   ├── audit/                          # Module 4: Append-only SQLite hash-chained ledger
 │   └── live_manager.py                 # Live ISO acquisition, safe USB inspection & flashing
 ├── windows/                            # Windows native subsystem & launchers (s0.bat, s0.ps1)
 │   └── cli/s0_eraser.py                # Windows eraser with subcommand dispatch & Win32 API

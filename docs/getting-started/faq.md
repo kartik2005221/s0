@@ -106,7 +106,7 @@ Private keys are never uploaded or transmitted. They remain exclusively on your 
 
 ---
 
-## 5. Blockchain Audit Ledger
+## 5. Hash-Chained Audit Ledger
 
 ### Is the audit ledger a public blockchain like Ethereum or Solana?
 **No.** In national security and forensic operations, deploying a public, distributed blockchain introduces severe security and operational violations:

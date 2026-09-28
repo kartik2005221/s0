@@ -1,6 +1,6 @@
 ---
 name: s0-forensics
-description: Execute forensic-grade media sanitization, bit-stream disk imaging, deleted file carving, and blockchain audit ledger operations using s0 (Sector Zero). Use whenever tasks involve securely wiping drives or files, decommissioning laptops or servers, recovering deleted artifacts from disk images, imaging evidence drives, auditing forensic operations, or verifying Ed25519 sanitization certificates. Make sure to trigger this skill whenever the user mentions wiping, sanitizing, forensic imaging, file carving, NIST SP 800-88, or s0 commands, even if they only ask to 'delete a drive safely' or 'recover deleted files'.
+description: Execute forensic-grade media sanitization, bit-stream disk imaging, deleted file carving, and hash-chained audit ledger operations using s0 (Sector Zero). Use whenever tasks involve securely wiping drives or files, decommissioning laptops or servers, recovering deleted artifacts from disk images, imaging evidence drives, auditing forensic operations, or verifying Ed25519 sanitization certificates. Make sure to trigger this skill whenever the user mentions wiping, sanitizing, forensic imaging, file carving, NIST SP 800-88, or s0 commands, even if they only ask to 'delete a drive safely' or 'recover deleted files'.
 ---
 
 # s0 Forensics & Data Sanitization Skill
@@ -29,7 +29,7 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 | `s0 plan` | Dry-run simulation of sanitization method and NIST tier | **Safe (Read-Only)** | Pre-flight inspection; writes zero bytes |
 | `s0 image` / `s0 clone` | Bit-stream disk acquisition & cloning with dual SHA-256/MD5 | **Safe (Non-Destructive for image; High-Risk if cloning)** | Forensic preservation and physical duplication |
 | `s0 carve` | Reconstruct deleted files from raw disk images or partitions | **Safe (Read-Only from source)** | Post-incident recovery of deleted evidence |
-| `s0 audit list` / `verify` | Inspect audit ledger and verify SHA-256 blockchain chain | **Safe (Read-Only)** | Validating tamper-evidence of past laboratory actions |
+| `s0 audit list` / `verify` | Inspect audit ledger and verify SHA-256 hash chain | **Safe (Read-Only)** | Validating tamper-evidence of past laboratory actions |
 | `s0 verify` | Offline verification of Ed25519-signed certificate JSON | **Safe (Read-Only)** | Zero-trust verification of compliance reports |
 | `s0 keygen` | Generate Ed25519 keypair for an authority or operator | **Safe (Creates Files)** | Establishing laboratory cryptographic authority |
 | `s0 upgrade` | Pull latest release from GitHub and rebuild packages | **Maintenance** | Upgrading local toolchain and dependencies |
@@ -169,7 +169,7 @@ After generating any certificate or ledger entry, verify mathematical continuity
 # Verify certificate offline against authority public key
 s0 verify /evidence/certs/certificate_a1b2c3d4.json --key /path/to/authority_public.pem
 
-# Verify unbroken continuity of the SQLite blockchain ledger
+# Verify unbroken continuity of the SQLite hash-chained ledger
 s0 audit verify
 ```
 

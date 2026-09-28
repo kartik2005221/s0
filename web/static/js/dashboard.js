@@ -1167,7 +1167,7 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
   }, 600);
 }
 
-// --- Module 4: Blockchain Audit Ledger ---
+// --- Module 4: Hash-Chained Audit Ledger ---
 async function loadAuditBlocks() {
   try {
     const res = await fetch("/api/audit/blocks?limit=150");

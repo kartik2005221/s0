@@ -70,7 +70,7 @@ s0/
 │   ├── wipe/                     # Hardware erasure waterfalls & cluster overwrite
 │   ├── carver/                   # 5 recovery engines (signatures, ext4, NTFS, FAT)
 │   ├── imager/                   # Bit-stream disk acquisition & cloning
-│   └── audit/                    # SQLite SHA-256 blockchain audit ledger
+│   └── audit/                    # SQLite SHA-256 hash-chained audit ledger
 ├── web/                          # Local web dashboard console (FastAPI)
 ├── windows/                      # Native Windows Win32 ctypes & ADS drivers
 ├── macos/                        # Native macOS Darwin APFS & F_FULLFSYNC drivers

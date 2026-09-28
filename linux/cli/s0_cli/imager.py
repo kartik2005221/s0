@@ -316,7 +316,7 @@ def acquire_image(
 
     manifest_file.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
 
-    # 4. Optional Ed25519 Certificate Signing & Audit Blockchain Recording
+    # 4. Optional Ed25519 Certificate Signing & Audit Hash-Chain Recording
     signed_cert = None
     audit_ledger_rec = False
     audit_ledger_err = None
@@ -373,7 +373,7 @@ def acquire_image(
                 signed_cert = cert_mod.sign_certificate(cert_dict, priv)
                 cert_file = out_dir_p / f"certificate_{signed_cert['cert_uuid']}.json"
                 cert_file.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
-                # Record to blockchain audit ledger
+                # Record to hash-chained audit ledger
                 try:
                     record_audit_event(signed_cert, operation_type=method_name, private_key=key_file)
                     audit_ledger_rec = True

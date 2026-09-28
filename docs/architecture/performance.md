@@ -91,8 +91,8 @@ All cryptographic operations are executed in-process with minimal overhead. The 
 | **Ed25519 Signature Generation** | RFC 8032 Curve25519 Private Key | **0.15 – 0.45 ms** | **2,000 – 6,700 sigs/sec** | Executed once per certificate |
 | **Ed25519 Signature Verification**| RFC 8032 Curve25519 Public Key | **0.20 – 0.85 ms** | **1,100 – 5,000 verifs/sec** | Instantaneous in Web Portal & CLI |
 | **Sampled Post-Wipe Readback** | 64 samples × 4,096 bytes readback | **0.90 – 1.50 ms** | **> 40,000 samples/sec** | < 0.01% of wipe run time |
-| **Blockchain Block Insertion** | SQLite3 WAL + SHA-256 + Ed25519 Sign | **0.60 – 1.00 ms** | **1,000 – 1,600 blocks/sec** | Append-only transaction per event |
-| **Blockchain Continuity Audit** | 100 blocks re-hashed from genesis + Ed25519 | **14.0 – 20.0 ms** | **1,900 – 2,500 blocks/sec** | Instant full-ledger integrity audit |
+| **Audit Block Insertion** | SQLite3 WAL + SHA-256 + Ed25519 Sign | **0.60 – 1.00 ms** | **1,000 – 1,600 blocks/sec** | Append-only transaction per event |
+| **Audit Chain Continuity Audit** | 100 blocks re-hashed from genesis + Ed25519 | **14.0 – 20.0 ms** | **1,900 – 2,500 blocks/sec** | Instant full-ledger integrity audit |
 
 ---
 

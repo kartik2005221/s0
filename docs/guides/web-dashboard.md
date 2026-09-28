@@ -21,7 +21,7 @@ graph TD
     CLI[s0 Command-Line Interface] --> CORE[s0 Core & Methods Engine]
     WEB[FastAPI Web Console 127.0.0.1:8669] --> CORE
     
-    CORE --> LEDGER[(Shared Blockchain Audit Ledger ~/.s0/s0_audit.db)]
+    CORE --> LEDGER[(Shared Hash-Chained Audit Ledger ~/.s0/s0_audit.db)]
     CORE --> CERTS[Signed Certificates .json / .pdf / .qr.png]
 ```
 

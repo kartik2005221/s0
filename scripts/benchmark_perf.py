@@ -167,7 +167,7 @@ def bench_ed25519(iterations: int = 500) -> dict:
 
 
 def bench_audit_ledger(block_count: int = 100) -> dict:
-    """Benchmark SQLite blockchain audit ledger insertion and chain verification."""
+    """Benchmark SQLite hash-chained audit ledger insertion and chain verification."""
     priv = crypto.generate_private_key()
     pub = priv.public_key()
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -349,7 +349,7 @@ def print_report(res: dict) -> None:
     print(f"   Sign Latency   : {ed['sign']['avg_ms']:.4f} ms ({ed['sign']['ops_sec']:,.0f} signatures/sec)")
     print(f"   Verify Latency : {ed['verify']['avg_ms']:.4f} ms ({ed['verify']['ops_sec']:,.0f} verifications/sec)")
     print("-" * 78)
-    print("3. BLOCKCHAIN AUDIT LEDGER (SQLite + SHA-256 + Ed25519)")
+    print("3. HASH-CHAINED AUDIT LEDGER (SQLite + SHA-256 + Ed25519)")
     al = res["audit_ledger"]
     print(f"   Blocks Tested  : {al['block_count']} chained blocks")
     print(f"   Block Insert   : {al['insert']['avg_ms']:.3f} ms/block ({al['insert']['ops_sec']:,.1f} blocks/sec)")

@@ -1181,7 +1181,7 @@ s0 uninstall --yes --keep-audit
 | Option | Short | Description |
 |---|---|---|
 | `--yes` | `-y` | Skip interactive confirmation prompt |
-| `--keep-audit` | | Back up blockchain audit ledger to `~/s0_audit.db.bak` before removal |
+| `--keep-audit` | | Back up hash-chained audit ledger to `~/s0_audit.db.bak` before removal |
 {% endtab %}
 {% endtabs %}
 
@@ -1391,7 +1391,7 @@ sudo s0 web [--port PORT] [--host HOST] [--no-browser]
 - **Drive Eraser Tab:** Visual block device selection, real-time overwrite / sanitize progress bar, temperature tracking, and instant signed certificate download.
 - **File Eraser Tab:** Drag-and-drop batch folder/file path selection, NIST pattern picker, and instant metadata sanitization.
 - **Forensic Carver Tab:** Raw image source browsing, file extension filtering, custom signature hex editor, and interactive recovered artifacts inspector.
-- **Blockchain Ledger Tab:** Live block timeline, block detail inspector, and one-click cryptographic hash-chain verification.
+- **Audit Ledger Tab:** Live block timeline, block detail inspector, and one-click cryptographic hash-chain verification.
 
 ---
 

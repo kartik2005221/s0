@@ -1,4 +1,4 @@
-"""s0 Cryptographic Audit Ledger (Blockchain Hash-Chained Audit Log).
+"""s0 Cryptographic Audit Ledger (Hash-Chained Audit Log).
 
 Implements an immutable local append-only audit trail anchored by SHA-256 block hash chaining.
 """

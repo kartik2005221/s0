@@ -262,7 +262,7 @@ Every s0 operation — sanitization or forensic — records a tamper-evident aud
 | `method` | Sanitization or acquisition method used |
 | `confidence_score` | (Forensic carving only) Per-artifact confidence |
 
-These records are committed to s0's **blockchain-backed ledger**, providing an append-only, cryptographically-linked chain of custody that is independently verifiable.
+These records are committed to s0's **hash-chained audit ledger**, providing an append-only, cryptographically-linked chain of custody that is independently verifiable.
 
 ### 3. Non-Repudiation via Ed25519 Signatures
 
@@ -293,7 +293,7 @@ The Digital Personal Data Protection Act 2023 (DPDPA) is India's primary data pr
 |---|---|
 | Verifiable erasure of personal data | Purge-tier sanitization with post-wipe verification |
 | Record of destruction | Ed25519-signed certificate with device serial, method, timestamps |
-| Audit trail | Blockchain-committed audit log with operator identity |
+| Audit trail | Hash-chain-committed audit log with operator identity |
 | Demonstrable completeness | Bytes-processed field + post-wipe read-back results in certificate |
 
 {% hint style="info" %}

@@ -290,7 +290,7 @@ s0 audit list --limit 20
 
 Output:
 ```
-==> S0 Blockchain Cryptographic Audit Ledger (24 blocks)
+==> S0 Hash-Chained Cryptographic Audit Ledger (24 blocks)
 IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BLOCK_HASH      
 24    2026-09-09T14:22:15Z DRIVE_ERASE    analyst-42     S464NX0M789012A      4b227777d4dd1fc6...
 23    2026-09-09T12:05:30Z FILE_ERASE     investigator   confidential_memo    88c019a2e41bf901...
@@ -306,7 +306,7 @@ s0 audit verify
 
 Expected Output:
 ```
-==> Auditing Blockchain Cryptographic Hash Chain...
+==> Auditing Hash-Chained Cryptographic Ledger...
 Chain Status : [OK] VALID & CONTINUOUS
 Blocks Tested: 24
 Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
