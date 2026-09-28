@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# S0 (Sector Zero) — Resilient One-Line Installer for Linux & macOS
+# S0 (Sector Zero) — Resilient One-Line Installer for Linux/MacOS
 # Usage: curl -fsSL https://s0-install.pages.dev/sh | bash
 set -euo pipefail
 

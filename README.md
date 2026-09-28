@@ -62,7 +62,7 @@ Consult the [Documentation Legal FAQ](https://s0-docs.gitbook.io/faq/) for respo
 
 Full installation instructions and verification guides are hosted at [s0-install.pages.dev](https://s0-install.pages.dev/).
 
-### Linux & macOS
+### Linux/MacOS
 ```bash
 curl -fsSL https://s0-install.pages.dev/sh | bash
 ```

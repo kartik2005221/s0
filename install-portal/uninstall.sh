@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# S0 (Sector Zero) — Resilient Uninstaller for Linux & macOS
+# S0 (Sector Zero) — Resilient Uninstaller for Linux/MacOS
 # Usage: curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
 set -euo pipefail
 

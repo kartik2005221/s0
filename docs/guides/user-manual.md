@@ -24,7 +24,7 @@ The **s0 (Sector Zero)** suite unifies offensive and defensive storage operation
 ### 2.1 Installation Across Operating Systems
 
 {% tabs %}
-{% tab title="Linux & macOS" %}
+{% tab title="Linux/MacOS" %}
 ```bash
 curl -fsSL https://s0-install.pages.dev/sh | bash
 s0 --version
@@ -36,7 +36,7 @@ irm https://s0-install.pages.dev/ps1 | iex
 s0 --version
 ```
 {% endtab %}
-{% tab title="Windows (Command Prompt)" %}
+{% tab title="Windows (CMD)" %}
 ```cmd
 curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 s0 --version
@@ -63,7 +63,7 @@ s0 upgrade
 s0 upgrade --force
 ```
 {% endtab %}
-{% tab title="Linux & macOS" %}
+{% tab title="Linux/MacOS" %}
 ```bash
 curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 ```
@@ -73,7 +73,7 @@ curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 irm https://s0-install.pages.dev/upgrade-ps1 | iex
 ```
 {% endtab %}
-{% tab title="Windows (Command Prompt)" %}
+{% tab title="Windows (CMD)" %}
 ```cmd
 curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 ```

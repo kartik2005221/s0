@@ -66,7 +66,7 @@ s0 is a certified digital forensic sanitization and recovery tool. You must **on
 ## 2. Installation
 
 {% tabs %}
-{% tab title="Linux & macOS" %}
+{% tab title="Linux/MacOS" %}
 Run the one-line installer in Bash or Zsh. It verifies prerequisites, sets up an isolated Python virtual environment at `~/.s0`, and registers the `s0` executable in your `PATH`:
 
 ```bash
@@ -78,7 +78,7 @@ curl -fsSL https://s0-install.pages.dev/sh | bash
 On macOS, the installer automatically detects Apple Silicon (M1–M4) and Intel architectures. Ensure Python 3.10+ is installed (e.g. via Homebrew: `brew install python3`).
 {% endhint %}
 {% endtab %}
-{% tab title="Windows — PowerShell" %}
+{% tab title="Windows (PowerShell)" %}
 Open **PowerShell** (run as administrator for direct physical drive access):
 
 ```powershell
@@ -93,7 +93,7 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 {% endhint %}
 {% endtab %}
-{% tab title="Windows — Command Prompt" %}
+{% tab title="Windows (CMD)" %}
 Open **Command Prompt**:
 
 ```cmd
@@ -164,13 +164,26 @@ s0 upgrade
 ```
 
 Alternatively, re-run the fast upgrade script:
-```bash
-# Linux / macOS
-curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 
-# Windows PowerShell
+{% tabs %}
+{% tab title="Linux/MacOS" %}
+```bash
+curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
+```
+{% endtab %}
+
+{% tab title="Windows (PowerShell)" %}
+```powershell
 irm https://s0-install.pages.dev/upgrade-ps1 | iex
 ```
+{% endtab %}
+
+{% tab title="Windows (CMD)" %}
+```cmd
+curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
+```
+{% endtab %}
+{% endtabs %}
 
 ### Uninstallation
 To cleanly remove `s0`, its virtual environment, and PATH symlinks:
@@ -488,19 +501,19 @@ For classified environments with no internet access, copy the `verification-port
 ## 10. Uninstallation
 
 {% tabs %}
-{% tab title="Linux & macOS" %}
+{% tab title="Linux/MacOS" %}
 ```bash
 curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
 ```
 
 This removes the `s0` launcher from `PATH` and removes the local virtual environment. Your audit database at `~/.s0/s0_audit.db` is **not** deleted by default — preserve it for chain-of-custody records.
 {% endtab %}
-{% tab title="Windows — PowerShell" %}
+{% tab title="Windows (PowerShell)" %}
 ```powershell
 irm https://s0-install.pages.dev/uninstall-ps1 | iex
 ```
 {% endtab %}
-{% tab title="Windows — Command Prompt" %}
+{% tab title="Windows (CMD)" %}
 ```cmd
 curl -fsSL https://s0-install.pages.dev/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
 ```

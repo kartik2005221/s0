@@ -43,7 +43,7 @@ sudo s0 web --port 8669 --no-browser
 ```
 
 {% tabs %}
-{% tab title="Script Runner (Linux & macOS)" %}
+{% tab title="Script Runner (Linux/MacOS)" %}
 ```bash
 # Start via standalone script runner
 sudo bash web/run.sh

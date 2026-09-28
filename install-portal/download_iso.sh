@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# S0 (Sector Zero) — Download Pre-Built Live ISO for Linux & macOS
+# S0 (Sector Zero) — Download Pre-Built Live ISO for Linux/MacOS
 # Usage:
 #   curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash
 # ==============================================================================
@@ -172,7 +172,7 @@ else
     echo -e "${YELLOW}⚠️  [WARNING] Official checksum asset not found on release; manual verification recommended.${NC}"
 fi
 
-echo -e "\n${CYAN}==> Flashing to USB Drive on Linux / macOS:${NC}"
+echo -e "\n${CYAN}==> Flashing to USB Drive on Linux/MacOS:${NC}"
 echo -e "   1. Insert a USB flash drive (>= 4 GB)."
 echo -e "   2. Identify the target drive: ${CYAN}lsblk${NC} (Linux) or ${CYAN}diskutil list${NC} (macOS)"
 echo -e "   3. Write image to USB (replace /dev/sdX with target drive):"

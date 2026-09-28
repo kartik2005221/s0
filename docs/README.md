@@ -90,7 +90,7 @@ The installer runs on Linux, macOS, and Windows. No root is required for install
 {% endhint %}
 
 {% tabs %}
-{% tab title="Linux / macOS" %}
+{% tab title="Linux/MacOS" %}
 ```bash
 # 1. Install s0
 curl -fsSL https://s0-install.pages.dev/sh | bash
@@ -110,6 +110,22 @@ sudo s0 wipe --target /dev/sdb --operator "analyst-01" --organization "Forensics
 ```powershell
 # 1. Install s0
 irm https://s0-install.pages.dev/ps1 | iex
+
+# 2. Inventory drives
+s0 list
+
+# 3. Dry-run plan
+s0 plan --target \\.\PhysicalDrive1
+
+# 4. Wipe drive
+s0 wipe --target \\.\PhysicalDrive1 --operator "analyst-01" --organization "Forensics Lab"
+```
+{% endtab %}
+
+{% tab title="Windows (CMD)" %}
+```cmd
+# 1. Install s0
+curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 
 # 2. Inventory drives
 s0 list

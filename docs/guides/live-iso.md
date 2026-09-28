@@ -151,7 +151,7 @@ Fedora uses RPM packages and does not have Debian's `live-build` natively in `dn
 sudo dnf install -y podman qemu-system-x86 qemu-img
 ```
 {% endtab %}
-{% tab title="Docker (Universal Linux / macOS)" %}
+{% tab title="Docker (Universal Linux/MacOS)" %}
 
 ```bash
 # Requires Docker Engine or Docker Desktop
@@ -319,7 +319,7 @@ If you do not have Docker or local build tools installed, you can download the l
 irm https://s0-install.pages.dev/download-iso-ps1 | iex
 ```
 {% endtab %}
-{% tab title="Linux & macOS (Bash)" %}
+{% tab title="Linux/MacOS (Bash)" %}
 ```bash
 # Download official verified release with SHA-256 integrity check
 curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash
