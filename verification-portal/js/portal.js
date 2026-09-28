@@ -640,7 +640,7 @@ document.getElementById("btnVerifyCustomKey").addEventListener("click", function
       .then(function(res) { return res.ok ? res.json() : null; })
       .then(function(cfg) {
         if (!cfg) return;
-        var docLink = document.querySelector(".site-header-nav a[href*='docs']");
+        var docLink = document.querySelector(".site-header-right a[href*='docs'], .site-header-nav a[href*='docs']");
         if (docLink && cfg.documentation_url) docLink.href = cfg.documentation_url;
         var ghLink = document.querySelector(".nav-github");
         if (ghLink && cfg.github_url) ghLink.href = cfg.github_url;

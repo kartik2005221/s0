@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src blob: 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src blob: 'self'; manifest-src 'self';">
   <title>s0 — Cryptographic Certificate Verification Portal</title>
   <script>
     (function() {
@@ -11,9 +11,11 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
+  <!-- Favicons and App Icons -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/favicons/s0-dark/apple-touch-icon.png">
+  <link rel="manifest" href="assets/favicons/s0-dark/site.webmanifest">
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="css/portal.css">
 </head>
@@ -21,28 +23,27 @@
 
 <header class="site-header">
   <div class="site-header-inner">
-    <a href="/" class="site-logo-link">
-      <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="22" height="22">
+    <a href="https://s0-site.pages.dev/" class="site-logo-link" title="s0 — Sector Zero Home">
+      <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
       <span class="site-logo-title">s0 — Sector Zero</span>
       <span class="site-logo-badge">Verification Portal</span>
     </a>
-    <nav class="site-header-nav">
+    <div class="site-header-right">
+      <a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository">
+        <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>kartik2005221/s0</span>
+      </a>
       <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
       </button>
-      <a href="https://s0-docs.gitbook.io/" target="_blank" class="nav-btn">Documentation</a>
-      <a href="https://s0-install.pages.dev/" target="_blank" class="nav-btn nav-btn-primary">Install s0</a>
-      <a href="https://github.com/kartik2005221/s0" target="_blank" class="nav-btn nav-github" aria-label="GitHub Repository">
-        <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span>kartik2005221/s0</span>
-      </a>
       <div class="sys-pill">
         <div class="dot-live"></div>
         <span>OFFLINE AIR-GAPPED VERIFIER</span>
       </div>
-    </nav>
+    </div>
   </div>
 </header>
 
@@ -250,11 +251,68 @@ MCowBQYDK2VwAyEA...
   </div>
 </div>
 
-<footer class="portal-footer">
+<!-- Footer with Extended Documentation Links -->
+<footer class="site-footer">
   <div class="footer-inner">
-    <div>Made by <a href="https://github.com/kartik2005221" target="_blank">@kartik2005221</a> · <a href="https://s0-docs.gitbook.io/" target="_blank">Documentation</a> · <a href="https://s0-install.pages.dev/" target="_blank">Install Portal</a></div>
-    <div style="font-size: 0.78rem; color: var(--text-muted);">
-      ⚖ Legal: s0 is a certified forensic sanitization suite. Only operate on media you legally own or have authorization to verify.
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-brand-title">
+          <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" width="22" height="22">
+          <span>s0 — Sector Zero</span>
+        </div>
+        <p class="footer-brand-desc">
+          Unified digital forensic media sanitization, offensive evidence carving, bit-stream acquisition &amp; cryptographic audit suite.
+        </p>
+      </div>
+
+      <div class="footer-links-group">
+        <!-- Documentation Column -->
+        <div class="footer-col">
+          <h5>Documentation</h5>
+          <ul>
+            <li><a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/USER_MANUAL/" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/ARCHITECTURE/" target="_blank" rel="noopener">System Architecture ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/cli-reference/" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/forensic-carving-guide/" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/COMPLIANCE/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/agentic-ai/" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Ecosystem Column -->
+        <div class="footer-col">
+          <h5>Ecosystem</h5>
+          <ul>
+            <li><a href="https://s0-site.pages.dev/" target="_blank" rel="noopener">Official Website ↗</a></li>
+            <li><a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener">Verification Portal ↗</a></li>
+            <li><a href="https://s0-install.pages.dev/" target="_blank" rel="noopener">Installation Portal ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/CANONICAL_JSON/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Repository Column -->
+        <div class="footer-col">
+          <h5>Repository</h5>
+          <ul>
+            <li><a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener">GitHub (kartik2005221/s0) ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Releases &amp; Changelogs ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/blob/main/LICENSE" target="_blank" rel="noopener">MIT License ↗</a></li>
+            <li><a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221 ↗</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-legal-notice">
+        ⚖ <strong>Legal Advisory:</strong> s0 is a certified digital forensic tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+      </div>
+      <div>
+        Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License
+      </div>
     </div>
   </div>
 </footer>
