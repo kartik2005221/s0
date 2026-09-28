@@ -554,6 +554,7 @@ def cmd_wipe(args) -> int:
             print(f"method          : OVERWRITE_ZERO_1PASS (macOS Native)")
             print(f"nist category   : Clear")
             print(f"summary         : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
+            print(f"hpa/dco         : Not supported on macOS (requires Linux with hdparm)")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (macOS Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
