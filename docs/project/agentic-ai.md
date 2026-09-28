@@ -42,7 +42,6 @@ flowchart TD
 An agent must **never** execute `s0 wipe` directly. It must first run:
 
 ```bash
-# Mandatory dry run: inspect selected method, NIST category, and warnings
 s0 plan --target /dev/sdb
 ```
 
@@ -60,7 +59,6 @@ For large drives, whole-disk wipes and carving scans take time. The agent must c
 Following any operation, the agent must automatically verify the resulting cryptographic certificate:
 
 ```bash
-# Verify the newly minted certificate against trusted authority key
 s0 verify ./certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
 ```
 
@@ -71,7 +69,6 @@ s0 verify ./certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
 `s0` provides a native, first-class agentic skill specification adhering to the **Skill Creator** progressive disclosure standard, located in the repository root at:
 
 ```text
-# Main agentic skill definition
 skills/s0-forensics/SKILL.md
 ```
 

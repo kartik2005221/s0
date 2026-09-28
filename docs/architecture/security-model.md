@@ -28,7 +28,6 @@ The following table maps each identified threat to the specific control s0 uses 
 Ed25519 keys are generated locally. The private key never leaves the forensic workstation.
 
 ```bash
-# Generate local Ed25519 keypair for forensic authority
 s0 keygen --out-dir ./my_lab_key --name authority
 ```
 
@@ -151,11 +150,9 @@ When s0 (or any software) writes zeros over an LBA range, the FTL may:
 **What to do instead:** Use the drive's own secure erase command, which instructs the FTL controller to erase all cells including overprovisioned and spare blocks:
 
 ```bash
-# NVMe
 nvme format /dev/nvme0n1 --ses=1        # Cryptographic erase (if supported)
 nvme sanitize /dev/nvme0n1 --sanact=4   # Block erase sanitize
 
-# SATA SSD (ATA Secure Erase)
 hdparm --security-set-pass NULL /dev/sda
 hdparm --security-erase NULL /dev/sda
 ```

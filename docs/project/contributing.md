@@ -96,7 +96,6 @@ Adding support for a new file format to **Module 2 (File Carver)** requires addi
 ```python
 from .signatures import FileSignature, SIGNATURES
 
-# Example: Adding WebP Image format support
 SIGNATURES.append(
     FileSignature(
         name="WebP Image",
@@ -130,7 +129,6 @@ class CustomPurgeMethod(Method):
     nist_category = "Purge"
 
     def probe(self, target: Target) -> Candidate:
-        # Check if hardware supports this method
         if self._is_supported(target):
             return Candidate(method=self, available=True, reason="Hardware purge supported")
         return Candidate(method=None, available=False, reason="Hardware controller unsupported")
@@ -145,7 +143,6 @@ class CustomPurgeMethod(Method):
         )
 
     def run(self, target: Target, progress_cb) -> MethodResult:
-        # Execute sanitization and return MethodResult
         ...
         return MethodResult(status="success", bytes_processed=target.capacity_bytes)
 ```
@@ -159,10 +156,8 @@ Register your method in `s0_cli/methods/__init__.py` and add its identifier to `
 Always ensure all test suites pass before submitting a pull request:
 
 ```bash
-# Run the complete test suite with verbose output
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
-# Run with test coverage report
 .venv/bin/pytest --cov=s0_core --cov=s0_cli --cov-report=term-missing
 ```
 

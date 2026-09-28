@@ -132,7 +132,6 @@ export PATH="/path/to/s0/.venv/bin:$PATH"
 Confirm the installation completed successfully:
 
 ```bash
-# Print installed version string
 s0 --version
 ```
 
@@ -146,7 +145,6 @@ s0 2.4.3
 **Shell not finding s0?**
 If your shell reports `command not found`, open a **new terminal window** first — the installer modifies `PATH` in your shell profile, which only takes effect in new sessions. If the issue persists, check that the install location (e.g. `/usr/local/bin` or `~/.local/bin`) is in your `PATH`:
 ```bash
-# Inspect PATH entries for s0 binaries
 echo $PATH | tr ':' '\n' | grep -E "local/bin|s0"
 ```
 {% endhint %}
@@ -159,7 +157,6 @@ echo $PATH | tr ':' '\n' | grep -E "local/bin|s0"
 To pull the latest release, verify dependencies, and update in-place:
 
 ```bash
-# In-place terminal upgrade
 s0 upgrade
 ```
 
@@ -189,10 +186,8 @@ curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgr
 To cleanly remove `s0`, its virtual environment, and PATH symlinks:
 
 ```bash
-# Interactive uninstallation (prompts for confirmation)
 s0 uninstall
 
-# Non-interactive with audit ledger backup
 s0 uninstall --yes --keep-audit
 ```
 
@@ -210,7 +205,6 @@ This walkthrough sanitizes a USB drive or block device. Follow the three steps i
 ### Step 1 — Discover attached devices
 
 ```bash
-# List all attached storage devices
 s0 list
 ```
 
@@ -238,7 +232,6 @@ PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL 
 Before writing a single byte, run `plan` to see exactly which sanitization method s0 will apply:
 
 ```bash
-# Dry run: view selected sanitization strategy without modifying data
 s0 plan --target /dev/sdb
 ```
 
@@ -264,7 +257,6 @@ For NVMe drives, the firmware-level `NVME_SANITIZE` command completes in under 3
 ### Step 3 — Execute the wipe
 
 ```bash
-# Execute certified physical media sanitization
 sudo s0 wipe --target /dev/sdb --yes \
     --operator "analyst-01" \
     --organization "Forensic Lab"
@@ -278,14 +270,12 @@ Block device access requires elevated privileges. On Linux/macOS, prefix with `s
 A live progress bar streams to the terminal throughout the operation:
 
 ```
-# Real-time ANSI progress stream
 [s0 wipe]  ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  18.4 MB/s  ETA 05m 42s  44°C
 ```
 
 When complete:
 
 ```
-# Sanitization completion summary
 [s0 wipe]  [OK]  Sanitization complete
 [s0 wipe]  Method   : OVERWRITE_ZERO_1PASS (NIST SP 800-88 Clear)
 [s0 wipe]  Verified : 64-block sampled readback — PASS
@@ -308,10 +298,8 @@ When complete:
 The engine overwrites file extents in-place at the cluster level, resets inode/metadata timestamps to Unix epoch zero (1970-01-01), purges NTFS Alternate Data Streams (on Windows), flushes hardware caches, and scrambles directory entry filenames before unlinking.
 
 ```bash
-# Single file or directory (auto-detected via --target)
 s0 wipe --target /path/to/classified_report.pdf
 
-# Batch files and directories (via --targets)
 s0 wipe \
     --targets /path/to/classified_report.pdf /path/to/sensitive_folder/ \
     --passes 1
@@ -357,7 +345,6 @@ Carving against an actively running host operating system drive is strongly disc
 {% endhint %}
 
 ```bash
-# Extract deleted forensic evidence from raw image file
 s0 carve \
     --target /evidence/suspect_drive.raw \
     --out-dir ./recovered_evidence \
@@ -445,10 +432,8 @@ By default, certificates are written to the **current working directory** from w
 Every operation also appends a cryptographic block to `~/.s0/s0_audit.db`:
 
 ```bash
-# View the 25 most recent operations
 s0 audit list --limit 25
 
-# Verify the entire chain has not been tampered with
 s0 audit verify
 ```
 
@@ -464,7 +449,6 @@ You have three independent ways to verify any s0 certificate, all of which work 
 {% tab title="CLI" %}
 
 ```bash
-# Verify certificate signature against demo authority key
 s0 verify certificate_a3f19c22.json --key core/keys/demo_issuer_public.pem
 ```
 

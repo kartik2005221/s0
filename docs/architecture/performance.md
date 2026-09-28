@@ -132,12 +132,9 @@ Unlike legacy forensic utilities that buffer entire disk images or carving table
 To reproduce all empirical metrics on your specific target hardware, execute the automated benchmark harness committed in `scripts/benchmark_perf.py`:
 
 ```bash
-# Run standard empirical performance benchmark suite
 python scripts/benchmark_perf.py
 
-# Run quick verification test
 python scripts/benchmark_perf.py --quick
 
-# Output machine-readable JSON metrics for CI/CD telemetry
 python scripts/benchmark_perf.py --json
 ```

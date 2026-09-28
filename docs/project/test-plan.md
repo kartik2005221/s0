@@ -77,19 +77,15 @@ graph TD
 To execute the complete QA verification pipeline:
 
 ```bash
-# Execute master build, venv setup, and comprehensive test suite
 bash scripts/build_all.sh
 ```
 
 ### Targeted Pytest Execution
 ```bash
-# Run all automated tests with verbose output
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
-# Run only cryptographic core tests
 .venv/bin/pytest core/tests -v
 
-# Run only file carver tests
 .venv/bin/pytest linux/cli/tests/test_carver.py linux/cli/tests/test_ntfs_carver.py -v
 ```
 
@@ -97,9 +93,7 @@ bash scripts/build_all.sh
 To execute real-world disk sanitization and evidence extraction scenarios:
 
 ```bash
-# 1. Drive Eraser End-to-End Demo (Plants markers, wipes, verifies 0 hits)
 S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 
-# 2. NTFS Structure Carving Demo (Builds NTFS image, deletes files, carves via $MFT)
 bash linux/cli/demo_e2e_ntfs.sh
 ```

@@ -175,8 +175,6 @@ USB-attached flash drives typically report neither SANITIZE support nor ATA secu
 After every erasure, s0 performs a **sampled readback** to provide statistical assurance that the wipe completed:
 
 ```python
-# 64 blocks sampled uniformly across the device address space
-# 4096 bytes read per block → 262,144 bytes verified total
 SAMPLE_COUNT = 64
 SAMPLE_BYTES = 4096
 
@@ -584,10 +582,8 @@ Float-to-string formatting is the single most common source of inter-implementat
 {% endhint %}
 
 ```python
-# canonical.py — core sorting rule (simplified)
 def canonicalize(obj: Any) -> bytes:
     if isinstance(obj, dict):
-        # Keys sorted by Unicode code point, recursively
         return b"{" + b",".join(
             canonicalize(k) + b":" + canonicalize(v)
             for k, v in sorted(obj.items())
@@ -598,7 +594,6 @@ def canonicalize(obj: Any) -> bytes:
         return json.dumps(obj, ensure_ascii=False).encode("utf-8")
     elif isinstance(obj, int) and not isinstance(obj, bool):
         return str(obj).encode("utf-8")
-    # bool and None handled separately
     ...
 ```
 

@@ -11,7 +11,6 @@
 ## Command Hierarchy
 
 ```bash
-# Top-level entrypoint
 s0 [--version] <subcommand> [flags]
 ```
 
@@ -60,7 +59,6 @@ List all block-device targets visible to the system, with metadata useful for se
 {% tab title="Synopsis" %}
 
 ```bash
-# Discover attached block devices and forensic images
 s0 list [--output-format {text,json}]
 ```
 {% endtab %}
@@ -104,7 +102,6 @@ options:
 
 **Human-readable table (default)**
 ```bash
-# List all physical block devices and storage volumes
 s0 list
 ```
 ```text
@@ -116,7 +113,6 @@ PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL 
 
 **JSON output for scripting**
 ```bash
-# Extract unmounted storage targets using jq
 s0 list --output-format json | jq '.[] | select(.mounted == false)'
 ```
 ```json
@@ -136,7 +132,6 @@ s0 list --output-format json | jq '.[] | select(.mounted == false)'
 
 **Filter unmounted drives and feed into a wipe loop**
 ```bash
-# Batch process all unmounted secondary drives
 TARGETS=$(s0 list --output-format json | jq -r '.[] | select(.mounted == false) | .path')
 for DEV in $TARGETS; do
     s0 wipe --target "$DEV" --yes --operator "batch-job-01"
@@ -160,7 +155,6 @@ Perform a complete dry-run analysis: s0 inspects the target, selects the optimal
 {% tab title="Synopsis" %}
 
 ```bash
-# Dry-run analysis and method inspection
 s0 plan --target PATH \
         [--passes N] \
         [--pattern zero|random] \
@@ -230,7 +224,6 @@ options:
 
 **Inspect an NVMe drive**
 ```bash
-# Plan sanitization method for high-speed NVMe storage
 s0 plan --target /dev/nvme0n1
 ```
 ```text
@@ -254,13 +247,11 @@ s0 plan --target /dev/nvme0n1
 
 **Force software-only plan with 3 random passes**
 ```bash
-# Force 3-pass software random overwrite
 s0 plan --target /dev/sda --no-firmware --passes 3 --pattern random
 ```
 
 **Promote BLKDISCARD to Purge with justification**
 ```bash
-# Document deterministic TRIM evidence for Purge certification
 s0 plan --target /dev/sdb \
     --discard-purge-justification "Manufacturer TLC NAND with FTL-backed discard; confirmed in datasheet Rev.C §4.2"
 ```
@@ -292,7 +283,6 @@ The primary sanitization engine. `s0 wipe` executes the method selected by the p
 {% tab title="Synopsis" %}
 
 ```bash
-# Execute drive sanitization with verification and certificate issuance
 s0 wipe --target PATH \
         [--yes] \
         [--key PEM] \
@@ -396,13 +386,11 @@ options:
 
 **Minimal interactive wipe**
 ```bash
-# Prompt operator to type WIPE before sanitizing
 sudo s0 wipe --target /dev/sdb
 ```
 
 **Non-interactive with operator metadata**
 ```bash
-# Non-interactive sanitization with accredited lab metadata
 sudo s0 wipe \
     --target /dev/sda \
     --yes \
@@ -413,7 +401,6 @@ sudo s0 wipe \
 
 **3-pass random overwrite, software-only (e.g. USB thumb drive)**
 ```bash
-# Multi-pass overwrite for legacy USB storage
 sudo s0 wipe \
     --target /dev/sdc \
     --no-firmware \
@@ -424,7 +411,6 @@ sudo s0 wipe \
 
 **JSON output for CI/CD integration**
 ```bash
-# Capture structured event stream during headless execution
 sudo s0 wipe --target /dev/nvme0n1 --yes --json 2>&1 | tee wipe.log
 ```
 ```json
@@ -437,14 +423,12 @@ sudo s0 wipe --target /dev/nvme0n1 --yes --json 2>&1 | tee wipe.log
 
 **Custom QR URL template**
 ```bash
-# Embed private intranet verification route into QR code
 sudo s0 wipe --target /dev/sda --yes \
     --qr-url-template "https://verify.myorg.internal/cert/{cert_uuid}"
 ```
 
 **Demo / test mode with marker planting**
 ```bash
-# Plant test markers and assert zero hits after erasure
 s0 wipe --target disk_image.raw \
     --plant-markers \
     --yes \
@@ -473,7 +457,6 @@ Securely erase individual files and directories with full metadata scrubbing usi
 {% tab title="Synopsis" %}
 
 ```bash
-# Securely erase files and directory trees with metadata scrubbing (auto-detected)
 s0 wipe --targets PATH... \
         [--passes N] \
         [--pattern zero|random] \
@@ -514,13 +497,11 @@ s0 wipe --targets PATH... \
 
 **Erase a single sensitive file**
 ```bash
-# Securely overwrite and unlink a classified report (auto-detected)
 s0 wipe --target /home/user/secret_report.pdf
 ```
 
 **Erase multiple files and an entire directory**
 ```bash
-# Batch sanitize directories and keys with 3 passes
 s0 wipe \
     --targets /tmp/staging/ /var/log/audit.log /home/user/.ssh/id_rsa \
     --passes 3 \
@@ -529,13 +510,11 @@ s0 wipe \
 
 **Erase without generating a certificate (quick cleanup)**
 ```bash
-# Unlink temporary scratch folder without signing overhead
 s0 wipe --targets /tmp/scratch/ --no-certificate
 ```
 
 **Use random pattern and save cert to evidence folder**
 ```bash
-# Execute random pattern wipe and export cert to case evidence
 s0 wipe \
     --targets /data/case_work/temp/ \
     --pattern random \
@@ -565,7 +544,6 @@ Forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition follo
 {% tab title="Synopsis" %}
 
 ```bash
-# Bit-stream forensic disk acquisition and duplication
 s0 image --source SOURCE --destination DESTINATION \
          [--block-size BYTES] [--no-recovery] [--out-dir DIR] \
          [--operator ID] [--organization NAME] [--key PEM] \
@@ -639,7 +617,6 @@ options:
 
 **Acquire evidence drive to raw image with full cryptographic verification**
 ```bash
-# Acquire bit-stream image of seized drive with dual hashing
 sudo s0 image \
     --source /dev/sdb \
     --destination /evidence/case_889/suspect_drive.raw \
@@ -650,7 +627,6 @@ sudo s0 image \
 
 **Physical disk clone (drive duplication)**
 ```bash
-# Duplicate physical drive to forensic clone drive with confirmation bypass
 sudo s0 clone \
     --source /dev/sdb \
     --destination /dev/sdc \
@@ -660,7 +636,6 @@ sudo s0 clone \
 
 **Forensic acquisition from aging disk with 4MB buffer**
 ```bash
-# Fault-tolerant acquisition of degraded disk with bad sector logging
 sudo s0 image \
     --source /dev/sda \
     --destination /mnt/san/evidence/degraded.raw \
@@ -680,7 +655,6 @@ Forensic file carving and recovery from raw disk images or live block devices. `
 {% tab title="Synopsis" %}
 
 ```bash
-# Recover deleted evidence from raw images or physical media
 s0 carve --target PATH \
          --out-dir DIR \
          [--extensions EXT,...] \
@@ -772,7 +746,6 @@ options:
 
 **Carve all supported types from an image**
 ```bash
-# Scan raw forensic image across all 10 supported signatures
 s0 carve \
     --target /evidence/seized_disk.raw \
     --out-dir /evidence/recovered/
@@ -780,7 +753,6 @@ s0 carve \
 
 **Carve only JPEGs and PDFs with high confidence**
 ```bash
-# Extract only high-confidence documents and images from flash media
 s0 carve \
     --target /dev/sdb \
     --out-dir /tmp/carve_out/ \
@@ -790,7 +762,6 @@ s0 carve \
 
 **Full forensic carve with operator identity, skip certificate**
 ```bash
-# Carve evidence with case examiner metadata
 s0 carve \
     --target /evidence/usb_001.img \
     --out-dir /evidence/case_42/recovered/ \
@@ -801,13 +772,11 @@ s0 carve \
 
 **Carve with Custom File Signatures**
 ```bash
-# Supply a JSON file defining proprietary magic bytes header/footer
 s0 carve \
     --target /evidence/suspect_drive.raw \
     --out-dir /evidence/recovered/ \
     --custom-sig ./custom_signatures.json
 
-# Or supply inline JSON directly
 s0 carve \
     --target /evidence/suspect_drive.raw \
     --out-dir /evidence/recovered/ \
@@ -816,7 +785,6 @@ s0 carve \
 
 **Inspect the recovery index**
 ```bash
-# Query carved files with confidence >= 90 using jq
 s0 carve --target disk.raw --out-dir ./out/
 cat ./out/recovery_index.json | jq '.files[] | select(.confidence >= 90)'
 ```
@@ -842,7 +810,6 @@ Display the most recent entries in the audit ledger.
 {% tab title="Synopsis" %}
 
 ```bash
-# View recent cryptographic audit records
 s0 audit list [--limit N]
 ```
 {% endtab %}
@@ -883,7 +850,6 @@ options:
 
 **Show last 50 entries**
 ```bash
-# Enumerate audit history
 s0 audit list
 ```
 ```text
@@ -896,7 +862,6 @@ IDX  TIMESTAMP                OPERATION          OPERATOR              TARGET_ID
 
 **Show last 5 entries**
 ```bash
-# Check the 5 most recent audit records
 s0 audit list --limit 5
 ```
 {% endtab %}
@@ -912,7 +877,6 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 {% tab title="Synopsis" %}
 
 ```bash
-# Verify mathematical continuity of the local blockchain ledger
 s0 audit verify
 ```
 {% endtab %}
@@ -939,7 +903,6 @@ options:
 
 **Verify chain integrity**
 ```bash
-# Execute full blockchain ledger verification
 s0 audit verify
 ```
 ```text
@@ -949,7 +912,6 @@ Verifying 4 audit blocks...
 
 **Detect tampering**
 ```bash
-# Tamper detection output when a database record was altered
 s0 audit verify
 ```
 ```text
@@ -961,7 +923,6 @@ Verifying 4 audit blocks...
 
 **Use in shell scripts**
 ```bash
-# Automated chain health check gate
 if s0 audit verify; then
     echo "Chain intact — proceeding."
 else
@@ -994,7 +955,6 @@ Offline verification of a signed sanitization, acquisition, or carving certifica
 {% tab title="Synopsis" %}
 
 ```bash
-# Offline verification of signed Ed25519 certificates
 s0 verify CERTIFICATE [--key PEM]
 ```
 {% endtab %}
@@ -1038,7 +998,6 @@ options:
 
 **Verify with bundled demo key**
 ```bash
-# Offline verification with default public key
 s0 verify certificate_a1b2c3d4.json
 ```
 ```text
@@ -1052,13 +1011,11 @@ Fingerprint  : sha256:3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f80...
 
 **Verify with a custom authority public key**
 ```bash
-# Offline verification using an accredited institutional authority key
 s0 verify certificate_a1b2c3d4.json --key /etc/s0/authority_public.pem
 ```
 
 **Batch-verify all certificates in a directory**
 ```bash
-# Automated batch verification of all certificates in evidence folder
 for cert in /evidence/certs/*.json; do
     echo -n "$cert: "
     s0 verify "$cert" --key /etc/s0/authority_public.pem \
@@ -1078,7 +1035,6 @@ Generate an Ed25519 keypair for use as a signing authority or per-operator key. 
 {% tab title="Synopsis" %}
 
 ```bash
-# Generate cryptographic Ed25519 keypair
 s0 keygen [--out-dir DIR] [--name PREFIX]
 ```
 {% endtab %}
@@ -1117,16 +1073,11 @@ options:
 
 **Generate a default keypair in the current directory**
 ```bash
-# Generate default operator keypair
 s0 keygen
-# → operator_key_private.pem  (0600)
-# → operator_key_public.pem   (0644)
-# → Fingerprint: sha256:3d4e5f6a7b8c...
 ```
 
 **Generate a named authority keypair**
 ```bash
-# Generate named organizational keypair
 s0 keygen \
     --out-dir /etc/s0/keys/ \
     --name acme_forensics_authority
@@ -1134,7 +1085,6 @@ s0 keygen \
 
 **Generate a per-operator key and use it immediately**
 ```bash
-# Generate per-operator key and sanitize device
 s0 keygen --out-dir ~/.s0/ --name jane_doe
 sudo s0 wipe \
     --target /dev/sdb \
@@ -1155,7 +1105,6 @@ Updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies s
 {% tab title="Synopsis" %}
 
 ```bash
-# Update s0 suite to latest GitHub release
 s0 upgrade [--force]
 ```
 {% endtab %}
@@ -1186,7 +1135,6 @@ options:
 
 **Check and upgrade to latest release**
 ```bash
-# Upgrade local s0 suite to latest upstream release
 s0 upgrade
 ```
 ```text
@@ -1206,7 +1154,6 @@ s0 upgrade
 
 **Force reinstall dependencies**
 ```bash
-# Force rebuild and refresh all core packages
 s0 upgrade --force
 ```
 {% endtab %}
@@ -1226,7 +1173,6 @@ s0 uninstall
 
 **Non-interactive removal with audit ledger preservation**
 ```bash
-# Preserves ~/.s0/s0_audit.db by backing it up to ~/s0_audit.db.bak
 s0 uninstall --yes --keep-audit
 ```
 {% endtab %}
@@ -1301,7 +1247,6 @@ All `s0` subcommands follow a consistent three-value exit code contract, compati
 | `2` | `USAGE_SAFETY_ERROR` | Refused to run due to bad arguments or a safety interlock. | Missing required flag; target is mounted (without `--force`); target is the root device; invalid flag value. |
 
 ```bash
-# Gate on exit code in a shell pipeline
 s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (exit $?)"
 ```
 
@@ -1342,7 +1287,6 @@ The keys in `core/keys/` are committed to the open-source repository and are kno
 `s0 wipe` and `s0 list` emit structured output for pipeline consumption.
 
 ```bash
-# Enumerate unmounted drives and wipe each one non-interactively
 s0 list --output-format json \
   | jq -r '.[] | select(.mounted == false) | .path' \
   | while read -r DEV; do
@@ -1360,7 +1304,6 @@ s0 list --output-format json \
 ### Validate every certificate after issuance
 
 ```bash
-# Verify integrity of all issued certificates in directory
 CERT_DIR="/var/lib/s0/certs/$(date +%F)"
 PUB_KEY="/etc/s0/authority_public.pem"
 FAIL=0
@@ -1381,7 +1324,6 @@ exit $FAIL
 
 ```bash
 #!/usr/bin/env bash
-# /etc/cron.daily/s0-audit-check
 set -euo pipefail
 
 if ! s0 audit verify > /tmp/s0_audit_result.txt 2>&1; then
@@ -1394,7 +1336,6 @@ fi
 ### Forensic carve + immediate index query
 
 ```bash
-# Carve files and query extracted SQLite databases
 s0 carve \
     --target /evidence/seized.raw \
     --out-dir /evidence/recovered/ \
@@ -1402,7 +1343,6 @@ s0 carve \
     --min-confidence 70 \
     --operator "examiner@dfir.lab"
 
-# Query carved SQLite databases
 jq -r '.files[] | select(.extension == "sqlite") | .path' \
     /evidence/recovered/recovery_index.json \
   | while read -r db; do
@@ -1424,7 +1364,6 @@ When `--json` is passed to `s0 wipe`, each event is a newline-delimited JSON obj
 | `"error"` | `code`, `message` | Emitted on any failure; exit code will be non-zero. |
 
 ```bash
-# Extract certificate path from completed NDJSON wipe log
 grep '"event":"complete"' wipe.log | jq -r '.cert_path'
 ```
 
@@ -1462,16 +1401,12 @@ Acquire, inspect, and deploy bare-metal s0 Live bootable media. Automatically di
 
 ### Synopsis
 ```bash
-# List removable USB storage targets safely
 s0 live devices [--json]
 
-# Download verified hybrid Live ISO from GitHub Releases
 s0 live download [--version TAG] [--out-dir DIR]
 
-# Flash Live ISO directly to USB pendrive
 s0 live flash --target DEVICE [--iso PATH] [-y|--yes] [--force]
 
-# Compile bare-metal Live ISO from source (Linux native)
 s0 live build [--out-dir DIR]
 ```
 

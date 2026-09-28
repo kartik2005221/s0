@@ -65,7 +65,6 @@ NVMe drives manage flash cells using an internal Flash Translation Layer (FTL). 
 To overcome this, s0 executes direct NVMe Admin commands:
 
 ```bash
-# Recommendation: Execute controller firmware purge (NIST Purge)
 sudo s0 wipe --target /dev/nvme0n1 --operator "analyst-01"
 ```
 
@@ -93,10 +92,8 @@ Use `--discard-purge-justification "Vendor Spec DRAT/RZAT verified"` to record d
 ### 3.4 Logical Overwrite Engine (Zero vs. Random)
 
 ```bash
-# Recommendation: Single-pass zero overwrite (fastest, fully compliant)
 s0 wipe --target /dev/sdb --pattern zero --passes 1
 
-# Alternative: Multi-pass random overwrite (use when mandated by policy)
 s0 wipe --target /dev/sdb --pattern random --passes 3
 ```
 
@@ -114,7 +111,6 @@ Standard file deletion (`rm` or Windows `del`) simply removes the directory entr
 `s0 wipe` automatically detects files and directories to perform true forensic erasure across Linux, Windows, and macOS:
 
 ```bash
-# Recommendation: Sanitize files with metadata cleansing and certificate issuance
 s0 wipe --targets /evidence/suspect_payload.bin /evidence/staging_dir/ --passes 1
 ```
 
@@ -176,6 +172,5 @@ To eliminate the possibility of silent hardware write failures or buffered fake 
 4. **Planted Marker Verification (Optional Demo Mode):** When `--plant-markers` is specified, s0 plants unique cryptographic canary tokens across the disk before wiping, and requires 0 grep hits post-wipe.
 
 ```bash
-# Verify an existing certificate offline against trusted public key
 s0 verify certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
 ```

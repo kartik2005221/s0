@@ -86,13 +86,9 @@ s0 --version
 <summary><b>Lifecycle Management (Upgrade & Uninstall)</b></summary>
 
 ```bash
-# Upgrade to latest release
 s0 upgrade
-# Or: curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
 
-# Uninstall s0 suite cleanly
 s0 uninstall
-# Or: curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
 ```
 </details>
 
@@ -102,61 +98,48 @@ s0 uninstall
 
 ### 1. Storage Device Inventory & Pre-Flight Planning
 ```bash
-# List all physical drives, buses, serials, and mount states
 s0 list
 
-# Dry-run sanitization preview (simulates method and NIST tier without writing)
 s0 plan --target /dev/sdb
 ```
 
 ### 2. NIST SP 800-88 Drive Sanitization
 ```bash
-# Sanitize physical drive with automated firmware/software selection and signed certificate
 sudo s0 wipe --target /dev/sdb --yes --operator "analyst-01" --organization "Forensic Lab"
 ```
 
 ### 3. File & Directory Secure Deletion
 ```bash
-# In-place cluster overwriting with metadata, xattr, and Alternate Data Stream cleansing (auto-detected)
 s0 wipe --targets /path/to/file.pdf /path/to/sensitive_folder/ --passes 1
 ```
 
 ### 4. Forensic File Carving & Recovery
 ```bash
-# Carve deleted evidence from raw disk image with 4-engine entropy analysis
 s0 carve --target evidence.raw --out-dir ./recovered --extensions jpg,png,pdf,zip --min-confidence 50
 ```
 
 ### 5. Bit-Stream Disk Imaging & Hardware Cloning
 ```bash
-# Acquire bit-stream raw image with dual SHA-256/MD5 hashing and bad sector recovery
 s0 image --source /dev/sdb --destination /evidence/drive_image.raw
 
-# Direct 1:1 hardware drive duplication
 sudo s0 clone --source /dev/sdb --destination /dev/sdc --yes
 ```
 
 ### 6. Audit Trail & Offline Cryptographic Verification
 ```bash
-# Inspect the cryptographic blockchain ledger
 s0 audit list --limit 25
 
-# Verify hash chain continuity and Ed25519 signature validity
 s0 audit verify
 
-# Verify an emitted certificate offline
 s0 verify certificate_12345678.json --key core/keys/demo_issuer_public.pem
 ```
 
 ### 7. Bootable Live Media & USB Station (`s0 live`)
 ```bash
-# Download official verified Live ISO with automated SHA-256 verification
 s0 live download
 
-# Inspect connected removable USB flash drives safely
 s0 live devices
 
-# Write Live ISO directly to USB pendrive
 sudo s0 live flash --target /dev/sdb -y
 ```
 
@@ -237,10 +220,8 @@ Full compliance details: [docs/compliance/nist-compliance.md](https://s0-docs.gi
 Execute the complete automated test suite locally:
 
 ```bash
-# Run all automated tests (core, cli, web, windows, macos, verification-portal)
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
-# Run full cross-platform build and validation runner
 bash scripts/build_all.sh
 ```
 

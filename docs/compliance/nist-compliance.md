@@ -182,7 +182,6 @@ If a user stores data in the HPA (deliberately or via malware), a `OVERWRITE_ZER
 s0 detects HPA and DCO using `hdparm`:
 
 ```bash
-# s0 internally runs these checks pre-sanitization
 hdparm -N /dev/sdX    # Reports native max sectors vs. current max (HPA)
 hdparm -I /dev/sdX    # Reports DCO capabilities
 ```
@@ -194,9 +193,7 @@ If an HPA or DCO region is detected, s0:
 3. **Blocks Purge-tier certification** — the certificate `nist_tier` will be downgraded or flagged until the user confirms HPA/DCO removal
 
 ```bash
-# Example: restoring HPA before sanitization
 hdparm -N p<native_sectors> /dev/sdX   # Remove HPA (temporarily)
-# Then proceed with s0 sanitization
 ```
 
 {% hint style="success" %}
@@ -276,9 +273,7 @@ The final manifest for every s0 operation is signed with an **Ed25519 private ke
 - **Mathematical tamper-evidence** — modifying even a single byte of the manifest (timestamp, hash, method, operator) invalidates the signature, detectable by anyone with the public key
 
 ```bash
-# Verifying a manifest signature
 s0 verify-cert --cert ./sanitization_cert.json --pubkey operator_public.pem
-# Output: [OK] Signature valid. Certificate unmodified.
 ```
 
 {% hint style="info" %}

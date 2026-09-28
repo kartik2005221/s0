@@ -31,16 +31,11 @@ Pre-compiled, ready-to-flash hybrid bootable ISO images are automatically built 
 The fastest and safest way to acquire and deploy the Live ISO is using the built-in `s0 live` command suite:
 
 ```bash
-# 1. Download official Live ISO with automatic SHA-256 verification
 s0 live download
 
-# 2. Inspect connected removable USB flash drives safely (filters out system disks)
 s0 live devices
 
-# 3. Flash to USB pendrive with real-time progress and confirmation
 sudo s0 live flash --target /dev/sdb
-# (Windows: s0 live flash --target \\.\PhysicalDrive1)
-# (macOS:   sudo s0 live flash --target /dev/disk2)
 ```
 
 ---
@@ -63,12 +58,10 @@ curl -fSL -o s0-live-v2.4.0-amd64.hybrid.iso.sha256 https://github.com/kartik200
 ### 3. Verify Cryptographic Integrity
 ```bash
 sha256sum -c s0-live-v2.4.0-amd64.hybrid.iso.sha256
-# Expected output: s0-live-v2.4.0-amd64.hybrid.iso: OK
 ```
 
 ### 4. Flash to USB Drive
 ```bash
-# Manual dd (replace /dev/sdX with verified USB target)
 sudo dd if=s0-live-v2.4.0-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
@@ -154,7 +147,6 @@ sudo dnf install -y podman qemu-system-x86 qemu-img
 {% tab title="Docker (Universal Linux/MacOS)" %}
 
 ```bash
-# Requires Docker Engine or Docker Desktop
 docker --version
 ```
 {% endtab %}
@@ -202,7 +194,6 @@ cd s0/linux/iso
 ### Step 2: Run the Build
 
 ```bash
-# Execute Debian live-build pipeline with root privileges
 sudo ./build.sh
 ```
 
@@ -222,7 +213,6 @@ The build script runs through five stages:
 ### Output Location
 
 ```text
-# Target hybrid ISO artifact
 linux/iso/live-image-amd64.hybrid.iso
 ```
 
@@ -239,7 +229,6 @@ Fedora and RHEL use the RPM package format and do not carry Debian's `live-build
 Run the universal build orchestrator:
 
 ```bash
-# Automatically detects Fedora, verifies Podman, applies SELinux :z flag, and builds
 ./scripts/build_iso.sh
 ```
 
@@ -248,10 +237,8 @@ Run the universal build orchestrator:
 If you prefer executing the container steps manually:
 
 ```bash
-# 1. Build the Debian Bookworm builder image
 podman build -t s0-live-builder -f linux/iso/Dockerfile linux/iso
 
-# 2. Run the build in privileged mode with SELinux volume relabeling (:z)
 podman run --rm --privileged -v "$PWD":/workspace:z s0-live-builder
 ```
 
@@ -260,13 +247,10 @@ The resulting `s0-live-amd64.hybrid.iso` is generated directly into your current
 ### Testing with QEMU on Fedora
 
 ```bash
-# Install QEMU and disk imaging tools
 sudo dnf install -y qemu-system-x86 qemu-img
 
-# Create a 1 GB dummy drive to test device detection in the s0 Web Dashboard
 qemu-img create -f raw test_drive.img 1G
 
-# Boot the ISO with KVM hardware acceleration
 qemu-system-x86_64 \
     -enable-kvm \
     -m 2048 \
@@ -290,7 +274,6 @@ S0 provides automated solutions for Windows developers and field operators:
 The script automatically detects if **Docker Desktop** or **WSL2** is running and executes the build inside an isolated Debian container:
 
 ```powershell
-# Run the automated Windows live-build orchestrator
 .\scripts\build_iso.ps1
 ```
 
@@ -315,13 +298,11 @@ If you do not have Docker or local build tools installed, you can download the l
 {% tabs %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-# Download official verified release with SHA-256 integrity check
 irm https://s0-install.pages.dev/download-iso-ps1 | iex
 ```
 {% endtab %}
 {% tab title="Linux/MacOS (Bash)" %}
 ```bash
-# Download official verified release with SHA-256 integrity check
 curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash
 ```
 {% endtab %}
@@ -347,7 +328,6 @@ An accredited lab must provision their own Ed25519 private key.
 
 1. Generate an Ed25519 key pair on a secure, air-gapped machine:
    ```bash
-   # Generate authority keypair on offline workstation
    s0 keygen --out-dir /secure/keys --name lab_issuer
    ```
 
@@ -355,7 +335,6 @@ An accredited lab must provision their own Ed25519 private key.
 
 3. When booted into the live station, the wipe daemon looks for the private key at:
    ```text
-   # Standard path scanned by live wipe daemon
    /opt/s0/keys/issuer_private.pem
    ```
    If no key is present, wiping still works — but the certificate's status will report `NO_PRIVATE_KEY` rather than forging a mock signature.
@@ -387,7 +366,6 @@ Before burning to physical USB, always verify that the ISO boots cleanly in a vi
 ### Automated Headless Smoke Test
 
 ```bash
-# Run headless QEMU boot test and inspect console log
 ./qemu-test.sh live-image-amd64.hybrid.iso
 ```
 
@@ -396,10 +374,8 @@ This boots the ISO headlessly via QEMU, captures the serial console log, and ass
 ### Interactive GUI Test with a Virtual Target Drive
 
 ```bash
-# Create a 1 GB virtual target drive for testing
 qemu-img create -f raw test_drive.img 1G
 
-# Boot the ISO with QEMU (KVM acceleration)
 qemu-system-x86_64 \
     -enable-kvm \
     -m 2048 \
@@ -430,14 +406,9 @@ Once verified, write the ISO to a physical USB drive (minimum **4 GB** capacity)
 Identify your USB device with `lsblk` first — **do NOT select your system drive**.
 
 ```bash
-# Unmount if currently mounted
 sudo umount /dev/sdb* 2>/dev/null || true
 
-# Write the hybrid ISO (raw mode — preserves UEFI/BIOS boot sectors)
-# Works on Fedora, Debian, Ubuntu, and Arch:
 sudo dd if=s0-live-amd64.hybrid.iso of=/dev/sdb bs=4M status=progress oflag=sync
-
-# Tip: On Fedora, you can also use Fedora Media Writer (Custom OS -> Select ISO).
 ```
 {% endtab %}
 {% tab title="Windows" %}

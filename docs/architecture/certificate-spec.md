@@ -214,21 +214,16 @@ import json
 from base64 import urlsafe_b64encode
 from s0_core.canonical import canonicalize
 
-# 1. Prepare raw certificate without the signature block
 cert_dict = { ... }  # full certificate object
 cert_payload = {k: v for k, v in cert_dict.items() if k != "signature"}
 
-# 2. Canonicalize to UTF-8 bytes
 canonical_bytes = canonicalize(cert_payload)
 
-# 3. Compute SHA-256 hash (for display reference)
 payload_hash = "sha256:" + hashlib.sha256(canonical_bytes).hexdigest()
 
-# 4. Sign canonical bytes using private Ed25519 key (RFC 8032)
 raw_signature = private_key.sign(canonical_bytes)
 sig_b64url = urlsafe_b64encode(raw_signature).decode("ascii").rstrip("=")
 
-# 5. Attach signature block
 cert_dict["signature"] = {
     "algorithm": "Ed25519",
     "public_key_fingerprint": "sha256:" + hashlib.sha256(der_public_key).hexdigest(),
@@ -240,17 +235,13 @@ cert_dict["signature"] = {
 ### The Verification Procedure
 
 ```python
-# 1. Extract signature block
 sig_block = cert_dict.get("signature")
 raw_sig = urlsafe_b64decode(sig_block["signature_base64url"] + "==")
 
-# 2. Recreate unsigned payload
 unsigned_dict = {k: v for k, v in cert_dict.items() if k != "signature"}
 
-# 3. Re-canonicalize using the identical canonicalization algorithm
 recomputed_canonical_bytes = canonicalize(unsigned_dict)
 
-# 4. Mathematically verify signature against trusted public key
 public_key.verify(raw_sig, recomputed_canonical_bytes)
 ```
 

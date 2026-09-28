@@ -32,28 +32,23 @@ graph TD
 Launch directly using the native `sudo s0 web` command:
 
 ```bash
-# Launch the web dashboard and automatically open in default browser
 sudo s0 web
 ```
 
 Or customize port and network binding:
 ```bash
-# Launch on custom port without auto-opening browser
 sudo s0 web --port 8669 --no-browser
 ```
 
 {% tabs %}
 {% tab title="Script Runner (Linux/MacOS)" %}
 ```bash
-# Start via standalone script runner
 sudo bash web/run.sh
 ```
 {% endtab %}
 {% tab title="Script Runner (Windows)" %}
 ```powershell
-# Launch via PowerShell script runner (Run as Administrator)
 .\web\run.ps1
-# Or in CMD: web\run.bat
 ```
 {% endtab %}
 {% endtabs %}

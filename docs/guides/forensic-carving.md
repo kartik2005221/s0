@@ -72,10 +72,8 @@ Custom signatures can be provided as a JSON file or inline JSON object with the 
 {% tabs %}
 {% tab title="CLI Flag (`--custom-sig`)" %}
 ```bash
-# Supply a custom signatures JSON file
 s0 carve --target /dev/sdb --out-dir ./recovered --custom-sig ./my_sigs.json
 
-# Or provide inline JSON directly on the command line
 s0 carve --target evidence.raw --out-dir ./out \
          --custom-sig '{"name":"CustomDB","extension":"cdb","header_hex":"43 44 42 01"}'
 ```
@@ -150,7 +148,6 @@ This is the most common workflow. You have a `.dd`, `.raw`, `.img`, or `.E01` im
 ### 1. Verify the image integrity first
 
 ```bash
-# Compute SHA-256 integrity hash of forensic image
 sha256sum suspect_drive.dd
 ```
 
@@ -159,7 +156,6 @@ Compare against the acquisition hash. Never carve from an unverified image — a
 ### 2. Run s0 carve
 
 ```bash
-# Carve deleted files with auto-detected filesystem parsing
 s0 carve --target suspect_drive.dd --out-dir ./recovered/
 ```
 
@@ -182,25 +178,21 @@ s0 auto-detects the filesystem and selects the appropriate engine. Output:
 {% tabs %}
 {% tab title="Office & Archives" %}
 ```bash
-# Focus acquisition on documents, spreadsheets, and archives
 s0 carve --target image.dd --extensions zip,pdf,sqlite --out-dir ./recovered/
 ```
 {% endtab %}
 {% tab title="Images & Media" %}
 ```bash
-# Extract photographic and audio evidence
 s0 carve --target image.dd --extensions jpg,png,gif,bmp,mp3 --out-dir ./recovered/
 ```
 {% endtab %}
 {% tab title="Executables & Binaries" %}
 ```bash
-# Extract ELF executables and compressed packages
 s0 carve --target image.dd --extensions elf,gz --out-dir ./recovered/
 ```
 {% endtab %}
 {% tab title="All Signatures" %}
 ```bash
-# Scan for all 10 supported forensic formats
 s0 carve --target image.dd --out-dir ./recovered/
 ```
 {% endtab %}
@@ -211,14 +203,12 @@ s0 carve --target image.dd --out-dir ./recovered/
 By default, s0 saves any file scoring ≥ 50 confidence points. For court-quality evidence, raise this:
 
 ```bash
-# Carve with high confidence threshold for court-admissible evidence
 s0 carve --target image.dd --out-dir ./recovered/ --min-confidence 75
 ```
 
 For maximum recovery at the cost of more false positives (e.g., exploring an unknown image):
 
 ```bash
-# Carve with lowered threshold to maximize recovery of damaged media
 s0 carve --target image.dd --out-dir ./recovered/ --min-confidence 30
 ```
 
@@ -244,7 +234,6 @@ Always attach the target drive through a **hardware write blocker** before conne
 ### 1. Identify the device node
 
 ```bash
-# Enumerate storage devices, sizes, filesystems, and mountpoints
 lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT
 ```
 
@@ -260,7 +249,6 @@ Here `sdb` is the target.
 ### 2. Carve directly from the block device
 
 ```bash
-# Carve deleted files directly from unmounted block device
 sudo s0 carve --target /dev/sdb --out-dir ./usb_recovery/
 ```
 
@@ -274,13 +262,10 @@ Do not run `mount /dev/sdb` before carving. On FAT32/exFAT, the Linux kernel's m
 For repeatable, auditable evidence collection, capture the image first:
 
 ```bash
-# Acquire image (read-only pass)
 sudo dd if=/dev/sdb of=evidence.dd bs=4M status=progress conv=noerror,sync
 
-# Verify
 sha256sum evidence.dd > evidence.dd.sha256
 
-# Carve the image (not the live device)
 s0 carve evidence.dd --out-dir ./recovered/
 ```
 
@@ -390,14 +375,12 @@ The `session_id` in `recovery_index.json` matches the UUID suffix in `carving_ma
 Office Open XML formats (`.docx`, `.xlsx`, `.pptx`) use the ZIP container. s0 carves them as `.zip` files.
 
 ```bash
-# Carve ZIP containers (including Word/Excel/PowerPoint) with confidence >= 65
 s0 carve --target ntfs_image.dd --out-dir ./office_recovery/ --extensions zip --min-confidence 65
 ```
 
 After recovery:
 
 ```bash
-# Rename .zip to .docx and verify
 mv file_0042.zip recovered_doc.docx
 python3 -c "import zipfile; z=zipfile.ZipFile('recovered_doc.docx'); print(z.namelist())"
 ```
@@ -409,10 +392,8 @@ Look for `word/document.xml` (Word), `xl/workbook.xml` (Excel), or `ppt/presenta
 FAT32 format operations typically zero only the FAT tables and directory entries — raw data clusters are untouched. The FAT32 Structure engine reads deleted directory entries to find the original cluster chain, while the Signature engine catches anything the directory scan misses.
 
 ```bash
-# First pass: structure-aware (fast)
 s0 carve /dev/sdc --engine fat32 --out-dir ./usb_photos/ --min-confidence 60
 
-# Second pass: signature scan for orphaned clusters
 s0 carve /dev/sdc --engine signature --out-dir ./usb_photos_sig/ --min-confidence 50
 ```
 
@@ -423,10 +404,8 @@ Compare the two output directories — the signature pass often recovers additio
 For a specific partition within a multi-partition drive:
 
 ```bash
-# Find partition offsets
 mmls suspect_drive.dd
 
-# Carve only the NTFS partition (e.g., starting at sector 2048, 512-byte sectors)
 s0 carve suspect_drive.dd --offset $((2048 * 512)) --out-dir ./ntfs_evidence/
 ```
 
@@ -488,10 +467,8 @@ On **Btrfs**, **ZFS**, and **APFS**, deleting a file does not overwrite its bloc
 Files that appear deleted may still exist in filesystem snapshots. Check for snapshots before carving:
 
 ```bash
-# Btrfs
 btrfs subvolume list /mnt/target
 
-# ZFS
 zfs list -t snapshot
 ```
 

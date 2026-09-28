@@ -59,7 +59,6 @@ To keep s0 synchronized with the latest sanitization profiles, carving signature
 {% tab title="Command Line (Universal)" %}
 ```bash
 s0 upgrade
-# Use --force to reinstall all virtual environment dependencies
 s0 upgrade --force
 ```
 {% endtab %}
@@ -90,7 +89,6 @@ The Drive Eraser sanitizes whole physical disks (NVMe, SATA HDD/SSD, USB flash d
 Display all attached block devices, hardware serial numbers, and mount states:
 
 ```bash
-# List all visible block devices in human-readable table format
 s0 list
 ```
 
@@ -106,7 +104,6 @@ Image-file targets work too (no root needed): use --target /path/to/file.img
 
 For JSON output suitable for automated scripts:
 ```bash
-# Query storage devices in machine-readable JSON format
 s0 list --output-format json
 ```
 
@@ -114,7 +111,6 @@ s0 list --output-format json
 Before executing an irreversible wipe, run `s0 plan` to inspect which sanitization method will be selected, its NIST tier, and any safety warnings:
 
 ```bash
-# Simulate sanitization strategy without writing a single byte
 s0 plan --target /dev/sdb
 ```
 
@@ -142,7 +138,6 @@ For **NVMe SSDs**, allow s0 to execute controller-level firmware purges (default
 Perform certified sanitization:
 
 ```bash
-# Execute physical drive wipe with operator attribution
 sudo s0 wipe \
     --target /dev/sdb \
     --operator "analyst-42" \
@@ -152,7 +147,6 @@ sudo s0 wipe \
 
 To skip the interactive `WIPE` confirmation prompt in automated pipelines:
 ```bash
-# Non-interactive wipe with explicit override flag
 sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
 ```
 
@@ -160,7 +154,6 @@ sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
 During operation, s0 renders an ANSI progress bar displaying real-time I/O throughput, elapsed time, ETA, and thermal sensor telemetry (queried every 2 seconds):
 
 ```
-# Terminal status line output
 [s0 wipe] ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  482 MB/s  ETA 00m 14s  Temp: 44°C
 ```
 
@@ -178,13 +171,11 @@ Selective, in-place cluster sanitization for sensitive files and directories is 
 
 ### 4.1 Basic File Erasure
 ```bash
-# Securely erase specific target files and directory trees
 s0 wipe --targets /evidence/confidential_memo.pdf /evidence/financial_records/
 ```
 
 ### 4.2 Multi-Pass Random Overwrite
 ```bash
-# Multi-pass random sanitization for defense contract compliance
 s0 wipe \
     --targets /evidence/suspect_payload.bin \
     --passes 3 \
@@ -211,7 +202,6 @@ Carving against an active running OS drive is strongly discouraged. Continuous o
 
 ### 5.1 Basic Carving Operation
 ```bash
-# Carve deleted documents and images from raw disk image
 s0 carve \
     --target /evidence/seized_drive.raw \
     --out-dir ./recovered_evidence \
@@ -262,7 +252,6 @@ The `s0 image` and `s0 clone` commands create an exact, bit-for-bit physical rep
 To acquire a complete raw image (`.raw` / `.img` / `.dd`) of a physical drive or flash media:
 
 ```bash
-# Acquire bit-stream raw image with live dual hashing and bad-sector recovery
 s0 image \
     --source /dev/sdb \
     --destination /evidence/suspect_drive.raw \
@@ -280,7 +269,6 @@ The default block size `--block-size 1048576` (1 MiB) delivers maximum sequentia
 To duplicate a source drive directly to a clean target drive:
 
 ```bash
-# Clone source disk directly to target physical drive
 s0 clone \
     --source /dev/sdb \
     --destination /dev/sdc \
@@ -304,7 +292,6 @@ Every wipe, file erasure, carving session, and drive acquisition is appended as 
 
 ### 7.1 Inspecting Audit Blocks (`s0 audit list`)
 ```bash
-# Display the 20 most recent blocks in the audit ledger
 s0 audit list --limit 20
 ```
 
@@ -321,7 +308,6 @@ IDX   TIMESTAMP            OPERATION      OPERATOR       TARGET_ID            BL
 Audit the cryptographic continuity from Genesis to Tip:
 
 ```bash
-# Verify mathematical SHA-256 hash continuity of the audit chain
 s0 audit verify
 ```
 
@@ -339,7 +325,6 @@ Details      : Hash-chain continuity mathematically verified across 24 blocks fr
 
 ### 8.1 Command-Line Verification (`s0 verify`)
 ```bash
-# Verify an issued certificate against trusted public authority key
 s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_public.pem
 ```
 
@@ -366,7 +351,6 @@ Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e33
 To establish an accredited signing authority:
 
 ```bash
-# Generate a new Ed25519 signing keypair for an accredited lab
 s0 keygen --out-dir /secure/keys --name lab_authority
 ```
 

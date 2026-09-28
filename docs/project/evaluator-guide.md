@@ -11,7 +11,6 @@
 The s0 suite provides an automated bootstrap script that validates system prerequisites, provisions a virtual environment, installs platform dependencies, and runs the test suite:
 
 ```bash
-# Run master build and test orchestrator
 bash scripts/build_all.sh
 ```
 
@@ -23,7 +22,6 @@ bash scripts/build_all.sh
 Execute the complete cross-platform test suite spanning core cryptographic invariants, CLI interfaces, web controllers, Win32/macOS drivers, and verification portal:
 
 ```bash
-# Execute full pytest suite with verbose output
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 ```
 
@@ -31,7 +29,6 @@ Execute the complete cross-platform test suite spanning core cryptographic invar
 Executes a full lifecycle test on a temporary 32 MiB synthetic loopback image (partitioning, random byte seeding, NIST overwrite, 64-block post-wipe readback verification, Ed25519 cert generation, and ledger insertion):
 
 ```bash
-# Run end-to-end sanitization test on 32MB synthetic image
 S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 ```
 
@@ -39,7 +36,6 @@ S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
 Surgically sanitizes specific file paths with extent overwriting, metadata timestamp zeroing, and directory entry scrambling:
 
 ```bash
-# Securely erase file with single-pass zero overwrite
 .venv/bin/s0 wipe --targets /path/to/sensitive_file.txt --passes 1
 ```
 
@@ -47,7 +43,6 @@ Surgically sanitizes specific file paths with extent overwriting, metadata times
 Scans raw disk images or unallocated drive space using filesystem-aware structure parsers and raw sliding-window signature carving:
 
 ```bash
-# Carve deleted evidence from raw disk image with confidence scoring
 .venv/bin/s0 carve --target /path/to/image.raw --out-dir ./recovered
 ```
 
@@ -55,7 +50,6 @@ Scans raw disk images or unallocated drive space using filesystem-aware structur
 Acquires raw bit-stream evidence images or performs 1:1 drive cloning with real-time simultaneous SHA-256 and MD5 streaming digests:
 
 ```bash
-# Acquire forensic bit-stream image with dual hashing
 sudo .venv/bin/s0 image /dev/sdb ./evidence.dd
 ```
 
@@ -63,7 +57,6 @@ sudo .venv/bin/s0 image /dev/sdb ./evidence.dd
 Audits the append-only SQLite ledger (`~/.s0/s0_audit.db`) and verifies mathematical hash continuity across every block:
 
 ```bash
-# Verify integrity of SHA-256 hash-chained audit blocks
 .venv/bin/s0 audit verify
 ```
 
@@ -72,7 +65,6 @@ Launches the local, zero-external-dependency web interface on `127.0.0.1:8669`:
 
 ```bash
 sudo .venv/bin/s0 web
-# Navigate to http://127.0.0.1:8669
 ```
 
 ### Bare-Metal Live ISO
