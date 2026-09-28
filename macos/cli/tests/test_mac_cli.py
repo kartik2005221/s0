@@ -282,3 +282,114 @@ def test_mac_cli_flag_aliases(monkeypatch, tmp_path: Path):
     assert not target.exists()
 
 
+def test_mac_boot_disk_detection(monkeypatch):
+    from macos.cli.s0_eraser import _get_macos_boot_disk
+    import subprocess
+    import shutil
+
+    monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/sbin/diskutil" if cmd == "diskutil" else None)
+
+    # Test "Part of Whole: disk3"
+    fake_out = "   Device Node:              /dev/disk3s1s1\n   Part of Whole:            disk3\n"
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type("CompletedProcess", (), {"returncode": 0, "stdout": fake_out})(),
+    )
+    assert _get_macos_boot_disk() == "disk3"
+
+    # Test fallback to "Device Node: /dev/disk4s1"
+    fake_out_node = "   Device Node:              /dev/disk4s1\n"
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type("CompletedProcess", (), {"returncode": 0, "stdout": fake_out_node})(),
+    )
+    assert _get_macos_boot_disk() == "disk4"
+
+
+def test_is_macos_dev_or_subpartition():
+    from macos.cli.s0_eraser import _is_macos_dev_or_subpartition
+
+    # Whole disk to partition/slice
+    assert _is_macos_dev_or_subpartition("/dev/disk3", "/dev/disk3s1s1") is True
+    assert _is_macos_dev_or_subpartition("/dev/rdisk3", "/dev/disk3s1") is True
+    assert _is_macos_dev_or_subpartition("disk3", "disk3") is True
+    assert _is_macos_dev_or_subpartition("/dev/disk0", "/dev/disk0s2") is True
+
+    # Partition to subpartition
+    assert _is_macos_dev_or_subpartition("/dev/disk3s1", "/dev/disk3s1s1") is True
+
+    # Negative matches (boundary check)
+    assert _is_macos_dev_or_subpartition("/dev/disk3", "/dev/disk30s1") is False
+    assert _is_macos_dev_or_subpartition("/dev/disk3s1", "/dev/disk3s10") is False
+    assert _is_macos_dev_or_subpartition("/dev/disk2", "/dev/disk3s1") is False
+    assert _is_macos_dev_or_subpartition("/dev/disk3s2", "/dev/disk3s1") is False
+
+
+def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
+    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import macos.cli.s0_eraser as mod
+
+    # Mock dynamic detection returning disk3 (not default disk0)
+    monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*macOS boot disk"):
+        check_macos_wipe_safety("/dev/disk3", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*macOS boot disk"):
+        check_macos_wipe_safety("/dev/rdisk3", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*macOS boot disk"):
+        check_macos_wipe_safety("/dev/disk3s1s1", force=False)
+
+    # Force should bypass
+    check_macos_wipe_safety("/dev/disk3", force=True)
+
+    # Unrelated disk should pass
+    check_macos_wipe_safety("/dev/disk2", force=False)
+
+
+def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
+    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import macos.cli.s0_eraser as mod
+    import subprocess
+
+    monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: None)
+
+    fake_mount = "/dev/disk5s1s1 on / (apfs, local, read-only)\n/dev/disk5s2 on /System/Volumes/Data (apfs, local)\n"
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type("CompletedProcess", (), {"returncode": 0, "stdout": fake_mount})(),
+    )
+
+    # Targeting the whole disk containing the root partition must be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*active macOS system root"):
+        check_macos_wipe_safety("/dev/disk5", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*active macOS system root"):
+        check_macos_wipe_safety("/dev/rdisk5", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*active macOS system root"):
+        check_macos_wipe_safety("/dev/disk5s1s1", force=False)
+
+    # Different disk passes
+    check_macos_wipe_safety("/dev/disk2", force=False)
+
+
+def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
+    from macos.cli.s0_eraser import wipe_drive_or_partition_macos
+    import macos.cli.s0_eraser as mod
+
+    # Mock unmount returning False on a device path
+    monkeypatch.setattr(mod, "unmount_macos_target", lambda target: False)
+    monkeypatch.setattr(mod, "check_macos_wipe_safety", lambda target, force=False: None)
+
+    res, cert = wipe_drive_or_partition_macos("/dev/disk8", force=False, mock_size=1024)
+    assert res.status == "failure"
+    assert "Failed to unmount" in (res.error or "")
+    assert cert is None
+
+
+

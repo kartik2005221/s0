@@ -15,7 +15,9 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import secrets
+import shutil
 import stat
 import subprocess
 import sys
@@ -497,29 +499,111 @@ def erase_batch_macos(
     return results, signed_cert
 
 
-def check_macos_wipe_safety(target: str, force: bool = False) -> None:
-    """Refuse destructive wiping of internal macOS boot disk (disk0) or active system mounts."""
-    norm = target.strip().rstrip("/")
-    # Refuse disk0 / rdisk0
-    if norm in ("/dev/disk0", "/dev/rdisk0", "disk0", "rdisk0") or norm.startswith(("/dev/disk0s", "/dev/rdisk0s")):
-        if not force:
-            raise PermissionError(
-                f"SAFETY REFUSAL: Target '{target}' is the macOS internal boot drive (disk0). "
-                "Wiping the running operating system disk is prohibited. "
-                "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
-            )
+def _get_macos_boot_disk() -> Optional[str]:
+    """Query macOS for the actual boot device's whole-disk identifier.
 
-    # Check active mount points
+    Parses `diskutil info /` -> "Part of Whole: diskN" to get the real
+    boot disk, instead of assuming it is always disk0.
+    """
+    if shutil.which("diskutil") is None:
+        return None
+    try:
+        proc = subprocess.run(
+            ["diskutil", "info", "/"],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        if proc.returncode != 0:
+            return None
+        for line in proc.stdout.splitlines():
+            # "Part of Whole:" gives the whole-disk identifier (e.g. "disk3")
+            if "Part of Whole:" in line:
+                val = line.split(":", 1)[1].strip()
+                if val:
+                    return val.replace("/dev/", "").replace("rdisk", "disk")
+            # Fallback: "Device Node:" if Part of Whole is not present
+            if "Device Node:" in line:
+                node = line.split(":", 1)[1].strip()
+                m = re.match(r"(r?disk\d+)", node.replace("/dev/", ""))
+                if m:
+                    return m.group(1).lstrip("r")
+    except Exception:
+        pass
+    return None
+
+
+def _is_macos_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
+    """Check if candidate_mount is parent_path or a sub-partition of parent_path on macOS.
+
+    macOS naming:
+      Parent whole disk: disk0, /dev/disk0, /dev/rdisk0, rdisk0, disk3, /dev/disk3...
+      Sub-partitions: disk0s1, /dev/disk0s1, /dev/disk3s1s1 (APFS synthesized slices)...
+    """
+    def _canon(p: str) -> str:
+        s = p.strip().lower()
+        if s.startswith("/dev/"):
+            s = s[5:]
+        if s.startswith("rdisk"):
+            s = "disk" + s[5:]
+        return s
+
+    p = _canon(parent_path)
+    c = _canon(candidate_mount)
+
+    if not p or not c:
+        return False
+
+    if p == c:
+        return True
+
+    # If parent is already a partition (e.g. disk0s2, disk3s1s1),
+    # only exact match or sub-slice match applies:
+    if re.search(r"s\d+", p):
+        pattern = rf"^{re.escape(p)}(?:s\d+)+$"
+        return bool(re.match(pattern, c))
+
+    # Parent is a whole disk (e.g. disk0, disk1, disk3)
+    # Check if candidate is disk3s... (e.g. disk3s1, disk3s1s1)
+    pattern = rf"^{re.escape(p)}s\d+"
+    return bool(re.match(pattern, c))
+
+
+def check_macos_wipe_safety(target: str, force: bool = False) -> None:
+    """Refuse destructive wiping of internal macOS boot disk or active system mounts."""
+    norm = target.strip().rstrip("/")
+
+    # 1. Dynamic boot disk detection
+    boot_disk = _get_macos_boot_disk()
+    if boot_disk:
+        boot_dev = f"/dev/{boot_disk}"
+        if _is_macos_dev_or_subpartition(boot_dev, norm) or _is_macos_dev_or_subpartition(norm, boot_dev):
+            if not force:
+                raise PermissionError(
+                    f"SAFETY REFUSAL: Target '{target}' is or belongs to the macOS boot disk ({boot_disk}). "
+                    "Wiping the running operating system disk is prohibited. "
+                    "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
+                )
+    else:
+        # Fallback: refuse disk0 / rdisk0 if dynamic detection is unavailable
+        if norm in ("/dev/disk0", "/dev/rdisk0", "disk0", "rdisk0") or norm.startswith(("/dev/disk0s", "/dev/rdisk0s")):
+            if not force:
+                raise PermissionError(
+                    f"SAFETY REFUSAL: Target '{target}' is the macOS internal boot drive (disk0). "
+                    "Wiping the running operating system disk is prohibited. "
+                    "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
+                )
+
+    # 2. Check active mount points (whole-disk and partition aware)
     try:
         res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
         if res.returncode == 0:
             for line in res.stdout.splitlines():
                 if any(root_mp in line for root_mp in (" on / ", " on /System", " on /private", " on /Users")):
                     mp = line.split(" on ")[0].strip()
-                    if norm == mp or norm.replace("/dev/rdisk", "/dev/disk") == mp:
-                        raise PermissionError(
-                            f"SAFETY REFUSAL: Target '{target}' is mounted as active macOS system root ({line})."
-                        )
+                    if _is_macos_dev_or_subpartition(norm, mp):
+                        if not force:
+                            raise PermissionError(
+                                f"SAFETY REFUSAL: Target '{target}' contains or is an active macOS system root ({line.strip()})."
+                            )
     except PermissionError:
         raise
     except Exception:
@@ -528,6 +612,10 @@ def check_macos_wipe_safety(target: str, force: bool = False) -> None:
 
 def unmount_macos_target(device_path: str) -> bool:
     """Unmount disk or volume before raw overwriting."""
+    if Path(device_path).is_file():
+        return True
+    if shutil.which("diskutil") is None:
+        return True
     disk_path = device_path.replace("/dev/rdisk", "/dev/disk")
     try:
         proc = subprocess.run(["diskutil", "unmountDisk", disk_path], capture_output=True, check=False)
@@ -609,9 +697,20 @@ def wipe_drive_or_partition_macos(
     if dev_path.startswith("/dev/disk"):
         dev_path = dev_path.replace("/dev/disk", "/dev/rdisk")
 
-    unmounted = unmount_macos_target(norm)
-
     open_path = norm if Path(norm).is_file() else dev_path
+
+    unmounted = unmount_macos_target(norm)
+    if not unmounted and not force and not Path(norm).is_file():
+        return MacDriveWipeResult(
+            target=target,
+            target_type=target_type,
+            capacity_bytes=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"SAFETY REFUSAL: Failed to unmount '{target}' via diskutil. The device may be in active use. Pass --force to override.",
+        ), None
     capacity = mock_size or 0
     if not capacity:
         capacity = get_macos_target_size(open_path)
