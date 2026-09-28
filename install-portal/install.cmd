@@ -6,6 +6,16 @@ set "INSTALL_DIR=%USERPROFILE%\.s0"
 set "STEP=0"
 set "TOTAL=8"
 
+:: Admin-elevation advisory
+net session >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    echo.
+    echo WARNING: Running as Administrator.
+    echo    S0 installs to "%USERPROFILE%\.s0" ^(your user profile^).
+    echo    Running without elevation is recommended.
+    echo.
+)
+
 echo.
 echo ==================================================================
 echo   S0 (Sector Zero) -- Digital Forensic ^& Sanitization Suite
@@ -73,9 +83,21 @@ echo [%STEP%/%TOTAL%] Deploying S0 to %INSTALL_DIR%...
 if exist "%INSTALL_DIR%" (
     cd /d "%INSTALL_DIR%"
     git pull --ff-only -q 2>nul
-    echo   [OK] Existing install updated
+    if %ERRORLEVEL% neq 0 (
+        echo   [!] git pull failed; continuing with existing files.
+    ) else (
+        echo   [OK] Existing install updated
+    )
 ) else (
-    git clone --depth 1 -q "%REPO%" "%INSTALL_DIR%" 2>nul || git clone -q "%REPO%" "%INSTALL_DIR%"
+    git clone --depth 1 -q "%REPO%" "%INSTALL_DIR%" 2>nul
+    if %ERRORLEVEL% neq 0 (
+        echo   Shallow clone failed, attempting full clone...
+        git clone -q "%REPO%" "%INSTALL_DIR%" 2>nul
+        if %ERRORLEVEL% neq 0 (
+            echo   [ERROR] git clone failed. Check your network connection.
+            exit /b 1
+        )
+    )
     echo   [OK] Cloned from %REPO%
 )
 cd /d "%INSTALL_DIR%"
@@ -101,6 +123,10 @@ REM ── Step 5: Upgrade pip ────────────────�
 set /a STEP=STEP+1
 echo [%STEP%/%TOTAL%] Upgrading pip...
 "%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install --upgrade pip -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] pip upgrade failed.
+    exit /b 1
+)
 echo   [OK] pip upgraded
 
 REM ── Step 6: Install S0 packages ─────────────────────────────────────
@@ -108,10 +134,22 @@ set /a STEP=STEP+1
 echo [%STEP%/%TOTAL%] Installing S0 packages...
 echo   -^> core cryptographic library...
 "%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install -e core\python -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to install core cryptographic package.
+    exit /b 1
+)
 echo   -^> CLI and dependencies...
 "%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install -e linux\cli -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to install CLI package.
+    exit /b 1
+)
 echo   -^> PDF, QR generation and web dashboard...
 "%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to install web and PDF dependencies.
+    exit /b 1
+)
 echo   [OK] All packages installed
 
 REM ── Step 7: Create bin/ launcher ───────────────────────────────────

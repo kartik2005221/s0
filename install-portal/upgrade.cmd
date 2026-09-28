@@ -60,9 +60,25 @@ if not exist "%VENV_PYTHON%" (
 )
 
 "%VENV_PYTHON%" -m pip install --upgrade pip -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] pip upgrade failed.
+    exit /b 1
+)
 "%VENV_PYTHON%" -m pip install -e core\python -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to upgrade core package.
+    exit /b 1
+)
 "%VENV_PYTHON%" -m pip install -e linux\cli -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to upgrade CLI package.
+    exit /b 1
+)
 "%VENV_PYTHON%" -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q
+if %ERRORLEVEL% neq 0 (
+    echo   [ERROR] Failed to upgrade dependencies.
+    exit /b 1
+)
 echo   [OK] Dependencies refreshed
 
 REM ── Step 5: Refresh command wrapper ────────────────────────────────
