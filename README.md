@@ -6,11 +6,10 @@
 
 [![Release](https://img.shields.io/badge/Release-v2.4.3-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://s0-site.pages.dev/)
 [![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.gitbook.io/COMPLIANCE/)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.gitbook.io/CANONICAL_JSON/)
 [![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://s0-docs.gitbook.io/)
-[![Verification Portal](https://img.shields.io/badge/Verify-s0--verify.pages.dev-emerald.svg)](https://s0-verify.pages.dev/)
-[![Install Portal](https://img.shields.io/badge/Install-s0--install.pages.dev-indigo.svg)](https://s0-install.pages.dev/)
 
 *One unified toolchain. Five forensic capabilities. Cryptographic chain-of-custody.*
 
@@ -20,6 +19,7 @@
 
 | Service | Live URL | Purpose |
 |---|---|---|
+| **Official Website** | [s0-site.pages.dev](https://s0-site.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
 | **Documentation Portal** | [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
 | **Verification Portal** | [s0-verify.pages.dev](https://s0-verify.pages.dev/) | 100% client-side, air-gapped Ed25519 certificate verifier |
 | **Installation Portal** | [s0-install.pages.dev](https://s0-install.pages.dev/) | One-line installation scripts, checksums & release packages |

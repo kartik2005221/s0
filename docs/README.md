@@ -14,6 +14,12 @@ layout:
 
 Built for security engineers, digital forensic examiners, compliance auditors, and field technicians who must guarantee and mathematically prove that confidential evidence or retired media is beyond forensic reconstruction.
 
+### Official Ecosystem Portals
+* **Official Website:** [s0-site.pages.dev](https://s0-site.pages.dev/) — Product overview, architecture highlights & quickstart
+* **Verification Portal:** [s0-verify.pages.dev](https://s0-verify.pages.dev/) — Air-gapped, client-side Ed25519 certificate verifier
+* **Installation Portal:** [s0-install.pages.dev](https://s0-install.pages.dev/) — One-line automated install scripts and deployment guides
+* **Source Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0) — Releases, Live ISOs, and codebase
+
 {% hint style="danger" %}
 **Legal & Responsible Use Requirement:**
 s0 is a certified digital forensic sanitization and recovery tool. You must **only** operate on storage devices and files that you legally own or for which you have explicit, documented written authorization to process. Unauthorized data destruction or forensic acquisition may violate computer crime legislation (including CFAA 18 U.S.C. § 1030, UK Computer Misuse Act 1990, and India IT Act 2000). See the [Legal & Ethics FAQ](getting-started/faq.md#0-legal-ethical-use).

@@ -5,6 +5,7 @@
   "documentation_url": "https://s0-docs.gitbook.io/",
   "verification_portal_url": "https://s0-verify.pages.dev/",
   "install_portal_url": "https://s0-install.pages.dev/",
+  "website_url": "https://s0-site.pages.dev/",
   "github_url": "https://github.com/kartik2005221/s0",
   "default_operator": "op-forensic",
   "default_organization": "Digital Forensics & Data Sanitization Lab",

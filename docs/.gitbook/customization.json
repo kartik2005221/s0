@@ -53,6 +53,16 @@
     "preset": "default",
     "links": [
       {
+        "title": "Official Website",
+        "style": "link",
+        "to": {
+          "kind": "url",
+          "url": "https://s0-site.pages.dev/"
+        },
+        "links": [],
+        "localizedTitle": {}
+      },
+      {
         "title": "Verification Portal",
         "style": "link",
         "to": {
