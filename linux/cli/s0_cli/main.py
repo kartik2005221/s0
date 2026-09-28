@@ -328,8 +328,9 @@ def cmd_list(args) -> int:
     if not targets:
         print("(no block devices found)")
         return 0
+    path_w = max(14, max(len(t.path) for t in targets))
     print(
-        f"{'PATH':<14} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
+        f"{'PATH':<{path_w}} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
         f"{'MODEL':<24} {'SERIAL':<16} {'MOUNTED?':<9} OS_DRIVE?"
     )
     for t in targets:
@@ -337,7 +338,7 @@ def cmd_list(args) -> int:
         is_mounted = "YES" if any(m.startswith(t.path) for m in mounted) else "-"
         is_os = "YES [OS]" if is_os_device(t.path) else "-"
         print(
-            f"{t.path:<14} {t.kind:<7} {t.storage_type:<10} {cap:>12}  "
+            f"{t.path:<{path_w}} {t.kind:<7} {t.storage_type:<10} {cap:>12}  "
             f"{(t.model or '—')[:24]:<24} {(t.serial or '—')[:16]:<16} {is_mounted:<9} {is_os}"
         )
     print("\nImage-file targets work too (no root needed): use --target /path/to/file.img")

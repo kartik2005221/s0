@@ -314,7 +314,7 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
     root_src = _get_root_mount_source()
     if root_src:
         target_real = os.path.realpath(target.path)
-        if _is_dev_or_subpartition(target_real, root_src):
+        if is_os_device(target_real):
             if not force:
                 raise SafetyError(
                     f"{target.path} hosts the running ROOT filesystem. The tool refuses "
@@ -381,6 +381,48 @@ def _get_root_mount_source() -> Optional[str]:
     return None
 
 
+def _get_underlying_devices(dev_path: str) -> set[str]:
+    """Recursively find all underlying physical/slave devices for a block device (e.g. LUKS/dm-crypt/LVM)."""
+    found: set[str] = set()
+    to_visit = [os.path.realpath(dev_path)]
+    visited: set[str] = set()
+
+    while to_visit:
+        curr = to_visit.pop()
+        if curr in visited:
+            continue
+        visited.add(curr)
+        found.add(curr)
+
+        bname = os.path.basename(curr)
+        slaves_dir = f"/sys/class/block/{bname}/slaves"
+        if os.path.isdir(slaves_dir):
+            try:
+                for slave in os.listdir(slaves_dir):
+                    slave_path = os.path.realpath(f"/dev/{slave}")
+                    if slave_path not in visited:
+                        to_visit.append(slave_path)
+            except OSError:
+                pass
+
+        try:
+            res = subprocess.run(
+                ["lsblk", "-s", "-n", "-o", "KNAME", curr],
+                capture_output=True, text=True, check=False
+            )
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    kname = line.strip()
+                    if kname:
+                        kpath = os.path.realpath(f"/dev/{kname}")
+                        if kpath not in visited:
+                            to_visit.append(kpath)
+        except Exception:
+            pass
+
+    return found
+
+
 def is_os_device(device_path: str) -> bool:
     """Return True if device_path hosts the running root/OS filesystem or is a parent/child of it."""
     if not device_path:
@@ -396,10 +438,14 @@ def is_os_device(device_path: str) -> bool:
         return False
     try:
         dev_real = os.path.realpath(device_path)
-        if dev_real == root_src or root_src.startswith(dev_real):
-            return True
-        if _is_dev_or_subpartition(dev_real, root_src):
-            return True
+        underlying_devs = _get_underlying_devices(root_src)
+        for u_dev in underlying_devs:
+            if dev_real == u_dev or u_dev.startswith(dev_real):
+                return True
+            if _is_dev_or_subpartition(dev_real, u_dev):
+                return True
+            if _is_dev_or_subpartition(u_dev, dev_real):
+                return True
         if sys.platform == "darwin":
             d_clean = dev_real.replace("/dev/rdisk", "/dev/disk")
             r_clean = root_src.replace("/dev/rdisk", "/dev/disk")

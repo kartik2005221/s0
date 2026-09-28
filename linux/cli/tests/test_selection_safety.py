@@ -199,6 +199,14 @@ def test_is_os_device_detection(monkeypatch):
     assert is_os_device("/dev/sdb") is False
     assert is_os_device("") is False
 
+    # Fedora LUKS encrypted root test (mapper device backed by nvme partition)
+    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: "/dev/mapper/luks-fedora-root")
+    monkeypatch.setattr("s0_cli.devices._get_underlying_devices", lambda src: {"/dev/mapper/luks-fedora-root", "/dev/nvme0n1p3"})
+    assert is_os_device("/dev/mapper/luks-fedora-root") is True
+    assert is_os_device("/dev/nvme0n1p3") is True
+    assert is_os_device("/dev/nvme0n1") is True
+    assert is_os_device("/dev/sdb") is False
+
 
 def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
     from types import SimpleNamespace
