@@ -208,6 +208,17 @@ body {
   border-color: var(--border-focus);
   background: var(--bg-card-hover);
 }
+.nav-btn-primary {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+.nav-btn-primary:hover {
+  background: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  color: #fff !important;
+}
 .nav-github {
   font-family: var(--font-mono);
   font-size: 0.76rem;
