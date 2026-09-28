@@ -16,6 +16,39 @@ function Write-Step($Msg) {
 function Write-Ok { Write-Host " done" -ForegroundColor Green }
 function Write-Info($Msg) { Write-Host "`n    -> $Msg" -ForegroundColor Yellow }
 
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory=$true)][string]$Description,
+        [Parameter(Mandatory=$true)][ScriptBlock]$Command,
+        [int]$MaxRetries = 1
+    )
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        & $Command
+        if ($LASTEXITCODE -eq 0) { return }
+        if ($attempt -lt $MaxRetries) {
+            Write-Host "`n    ⚠️  $Description failed (attempt $attempt/$MaxRetries), retrying in 3s..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 3
+        }
+    }
+    Write-Host "`n`n[ERROR] $Description failed with exit code $LASTEXITCODE." -ForegroundColor Red
+    exit 1
+}
+
+# Admin-elevation advisory
+try {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+        [Security.Principal.WindowsBuiltInRole]::Administrator
+    )
+    if ($isAdmin) {
+        Write-Host ""
+        Write-Host "⚠️  Running as Administrator." -ForegroundColor Yellow
+        Write-Host "   S0 installs to '$InstallDir' (your user profile)." -ForegroundColor Yellow
+        Write-Host "   This should work correctly under Windows UAC elevation," -ForegroundColor Yellow
+        Write-Host "   but running without elevation is recommended." -ForegroundColor Yellow
+        Write-Host ""
+    }
+} catch {}
+
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 Write-Host "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║" -ForegroundColor Cyan
@@ -85,13 +118,21 @@ Write-Ok; Write-Info "git $gitVer"
 Write-Step "Deploying S0 to $InstallDir"
 if (Test-Path $InstallDir) {
     Set-Location $InstallDir
-    try { git pull --ff-only -q 2>$null } catch {}
-    Write-Ok; Write-Info "existing install updated"
+    & git pull --ff-only -q 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n    ⚠️  git pull failed; continuing with existing files." -ForegroundColor Yellow
+    } else {
+        Write-Ok; Write-Info "existing install updated"
+    }
 } else {
-    try {
-        git clone --depth 1 -q $Repo $InstallDir
-    } catch {
-        git clone -q $Repo $InstallDir
+    & git clone --depth 1 -q $Repo $InstallDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "`n    ⚠️  Shallow clone failed, attempting full clone..." -ForegroundColor Yellow
+        & git clone -q $Repo $InstallDir
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n`n[ERROR] git clone failed with exit code $LASTEXITCODE. Check your network connection." -ForegroundColor Red
+            exit 1
+        }
     }
     Write-Ok; Write-Info "cloned from $Repo"
 }
@@ -112,23 +153,31 @@ if (-not (Test-Path $VenvPython)) {
 }
 if (-not (Test-Path $VenvPython)) {
     Write-Host "`n`n[ERROR] Failed to create virtual environment at $VenvDir" -ForegroundColor Red
-    return
+    exit 1
 }
 Write-Ok
 
 # Step 5: Upgrade pip
 Write-Step "Upgrading pip"
-& $VenvPython -m pip install --upgrade pip -q
+Invoke-NativeCommand -Description "Upgrading pip" -MaxRetries 3 -Command {
+    & $VenvPython -m pip install --upgrade pip -q
+}
 Write-Ok
 
 # Step 6: Install S0 packages
 Write-Step "Installing S0 packages"
 Write-Info "core cryptographic library..."
-& $VenvPython -m pip install -e core\python -q
+Invoke-NativeCommand -Description "Installing core cryptographic library" -MaxRetries 3 -Command {
+    & $VenvPython -m pip install -e core\python -q
+}
 Write-Info "CLI and Windows forensic engines..."
-& $VenvPython -m pip install -e linux\cli -q
+Invoke-NativeCommand -Description "Installing CLI and forensic engines" -MaxRetries 3 -Command {
+    & $VenvPython -m pip install -e linux\cli -q
+}
 Write-Info "PDF, QR generation and web dashboard..."
-& $VenvPython -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q
+Invoke-NativeCommand -Description "Installing web and PDF dependencies" -MaxRetries 3 -Command {
+    & $VenvPython -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q
+}
 Write-Ok
 
 # Step 7: Create bin/ launchers
