@@ -150,13 +150,6 @@ To skip the interactive `WIPE` confirmation prompt in automated pipelines:
 sudo s0 wipe --target /dev/sdb --yes --operator "auto-runner"
 ```
 
-#### Real-Time Telemetry:
-During operation, s0 renders an ANSI progress bar displaying real-time I/O throughput, elapsed time, ETA, and thermal sensor telemetry (queried every 2 seconds):
-
-```
-[s0 wipe] ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  482 MB/s  ETA 00m 14s  Temp: 44°C
-```
-
 #### Post-Wipe Sampling:
 Immediately following the write operation, s0 conducts an automated **64-block sampled readback verification** across the physical address space, asserting that every sampled block matches the expected pattern (e.g. `0x00`).
 

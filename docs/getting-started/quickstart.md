@@ -267,12 +267,6 @@ sudo s0 wipe --target /dev/sdb --yes \
 Block device access requires elevated privileges. On Linux/macOS, prefix with `sudo`. On Windows, run from an Administrator terminal.
 {% endhint %}
 
-A live progress bar streams to the terminal throughout the operation:
-
-```
-[s0 wipe]  ████████████████░░░░  78.2%  22.6 GiB / 28.9 GiB  18.4 MB/s  ETA 05m 42s  44°C
-```
-
 When complete:
 
 ```
@@ -369,12 +363,6 @@ s0 carve \
 Custom signature definitions can also be supplied via JSON with `--custom-signatures`.
 
 **Filesystem structure parsing:** ext4 (extent trees), NTFS (`$MFT` runlists), FAT32, exFAT — plus raw sliding-window carving with 4-factor Shannon entropy scoring.
-
-Live output streams a progress bar and a rolling found-file counter:
-
-```
-[s0 carve]  ████████░░░░░░░░░░░░  35.4%  10.2 GiB / 28.9 GiB  142 MB/s   ETA 02m 10s  Found: 36,790
-```
 
 When complete:
 
