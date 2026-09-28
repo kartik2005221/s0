@@ -238,11 +238,18 @@ s0 plan --target /dev/sdb
 Sample output:
 
 ```
-[s0 plan]  Target : /dev/sdb  (SanDisk Ultra, 32.0 GB, USB, Removable)
-[s0 plan]  Method : OVERWRITE_ZERO_1PASS  (NIST SP 800-88 Clear)
-[s0 plan]  Reason : USB mass storage — firmware Secure Erase not supported
-[s0 plan]  Est.   : ~27 seconds at current throughput
-[s0 plan]  No data written. Run `s0 wipe --target /dev/sdb --yes` to proceed.
+[s0 plan]  Target        : /dev/sdb (block, USB, 29.8 GiB)
+[s0 plan]  Method        : OVERWRITE_ZERO_1PASS
+[s0 plan]  NIST Category : Clear
+[s0 plan]  Summary       : 1-pass zero overwrite of /dev/sdb; fsync each pass
+[s0 plan]  Commands      :
+[s0 plan]    - open(/dev/sdb, O_WRONLY) + sequential write + fsync
+[s0 plan]  Warnings      :
+[s0 plan]    ! Overwrite claims NIST Clear only — firmware erase would be required for Purge.
+[s0 plan]  Alternatives  :
+[s0 plan]    - [unavailable] firmware erase: USB mass storage does not expose controller sanitize
+
+[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.
 ```
 
 `plan` resolves the best available sanitization method for the specific hardware — `NVME_SANITIZE` for NVMe, `ATA_SECURE_ERASE` for SATA, `BLKDISCARD` for SSD/discard-capable media, or multi-pass overwrite for HDDs and USB — without touching any data.

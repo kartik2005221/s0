@@ -116,17 +116,19 @@ s0 plan --target /dev/sdb
 
 Example Output:
 ```
-target          : /dev/sdb (Samsung SSD 980 PRO 1TB, 931.5 GiB)
-method          : NVME_SANITIZE_BLOCK_ERASE
-nist category   : Purge
-summary         : NVMe Sanitize Block Erase via controller firmware
-commands        :
-  - nvme sanitize /dev/sdb -a 0x02
-warnings        :
-  ! Target is an NVMe solid-state device. Controller-level purge will be executed.
-alternatives    :
-  - [available] NVME_FORMAT_CRYPTO_ERASE (Purge)
-  - [available] OVERWRITE_ZERO_1PASS (Clear)
+[s0 plan]  Target        : /dev/sdb (block, NVMe, 931.5 GiB)
+[s0 plan]  Method        : NVME_SANITIZE_BLOCK_ERASE
+[s0 plan]  NIST Category : Purge
+[s0 plan]  Summary       : NVMe Sanitize Block Erase via controller firmware
+[s0 plan]  Commands      :
+[s0 plan]    - nvme sanitize /dev/sdb -a 0x02
+[s0 plan]  Warnings      :
+[s0 plan]    ! Target is an NVMe solid-state device. Controller-level purge will be executed.
+[s0 plan]  Alternatives  :
+[s0 plan]    - [available] NVME_FORMAT_CRYPTO_ERASE (Purge)
+[s0 plan]    - [available] OVERWRITE_ZERO_1PASS (Clear)
+
+[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.
 ```
 
 {% hint style="success" %}
