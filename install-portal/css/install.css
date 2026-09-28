@@ -103,6 +103,12 @@
       font-size: 0.95rem;
       letter-spacing: -0.01em;
     }
+    .header-logo {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
     .site-logo-link:hover .site-logo-title {
       color: var(--primary);
     }

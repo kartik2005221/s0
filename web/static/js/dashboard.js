@@ -1343,6 +1343,10 @@ function applyTheme(theme) {
   if (fav) {
     fav.href = theme === "light" ? "/static/assets/favicons/s0-light/favicon-32x32.png" : "/static/assets/favicons/s0-dark/favicon-32x32.png";
   }
+  const logo = document.getElementById("headerLogo");
+  if (logo) {
+    logo.src = theme === "light" ? "/static/assets/favicons/s0-light/favicon-32x32.png" : "/static/assets/favicons/s0-dark/favicon-32x32.png";
+  }
 }
 
 function toggleTheme() {

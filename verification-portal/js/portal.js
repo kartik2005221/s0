@@ -671,6 +671,10 @@ function applyTheme(theme) {
   if (fav) {
     fav.href = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
   }
+  var logo = document.getElementById("headerLogo");
+  if (logo) {
+    logo.src = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+  }
 }
 
 function toggleTheme() {

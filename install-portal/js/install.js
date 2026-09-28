@@ -16,6 +16,10 @@ function updateFavicon(theme) {
   if (fav) {
     fav.href = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
   }
+  const logo = document.getElementById('headerLogo');
+  if (logo) {
+    logo.src = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
+  }
 }
 
 function updateThemeBtn(theme) {
