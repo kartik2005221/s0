@@ -252,38 +252,46 @@ def _print_plan(
     target: DevTarget, candidate, alternatives, warnings: list[str], hpa_dco: dict | None
 ) -> None:
     m = candidate.method
-    print(f"target          : {target.display}")
+    gib = target.capacity_bytes / (1024**3)
+    size_str = f"{gib:.1f} GiB" if gib >= 1 else (f"{target.capacity_bytes / (1024**2):.1f} MiB" if target.capacity_bytes >= 1024**2 else f"{target.capacity_bytes} B")
+    print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
     if m is None:
-        print("method          : NONE AVAILABLE")
-        print(f"reason          : {candidate.reason}")
+        print("[s0 plan]  Method        : NONE AVAILABLE")
+        print(f"[s0 plan]  Reason        : {candidate.reason}")
         return
     plan: Plan = m.plan(target)
-    print(f"method          : {plan.method_id}")
-    print(f"nist category   : {plan.nist_category}")
-    print(f"summary         : {plan.summary}")
+    print(f"[s0 plan]  Method        : {plan.method_id}")
+    print(f"[s0 plan]  NIST Category : {plan.nist_category}")
+    print(f"[s0 plan]  Summary       : {plan.summary}")
     if plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id or getattr(plan, "is_firmware", False):
-        print("firmware note   : Firmware-level Purge methods are simulated/fixture-tested;")
-        print("                  real-world behavior varies across vendors. Verify device support.")
+        print("[s0 plan]  Firmware Note : Firmware-level Purge methods are simulated/fixture-tested;")
+        print("                         real-world behavior varies across vendors. Verify device support.")
     if plan.commands:
-        print("commands        :")
+        print("[s0 plan]  Commands      :")
         for c in plan.commands:
-            print(f"  - {c}")
+            print(f"[s0 plan]    - {c}")
     all_warnings = warnings + plan.warnings
     if all_warnings:
-        print("warnings        :")
+        print("[s0 plan]  Warnings      :")
         for w in all_warnings:
-            print(f"  ! {w}")
+            print(f"[s0 plan]    ! {w}")
     if alternatives:
-        print("alternatives    :")
+        print("[s0 plan]  Alternatives  :")
         for a in alternatives:
             state = "available" if a.available else "unavailable"
-            print(f"  - [{state}] {a.reason}")
+            print(f"[s0 plan]    - [{state}] {a.reason}")
     if hpa_dco and (
         hpa_dco.get("hpa_present") or hpa_dco.get("dco_present") or hpa_dco.get("note")
     ):
-        print("hpa/dco         : " + json.dumps(hpa_dco))
+        print("[s0 plan]  HPA/DCO       :")
+        hpa_status = "Detected" if hpa_dco.get("hpa_present") else ("None" if hpa_dco.get("hpa_present") is False else "Unknown")
+        dco_status = "Detected" if hpa_dco.get("dco_present") else ("None" if hpa_dco.get("dco_present") is False else "Unknown")
+        print(f"[s0 plan]    HPA Present : {hpa_status}")
+        print(f"[s0 plan]    DCO Present : {dco_status}")
+        if hpa_dco.get("note"):
+            print(f"[s0 plan]    Note        : {hpa_dco['note']}")
         if hpa_dco.get("restore_command"):
-            print(f"                  remove BEFORE wiping: {hpa_dco['restore_command']}")
+            print(f"[s0 plan]    Action      : remove BEFORE wiping: {hpa_dco['restore_command']}")
 
 
 # --------------------------------------------------------------------------- #
@@ -352,19 +360,23 @@ def cmd_plan(args) -> int:
         return 2
 
     if sys.platform == "win32" and target.kind == "block":
-        print(f"target          : {target.path}")
-        print(f"method          : OVERWRITE_ZERO_1PASS")
-        print(f"nist category   : Clear")
-        print(f"summary         : Windows raw volume/drive overwriting with volume lock and dismount")
-        print("\nDRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
+        gib = target.capacity_bytes / (1024**3)
+        size_str = f"{gib:.1f} GiB" if gib >= 1 else f"{target.capacity_bytes / (1024**2):.1f} MiB"
+        print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
+        print(f"[s0 plan]  Method        : OVERWRITE_ZERO_1PASS")
+        print(f"[s0 plan]  NIST Category : Clear")
+        print(f"[s0 plan]  Summary       : Windows raw volume/drive overwriting with volume lock and dismount")
+        print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
         return 0
 
     if sys.platform == "darwin" and target.kind == "block":
-        print(f"target          : {target.path}")
-        print(f"method          : OVERWRITE_ZERO_1PASS")
-        print(f"nist category   : Clear")
-        print(f"summary         : macOS raw character device (/dev/rdisk) overwriting with fcntl(F_FULLFSYNC)")
-        print("\nDRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
+        gib = target.capacity_bytes / (1024**3)
+        size_str = f"{gib:.1f} GiB" if gib >= 1 else f"{target.capacity_bytes / (1024**2):.1f} MiB"
+        print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
+        print(f"[s0 plan]  Method        : OVERWRITE_ZERO_1PASS")
+        print(f"[s0 plan]  NIST Category : Clear")
+        print(f"[s0 plan]  Summary       : macOS raw character device (/dev/rdisk) overwriting with fcntl(F_FULLFSYNC)")
+        print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
         return 0
 
     try:
@@ -384,7 +396,7 @@ def cmd_plan(args) -> int:
     if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
         hpa_dco = hpa_dco_report(target)
     _print_plan(target, candidate, alternatives, warnings, hpa_dco)
-    print("\nDRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
+    print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
     return 0
 
 
