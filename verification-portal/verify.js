@@ -251,7 +251,7 @@
         need(Number.isInteger(device.capacity_bytes) && device.capacity_bytes >= 0, "device.capacity_bytes: non-negative integer required");
       }
       if (device.sector_size !== undefined && device.sector_size !== null) {
-        need(Number.isInteger(device.sector_size) && device.sector_size >= 0, "device.sector_size: non-negative integer required");
+        need(Number.isInteger(device.sector_size) && device.sector_size >= 1, "device.sector_size: must be a positive integer (minimum 1)");
       }
     }
 

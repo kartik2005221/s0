@@ -88,3 +88,9 @@ def test_verify_js_contains_all_wipe_methods_and_tiers():
 
     for tier in NIST_CATEGORIES:
         assert f'"{tier}"' in verify_js_content, f"Missing tier {tier} in verify.js"
+
+
+def test_verify_js_sector_size_bound():
+    verify_js_content = (PORTAL_DIR / "verify.js").read_text(encoding="utf-8")
+    assert "device.sector_size >= 1" in verify_js_content
+

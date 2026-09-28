@@ -165,10 +165,12 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
                    "capacity_bytes", "sector_size"})
         need(device.get("device_type") in DEVICE_TYPES, "device.device_type: invalid")
         need(device.get("storage_type") in STORAGE_TYPES, "device.storage_type: invalid")
-        for f in ("capacity_bytes", "sector_size"):
-            v = device.get(f)
-            need(v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
-                 f"device.{f}: must be a non-negative integer")
+        cap = device.get("capacity_bytes")
+        need(cap is None or (isinstance(cap, int) and not isinstance(cap, bool) and cap >= 0),
+             "device.capacity_bytes: must be a non-negative integer")
+        sector = device.get("sector_size")
+        need(sector is None or (isinstance(sector, int) and not isinstance(sector, bool) and sector >= 1),
+             "device.sector_size: must be a positive integer (minimum 1)")
 
     wipe = cert.get("wipe") or {}
     if isinstance(wipe, dict):

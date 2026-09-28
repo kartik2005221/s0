@@ -7,8 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 jobs:
   test:
@@ -44,6 +43,9 @@ jobs:
     name: Publish GitHub Release
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

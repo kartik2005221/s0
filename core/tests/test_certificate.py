@@ -52,6 +52,8 @@ def test_verify_no_keys_supplied(signed_cert):
     lambda c: c["wipe"].update(nist_category="Destroy"),  # nothing software-based claims Destroy
     lambda c: c["result"].update(status="sort_of_ok"),
     lambda c: c["device"].update(capacity_bytes=268435456.0),  # float smuggle
+    lambda c: c["device"].update(sector_size=0),  # 0 must be rejected per schema minimum 1
+    lambda c: c["device"].update(sector_size=-512),  # negative must be rejected
     lambda c: c["issuer"].update(organization=""),
     lambda c: c["wipe"].update(start_time="Aug 22 2026"),
 ])
