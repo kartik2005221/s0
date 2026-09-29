@@ -39,3 +39,6 @@ skills-lock.json
 
 # Local test artifacts produced by portal PDF verification runs
 verification-portal/tests/x*.pdf
+
+# Stray package downloads
+*.whl
