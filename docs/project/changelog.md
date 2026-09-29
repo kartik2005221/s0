@@ -214,7 +214,7 @@ flowchart LR
 
 ### Added
 - **Production Documentation Suite:** Deployed complete technical documentation at [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) with GitBook Site Git Sync.
-- **Forensic Color Theme:** Integrated the ColorHunt `#222831` `#393E46` `#00ADB5` `#EEEEEE` palette with customized code blocks, admonitions, and typography.
+- **Forensic Color Theme:** Integrated high-contrast forensic styling with customized code blocks, admonitions, and typography.
 - **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.
 - **One-Line Cross-Platform Installers & Uninstallers:** Added streamlined `install.sh`, `install.ps1`, `install.cmd`, `uninstall.sh`, and `uninstall.ps1` scripts with PATH registration and virtualenv bootstrapping.
@@ -269,7 +269,7 @@ flowchart LR
   - Direct ext4 superblock, block group descriptor, and inode extent tree parser (`ext4_carver.py`).
   - Direct NTFS Master File Table ($MFT) parser extracting resident attributes and non-resident runlists (`ntfs_carver.py`).
   - 4-factor confidence scoring (header 30%, footer 30%, size 20%, 3-point Shannon entropy 20%).
-- **Module 4: Blockchain Audit Ledger (`audit/`):**
+- **Hash-Chained Cryptographic Audit Ledger (`audit/`):**
   - Append-only SQLite database (`~/.s0/s0_audit.db`) with SHA-256 block hash chaining:
     $$\text{block\_hash} = \text{SHA256}(\text{index} \parallel \text{timestamp} \parallel \text{op\_type} \parallel \text{target\_id} \parallel \text{cert\_uuid} \parallel \text{payload\_hash} \parallel \text{signature} \parallel \text{prev\_hash})$$
   - Built-in `s0 audit verify` command confirming unbroken mathematical continuity from genesis to tip.
