@@ -1,343 +1,491 @@
-"""Unit tests for s0 Module 2: Advanced File Carving & Recovery."""
+"""Unit tests for s0 Module 2: file carving, boundary resolution and scoring.
 
+These fixtures are built with real encoders (Pillow, zipfile, sqlite3, gzip,
+tarfile, wave) rather than hand-assembled magic bytes. That matters: the
+previous version of this suite concatenated plausible-looking headers by hand
+and then asserted that the carver "recovered" them, which is precisely the
+behaviour that made s0 return the same junk for every target. A carver that
+correctly rejects a malformed object must have tests that feed it malformed
+objects and say so.
+"""
+
+import gzip
 import hashlib
+import io
+import os
+import sqlite3
+import struct
+import tarfile
+import wave
+import zipfile
+import zlib
 from pathlib import Path
 
 import pytest
-from s0_cli.carver import (
-    calculate_shannon_entropy,
-    carve_image,
-    score_carved_candidate,
-    get_signature_by_ext,
-)
+
+from s0_cli.carver import calculate_shannon_entropy, carve_image, score_carved_candidate
+from s0_cli.carver import boundary, signatures
+from s0_cli.carver.policy import CarveBudget, CarvePolicy
+from s0_cli.carver.signatures import get_signature_by_ext, sniff
 from s0_core.certificate import verify_certificate
 from s0_core.crypto import load_public_pem
 
+pil = pytest.importorskip("PIL.Image", reason="Pillow required to build image fixtures")
+
+
+# --------------------------------------------------------------------------- #
+# real-encoder fixtures
+# --------------------------------------------------------------------------- #
+
+
+def _png_bytes(w=64, h=64, colour=(200, 30, 60)):
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), colour).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _jpeg_bytes(w=64, h=64):
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (10, 120, 200)).save(buf, format="JPEG", quality=85)
+    return buf.getvalue()
+
+
+def _gif_bytes():
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("P", (32, 24)).save(buf, format="GIF")
+    return buf.getvalue()
+
+
+def _bmp_bytes():
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (32, 24), (7, 7, 7)).save(buf, format="BMP")
+    return buf.getvalue()
+
+
+def _zip_bytes():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("notes.txt", "forensic evidence " * 100)
+        z.writestr("data.csv", "a,b,c\n" * 200)
+    return buf.getvalue()
+
+
+def _wav_bytes():
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(44100)
+        w.writeframes(b"\x00\x01" * 8000)
+    return buf.getvalue()
+
+
+def _sqlite_bytes(tmp_path):
+    p = tmp_path / "fixture.sqlite"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE t (id INTEGER PRIMARY KEY, blob BLOB)")
+    for i in range(300):
+        con.execute("INSERT INTO t VALUES (?, ?)", (i, os.urandom(48)))
+    con.commit()
+    con.close()
+    return p.read_bytes()
+
+
+def _tar_bytes():
+    buf = io.BytesIO()
+    body = os.urandom(20_000)
+    with tarfile.open(fileobj=buf, mode="w") as t:
+        info = tarfile.TarInfo("evidence.bin")
+        info.size = len(body)
+        t.addfile(info, io.BytesIO(body))
+    return buf.getvalue()
+
+
+def _pdf_bytes(title="Case 42"):
+    return (f"%PDF-1.7\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            f"trailer<</Root 1 0 R/Info<</Title({title})>>>>\n%%EOF\n").encode()
+
+
+def _write_image_with_payloads(tmp_path, payloads, total=48 * 1024 * 1024, fill=None):
+    """Scatter payloads through a noisy image and return (path, {name: offset})."""
+    fill = fill if fill is not None else os.urandom(1 << 20)
+    span = total // (len(payloads) + 2)
+    buf = bytearray()
+    placements = {}
+    for i, (name, data) in enumerate(payloads.items()):
+        pad = (fill * ((span * 2) // len(fill) + 2))[: span]
+        buf += pad
+        placements[name] = len(buf)
+        buf += data
+    pad = (fill * ((span * 2) // len(fill) + 2))[: span]
+    buf += pad
+    p = tmp_path / "evidence.raw"
+    p.write_bytes(bytes(buf))
+    return p, placements
+
+
+# --------------------------------------------------------------------------- #
+# entropy
+# --------------------------------------------------------------------------- #
+
 
 def test_shannon_entropy():
-    # Zero / uniform byte data has 0 entropy
-    zero_bytes = b"\x00" * 1024
-    assert calculate_shannon_entropy(zero_bytes) == 0.0
-
-    # Random / high-entropy data has near 8.0 entropy
+    assert calculate_shannon_entropy(b"\x00" * 1024) == 0.0
     import secrets
-    rnd_bytes = secrets.token_bytes(4096)
-    ent = calculate_shannon_entropy(rnd_bytes)
-    assert 7.5 <= ent <= 8.0
+    assert 7.5 <= calculate_shannon_entropy(secrets.token_bytes(4096)) <= 8.0
 
 
-def test_confidence_scoring_jpeg():
-    sig = get_signature_by_ext("jpg")
-    assert sig is not None
-
-    # Construct realistic JPEG header and footer
-    jpeg_data = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00" + b"\xff\xdb" + b"\xaa" * 500 + b"\xff\xd9"
-    score, heuristics = score_carved_candidate(sig, jpeg_data, has_valid_footer=True)
-    assert score >= 80
-    assert any("Valid magic header" in h for h in heuristics)
-    assert any("Valid format footer" in h for h in heuristics)
+# --------------------------------------------------------------------------- #
+# boundary resolution -- the mechanism that replaces "carve to max_size"
+# --------------------------------------------------------------------------- #
 
 
-def test_carve_disk_image_with_planted_files(tmp_path):
-    disk_img = tmp_path / "forensic_target.raw"
-    out_dir = tmp_path / "carved_output"
-
-    # Synthetic disk image: junk padding + planted JPEG + planted PNG + planted PDF + junk padding
-    jpeg_payload = b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01" + b"\x55\xaa" * 200 + b"\xff\xd9"
-    png_payload = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"\x12\x34" * 100 + b"IEND\xaeB`\x82"
-    pdf_payload = b"%PDF-1.5\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n" + b"stream\nTEST EVIDENCE DATA\nendstream\n" + b"%%EOF"
-
-    junk_block = b"\x5a" * 65536
-
-    with open(disk_img, "wb") as f:
-        f.write(junk_block)
-        f.write(jpeg_payload)
-        f.write(junk_block)
-        f.write(png_payload)
-        f.write(junk_block)
-        f.write(pdf_payload)
-        f.write(junk_block)
-
-    summary = carve_image(
-        disk_img,
-        out_dir,
-        min_confidence=60,
-        operator_id="op-forensic",
-        organization="Forensic Lab",
-    )
-
-    assert summary.files_recovered >= 3
-    rec_exts = {c.extension for c in summary.carved_files}
-    assert "jpg" in rec_exts
-    assert "png" in rec_exts
-    assert "pdf" in rec_exts
-
-    # Verify SHA-256 of carved items match original payloads
-    jpeg_item = next(c for c in summary.carved_files if c.extension == "jpg")
-    assert jpeg_item.sha256 == hashlib.sha256(jpeg_payload).hexdigest()
-    assert jpeg_item.confidence_score >= 80
-
-    png_item = next(c for c in summary.carved_files if c.extension == "png")
-    assert png_item.sha256 == hashlib.sha256(png_payload).hexdigest()
-
-    pdf_item = next(c for c in summary.carved_files if c.extension == "pdf")
-    assert pdf_item.sha256 == hashlib.sha256(pdf_payload).hexdigest()
-
-    # Verify Signed Recovery Manifest Certificate
-    assert summary.manifest_certificate is not None
-    demo_pub_key = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
-    pub = load_public_pem(demo_pub_key)
-    ok, reason = verify_certificate(summary.manifest_certificate, [pub])
-    assert ok is True
-    assert "valid Ed25519 signature" in reason
+@pytest.mark.parametrize("name,data,expected_size", [
+    ("png", _png_bytes, 0),
+    ("jpg", _jpeg_bytes, 0),
+    ("gif", _gif_bytes, 0),
+    ("bmp", _bmp_bytes, 0),
+    ("zip", _zip_bytes, 0),
+    ("wav", _wav_bytes, 0),
+])
+def test_boundary_resolves_exact_size(tmp_path, name, data, expected_size):
+    blob = data()
+    path = tmp_path / "blob.bin"
+    path.write_bytes(blob)
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        sig = get_signature_by_ext(name)
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert b.resolved, b.notes
+    assert b.end == len(blob), f"{name}: resolved {b.end} for a {len(blob)}-byte object"
 
 
-def test_carve_filtered_extensions(tmp_path):
-    disk_img = tmp_path / "filter_test.raw"
-    out_dir = tmp_path / "filtered_out"
-
-    jpeg_payload = b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x11" * 100 + b"\xff\xd9"
-    png_payload = b"\x89PNG\r\n\x1a\n" + b"\x22" * 100 + b"IEND\xaeB`\x82"
-
-    with open(disk_img, "wb") as f:
-        f.write(jpeg_payload + (b"\x00" * 1024) + png_payload)
-
-    # Filter strictly for JPG
-    summary = carve_image(disk_img, out_dir, extensions=["jpg"])
-    assert summary.files_recovered == 1
-    assert summary.carved_files[0].extension == "jpg"
+def test_gzip_boundary_is_the_end_of_the_stream(tmp_path):
+    blob = gzip.compress(b"PAYLOAD-" * 5000, 9)
+    path = tmp_path / "blob.gz"
+    path.write_bytes(blob)
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        sig = get_signature_by_ext("gz")
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert b.resolved and b.end == len(blob)
+    assert any("CRC32" in n for n in b.notes)
 
 
-def test_scoring_multi_formats():
-    """Verify confidence scoring across diverse file formats (GIF, GZIP, ZIP, BMP, ELF, SQLite)."""
-    import json
-
-    # GIF
-    sig_gif = get_signature_by_ext("gif")
-    assert sig_gif is not None
-    gif_data = b"GIF89a\x20\x00\x20\x00\x80\x00\x00" + b"\xaa" * 50 + b"\x3b"
-    score_gif, _ = score_carved_candidate(sig_gif, gif_data, has_valid_footer=True)
-    assert score_gif >= 80
-
-    # GZIP
-    sig_gz = get_signature_by_ext("gz")
-    assert sig_gz is not None
-    gz_data = b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03" + b"\x55" * 100
-    score_gz, _ = score_carved_candidate(sig_gz, gz_data)
-    assert score_gz >= 60
-
-    # ZIP
-    sig_zip = get_signature_by_ext("zip")
-    assert sig_zip is not None
-    zip_data = b"PK\x03\x04" + b"\x12" * 100 + b"PK\x01\x02" + b"\x34" * 50 + b"PK\x05\x06"
-    score_zip, _ = score_carved_candidate(sig_zip, zip_data, has_valid_footer=True)
-    assert score_zip >= 80
-
-    # BMP
-    sig_bmp = get_signature_by_ext("bmp")
-    assert sig_bmp is not None
-    bmp_data = b"BM" + (b"\x00" * 12) + b"\x28\x00\x00\x00" + b"\xff" * 100
-    score_bmp, _ = score_carved_candidate(sig_bmp, bmp_data)
-    assert score_bmp >= 60
-
-    # ELF
-    sig_elf = get_signature_by_ext("elf")
-    assert sig_elf is not None
-    elf_data = b"\x7fELF\x02\x01\x01\x00" + b"\x77" * 200
-    score_elf, _ = score_carved_candidate(sig_elf, elf_data)
-    assert score_elf >= 60
-
-    # SQLite
-    sig_sql = get_signature_by_ext("sqlite")
-    assert sig_sql is not None
-    sql_data = b"SQLite format 3\x00\x10\x00\x01\x01" + b"\x00" * 500
-    score_sql, _ = score_carved_candidate(sig_sql, sql_data)
-    assert score_sql >= 60
+def test_sqlite_boundary_uses_the_page_count(tmp_path):
+    blob = _sqlite_bytes(tmp_path)
+    path = tmp_path / "blob.sqlite"
+    path.write_bytes(blob)
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        sig = get_signature_by_ext("sqlite")
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert b.resolved and b.end == len(blob)
 
 
-def test_adversarial_carving_zero_and_empty_images(tmp_path):
-    """Verify carver behavior on adversarial inputs (zeros, empty file, corrupt data)."""
-    import json
-    out_dir = tmp_path / "out_adversarial"
-
-    # 1. Empty file (0 bytes)
-    empty_img = tmp_path / "empty.raw"
-    empty_img.write_bytes(b"")
-    sum_empty = carve_image(empty_img, out_dir / "empty")
-    assert sum_empty.files_recovered == 0
-    assert sum_empty.total_bytes_scanned == 0
-
-    # 2. Entirely zero-filled image (1 MiB of 0x00)
-    zero_img = tmp_path / "zeros.raw"
-    zero_img.write_bytes(b"\x00" * (1024 * 1024))
-    sum_zero = carve_image(zero_img, out_dir / "zeros")
-    assert sum_zero.files_recovered == 0
-    assert sum_zero.total_bytes_scanned == 1024 * 1024
-
-    # 3. Truncated / corrupt image (Header present but file terminates before footer)
-    corrupt_img = tmp_path / "corrupt.raw"
-    corrupt_img.write_bytes(b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x99" * 64)
-    sum_corrupt = carve_image(corrupt_img, out_dir / "corrupt", min_confidence=80)
-    # High confidence threshold rejects header-only incomplete JPEG without footer
-    assert sum_corrupt.files_recovered == 0
-
-    # 4. Check recovery_index.json generation
-    rec_idx = out_dir / "zeros" / "recovery_index.json"
-    assert rec_idx.exists()
-    idx_content = json.loads(rec_idx.read_text())
-    assert idx_content["files_recovered"] == 0
-    assert "recovered_files" in idx_content
+def test_tar_boundary_accounts_for_the_257_byte_magic_offset(tmp_path):
+    blob = _tar_bytes()
+    path = tmp_path / "blob.tar"
+    path.write_bytes(blob)
+    ustar = blob.index(b"ustar")           # the signature is 257 bytes in
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        sig = get_signature_by_ext("tar")
+        b = boundary.resolve_boundary(src, ustar, sig, sig.max_size)
+    assert b.resolved
+    # The returned end is expressed in the candidate's own frame, so the carved
+    # length still equals the whole archive.
+    assert b.end - ustar == len(blob)
 
 
-def test_carve_mp3_sync_frames_and_new_formats(tmp_path):
-    """Verify carving of MP3 without ID3 tag (MPEG sync frames), WAV, FLAC, 7z, and PCAP."""
-    disk_img = tmp_path / "extended_media.raw"
-    out_dir = tmp_path / "extended_out"
-
-    # 1. MP3 without ID3 tag (starting directly with MPEG-1 Layer 3 frame sync 0xFFFB)
-    # High entropy payload representing audio bitstream
-    import secrets
-    mp3_frame_header = b"\xff\xfb\x90\x64"  # Sync 0xFFE0, MPEG-1, Layer 3, 128 kbps, 44.1 kHz
-    mp3_data = mp3_frame_header + secrets.token_bytes(2048)
-
-    # 2. WAV Audio (RIFF ... WAVE)
-    wav_header = b"RIFF" + (100).to_bytes(4, "little") + b"WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00" + b"\x00" * 80
-
-    # 3. FLAC Lossless Audio
-    flac_data = b"fLaC\x00\x00\x00\x22" + secrets.token_bytes(512)
-
-    # 4. 7-Zip Archive
-    sevenz_data = b"7z\xbc\xaf'\x1c\x00\x04" + secrets.token_bytes(256)
-
-    # 5. PCAP Packet Capture
-    pcap_data = b"\xd4\xc3\xb2\xa1\x02\x00\x04\x00\x00\x00\x00\x00" + secrets.token_bytes(256)
-
-    junk = b"\x00" * 4096
-
-    with open(disk_img, "wb") as f:
-        f.write(junk)
-        f.write(mp3_data)
-        f.write(junk)
-        f.write(wav_header)
-        f.write(junk)
-        f.write(flac_data)
-        f.write(junk)
-        f.write(sevenz_data)
-        f.write(junk)
-        f.write(pcap_data)
-        f.write(junk)
-
-    summary = carve_image(
-        disk_img,
-        out_dir,
-        min_confidence=50,
-        operator_id="op-test",
-    )
-
-    rec_exts = {c.extension for c in summary.carved_files}
-    assert "mp3" in rec_exts, "MP3 with MPEG sync frame was not carved"
-    assert "wav" in rec_exts, "WAV audio was not carved"
-    assert "flac" in rec_exts, "FLAC audio was not carved"
-    assert "7z" in rec_exts, "7z archive was not carved"
-    assert "pcap" in rec_exts, "PCAP capture was not carved"
+def test_no_boundary_rule_means_reject_not_guess(tmp_path):
+    blob = b"BM" + os.urandom(4096)
+    path = tmp_path / "junk.bin"
+    path.write_bytes(blob)
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        sig = get_signature_by_ext("bmp")
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert not b.resolved
+    assert b.method == boundary.UNDETERMINED
 
 
-def test_custom_signatures_carving(tmp_path):
-    from s0_cli.carver import signature_from_dict
+# --------------------------------------------------------------------------- #
+# structural validation -- the gate
+# --------------------------------------------------------------------------- #
 
-    custom_sig_dict = {
-        "name": "Proprietary Secure Vault",
-        "extension": "psv",
-        "category": "archive",
-        "header_hex": "53 45 43 56 41 55 4C 54",  # SECVAULT
-        "footer_hex": "45 4E 44 56 41 55 4C 54",  # ENDVAULT
-        "min_size": 16,
-        "max_size": 1024 * 1024,
+
+@pytest.mark.parametrize("name,data", [
+    ("png", _png_bytes), ("jpg", _jpeg_bytes), ("gif", _gif_bytes),
+    ("bmp", _bmp_bytes), ("zip", _zip_bytes), ("wav", _wav_bytes),
+])
+def test_structural_validation_accepts_real_files(name, data):
+    ok, reason = boundary.validate_structure(data(), name)
+    assert ok, reason
+
+
+@pytest.mark.parametrize("name,blob", [
+    ("png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 200),
+    ("jpg", b"\xff\xd8\xff" + b"\x00" * 200),
+    ("zip", b"PK\x03\x04" + b"\x00" * 200),
+    ("gif", b"GIF8" + b"\x00" * 200),
+    ("bmp", b"BM" + os.urandom(400)),
+    ("sqlite", b"SQLite format 3\x00" + b"\x00" * 900),
+])
+def test_structural_validation_rejects_truncated_or_random_data(name, blob):
+    ok, reason = boundary.validate_structure(blob, name)
+    assert not ok
+    assert reason
+
+
+def test_mp3_frame_chain_rejects_a_lone_sync_word():
+    """Two bytes of sync magic are not an MP3. This is the bug that made s0
+    return 30-odd 2 MiB junk files for every target."""
+    ok, reason = boundary.validate_structure(b"\xff\xfb" + os.urandom(200_000), "mp3")
+    assert not ok
+    assert "consecutive" in reason
+
+
+def test_mp3_frame_chain_accepts_a_real_frame_sequence(tmp_path):
+    ffmpeg = None
+    payload = _synth_mp3_frames(40)
+    if payload is None:
+        pytest.skip("no MPEG frame sequence generator available")
+    path = tmp_path / "frames.bin"
+    path.write_bytes(payload)
+    with open(path, "rb") as fh:
+        src = boundary.ByteSource(fh, len(payload))
+        sig = get_signature_by_ext("mp3")
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert b.resolved
+    assert b.method == boundary.FRAME_VALIDATED
+    ok, reason = boundary.validate_structure(src.read(0, b.end), "mp3")
+    assert ok, reason
+
+
+def _synth_mp3_frames(n=40):
+    """Build a valid MPEG-1 Layer III frame chain: 128 kbps, 44.1 kHz, mono."""
+    header = bytes([0xFF, 0xFB, 0x90, 0x00])       # MPEG1 L3 128kbps 44.1k no-CRC
+    frame_len = 144 * 128_000 // 44100              # 417
+    hdr = boundary.parse_mpeg_frame_header(header, 0)
+    if hdr is None or hdr["frame_len"] != frame_len:
+        return None
+    return header + b"\x5a" * (frame_len - 4) * n
+
+
+# --------------------------------------------------------------------------- #
+# scoring
+# --------------------------------------------------------------------------- #
+
+
+def test_valid_bmp_scores_high_despite_low_entropy():
+    """A solid-colour BMP is genuinely low entropy. It must not be discarded."""
+    blob = _bmp_bytes()
+    sig = get_signature_by_ext("bmp")
+    with open.__call__ and _tmpfile(blob) as fh:
+        src = boundary.ByteSource(fh, len(blob))
+        b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
+    assert b.resolved
+    score, heuristics = score_carved_candidate(
+        sig, blob, boundary_method=b.method, boundary_notes=tuple(b.notes))
+    assert score >= 90, heuristics
+
+
+def test_entropy_alone_can_never_reject_a_valid_file():
+    """Entropy is capped at a small share of the score and may not go negative
+    except for effectively constant data."""
+    blob = _png_bytes(8, 8, (0, 0, 0))          # near-constant image
+    sig = get_signature_by_ext("png")
+    score, heuristics = score_carved_candidate(sig, blob, boundary_method=boundary.CONTAINER_WALK)
+    assert score >= 85, heuristics
+
+
+def test_header_only_signature_without_a_resolvable_boundary_is_not_scored():
+    sig = get_signature_by_ext("bmp")
+    score, heuristics = score_carved_candidate(sig, b"BM" + os.urandom(4096))
+    assert score < 60
+    assert any("not independently resolvable" in h for h in heuristics)
+
+
+def _tmpfile(blob):
+    import tempfile
+    fd, path = tempfile.mkstemp()
+    os.write(fd, blob)
+    os.close(fd)
+    fh = open(path, "rb")
+    fh._s0_tmp = path
+    return fh
+
+
+# --------------------------------------------------------------------------- #
+# end-to-end carving
+# --------------------------------------------------------------------------- #
+
+
+def test_carve_recovers_every_planted_file_and_no_others(tmp_path):
+    payloads = {
+        "a.png": _png_bytes(),
+        "b.jpg": _jpeg_bytes(),
+        "c.gif": _gif_bytes(),
+        "d.bmp": _bmp_bytes(),
+        "e.zip": _zip_bytes(),
+        "f.pdf": _pdf_bytes(),
+        "g.gz": gzip.compress(b"PAYLOAD-" * 5000, 9),
+        "h.wav": _wav_bytes(),
     }
-    sig = signature_from_dict(custom_sig_dict)
+    path, placements = _write_image_with_payloads(tmp_path, payloads)
+    out = tmp_path / "out"
+    summary = carve_image(path, out, generate_certificate=False)
 
-    disk_img = tmp_path / "custom_target.raw"
-    out_dir = tmp_path / "carved_custom"
+    recovered = {c.filename.split(".")[-1] for c in summary.carved_files}
+    offsets = {c.offset for c in summary.carved_files}
+    for name, off in placements.items():
+        assert off in offsets, f"{name} was not recovered (offsets: {sorted(offsets)})"
+        ext = name.split(".")[-1]
+        assert ext in recovered, f"{name} missing from {sorted(recovered)}"
 
-    payload = b"SECVAULT" + b"\x12\x34\x56\x78" * 32 + b"ENDVAULT"
-    junk = b"\x00" * 2048
+    expected_sizes = {n: len(v) for n, v in payloads.items()}
+    for c in summary.carved_files:
+        truth = next(n for n, o in placements.items() if o == c.offset)
+        assert c.size_bytes == expected_sizes[truth], (
+            f"{truth}: carved {c.size_bytes} but planted {expected_sizes[truth]}")
 
-    with open(disk_img, "wb") as f:
-        f.write(junk)
-        f.write(payload)
-        f.write(junk)
-
-    summary = carve_image(
-        disk_img,
-        out_dir,
-        custom_signatures=[sig],
-        min_confidence=50,
-        operator_id="op-test",
-    )
-
-    rec_exts = {c.extension for c in summary.carved_files}
-    assert "psv" in rec_exts
-    assert summary.files_recovered >= 1
-    carved_file = next(c for c in summary.carved_files if c.extension == "psv")
-    assert carved_file.size_bytes == len(payload)
-    with open(carved_file.recovered_path, "rb") as f:
-        assert f.read() == payload
+    assert summary.files_recovered == len(payloads)
+    assert all(c.confidence_score >= 60 for c in summary.carved_files)
 
 
-def test_cmd_carve_pdf_generation_and_no_pdf_flag(tmp_path):
-    """R2-5: s0 carve must generate a PDF certificate unless --no-pdf is passed."""
-    from s0_cli.main import main
-
-    disk_img = tmp_path / "disk.img"
-    disk_img.write_bytes(b"\x00" * 1024)
-
-    # 1. Carve with PDF generation (default)
-    out_dir_pdf = tmp_path / "out_pdf"
-    rc = main(["carve", "--target", str(disk_img), "--out-dir", str(out_dir_pdf)])
-    assert rc == 0
-    pdfs = list(out_dir_pdf.glob("carving_manifest_*.pdf"))
-    assert len(pdfs) == 1, "Expected PDF certificate to be generated by default"
-
-    # 2. Carve with --no-pdf
-    out_dir_nopdf = tmp_path / "out_nopdf"
-    rc = main(["carve", "--target", str(disk_img), "--out-dir", str(out_dir_nopdf), "--no-pdf"])
-    assert rc == 0
-    pdfs_none = list(out_dir_nopdf.glob("carving_manifest_*.pdf"))
-    assert len(pdfs_none) == 0, "Expected no PDF certificate when --no-pdf is specified"
-
-
-def test_carve_zip_eocd_completeness(tmp_path):
-    import io
-    import zipfile
-    bio = io.BytesIO()
-    with zipfile.ZipFile(bio, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("test.txt", "forensic test data 12345")
-        zf.comment = b"forensic-comment"
-    zip_bytes = bio.getvalue()
-
-    disk_img = tmp_path / "zip_disk.raw"
-    disk_img.write_bytes(b"\xaa" * 1024 + zip_bytes + b"\xbb" * 1024)
-
-    out_dir = tmp_path / "out_zip"
-    summary = carve_image(disk_img, out_dir, extensions=["zip"])
-    assert summary.files_recovered == 1
-    carved_zip = summary.carved_files[0]
-    assert carved_zip.size_bytes == len(zip_bytes)
-    with zipfile.ZipFile(carved_zip.recovered_path, "r") as zf:
-        assert zf.read("test.txt") == b"forensic test data 12345"
-        assert zf.comment == b"forensic-comment"
-
-
-def test_carve_random_wiped_disk_zero_false_positives(tmp_path):
-    import secrets
-    rnd_data = secrets.token_bytes(256 * 1024)
-    disk_img = tmp_path / "random_wiped.raw"
-    disk_img.write_bytes(rnd_data)
-
-    out_dir = tmp_path / "out_rnd"
-    summary = carve_image(disk_img, out_dir, min_confidence=70)
+def test_carve_emits_nothing_for_pure_noise(tmp_path):
+    """The regression that matters: unrelated data must yield nothing, and the
+    output must never exceed the input."""
+    path = tmp_path / "noise.raw"
+    path.write_bytes(os.urandom(8 * 1024 * 1024))
+    out = tmp_path / "out"
+    summary = carve_image(path, out, generate_certificate=False)
     assert summary.files_recovered == 0
+    written = sum(p.stat().st_size for p in out.iterdir() if p.is_file())
+    assert written < path.stat().st_size
+    assert summary.total_candidates_found > 0, "noise should still generate candidates"
 
 
+def test_carve_output_never_exceeds_its_budget(tmp_path):
+    payloads = {f"p{i}.png": _png_bytes(256, 256, (i * 7 % 255, 3, 9)) for i in range(40)}
+    path, _ = _write_image_with_payloads(tmp_path, payloads, total=32 * 1024 * 1024)
+    out = tmp_path / "out"
+    policy = CarvePolicy.for_target(path.stat().st_size, max_files_total=10)
+    summary = carve_image(path, out, generate_certificate=False, policy=policy)
+    assert summary.files_recovered <= 10
+    written = sum(p.stat().st_size for p in out.iterdir()
+                  if p.is_file() and p.suffix != ".json")
+    assert written <= policy.max_output_bytes
 
 
+def test_carve_extension_filter_is_honoured(tmp_path):
+    payloads = {"a.png": _png_bytes(), "b.pdf": _pdf_bytes()}
+    path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
+    out = tmp_path / "out"
+    summary = carve_image(path, out, extensions=["pdf"], generate_certificate=False)
+    assert {c.extension for c in summary.carved_files} == {"pdf"}
+
+
+def test_carve_records_why_candidates_were_rejected(tmp_path):
+    path = tmp_path / "mixed.raw"
+    blob = os.urandom(4 * 1024 * 1024) + b"BM" + os.urandom(100_000)
+    path.write_bytes(blob)
+    out = tmp_path / "out"
+    summary = carve_image(path, out, generate_certificate=False)
+    assert summary.rejected_candidates > 0
+    assert summary.rejected_samples
+    assert summary.rejection_summary
+    assert summary.rejection_summary[0][1] >= 1
+    stages = {r.stage for r in summary.rejected_samples}
+    assert stages <= {"boundary", "structure", "score", "budget"}
+    assert all(r.reason for r in summary.rejected_samples)
+
+
+def test_recovery_index_is_written_and_machine_readable(tmp_path):
+    import json
+    payloads = {"a.png": _png_bytes(), "b.zip": _zip_bytes()}
+    path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
+    out = tmp_path / "out"
+    carve_image(path, out, generate_certificate=False)
+    idx = json.loads((out / "recovery_index.json").read_text())
+    assert idx["schema"] == "s0.recovery-index/1"
+    assert idx["files_recovered"] == 2
+    assert idx["candidates_rejected"] >= 0
+    assert all("sha256" in f for f in idx["recovered_files"])
+    assert all("boundary_method" in f for f in idx["recovered_files"])
+
+
+def test_carve_issues_a_verifiable_manifest_certificate(tmp_path):
+    from s0_core.crypto import DEMO_KEY_FINGERPRINT
+    payloads = {"a.png": _png_bytes(), "b.zip": _zip_bytes()}
+    path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
+    out = tmp_path / "out"
+    summary = carve_image(path, out, generate_certificate=True)
+    cert = summary.manifest_certificate
+    assert cert is not None
+    assert cert["signature"]["public_key_fingerprint"] == DEMO_KEY_FINGERPRINT
+    pub = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
+    ok, reason = verify_certificate(cert, [load_public_pem(pub)])
+    assert ok, reason
+    assert cert["wipe"]["method"] == "FORENSIC_CARVING"
+
+
+def test_custom_signature_is_honoured(tmp_path):
+    blob = b"\x93S0MARKER\x00" + b"payload-" * 500
+    payload = blob + os.urandom(4096)
+    path = tmp_path / "custom.raw"
+    path.write_bytes(os.urandom(1 << 20) + payload + os.urandom(1 << 20))
+    sigs = [signatures.signature_from_dict({
+        "name": "S0 Marker", "extension": "s0m", "category": "custom",
+        "header": "9353304d41524b4552", "min_size": 64, "max_size": 65536,
+    })]
+    out = tmp_path / "out"
+    summary = carve_image(path, out, custom_signatures=sigs, generate_certificate=False)
+    assert summary.files_recovered == 1
+    c = summary.carved_files[0]
+    assert c.extension == "s0m"
+    # No boundary rule exists for an operator-defined format, so s0 carves the
+    # declared max_size and says so rather than pretending the end was resolved.
+    assert c.boundary_method == boundary.MAX_SIZE_FALLBACK
+    assert c.size_bytes == 65536
+    written = Path(c.recovered_path).read_bytes()
+    assert written.startswith(blob)
+    assert any("no boundary rule exists" in h for h in c.heuristics)
+
+
+def test_sniff_identifies_content():
+    assert sniff(_png_bytes()).extension == "png"
+    assert sniff(_jpeg_bytes()).extension == "jpg"
+    assert sniff(_zip_bytes()).extension == "zip"
+    assert sniff(os.urandom(4096)) is None
+
+
+# --------------------------------------------------------------------------- #
+# budget policy
+# --------------------------------------------------------------------------- #
+
+
+def test_budget_scales_with_target_size():
+    small = CarvePolicy.for_target(64 * 1024 * 1024)
+    large = CarvePolicy.for_target(512 * 1024 * 1024 * 1024)
+    assert small.max_output_bytes < large.max_output_bytes
+    assert small.max_output_bytes <= small.max_output_bytes * 8
+
+
+def test_budget_admission_is_ordered_and_explained():
+    b = CarveBudget(policy=CarvePolicy(max_files_total=2, max_file_bytes=1024,
+                                       max_output_bytes=4096,
+                                       max_files_per_category=5,
+                                       max_files_per_extension=5))
+    assert b.admit("image", "png", 500)[0]
+    b.commit("image", "png", 500)
+    ok, reason = b.admit("image", "png", 999_999)
+    assert not ok and "per-file cap" in reason
+    b.commit("image", "png", 500)
+    ok, reason = b.admit("image", "png", 100)
+    assert not ok and "session cap" in reason

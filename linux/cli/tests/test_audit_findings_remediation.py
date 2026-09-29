@@ -32,6 +32,7 @@ from s0_cli.carver.ntfs_carver import (
 from s0_cli.carver.scoring import (
     score_carved_candidate,
 )
+from s0_cli.carver import boundary
 from s0_cli.carver.signatures import get_signature_by_ext
 from s0_cli.devices import (
     Target,
@@ -215,28 +216,41 @@ def test_ntfs_carver_file_handle_preservation(tmp_path: Path):
 
 
 def test_carver_manifest_verification_integrity(tmp_path: Path):
+    """A carve manifest must not borrow sanitization vocabulary: there is no
+    wipe pattern and no planted data on a read-only recovery operation."""
     target_img = tmp_path / "target.img"
-    target_img.write_bytes(b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF" + bytes(4096))
+    target_img.write_bytes(b"%PDF-1.7\ntrailer<</Root 1 0 R>>\n%%EOF" + bytes(4096))
 
     out_dir = tmp_path / "carved_out"
     summary = carve_image(target_img, out_dir)
 
-    if summary.manifest_certificate:
-        verif = summary.manifest_certificate["result"]["verification"]
-        assert "all_samples_match_wipe_pattern" not in verif
-        assert "planted_pattern_hits_after" not in verif
-        assert verif["method"] == "forensic_signature_and_structure_carving"
+    assert summary.manifest_certificate is not None
+    verif = summary.manifest_certificate["result"]["verification"]
+    assert "all_samples_match_wipe_pattern" not in verif
+    assert "planted_pattern_hits_after" not in verif
+    assert verif["method"] == "per_artifact_boundary_resolution_and_structural_validation"
+    assert "rejected" in verif["attestation"]
 
 
-def test_scoring_rejects_zero_filled_buffer():
+def test_scoring_flags_effectively_constant_data():
+    """Padding and unwritten allocations are the one thing entropy may deny.
+
+    A valid but very small file must still pass; only near-zero-entropy data
+    should be called out, and it must be called out explicitly.
+    """
     pdf_sig = get_signature_by_ext("pdf")
     assert pdf_sig is not None
 
     zero_buf = b"%PDF-" + bytes(1024)
-    score, heuristics = score_carved_candidate(pdf_sig, zero_buf, has_valid_footer=False)
+    score, heuristics = score_carved_candidate(pdf_sig, zero_buf, has_valid_footer=True)
+    assert any("effectively constant" in h for h in heuristics)
 
-    assert any("Suspiciously low entropy" in h for h in heuristics)
-    assert not any("consistent with document structure" in h for h in heuristics)
+    real = b"%PDF-1.7\n" + b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" * 8 \
+        + b"trailer<</Root 1 0 R>>\n%%EOF"
+    score2, h2 = score_carved_candidate(pdf_sig, real,
+                                        boundary_method=boundary.FOOTER_ANCHORED)
+    assert score2 > score
+    assert not any("effectively constant" in h for h in h2)
 
 
 def test_random_wipe_verification_entropy(tmp_path: Path):

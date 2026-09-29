@@ -2,6 +2,7 @@
 
 import json
 import sys
+import os
 import time
 from pathlib import Path
 
@@ -161,9 +162,16 @@ def test_erase_files_api(client, tmp_path):
 
 
 def test_carve_api(client, tmp_path):
+    """The planted JPEG must be a real one: the carver resolves a JPEG by
+    walking its marker segments, so a hand-built header would (correctly) be
+    rejected."""
+    import io as _io
+    from PIL import Image as _Image
+    buf = _io.BytesIO()
+    _Image.new("RGB", (32, 32), (12, 34, 56)).save(buf, format="JPEG", quality=85)
+    jpeg_payload = buf.getvalue()
     disk_img = tmp_path / "gui_carve_test.raw"
-    jpeg_payload = b"\xff\xd8\xff\xe0\x00\x10JFIF" + (b"\x11" * 100) + b"\xff\xd9"
-    disk_img.write_bytes(b"\x00" * 512 + jpeg_payload + b"\x00" * 512)
+    disk_img.write_bytes(os.urandom(4096) + jpeg_payload + os.urandom(4096))
 
     r = client.post("/api/carve", json={"target": str(disk_img), "extensions": ["jpg"], "min_confidence": 50})
     assert r.status_code == 200
@@ -315,7 +323,7 @@ def test_carve_with_custom_signatures(client, tmp_path):
     img = tmp_path / "custom_test.img"
     payload = b"SECVAULT" + b"X" * 64 + b"ENDVAULT"
     with open(img, "wb") as f:
-        f.write(b"\x00" * 1024 + payload + b"\x00" * 1024)
+        f.write(os.urandom(4096) + payload + os.urandom(4096))
 
     r = client.post("/api/carve", json={
         "target": str(img),

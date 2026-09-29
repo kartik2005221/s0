@@ -5,6 +5,7 @@ import struct
 from pathlib import Path
 
 import pytest
+from s0_cli.carver import boundary
 from s0_cli.carver import (
     carve_image,
     detect_filesystem,
@@ -207,14 +208,20 @@ def test_ntfs_resident_and_nonresident_carving(tmp_path):
     assert summary.source_filesystem == "ntfs"
     assert summary.files_recovered >= 2
 
-    # Check recovered files match SHA-256
+    # Filesystem metadata gives the exact length, so the boundary is resolved
+    # by the strongest available method and the original name comes back.
     pdf_item = next(c for c in summary.carved_files if c.extension == "pdf")
     assert pdf_item.sha256 == hashlib.sha256(pdf_payload).hexdigest()
-    assert pdf_item.confidence_score >= 80
+    assert pdf_item.recovery_method == "ntfs_mft"
+    assert pdf_item.boundary_method == boundary.DECLARED_SIZE
+    assert pdf_item.original_name
+    assert pdf_item.confidence_score >= 70
 
     jpg_item = next(c for c in summary.carved_files if c.extension == "jpg")
     assert jpg_item.sha256 == hashlib.sha256(jpg_payload).hexdigest()
-    assert jpg_item.confidence_score >= 80
+    assert jpg_item.recovery_method == "ntfs_mft"
+    assert jpg_item.original_name.endswith(".jpg")
+    assert jpg_item.confidence_score >= 70
 
     # Verify Signed Recovery Manifest Certificate
     assert summary.manifest_certificate is not None

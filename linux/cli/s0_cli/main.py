@@ -1091,22 +1091,57 @@ def cmd_carve(args) -> int:
         print("\n⚠  File carving interrupted by user (Ctrl+C).", file=sys.stderr)
         return 130
 
-    print(f"\n[s0 carve]  Bytes Scanned    : {summary.total_bytes_scanned}")
-    print(f"[s0 carve]  Candidates Found : {summary.total_candidates_found}")
-    print(f"[s0 carve]  Files Recovered  : {summary.files_recovered}")
+    from s0_cli.carver.boundary import BOUNDARY_LABELS
 
-    if summary.carved_files:
-        print(f"\n{'ID':<14} {'EXT':<6} {'SIZE':>10}  {'CONF':>6}  {'SHA256 (PREFIX)':<20} FILENAME")
-        for c in summary.carved_files[:20]:
-            print(
-                f"{c.file_id:<14} {c.extension:<6} {c.size_bytes:>10}  {c.confidence_score:>5}%  {c.sha256[:16]:<20} {c.filename}"
-            )
-        if len(summary.carved_files) > 20:
-            print(f"... and {len(summary.carved_files) - 20} more files (see recovery_index.json).")
+    print(f"\n[s0 carve]  Bytes Scanned    : {summary.total_bytes_scanned}")
+    print(f"[s0 carve]  Candidates Seen  : {summary.total_candidates_found}")
+    print(f"[s0 carve]  Files Recovered  : {summary.files_recovered} "
+          f"({summary.bytes_recovered} bytes)")
+    print(f"[s0 carve]  Candidates Rejected: {summary.rejected_candidates}")
+    if summary.output_budget_bytes:
+        print(f"[s0 carve]  Output Written   : {summary.output_budget_bytes} bytes")
+    if summary.budget_stop_reason:
+        print(f"[s0 carve]  Budget Stopped   : {summary.budget_stop_reason}")
+
+    if summary.files_recovered:
+        # Highest confidence first, so a genuine recovery is never buried under
+        # a long tail of weak candidates the way discovery order used to do it.
+        ranked = sorted(summary.carved_files,
+                        key=lambda c: (-c.confidence_score, -c.size_bytes))
+        method = "RECOVERY"
+        print(f"\n{'RECOVERY':<13} {'EXT':<7} {'SIZE':>11}  {'CONF':>5}  "
+              f"{'END OF FILE':<18} {'ORIGINAL NAME':<22} SHA256")
+        print("-" * 108)
+        for c in ranked[:25]:
+            name = (c.original_name or "-")[:22]
+            print(f"{c.recovery_method:<13} {c.extension:<7} {c.size_bytes:>11,}  "
+                  f"{c.confidence_score:>4}%  {BOUNDARY_LABELS.get(c.boundary_method, c.boundary_method):<18} "
+                  f"{name:<22} {c.sha256[:16]}")
+        if len(ranked) > 25:
+            print(f"... and {len(ranked) - 25} more (see recovery_index.json)")
+        print("-" * 108)
+        cats = ", ".join(f"{k}={v}" for k, v in sorted(summary.by_category.items()))
+        print(f"By category: {cats}")
+        if summary.by_method:
+            print("By method  : " + ", ".join(f"{k}={v}" for k, v in sorted(summary.by_method.items())))
+    else:
+        print("\n  No file passed both boundary resolution and structural validation.")
+        if summary.rejected_samples:
+            top: dict = {}
+            for r in summary.rejected_samples:
+                top[r.reason] = top.get(r.reason, 0) + 1
+            print("  Most common rejection reasons:")
+            for reason, n in sorted(top.items(), key=lambda kv: -kv[1])[:5]:
+                print(f"    {n:>7}  {reason}")
+
+    if summary.warnings:
+        print()
+        for w in summary.warnings:
+            print(f"  ! {w}")
 
     idx_file = Path(args.out_dir) / "recovery_index.json"
     if idx_file.exists():
-        print(f"[s0 carve]  Recovery Index   : {idx_file}")
+        print(f"\n[s0 carve]  Recovery Index   : {idx_file}")
 
     if summary.manifest_certificate:
         try:
