@@ -380,3 +380,37 @@ def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, 
         headers = {k.lower(): v for k, v in r.headers.items()}
         assert "authorization" not in headers
 
+
+def test_cmd_live_download_missing_checksum_fails_closed(tmp_path, monkeypatch, capsys):
+    from s0_cli.live_manager import cmd_live_download
+
+    iso_bytes = b"ISO_CONTENT_WITHOUT_CHECKSUM"
+
+    rel = {
+        "tag_name": "v2.4.1",
+        "assets": [
+            {
+                "name": "s0-live-v2.4.1-amd64.hybrid.iso",
+                "size": len(iso_bytes),
+                "browser_download_url": "https://github.com/releases/download/v2.4.1/s0-live.iso",
+            },
+        ],
+    }
+
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+
+    def fake_urlopen(req, *args, **kwargs):
+        return io.BytesIO(iso_bytes)
+
+    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel), \
+         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
+        rc = cmd_live_download(args)
+        assert rc == 1
+
+        target_file = tmp_path / "s0-live-v2.4.1-amd64.hybrid.iso"
+        assert not target_file.exists()  # Deleted due to missing checksum
+
+        captured = capsys.readouterr()
+        assert "No official checksum found to verify against" in captured.err
+

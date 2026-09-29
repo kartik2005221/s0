@@ -29,17 +29,21 @@ echo -e "${CYAN}╚════════════════════�
 
 echo -e "${CYAN}==> Checking latest releases on GitHub (${REPO})...${NC}"
 
-# Check for curl or wget
-if command -v curl >/dev/null 2>&1; then
-    FETCH_CMD="curl -sSL -H 'User-Agent: s0-iso-downloader'"
-elif command -v wget >/dev/null 2>&1; then
-    FETCH_CMD="wget -qO- --user-agent='s0-iso-downloader'"
-else
+fetch_url() {
+    local target_url="$1"
+    if command -v curl >/dev/null 2>&1; then
+        curl -sSL -H "User-Agent: s0-iso-downloader" "$target_url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO- --user-agent="s0-iso-downloader" "$target_url"
+    fi
+}
+
+if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     echo -e "${RED}[ERROR] Neither curl nor wget was found on this system.${NC}"
     exit 1
 fi
 
-RELEASE_JSON=$(eval "$FETCH_CMD \"$API_URL\"" 2>/dev/null || echo "")
+RELEASE_JSON=$(fetch_url "$API_URL" 2>/dev/null || echo "")
 
 if [ -z "$RELEASE_JSON" ]; then
     echo -e "${RED}[ERROR] Failed to query releases from GitHub API.${NC}"
@@ -124,7 +128,7 @@ echo -e "   ${YELLOW}Computed SHA-256: ${HASH}${NC}"
 EXPECTED_HASH=""
 if [ -n "$CHECKSUM_URL" ] && [ "$CHECKSUM_URL" != "null" ]; then
     echo -e "${CYAN}==> Fetching official release checksum...${NC}"
-    CHECKSUM_CONTENT=$(eval "$FETCH_CMD \"$CHECKSUM_URL\"" 2>/dev/null || echo "")
+    CHECKSUM_CONTENT=$(fetch_url "$CHECKSUM_URL" 2>/dev/null || echo "")
     if [ -n "$CHECKSUM_CONTENT" ]; then
         if command -v python3 >/dev/null 2>&1; then
             EXPECTED_HASH=$(python3 -c '
@@ -169,7 +173,10 @@ if [ -n "${EXPECTED_HASH:-}" ]; then
         exit 1
     fi
 else
-    echo -e "${YELLOW}⚠️  [WARNING] Official checksum asset not found on release; manual verification recommended.${NC}"
+    echo -e "${RED}❌ [CRITICAL SECURITY ERROR] Official release checksum not found. Cannot verify ISO integrity.${NC}"
+    echo -e "   Removing unverified download: ${OUT_FILE}"
+    rm -f "$OUT_FILE"
+    exit 1
 fi
 
 echo -e "\n${CYAN}==> Flashing to USB Drive on Linux/MacOS:${NC}"

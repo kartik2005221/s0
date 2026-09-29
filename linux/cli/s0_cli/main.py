@@ -191,7 +191,7 @@ def _print_legal_notice() -> None:
     sys.stderr.write(_LEGAL_NOTICE)
 
 
-def _resolve_target(path: str) -> DevTarget:
+def resolve_target(path: str) -> DevTarget:
     if sys.platform == "win32":
         if path.startswith("/dev/"):
             raise SafetyError(
@@ -246,6 +246,9 @@ def _resolve_target(path: str) -> DevTarget:
             raise SafetyError(f"Block device {p} has zero or unreadable capacity.")
         return DevTarget(path=str(p), kind="block", capacity_bytes=size)
     return image_target(path)
+
+
+_resolve_target = resolve_target
 
 
 def _print_plan(
@@ -1363,13 +1366,20 @@ def cmd_uninstall(args) -> int:
 
     print(f"[s0 uninstall]  Target S0 directory: {repo_dir}")
     audit_db = Path.home() / ".s0" / "s0_audit.db"
-    if getattr(args, "keep_audit", False) and audit_db.is_file():
-        bak_dest = Path.home() / "s0_audit.db.bak"
-        try:
-            shutil.copy2(audit_db, bak_dest)
-            print(f"[s0 uninstall]  Audit ledger backed up to: {bak_dest}")
-        except Exception as exc:
-            print(f"[s0 uninstall]  WARN : Could not back up audit ledger: {exc}", file=sys.stderr)
+    purge_all = getattr(args, "purge_all", False) or getattr(args, "purge", False)
+    if audit_db.is_file():
+        if purge_all:
+            print("[s0 uninstall]  Purging audit ledger as requested (--purge-all specified).")
+        else:
+            import time as _time
+            timestamp = _time.strftime("%Y%m%d_%H%M%S")
+            bak_dest = Path.home() / f"s0_audit.db.bak.{timestamp}"
+            try:
+                shutil.copy2(audit_db, bak_dest)
+                print(f"[s0 uninstall]  Audit ledger safely preserved at: {bak_dest}")
+                print("                (Use --purge-all if you intentionally wish to destroy the audit log.)")
+            except Exception as exc:
+                print(f"[s0 uninstall]  WARN : Could not back up audit ledger: {exc}", file=sys.stderr)
 
     if not getattr(args, "yes", False):
         try:
