@@ -479,7 +479,13 @@ def carve_image(
                         f_idx = sub_slice.find(sig.footer, len(sig.header))
 
                         if f_idx != -1:
-                            end_pos = f_idx + len(sig.footer)
+                            extra = getattr(sig, "footer_extra_bytes", 0)
+                            end_pos = f_idx + len(sig.footer) + extra
+                            if sig.extension == "zip" and f_idx + 22 <= len(sub_slice):
+                                comment_len = int.from_bytes(sub_slice[f_idx + 20 : f_idx + 22], "little")
+                                end_pos = f_idx + 22 + comment_len
+                                if end_pos > len(sub_slice):
+                                    end_pos = min(f_idx + 22, len(sub_slice))
                             candidate_bytes = sub_slice[:end_pos]
                             if len(candidate_bytes) >= sig.min_size:
                                 carved_data = candidate_bytes

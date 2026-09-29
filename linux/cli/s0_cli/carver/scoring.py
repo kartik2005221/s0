@@ -35,6 +35,57 @@ def calculate_sample_entropy(data: bytes) -> float:
     return (calculate_shannon_entropy(s1) + calculate_shannon_entropy(s2) + calculate_shannon_entropy(s3)) / 3.0
 
 
+def validate_jpeg_structure(data: bytes) -> tuple[bool, str]:
+    if len(data) < 4 or not data.startswith(b"\xff\xd8"):
+        return False, "Not a valid JPEG SOI"
+    if len(data) >= 4 and data[2] == 0xFF:
+        marker = data[3]
+        if marker in (0x00, 0xD8, 0xD9, 0xFF) or not (0xC0 <= marker <= 0xFE):
+            return False, f"Invalid JPEG marker 0xFF{marker:02X} after SOI"
+    has_known_marker = any(m in data[:1024] for m in (b"\xff\xe0", b"\xff\xe1", b"\xff\xdb", b"\xff\xc0", b"\xff\xc2", b"\xff\xc4", b"JFIF", b"Exif"))
+    if not has_known_marker:
+        return False, "No valid JPEG APP/DQT/SOF/DHT markers found"
+    return True, "Valid JPEG marker sequence detected"
+
+
+def validate_bmp_structure(data: bytes) -> tuple[bool, str]:
+    if len(data) < 54 or not data.startswith(b"BM"):
+        return False, "Too short for valid BMP header"
+    reserved = int.from_bytes(data[6:10], "little")
+    if reserved != 0:
+        return False, f"BMP reserved field non-zero ({reserved})"
+    dib_size = int.from_bytes(data[14:18], "little")
+    if dib_size not in (12, 40, 52, 56, 64, 108, 124):
+        return False, f"Invalid BMP DIB header size ({dib_size})"
+    return True, "Valid BMP file header and DIB structure"
+
+
+def validate_mp3_structure(data: bytes) -> tuple[bool, str]:
+    if len(data) < 128:
+        return False, "Too short for MP3"
+    if data.startswith(b"ID3"):
+        if len(data) < 10:
+            return False, "Truncated ID3v2 header"
+        major = data[3]
+        if major not in (2, 3, 4):
+            return False, f"Invalid ID3v2 major version ({major})"
+        if any(b & 0x80 for b in data[6:10]):
+            return False, "Invalid ID3v2 synchsafe tag size (top bits set)"
+        return True, "Valid ID3v2 container header"
+    if len(data) >= 4 and data[0] == 0xFF and (data[1] & 0xE0 == 0xE0):
+        bitrate_idx = (data[2] >> 4) & 0x0F
+        if bitrate_idx in (0x00, 0x0F):
+            return False, f"Invalid MPEG frame bitrate index ({bitrate_idx})"
+        sr_idx = (data[2] >> 2) & 0x03
+        if sr_idx == 0x03:
+            return False, "Reserved MPEG frame sample rate index"
+        layer = (data[1] >> 1) & 0x03
+        if layer == 0x00:
+            return False, "Reserved MPEG layer"
+        return True, "Valid MPEG audio frame header"
+    return False, "No valid ID3v2 or MPEG sync frame detected"
+
+
 def score_carved_candidate(
     sig: FileSignature,
     data: bytes,
@@ -101,21 +152,48 @@ def score_carved_candidate(
 
     # Structure-specific checks
     if sig.extension == "pdf":
-        if b"/Root" in data or b"/Pages" in data or b"stream" in data:
+        if any(kw in data for kw in (b"/Root", b"/Pages", b"stream", b"obj", b"xref")):
             score = min(100, score + 10)
-            heuristics.append("PDF structural dictionaries (/Root, /Pages, stream) verified (+10%)")
+            heuristics.append("PDF structural dictionaries (/Root, /Pages, stream, obj) verified (+10%)")
+        else:
+            score = max(0, score - 30)
+            heuristics.append("PDF missing structural dictionaries (-30%)")
     elif sig.extension == "png":
         if b"IHDR" in data[:32]:
             score = min(100, score + 10)
             heuristics.append("PNG IHDR chunk header verified (+10%)")
+        else:
+            score = max(0, score - 30)
+            heuristics.append("PNG missing IHDR chunk header (-30%)")
     elif sig.extension == "jpg":
-        if b"\xff\xdb" in data[:1024] or b"\xff\xc0" in data[:1024] or b"\xff\xc4" in data[:1024]:
-            score = min(100, score + 10)
-            heuristics.append("JPEG DQT/SOF/DHT segment markers verified (+10%)")
+        ok, reason = validate_jpeg_structure(data)
+        if not ok:
+            score = max(0, score - 50)
+            heuristics.append(f"JPEG structural anomaly: {reason} (-50%)")
+        else:
+            if b"\xff\xdb" in data[:1024] or b"\xff\xc0" in data[:1024] or b"\xff\xc4" in data[:1024] or b"JFIF" in data[:32] or b"Exif" in data[:32]:
+                score = min(100, score + 10)
+                heuristics.append("JPEG JFIF/Exif/DQT/SOF segment markers verified (+10%)")
     elif sig.extension == "bmp":
-        if len(data) >= 18 and data.startswith(b"BM"):
+        ok, reason = validate_bmp_structure(data)
+        if not ok:
+            score = max(0, score - 50)
+            heuristics.append(f"BMP structural anomaly: {reason} (-50%)")
+        else:
             score = min(100, score + 10)
             heuristics.append("BMP bitmap header and DIB size verified (+10%)")
+    elif sig.extension == "mp3":
+        ok, reason = validate_mp3_structure(data)
+        if not ok:
+            score = max(0, score - 50)
+            heuristics.append(f"MP3 structural anomaly: {reason} (-50%)")
+        else:
+            if data.startswith(b"ID3"):
+                score = min(100, score + 10)
+                heuristics.append("MP3 ID3v2 container structure verified (+10%)")
+            else:
+                score = max(0, score - 20)
+                heuristics.append("MP3 raw sync frame without ID3 metadata (-20%)")
     elif sig.extension == "elf":
         if len(data) >= 5 and data.startswith(b"\x7fELF") and data[4] in (1, 2):
             score = min(100, score + 10)
@@ -128,6 +206,9 @@ def score_carved_candidate(
         if b"PK\x01\x02" in data or b"PK\x05\x06" in data:
             score = min(100, score + 10)
             heuristics.append("ZIP central directory / EOCD marker verified (+10%)")
+        else:
+            score = max(0, score - 30)
+            heuristics.append("ZIP missing central directory / EOCD records (-30%)")
     elif sig.extension == "gif":
         if len(data) >= 10 and data[:6] in (b"GIF87a", b"GIF89a"):
             score = min(100, score + 10)

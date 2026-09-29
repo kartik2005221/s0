@@ -180,7 +180,7 @@ _LEGAL_NOTICE = (
     "\033[33m   Only operate on storage media you own or have explicit written authorization\n"
     "   to process. Unauthorized wiping, erasure, or forensic recovery may violate\n"
     "   computer crime legislation (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act,\n"
-    "   IT Act 2000 §§ 43/66). s0 is a certified forensic suite for authorized personnel.\033[0m\n\n"
+    "   IT Act 2000 §§ 43/66). s0 is a digital forensic sanitization and recovery tool.\033[0m\n\n"
 )
 
 

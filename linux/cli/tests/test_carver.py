@@ -306,4 +306,38 @@ def test_cmd_carve_pdf_generation_and_no_pdf_flag(tmp_path):
     assert len(pdfs_none) == 0, "Expected no PDF certificate when --no-pdf is specified"
 
 
+def test_carve_zip_eocd_completeness(tmp_path):
+    import io
+    import zipfile
+    bio = io.BytesIO()
+    with zipfile.ZipFile(bio, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("test.txt", "forensic test data 12345")
+        zf.comment = b"forensic-comment"
+    zip_bytes = bio.getvalue()
+
+    disk_img = tmp_path / "zip_disk.raw"
+    disk_img.write_bytes(b"\xaa" * 1024 + zip_bytes + b"\xbb" * 1024)
+
+    out_dir = tmp_path / "out_zip"
+    summary = carve_image(disk_img, out_dir, extensions=["zip"])
+    assert summary.files_recovered == 1
+    carved_zip = summary.carved_files[0]
+    assert carved_zip.size_bytes == len(zip_bytes)
+    with zipfile.ZipFile(carved_zip.recovered_path, "r") as zf:
+        assert zf.read("test.txt") == b"forensic test data 12345"
+        assert zf.comment == b"forensic-comment"
+
+
+def test_carve_random_wiped_disk_zero_false_positives(tmp_path):
+    import secrets
+    rnd_data = secrets.token_bytes(256 * 1024)
+    disk_img = tmp_path / "random_wiped.raw"
+    disk_img.write_bytes(rnd_data)
+
+    out_dir = tmp_path / "out_rnd"
+    summary = carve_image(disk_img, out_dir, min_confidence=70)
+    assert summary.files_recovered == 0
+
+
+
 
