@@ -535,6 +535,34 @@ def test_audit_verify_reports_demo_key_status(client):
     assert "is_demo_signed" in data
 
 
+def test_system_path_wipe_blocked(client):
+    """Wiping /etc/passwd or system paths must be refused."""
+    r = client.post("/api/wipe", json={"target": "/etc/passwd", "confirm_text": "/etc/passwd"})
+    assert r.status_code in (403, 422)
+
+
+def test_input_bounds_validation(client, small_image):
+    """Passes <= 0 or verify_samples <= 0 must be rejected with 422."""
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "passes": 0})
+    assert r.status_code == 422
+
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "verify_samples": 0})
+    assert r.status_code == 422
+
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "out_dir": "/etc/cron.d"})
+    assert r.status_code == 422
+
+    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "key_path": "/etc/shadow"})
+    assert r.status_code in (403, 422)
+
+
+def test_non_ascii_auth_token_returns_401():
+    """Non-ASCII authentication token must return 401 without crashing with 500."""
+    raw_client = TestClient(gui_app.app)
+    r = raw_client.get("/api/devices?token=%C3%B6%C3%B1")
+    assert r.status_code == 401
+
+
 
 
 

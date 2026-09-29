@@ -452,6 +452,16 @@ def cmd_wipe(args) -> int:
     if is_file_mode:
         return cmd_erase_files(args)
 
+    passes_val = getattr(args, "passes", 1)
+    if passes_val < 1 or passes_val > 100:
+        print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
+        return 2
+
+    samples_val = getattr(args, "verify_samples", 64)
+    if samples_val < 1 or samples_val > 10000:
+        print(f"error: --verify-samples must be between 1 and 10000 (got {samples_val}).", file=sys.stderr)
+        return 2
+
     t_start = time.monotonic()
     start_time = _now()
     try:
@@ -846,6 +856,11 @@ def cmd_erase_files(args) -> int:
     pattern = getattr(args, "pattern", "zero")
     if pattern not in ("zero", "random"):
         print(f"error: invalid --pattern '{pattern}'. Supported patterns: zero, random", file=sys.stderr)
+        return 2
+
+    passes_val = getattr(args, "passes", 1)
+    if passes_val < 1 or passes_val > 100:
+        print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
         return 2
 
     print(f"==> S0: Secure File & Folder Sanitization")

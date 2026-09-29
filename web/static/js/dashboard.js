@@ -120,6 +120,15 @@ function getAuthToken() {
   return (window.appConfig && window.appConfig.auth_token) || "";
 }
 
+function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = Object.assign({}, options.headers || {});
+  if (token) {
+    headers["X-S0-Auth-Token"] = token;
+  }
+  return fetch(url, Object.assign({}, options, { headers }));
+}
+
 function getDownloadUrl(jobId, filename) {
   const token = getAuthToken();
   const base = `/api/download/${encodeURIComponent(jobId)}/${encodeURIComponent(filename)}`;
@@ -129,7 +138,7 @@ function getDownloadUrl(jobId, filename) {
 // --- Dynamic Config Loader ---
 async function loadAppConfig() {
   try {
-    const res = await fetch("/api/config");
+    const res = await authFetch("/api/config");
     if (!res.ok) return;
     appConfig = await res.json();
     window.appConfig = appConfig;
@@ -244,7 +253,7 @@ function readUrlParams() {
 // --- Devices & Plan Loading ---
 async function loadDevices() {
   try {
-    const res = await fetch("/api/devices");
+    const res = await authFetch("/api/devices");
     const data = await res.json();
     const driveSel = document.getElementById("driveSelect");
     const carveSel = document.getElementById("carveTargetSelect");
@@ -289,7 +298,7 @@ async function updateDeviceTemperature(target) {
     return;
   }
   try {
-    const res = await fetch(`/api/temperature?path=${encodeURIComponent(target)}`);
+    const res = await authFetch(`/api/temperature?path=${encodeURIComponent(target)}`);
     if (!res.ok) {
       badge.style.display = "none";
       return;
@@ -1131,7 +1140,7 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
 
   const timer = setInterval(async () => {
     try {
-      const res = await fetch(`/api/job/${jobId}`);
+      const res = await authFetch(`/api/job/${jobId}`);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -1144,7 +1153,8 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
 
       if (data.status === "done" || data.status === "error") {
         clearInterval(timer);
-        if (data.status === "done") {
+        const isSuccess = data.status === "done" && (!data.result || data.result.returncode === undefined || data.result.returncode === 0);
+        if (isSuccess) {
           if (badge) {
             badge.className = "badge badge-green";
             badge.textContent = "STATUS: COMPLETE";
@@ -1170,7 +1180,7 @@ function trackJob(jobId, statusBadgeId, logId, onDoneCallback) {
 // --- Module 4: Hash-Chained Audit Ledger ---
 async function loadAuditBlocks() {
   try {
-    const res = await fetch("/api/audit/blocks?limit=150");
+    const res = await authFetch("/api/audit/blocks?limit=150");
     const data = await res.json();
     allBlocksCache = data.blocks || [];
     renderAuditTable(allBlocksCache);
@@ -1282,7 +1292,7 @@ async function verifyLedger() {
   banner.textContent = "Auditing cryptographic SHA-256 hash chain and block continuity...";
 
   try {
-    const res = await fetch("/api/audit/verify");
+    const res = await authFetch("/api/audit/verify");
     const data = await res.json();
     if (data.is_valid) {
       if (data.is_demo_signed) {
@@ -1356,7 +1366,7 @@ function toggleTheme() {
 
 async function checkCapabilities() {
   try {
-    const res = await fetch("/api/capabilities");
+    const res = await authFetch("/api/capabilities");
     if (!res.ok) return;
     const caps = await res.json();
     if (!caps.is_root) {

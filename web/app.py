@@ -70,7 +70,31 @@ IMAGE_DIRS = [
     REPO / "demo-out",
 ]
 
+_SYSTEM_PATHS = (
+    "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64",
+    "/boot", "/proc", "/sys", "/run", "/var", "/root", "/opt",
+)
+
+
+def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
+    """Ensure target path does not target protected system files/directories."""
+    try:
+        p = Path(target_path).resolve()
+        if p.is_block_device():
+            return True, ""
+        target_str = str(p)
+        for sp in _SYSTEM_PATHS:
+            if target_str == sp or target_str.startswith(sp + "/"):
+                return False, f"Refusing to target system path: {target_str}"
+        return True, ""
+    except Exception:
+        return False, f"Invalid target path: {target_path}"
+
+
 app = FastAPI(title="s0 Forensic & Sanitization Dashboard", docs_url=None, redoc_url=None)
+
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "*.local", "testserver"])
 
 PORTAL_DIR = REPO / "verification-portal"
 if PORTAL_DIR.is_dir():
@@ -89,11 +113,10 @@ def _init_session_auth_token() -> None:
     try:
         token_path = Path.home() / ".s0" / "web_auth_token"
         token_path.parent.mkdir(parents=True, exist_ok=True)
-        token_path.write_text(_SESSION_AUTH_TOKEN, encoding="utf-8")
-        try:
-            os.chmod(token_path, 0o600)
-        except Exception:
-            pass
+        # Write atomically with 0600 permissions
+        fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(_SESSION_AUTH_TOKEN)
 
         # When running as root (e.g. s0-web daemon on live ISO), make token available to kiosk user via s0-kiosk group
         if hasattr(os, "geteuid") and os.geteuid() == 0:
@@ -101,7 +124,9 @@ def _init_session_auth_token() -> None:
                 run_dir = Path("/run/s0")
                 run_dir.mkdir(parents=True, exist_ok=True)
                 run_token = run_dir / "web_auth_token"
-                run_token.write_text(_SESSION_AUTH_TOKEN, encoding="utf-8")
+                rfd = os.open(str(run_token), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with open(rfd, "w", encoding="utf-8") as f:
+                    f.write(_SESSION_AUTH_TOKEN)
                 # Restrict permissions: 0640 (owner root rw, group s0-kiosk r, others none)
                 try:
                     import grp
@@ -127,10 +152,21 @@ def verify_auth_token(
 ) -> None:
     """Verify per-session authentication token on protected endpoints."""
     tok = x_s0_auth_token or token
-    if not tok or not secrets.compare_digest(tok, _SESSION_AUTH_TOKEN):
+    if not tok:
         raise HTTPException(
             status_code=401,
             detail="Unauthorized: missing or invalid session authentication token (X-S0-Auth-Token)",
+        )
+    try:
+        if not secrets.compare_digest(tok, _SESSION_AUTH_TOKEN):
+            raise HTTPException(
+                status_code=401,
+                detail="Unauthorized: missing or invalid session authentication token (X-S0-Auth-Token)",
+            )
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: invalid session authentication token encoding",
         )
 
 
@@ -201,7 +237,10 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Opti
         return custom_key_file, is_demo_key(custom_key_file)
 
     if key_path and key_path.strip():
-        kp = Path(key_path.strip())
+        kp = Path(key_path.strip()).resolve()
+        for sp in _SYSTEM_PATHS:
+            if str(kp) == sp or str(kp).startswith(sp + "/"):
+                raise HTTPException(403, f"Access to system key path is forbidden: {key_path}")
         if not kp.is_file():
             kp = (REPO / key_path.strip()).resolve()
         if not kp.is_file():
@@ -225,7 +264,7 @@ class WipeRequest(BaseModel):
     target: str
     confirm_text: str
     pattern: str = "zero"
-    passes: int = 1
+    passes: int = Field(default=1, ge=1, le=100)
     operator_id: str = Field(
         default_factory=lambda: CONFIG.get("default_operator", "op-forensic"),
         alias="operator"
@@ -235,14 +274,42 @@ class WipeRequest(BaseModel):
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
     no_pdf: bool = False
-    verify_samples: int = 64
+    verify_samples: int = Field(default=64, ge=1, le=10000)
     portal_url: Optional[str] = None
+
+    @field_validator("target")
+    @classmethod
+    def validate_target(cls, v: str) -> str:
+        safe, reason = _is_safe_wipe_path(v)
+        if not safe:
+            raise ValueError(reason)
+        return v
 
     @field_validator("pattern")
     @classmethod
     def validate_pattern(cls, v: str) -> str:
         if v not in ("zero", "random"):
             raise ValueError("pattern must be either 'zero' or 'random'")
+        return v
+
+    @field_validator("out_dir")
+    @classmethod
+    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"out_dir cannot be in system path: {sp}")
+        return v
+
+    @field_validator("key_path")
+    @classmethod
+    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"key_path cannot be in system path: {sp}")
         return v
 
     @field_validator("operator_id")
@@ -263,7 +330,7 @@ class WipeRequest(BaseModel):
 
 class FileEraseRequest(BaseModel):
     targets: List[str]
-    passes: int = 1
+    passes: int = Field(default=1, ge=1, le=100)
     pattern: str = "zero"
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
@@ -271,14 +338,45 @@ class FileEraseRequest(BaseModel):
     key_data: Optional[str] = None
     out_dir: Optional[str] = None
     no_pdf: bool = False
-    verify_samples: int = 64
+    verify_samples: int = Field(default=64, ge=1, le=10000)
     portal_url: Optional[str] = None
+
+    @field_validator("targets")
+    @classmethod
+    def validate_targets(cls, v: List[str]) -> List[str]:
+        if not v:
+            raise ValueError("targets list cannot be empty")
+        for t in v:
+            safe, reason = _is_safe_wipe_path(t)
+            if not safe:
+                raise ValueError(reason)
+        return v
 
     @field_validator("pattern")
     @classmethod
     def validate_pattern(cls, v: str) -> str:
         if v not in ("zero", "random"):
             raise ValueError("pattern must be either 'zero' or 'random'")
+        return v
+
+    @field_validator("out_dir")
+    @classmethod
+    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"out_dir cannot be in system path: {sp}")
+        return v
+
+    @field_validator("key_path")
+    @classmethod
+    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"key_path cannot be in system path: {sp}")
         return v
 
     @field_validator("operator_id")
@@ -309,6 +407,34 @@ class CarveRequest(BaseModel):
     no_pdf: bool = False
     custom_signatures: Optional[List[Dict[str, Any]]] = None
 
+    @field_validator("target")
+    @classmethod
+    def validate_target(cls, v: str) -> str:
+        safe, reason = _is_safe_wipe_path(v)
+        if not safe:
+            raise ValueError(reason)
+        return v
+
+    @field_validator("out_dir")
+    @classmethod
+    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"out_dir cannot be in system path: {sp}")
+        return v
+
+    @field_validator("key_path")
+    @classmethod
+    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"key_path cannot be in system path: {sp}")
+        return v
+
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
@@ -334,6 +460,26 @@ class ImageRequest(BaseModel):
     key_data: Optional[str] = None
     no_pdf: bool = False
 
+    @field_validator("out_dir")
+    @classmethod
+    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"out_dir cannot be in system path: {sp}")
+        return v
+
+    @field_validator("key_path")
+    @classmethod
+    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+        if v and v.strip():
+            p = Path(v.strip()).resolve()
+            for sp in _SYSTEM_PATHS:
+                if str(p) == sp or str(p).startswith(sp + "/"):
+                    raise ValueError(f"key_path cannot be in system path: {sp}")
+        return v
+
     @field_validator("operator_id")
     @classmethod
     def validate_operator_id(cls, v: str) -> str:
@@ -355,6 +501,9 @@ def _find_target(path: str):
         if size > 0:
             return Target(path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN")
         raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
+    safe, reason = _is_safe_wipe_path(path)
+    if not safe:
+        raise HTTPException(403, reason)
     try:
         return image_target(path)
     except FileNotFoundError:
@@ -368,7 +517,7 @@ def index() -> HTMLResponse:
     return HTMLResponse(content)
 
 
-@app.get("/api/devices")
+@app.get("/api/devices", dependencies=[Depends(verify_auth_token)])
 def devices() -> JSONResponse:
     block = []
     for t in list_block_targets():
@@ -419,7 +568,7 @@ def plan_payload(target_path: str) -> dict:
     return plan
 
 
-@app.get("/api/config")
+@app.get("/api/config", dependencies=[Depends(verify_auth_token)])
 def api_config() -> JSONResponse:
     cfg = dict(CONFIG)
     return JSONResponse(cfg)
@@ -471,7 +620,7 @@ def api_browse(path: str = ".") -> JSONResponse:
     })
 
 
-@app.get("/api/capabilities")
+@app.get("/api/capabilities", dependencies=[Depends(verify_auth_token)])
 def get_capabilities() -> JSONResponse:
     """Return runtime system capabilities and root/administrator privilege status."""
     is_root = False
@@ -496,7 +645,7 @@ def get_capabilities() -> JSONResponse:
     })
 
 
-@app.get("/api/temperature")
+@app.get("/api/temperature", dependencies=[Depends(verify_auth_token)])
 def get_temperature(path: str = Query(..., description="Target device or file path")) -> JSONResponse:
     """Read hardware thermal sensor telemetry for a block device or target."""
     temp = read_temperature(path)
@@ -600,8 +749,10 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                         result["pdf_path"] = str(pdf_p)
             else:
                 result["stdout_tail"] = out.strip()[-2000:]
+                result["error"] = f"Wipe command exited with code {proc.returncode}"
+            status = "done" if proc.returncode == 0 else "error"
             with _lock:
-                _jobs[job_id].update(status="done", result=result)
+                _jobs[job_id].update(status=status, result=result)
         except Exception as exc:
             with _lock:
                 _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
@@ -710,7 +861,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
             with _lock:
                 _jobs[job_id].update(
-                    status="done",
+                    status="done" if summary.failed_files == 0 else "error",
                     result={
                         "returncode": 0 if summary.failed_files == 0 else 1,
                         "total_files": summary.total_files,
@@ -991,7 +1142,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
     return JSONResponse({"job_id": job_id})
 
 
-@app.get("/api/audit/blocks")
+@app.get("/api/audit/blocks", dependencies=[Depends(verify_auth_token)])
 def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
     blocks = list_audit_blocks(limit=limit, offset=offset)
     return JSONResponse({
@@ -1016,7 +1167,7 @@ def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
     })
 
 
-@app.get("/api/audit/verify")
+@app.get("/api/audit/verify", dependencies=[Depends(verify_auth_token)])
 def get_audit_verify() -> JSONResponse:
     report = verify_audit_ledger(trusted_public_keys=get_default_trusted_keys())
     return JSONResponse({
@@ -1028,7 +1179,7 @@ def get_audit_verify() -> JSONResponse:
     })
 
 
-@app.get("/api/job/{job_id}")
+@app.get("/api/job/{job_id}", dependencies=[Depends(verify_auth_token)])
 def job_status(job_id: str) -> JSONResponse:
     with _lock:
         job = _jobs.get(job_id)
