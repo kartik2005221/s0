@@ -968,7 +968,7 @@ s0 verify CERTIFICATE [--key PEM]
 | Argument / Flag | Type | Default | Required | Description |
 |-----------------|------|---------|----------|-------------|
 | `CERTIFICATE` | path | — | **yes** | Path to the `certificate_<UUID8>.json` or `acquisition_manifest_<UUID8>.json` to verify. |
-| `--key` | path | demo key | no | Path to a trusted Ed25519 public key PEM. If omitted, the bundled demo public key from `core/keys/` is used. |
+| `--key` | path | demo key | no, but recommended | Path to a trusted Ed25519 public key PEM. If omitted, the bundled demo public key from `core/keys/` is used. |
 
 **Output on success**
 
@@ -1006,12 +1006,13 @@ options:
 s0 verify certificate_a1b2c3d4.json
 ```
 ```text
-UUID         : a1b2c3d4-e5f6-7890-abcd-ef1234567890
-Status       : [VALID]
-NIST tier    : PURGE
-Device       : /dev/nvme0n1  (S5GXNX0T123456)
-Issuer       : jane.doe@forensics.lab / Acme Forensics Ltd.
-Fingerprint  : sha256:3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f80...
+[s0 verify]  Status       : OK : CERTIFICATE AUTHENTIC & VERIFIED
+[s0 verify]  UUID         : a1b2c3d4-e5f6-7890-abcd-ef1234567890
+[s0 verify]  Result       : success
+[s0 verify]  NIST Tier    : Purge
+[s0 verify]  Device       : /dev/nvme0n1 (S5GXNX0T123456)
+[s0 verify]  Issuer       : jane.doe@forensics.lab / Acme Forensics Ltd.
+[s0 verify]  Fingerprint  : sha256:3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f80...
 ```
 
 **Verify with a custom authority public key**
@@ -1147,14 +1148,14 @@ s0 upgrade
 ║      S0 (Sector Zero) — Suite Upgrade & Maintenance Tool         ║
 ╚══════════════════════════════════════════════════════════════════╝
 
-[*] Found S0 installation at: /home/kartik/s0
-[*] Current commit: abbc07d
-[*] Pulling latest changes from GitHub origin/master...
-[OK] Source updated: abbc07d → 4a9f12c
-[*] Refreshing dependencies...
-[OK] Dependencies refreshed.
+[s0 upgrade]  Found S0 installation at: ~/s0
+[s0 upgrade]  Current commit: abbc07d
+[s0 upgrade]  Pulling latest changes from GitHub origin/master...
+[s0 upgrade]  OK : Source updated: abbc07d → 4a9f12c
+[s0 upgrade]  Refreshing dependencies...
+[s0 upgrade]  OK : Dependencies refreshed.
 
-[OK] S0 upgraded successfully to 2.2.1 (4a9f12c)
+[s0 upgrade]  OK : S0 upgraded successfully to 2.4.3 (4a9f12c)
 ```
 
 **Force reinstall dependencies**
@@ -1217,10 +1218,10 @@ flowchart TD
     M1 & M2 & M3 & M3B & M4 --> VERIFY["Post-wipe verification\nverify-samples blocks sampled"]
     VERIFY --> CERT["Ed25519 certificate issued\nAudit block appended"]:::cert
 
-    classDef entry fill:#00ADB5,stroke:#00ADB5,color:#222831,font-weight:bold;
-    classDef purge fill:#393E46,stroke:#00ADB5,color:#EEEEEE;
-    classDef clear fill:#393E46,stroke:#EEEEEE,color:#EEEEEE;
-    classDef cert fill:#222831,stroke:#00ADB5,color:#00ADB5;
+    classDef entry fill:#FF6500,stroke:#FF6500,color:#070D18,font-weight:bold;
+    classDef purge fill:#142338,stroke:#FF6500,color:#EEEEEE;
+    classDef clear fill:#142338,stroke:#EEEEEE,color:#EEEEEE;
+    classDef cert fill:#070D18,stroke:#FF6500,color:#FF6500;
 ```
 
 ### Method Detail
@@ -1429,7 +1430,7 @@ Fetch official release assets directly from GitHub with automatic SHA-256 integr
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.0`) |
+| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.3`) |
 | `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
 
 #### 3. `s0 live flash`

@@ -40,8 +40,8 @@ Until verified on physical hardware, treat this component as unverified on bare 
 - `config/package-lists/s0.list.chroot`  everything the station needs
 - `config/hooks/live/9000-s0.hook.chroot`  installs s0 code,
   generates nothing secret, registers the kiosk autostart service
-- `config/includes.chroot/etc/systemd/system/s0-gui.service`  the service:
-  auto-login user `s0`, starts the local GUI, launches chromium kiosk
+- `config/includes.chroot/etc/systemd/system/s0-web.service`  system service starting web backend
+- `config/includes.chroot/etc/systemd/system/s0-kiosk.service`  user kiosk service launching chromium
 - `qemu-test.sh`       headless boot smoke test (VNC screenshot after N seconds)
 
 ## Why kiosk chromium and not GTK

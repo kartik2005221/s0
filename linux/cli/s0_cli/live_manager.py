@@ -275,7 +275,32 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
                     }
             except Exception:
                 pass
-        raise
+
+        # Fallback to direct asset download URLs without GitHub API (e.g. rate limit HTTP 403)
+        tag_synth = CONFIG.get("version", "2.4.3")
+        if not tag_synth.startswith("v"):
+            tag_synth = f"v{tag_synth}"
+        if version.lower() != "latest" and version.strip():
+            tag_synth = version if version.startswith("v") else f"v{version}"
+        iso_name = f"s0-live-{tag_synth}-amd64.hybrid.iso"
+        base_dl = f"https://github.com/{repo}/releases/download/{tag_synth}"
+        return {
+            "tag_name": tag_synth,
+            "assets": [
+                {
+                    "name": iso_name,
+                    "size": 0,
+                    "browser_download_url": f"{base_dl}/{iso_name}",
+                    "url": f"{base_dl}/{iso_name}",
+                },
+                {
+                    "name": f"{iso_name}.sha256",
+                    "size": 0,
+                    "browser_download_url": f"{base_dl}/{iso_name}.sha256",
+                    "url": f"{base_dl}/{iso_name}.sha256",
+                },
+            ],
+        }
 
 
 def cmd_live_download(args: argparse.Namespace) -> int:

@@ -70,7 +70,7 @@ from s0_core import certificate as cert_mod
 from s0_core.config import CONFIG
 from s0_core.progress import ProgressBar
 
-from . import __version__
+from . import __version__, __version_str__
 from .audit import init_audit_db, list_audit_blocks, record_audit_event, verify_audit_ledger
 from .carver import carve_image, signature_from_dict
 from .devices import (
@@ -1707,7 +1707,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="S0 (Sector Zero) — Unified Forensic Sanitization & Recovery CLI",
         epilog="⚖ LEGAL: Only operate on storage media you own or have explicit written authorization to process.",
     )
-    p.add_argument("--version", action="version", version=f"s0 {__version__}")
+    p.add_argument("--version", action="version", version=f"s0 {__version_str__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     # 1. Drive Eraser Subcommands
@@ -1721,7 +1721,7 @@ def build_parser() -> argparse.ArgumentParser:
     lst.set_defaults(func=cmd_list)
 
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--version", action="version", version=f"s0 {__version__}")
+    common.add_argument("--version", action="version", version=f"s0 {__version_str__}")
     common.add_argument("--target", help="target drive, image, file, or directory")
     common.add_argument(
         "--passes",

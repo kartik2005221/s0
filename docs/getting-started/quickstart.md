@@ -26,9 +26,9 @@ flowchart TD
     E --> F["s0 verify\nor Verification Portal"]
     F --> G(["Audit ledger\nBlock chained record"])
 
-    style A fill:#00ADB5,color:#222831,stroke:none
-    style G fill:#00ADB5,color:#222831,stroke:none
-    style E fill:#393E46,color:#EEEEEE,stroke:#00ADB5
+    style A fill:#FF6500,color:#070D18,stroke:none
+    style G fill:#FF6500,color:#070D18,stroke:none
+    style E fill:#142338,color:#EEEEEE,stroke:#FF6500
 ```
 
 ---
@@ -41,7 +41,7 @@ Before installing, confirm that the following are present on your system.
 |---|---|---|
 | **Python** | 3.10+ | Checked automatically by the install script |
 | **Git** | Any recent | Required to clone the repository during install |
-| **curl** | Any | Pre-installed on all modern Linux/macOS/Windows 10+ |
+| **curl** | Any | Pre-installed on all modern Linux/MacOS/Windows 10+ |
 
 {% hint style="warning" %}
 **Privilege requirements by operation**
@@ -151,49 +151,7 @@ echo $PATH | tr ':' '\n' | grep -E "local/bin|s0"
 
 ---
 
-## 4. Upgrade & Uninstallation
-
-### Upgrade Suite
-To pull the latest release, verify dependencies, and update in-place:
-
-```bash
-s0 upgrade
-```
-
-Alternatively, re-run the fast upgrade script:
-
-{% tabs %}
-{% tab title="Linux/MacOS" %}
-```bash
-curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
-```
-{% endtab %}
-
-{% tab title="Windows (PowerShell)" %}
-```powershell
-irm https://s0-install.pages.dev/upgrade-ps1 | iex
-```
-{% endtab %}
-
-{% tab title="Windows (CMD)" %}
-```cmd
-curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
-```
-{% endtab %}
-{% endtabs %}
-
-### Uninstallation
-To cleanly remove `s0`, its virtual environment, and PATH symlinks:
-
-```bash
-s0 uninstall
-
-s0 uninstall --yes --keep-audit
-```
-
----
-
-## 5. Your First Wipe
+## 4. Your First Wipe
 
 This walkthrough sanitizes a USB drive or block device. Follow the three steps in sequence: **list → plan → wipe**.
 
@@ -271,25 +229,22 @@ sudo s0 wipe --target /dev/sdb --yes \
 
 {% hint style="warning" %}
 **Root / Administrator required**
-Block device access requires elevated privileges. On Linux/macOS, prefix with `sudo`. On Windows, run from an Administrator terminal.
+Block device access requires elevated privileges. On Linux/MacOS, prefix with `sudo`. On Windows, run from an Administrator terminal.
 {% endhint %}
 
 When complete:
 
-```
-[s0 wipe]  [OK]  Sanitization complete
-[s0 wipe]  Method   : OVERWRITE_ZERO_1PASS (NIST SP 800-88 Clear)
-[s0 wipe]  Verified : 64-block sampled readback — PASS
-[s0 wipe]  Duration : 29m 14s
-[s0 wipe]  Certificate → ./certificate_a3f19c22.json
-[s0 wipe]              → ./certificate_a3f19c22.pdf
-[s0 wipe]              → ./certificate_a3f19c22.qr.png
-[s0 wipe]  Ledger block #7 appended → SHA-256 continuity verified
+```text
+[s0 wipe]  Result        : success
+[s0 wipe]  Verification  : {"samples": 64, "all_samples_match_wipe_pattern": true}
+[s0 wipe]  Audit Ledger  : recorded block #7 (3a8f1b2c4d5e6f70...)
+[s0 wipe]  Certificate   : ./certificate_a3f19c22.json
+[s0 wipe]  PDF           : ./certificate_a3f19c22.pdf
 ```
 
 ---
 
-## 6. Your First File & Folder Erasure
+## 5. Your First File & Folder Erasure
 
 `s0 wipe` supports targeted file and directory sanitization without root access. Both single-path and batch-path invocations are supported:
 
@@ -336,7 +291,7 @@ On CoW filesystems, in-place overwrite may not reach the original data blocks �
 
 ---
 
-## 7. Your First Forensic File Carve
+## 6. Your First Forensic File Carve
 
 The carver reconstructs deleted files from raw disk images or storage devices. Operating on disk images requires no root access and ensures original evidence media remains strictly write-blocked.
 
@@ -373,12 +328,12 @@ Custom signature definitions can also be supplied via JSON with `--custom-signat
 
 When complete:
 
-```
-[s0 carve]  [OK]  Carving complete
-[s0 carve]  Files recovered : 1,247  (above 50% confidence)
-[s0 carve]  Output          : ./recovered_evidence/
-[s0 carve]  Manifest        : ./recovered_evidence/carve_manifest_9e4a1b77.json  (Ed25519-signed)
-[s0 carve]  Ledger block #8 appended → SHA-256 continuity verified
+```text
+[s0 carve]  Bytes Scanned    : 32000000000
+[s0 carve]  Candidates Found : 1247
+[s0 carve]  Files Recovered  : 1247
+[s0 carve]  Audit Ledger     : recorded block #8 (9a8b7c6d5e4f3a2b...)
+[s0 carve]  Manifest File    : ./recovered_evidence/carve_manifest_9e4a1b77.json
 ```
 
 {% hint style="success" %}
