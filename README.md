@@ -45,7 +45,7 @@
 
 ## Legal & Responsible Use Notice
 
-> **IMPORTANT:** s0 is a digital forensics and data sanitization suite.
+> **IMPORTANT:** s0 is a digital forensic sanitization and recovery tool.
 
 Only operate on storage media, physical drives, or files that you **legally own** or have **documented, written authorization** to examine. Unauthorized data destruction or forensic acquisition violates computer crime laws worldwide:
 - **United States:** Computer Fraud and Abuse Act (CFAA), 18 U.S.C. § 1030

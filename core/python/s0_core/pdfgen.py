@@ -246,7 +246,7 @@ def generate_pdf(
 
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(
-        '<font size="6.5" color="#64748b">⚖ LEGAL NOTICE: s0 is a certified digital forensic sanitization suite. '
+        '<font size="6.5" color="#64748b">⚖ LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
         'Issued solely for authorized media operations and legal chain of custody. '
         'Verify authenticity at https://s0-verify.pages.dev/ or via `s0 verify`.</font>',
         styles["Normal"]

@@ -224,7 +224,7 @@ echo ""
 
 # ── legal & authorized use notice ──────────────────────────────────────────
 printf "${_yellow}⚖  LEGAL & RESPONSIBLE USE NOTICE:${_reset}\n"
-printf "   s0 is a certified digital forensic and media sanitization suite.\n"
+printf "   s0 is a digital forensic sanitization and recovery tool.\n"
 printf "   Only operate on storage devices and files you legally own or have explicit\n"
 printf "   documented authorization to process. Unauthorized use may violate computer\n"
 printf "   crime laws (e.g., CFAA, Computer Misuse Act, IT Act 2000).\n"

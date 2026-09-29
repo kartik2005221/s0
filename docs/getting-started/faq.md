@@ -3,7 +3,7 @@
 ## 0. Legal & Ethical Use
 
 ### Am I legally allowed to wipe or recover data from any device with s0?
-**No.** s0 is a certified digital forensics and data sanitization suite. You are legally required to only operate on storage media and files that you **own** or have **explicit, documented written authorization** to process. Operating on unauthorized devices may constitute a severe criminal offense.
+**No.** s0 is a digital forensic sanitization and recovery tool. You are legally required to only operate on storage media and files that you **own** or have **explicit, documented written authorization** to process. Operating on unauthorized devices may constitute a severe criminal offense.
 
 ### Which computer crime laws apply?
 Depending on your jurisdiction, unauthorized wiping or unauthorized data recovery may violate:
@@ -30,7 +30,7 @@ Traditionally, forensic practitioners and IT security teams are forced to deploy
 
 By uniting these capabilities into a single open-source platform:
 1. **Verification of Destruction:** You can immediately test your own sanitization jobs by running the carver on wiped media to verify that zero recoverable artifacts remain.
-2. **Unified Chain of Custody:** Both evidence collection and certified media decommissioning are recorded in the exact same cryptographic audit ledger.
+2. **Unified Chain of Custody:** Both evidence collection and media decommissioning are recorded in the exact same cryptographic audit ledger.
 3. **Open Standards:** Replaces proprietary, closed-source wipe algorithms with transparent, peer-reviewed implementations of NIST SP 800-88 Rev. 1 and RFC 8032.
 
 ### Is s0 free and open source?
@@ -112,7 +112,7 @@ Private keys are never uploaded or transmitted. They remain exclusively on your 
 **No.** In national security and forensic operations, deploying a public, distributed blockchain introduces severe security and operational violations:
 1. **Air-Gap Compliance:** Forensic workstations in classified facilities cannot communicate with external peer-to-peer cryptocurrency nodes.
 2. **Confidentiality:** Public ledgers broadcast drive serial numbers, operator names, and case identifiers to the public internet.
-3. **Single Issuing Authority:** Law enforcement laboratories require certified, single-authority attestation rather than decentralized consensus.
+3. **Single Issuing Authority:** Law enforcement laboratories require authoritative, single-authority attestation rather than decentralized consensus.
 
 s0 implements a **local, append-only SQLite ledger chained by SHA-256 block hashes**. Any modification to past records severs the mathematical continuity, detected instantly by `s0 audit verify`.
 

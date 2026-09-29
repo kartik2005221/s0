@@ -4,7 +4,7 @@
 **Document Scope: 5-Minute Quickstart & Installation Guide**
 This guide is intended for new users and evaluators who need to install s0, verify toolchain prerequisites, and execute their first safe dry-run in under 5 minutes.
 
-For certified field sanitization procedures, bad-sector fault recovery, live bit-stream imaging, batch enterprise destruction, and legal audit chain management, consult the **[User & Forensic Operator Manual](../guides/user-manual.md)** or the **[Secure Data Erasure Guide](../guides/secure-erasure.md)**.
+For standard field sanitization procedures, bad-sector fault recovery, live bit-stream imaging, batch enterprise destruction, and legal audit chain management, consult the **[User & Forensic Operator Manual](../guides/user-manual.md)** or the **[Secure Data Erasure Guide](../guides/secure-erasure.md)**.
 {% endhint %}
 
 ---
@@ -58,7 +58,7 @@ Not all s0 operations need elevated privileges — only block-device wiping does
 
 {% hint style="warning" %}
 **Legal & Responsible Use Requirement**
-s0 is a certified digital forensic sanitization and recovery tool. You must **only** operate on storage media and files that you **legally own** or have **explicit, documented authorization** to process. Operating on unauthorized systems or drives may violate computer crime laws (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act, IT Act 2000). See the [Legal FAQ](faq.md#0-legal-ethical-use).
+s0 is a digital forensic sanitization and recovery tool. You must **only** operate on storage media and files that you **legally own** or have **explicit, documented authorization** to process. Operating on unauthorized systems or drives may violate computer crime laws (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act, IT Act 2000). See the [Legal FAQ](faq.md#0-legal-ethical-use).
 {% endhint %}
 
 ---
@@ -397,7 +397,7 @@ A score of 50 is a reasonable default. Raise to 70–80 for highest-confidence f
 
 ---
 
-## 8. Understanding the Output
+## 7. Understanding the Output
 
 Every `s0 wipe` operation produces a **certificate bundle** — three files tied to a single UUID:
 
@@ -422,7 +422,9 @@ carve_manifest_9e4a1b77.json   # Signed list of all recovered files + SHA-256 ha
 By default, certificates are written to the **current working directory** from which you ran `s0`. Pass `--out-dir /path/to/output/` to any command to specify a custom location.
 {% endhint %}
 
-### Audit Ledger
+---
+
+## 8. Hash-Chained Audit Ledger
 
 Every operation also appends a cryptographic block to `~/.s0/s0_audit.db`:
 
@@ -449,13 +451,13 @@ s0 verify certificate_a3f19c22.json --key core/keys/demo_issuer_public.pem
 
 Expected output on a valid certificate:
 
-```
-[s0 verify]  [OK]  Signature VALID
-[s0 verify]  Issuer    : s0 Demo Authority
-[s0 verify]  Target    : /dev/sdb  (SanDisk Ultra, 32.0 GB)
-[s0 verify]  Method    : OVERWRITE_ZERO_1PASS
-[s0 verify]  Operator  : analyst-01 / Forensic Lab
-[s0 verify]  Timestamp : 2026-09-09T13:31:00Z
+```text
+[s0 verify]  Status       : OK : CERTIFICATE AUTHENTIC & VERIFIED
+[s0 verify]  Issuer       : s0 Demo Authority
+[s0 verify]  Target       : /dev/sdb (SanDisk Ultra, 32.0 GB)
+[s0 verify]  Method       : OVERWRITE_ZERO_1PASS
+[s0 verify]  Operator     : analyst-01 / Forensic Lab
+[s0 verify]  Timestamp    : 2026-09-09T13:31:00Z
 ```
 {% endtab %}
 {% tab title="Browser (Drag & Drop)" %}
@@ -477,7 +479,34 @@ For classified environments with no internet access, copy the `verification-port
 
 ---
 
-## 10. Uninstallation
+## 10. Upgrade & Uninstallation
+
+### Upgrading s0
+
+{% tabs %}
+{% tab title="Linux/MacOS" %}
+```bash
+curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
+```
+
+Alternatively, from within an existing git clone:
+```bash
+s0 upgrade
+```
+{% endtab %}
+{% tab title="Windows (PowerShell)" %}
+```powershell
+irm https://s0-install.pages.dev/upgrade-ps1 | iex
+```
+{% endtab %}
+{% tab title="Windows (CMD)" %}
+```cmd
+curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
+```
+{% endtab %}
+{% endtabs %}
+
+### Uninstalling s0
 
 {% tabs %}
 {% tab title="Linux/MacOS" %}
@@ -501,7 +530,7 @@ curl -fsSL https://s0-install.pages.dev/uninstall-cmd -o s0-uninstall.cmd && s0-
 
 {% hint style="warning" %}
 **Preserve your audit database**
-The ledger at `~/.s0/s0_audit.db` (Linux/macOS) or `%USERPROFILE%\.s0\s0_audit.db` (Windows) is the canonical chain-of-custody record for every operation s0 has performed. Back it up before uninstalling if you need to retain those records.
+The ledger at `~/.s0/s0_audit.db` (Linux/MacOS) or `%USERPROFILE%\.s0\s0_audit.db` (Windows) is the canonical chain-of-custody record for every operation s0 has performed. Back it up before uninstalling if you need to retain those records.
 {% endhint %}
 
 ---
@@ -515,6 +544,7 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "version": "2.4.3",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
+  "website_url": "https://s0-site.pages.dev/",
   "documentation_url": "https://s0-docs.gitbook.io/",
   "verification_portal_url": "https://s0-verify.pages.dev/",
   "install_portal_url": "https://s0-install.pages.dev/",
@@ -554,7 +584,7 @@ Now that you have s0 installed and have run your first operations, explore the d
     </tr>
     <tr>
       <td><strong>Compliance &amp; Standards</strong></td>
-      <td>How each method maps to NIST SP 800-88 Clear and Purge tiers, IEEE 2883-2022, and ISO 27037.</td>
+      <td>How each method maps to NIST SP 800-88 Clear and Purge tiers, IEEE 2883-2022, and ISO/IEC 27037:2012.</td>
       <td><a href="../compliance/nist-compliance.md">Compliance Matrix</a></td>
     </tr>
     <tr>

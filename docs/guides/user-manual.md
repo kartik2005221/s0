@@ -2,7 +2,7 @@
 
 {% hint style="info" %}
 **Document Scope: Comprehensive Operator & Field Reference Manual**
-This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for certified media sanitization, bit-stream drive imaging, deleted evidence carving, audit ledger continuity checks, and regulatory sign-offs.
+This document serves as the authoritative operational manual for digital forensic examiners, incident responders, field technicians, and compliance auditors. It details end-to-end procedures for forensic-grade media sanitization, bit-stream drive imaging, deleted evidence carving, audit ledger continuity checks, and regulatory sign-offs.
 
 If you only need to perform a quick 5-minute setup and test run on an image file, refer to the **[Getting Started Guide](../getting-started/quickstart.md)**. For in-depth sanitization physics and firmware mechanics, see the **[Secure Data Erasure Guide](secure-erasure.md)**.
 {% endhint %}
@@ -137,7 +137,7 @@ For **NVMe SSDs**, allow s0 to execute controller-level firmware purges (default
 {% endhint %}
 
 ### 3.3 Executing Sanitization (`s0 wipe`)
-Perform certified sanitization:
+Perform sanitization:
 
 ```bash
 sudo s0 wipe \

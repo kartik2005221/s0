@@ -178,6 +178,6 @@ echo Binary  : %INSTALL_DIR%\.venv\Scripts\s0.exe
 echo Run     : s0 --version
 echo Web UI  : s0 web
 echo.
-echo LEGAL: s0 is a certified forensic suite. Only operate on storage media you own
+echo LEGAL: s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you own
 echo        or have documented authorization to process.
 echo.
