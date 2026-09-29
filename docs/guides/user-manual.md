@@ -281,7 +281,7 @@ Degraded or failing drives with unreadable magnetic sectors or worn NAND blocks 
 
 ---
 
-## 7. Module 4: Hash-Chained Cryptographic Audit Ledger
+## 7. Hash-Chained Cryptographic Audit Ledger
 
 Every wipe, file erasure, carving session, and drive acquisition is appended as an immutable block to `~/.s0/s0_audit.db`.
 

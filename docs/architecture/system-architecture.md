@@ -22,7 +22,7 @@ graph TB
         M1["Module 1 — Media & File Sanitizer<br/><code>methods/</code> · <code>wipe.py</code> · <code>file_eraser.py</code>"]
         M2["Module 2 — File Carver<br/><code>carver/</code> — 5 engines"]
         M3["Module 3 — Forensic Imager<br/><code>imager.py</code> — Bit-Stream Acquisition"]
-        M4["Module 4 — Audit Ledger<br/><code>audit/</code> — SQLite + SHA-256 chain"]
+        M4["Audit Ledger (Supporting)<br/><code>audit/</code> — SQLite + SHA-256 chain"]
     end
 
     subgraph CORE["Cryptographic Core  <code>core/python/s0_core/</code>"]
@@ -473,9 +473,9 @@ $$
 
 ---
 
-## Module 4 — Hash-Chained Audit Ledger
+## Hash-Chained Audit Ledger
 
-Module 4 provides the chain of custody infrastructure that transforms s0's operations from "I ran a tool" into cryptographically provable events.
+The audit ledger provides the chain of custody infrastructure that transforms s0's operations from "I ran a tool" into cryptographically provable events.
 
 ### Architecture
 

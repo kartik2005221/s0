@@ -14,7 +14,7 @@
 | **Module 1 — Media & File Sanitizer (`s0 wipe`)** | Fully validated | Whole drives, images, and Linux, Windows, macOS file/folder wiping |
 | **Module 2 — File Carver** | Fully validated | Multi-format header/footer + multi-filesystem structure carving |
 | **Module 3 — Forensic Imager** | Fully validated | Bit-stream disk acquisition, device cloning, and bad sector recovery |
-| **Module 4 — Audit Ledger** | Fully validated | Single-authority hash chain (not distributed consensus — see §9) |
+| **Audit Ledger** | Fully validated | Single-authority hash chain (not distributed consensus — see §9) |
 
 {% hint style="info" %}
 **Reading the Status Column**
@@ -240,7 +240,7 @@ Is the target a solid-state device (SSD, NVMe, eMMC, SD card)?
 
 ## 9. Hash Chain vs. Distributed Blockchain
 
-s0's Audit Ledger (Module 4) is sometimes described as a "blockchain." This requires precise clarification.
+s0's Audit Ledger is sometimes described as a "blockchain." This requires precise clarification.
 
 ### What s0 Has
 

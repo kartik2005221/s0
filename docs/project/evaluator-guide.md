@@ -53,7 +53,7 @@ Acquires raw bit-stream evidence images or performs 1:1 drive cloning with real-
 sudo .venv/bin/s0 image /dev/sdb ./evidence.dd
 ```
 
-### Module 4: Hash-Chained Cryptographic Audit Ledger
+### Hash-Chained Cryptographic Audit Ledger
 Audits the append-only SQLite ledger (`~/.s0/s0_audit.db`) and verifies mathematical hash continuity across every block:
 
 ```bash
@@ -117,7 +117,7 @@ Digital forensics and data security operations face two fundamental, conflicting
 - **Action:** Run `s0 carve --target /evidence/suspect_drive.raw --out-dir ./recovered`.
 - **Result:** Carver scans disk, identifies magic headers/footers, calculates Shannon entropy confidence scores (>85%), extracts recovered files, and outputs a signed forensic recovery manifest.
 
-### Minute 3: Module 4 (Hash-Chained Audit Ledger)
+### Minute 3: Hash-Chained Audit Ledger
 - **Presenter:** *"How do we guarantee unbroken chain-of-custody for compliance audits?"*
 - **Action:** Open web dashboard or run `s0 audit verify`.
 - **Result:** Displays the SHA-256 hash-chained block ledger. Simulate a tampering attempt in SQLite and show the auditor detecting the exact broken block index immediately.
