@@ -36,10 +36,25 @@ WIPE_METHODS = {
     "FORENSIC_CARVING",
     "FORENSIC_IMAGING",
     "FORENSIC_CLONING",
+    "ATA_SANITIZE_BLOCK_ERASE",
+    "ATA_SANITIZE_CRYPTO_SCRAMBLE",
+    "ATA_SANITIZE_OVERWRITE",
+    "NVME_SANITIZE_OVERWRITE",
+    "NVME_SANITIZE_PURGE_REQUIRED",
+    "SCSI_SANITIZE_BLOCK_ERASE",
+    "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE",
+    "SCSI_SANITIZE_OVERWRITE",
+    "SCSI_UNMAP",
+    "LUKS_KEYSLOT_ERASE",
+    "OPAL_CRYPTO_ERASE",
+    "FDE_KEY_DESTROY",
+    "VENDOR_SECURE_ERASE",
+    "RAID_CONTROLLER_PASSTHROUGH_SANITIZE",
 }
 
 NIST_CATEGORIES = {"Clear", "Purge", "Destroy", "N/A"}
-PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging", "cloning"}
+PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging",
+            "cloning", "not_applicable"}
 
 # Permitted NIST tier per method — mirrors core/standards/nist_800_88_mapping.md §3.
 # Enforced by validate() so a certificate cannot claim a tier its method never earned.
@@ -63,10 +78,32 @@ METHOD_TIERS = {
     "FORENSIC_CARVING": {"N/A"},
     "FORENSIC_IMAGING": {"N/A"},
     "FORENSIC_CLONING": {"N/A"},
+    # ATA Device Configuration Overlay / Sanitize feature set (ATA-4/ACS-4 opcode 0xB4)
+    "ATA_SANITIZE_BLOCK_ERASE": {"Purge"},
+    "ATA_SANITIZE_CRYPTO_SCRAMBLE": {"Purge"},
+    "ATA_SANITIZE_OVERWRITE": {"Purge"},
+    # NVMe Sanitize is admin opcode 0x84 (NOT 0xF4, which does not exist)
+    "NVME_SANITIZE_OVERWRITE": {"Purge"},
+    "NVME_SANITIZE_PURGE_REQUIRED": {"Purge"},
+    # SCSI SANITIZE is opcode 0x48
+    "SCSI_SANITIZE_BLOCK_ERASE": {"Purge"},
+    "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE": {"Purge"},
+    "SCSI_SANITIZE_OVERWRITE": {"Purge"},
+    "SCSI_UNMAP": {"Clear"},
+    # Full-disk / volume encryption key destruction
+    "LUKS_KEYSLOT_ERASE": {"Purge"},
+    "OPAL_CRYPTO_ERASE": {"Purge"},
+    "FDE_KEY_DESTROY": {"Purge"},
+    "VENDOR_SECURE_ERASE": {"Purge"},
+    "RAID_CONTROLLER_PASSTHROUGH_SANITIZE": {"Purge"},
 }
 STATUSES = {"success", "failure", "partial", "reset_triggered"}
-DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone"}
-STORAGE_TYPES = {"HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"}
+DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone",
+                "file", "file_set", "folder", "folder_tree",
+                "logical_volume", "virtual_disk", "raid_logical_volume", "cloud_volume"}
+STORAGE_TYPES = {"HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN",
+                 "file", "folder_tree", "LOGICAL_VOLUME", "VIRTUAL_DISK",
+                 "RAID_LOGICAL_VOLUME", "CLOUD_BLOCK"}
 PLATFORMS = {"linux", "windows", "macos", "android"}
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -217,11 +254,25 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
                 check_obj(verif, "result.verification", set(),
                           {"method", "samples_checked", "sample_bytes_each",
                            "all_samples_match_wipe_pattern", "planted_pattern_hits_after",
-                           "pre_wipe_sample_hash"})
-                for f in ("samples_checked", "sample_bytes_each", "planted_pattern_hits_after"):
+                           "pre_wipe_sample_hash", "sample_strategy", "population_blocks",
+                           "confidence_percent", "residual_fraction_upper_bound_ppm",
+                           "attestation", "smart_delta"})
+                for f in ("samples_checked", "sample_bytes_each", "planted_pattern_hits_after",
+                          "population_blocks", "confidence_percent",
+                          "residual_fraction_upper_bound_ppm"):
                     v = verif.get(f)
                     need(v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
                          f"result.verification.{f}: non-negative integer")
+                cp = verif.get("confidence_percent")
+                need(cp is None or cp <= 100,
+                     "result.verification.confidence_percent: must be 0-100")
+                for f in ("sample_strategy", "attestation"):
+                    v = verif.get(f)
+                    need(v is None or isinstance(v, str),
+                         f"result.verification.{f}: string")
+                sd = verif.get("smart_delta")
+                need(sd is None or isinstance(sd, dict),
+                     "result.verification.smart_delta: object")
                 asm = verif.get("all_samples_match_wipe_pattern")
                 need(asm is None or isinstance(asm, bool),
                      "result.verification.all_samples_match_wipe_pattern: boolean")

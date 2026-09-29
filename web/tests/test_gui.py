@@ -49,8 +49,20 @@ def test_index_serves(client):
     r = client.get("/")
     assert r.status_code == 200
     assert b"s0" in r.content.lower()
-    assert "s0-auth-token" not in r.text
-    assert gui_app._SESSION_AUTH_TOKEN not in r.text
+    # The session token is deliberately injected into <head> so the dashboard
+    # works when reached without the ?token= query string (bookmark, reopened
+    # tab, live-ISO kiosk, restarted server). It is a loopback-only, per-session
+    # capability and must never be echoed by an API response or written to disk.
+    assert '<meta name="s0-auth-token"' in r.text
+    assert gui_app._SESSION_AUTH_TOKEN in r.text
+
+
+def test_index_does_not_leak_token_to_sub_resources(client):
+    """Static assets must not carry the token — only the document does."""
+    for asset in ("/static/css/dashboard.css", "/static/js/dashboard.js"):
+        r = client.get(asset)
+        assert r.status_code == 200
+        assert gui_app._SESSION_AUTH_TOKEN not in r.text
 
 
 def test_api_config_does_not_leak_auth_token(client):

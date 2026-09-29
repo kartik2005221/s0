@@ -27,51 +27,116 @@
   var SCHEMA_VERSION = "1.0.0";
 
   var WIPE_METHODS = [
-    "OVERWRITE_ZERO_1PASS",
-    "SHRED_RANDOM_NPASS",
-    "BLKDISCARD",
-    "ATA_SECURE_ERASE",
-    "ATA_SECURE_ERASE_ENHANCED",
-    "NVME_FORMAT_USER_DATA_ERASE",
-    "NVME_FORMAT_CRYPTO_ERASE",
-    "NVME_SANITIZE_BLOCK_ERASE",
-    "NVME_SANITIZE_CRYPTO_ERASE",
-    "WINDOWS_CLEAN_ALL",
-    "WINDOWS_CIPHER_W",
-    "WINDOWS_SED_KEY_DESTROY",
-    "ANDROID_FACTORY_RESET_FBE",
-    "ANDROID_USER_SPACE_OVERWRITE",
-    "FORENSIC_CARVING",
-    "FORENSIC_IMAGING",
-    "FORENSIC_CLONING"
-  ];
+      "ANDROID_FACTORY_RESET_FBE",
+      "ANDROID_USER_SPACE_OVERWRITE",
+      "ATA_SANITIZE_BLOCK_ERASE",
+      "ATA_SANITIZE_CRYPTO_SCRAMBLE",
+      "ATA_SANITIZE_OVERWRITE",
+      "ATA_SECURE_ERASE",
+      "ATA_SECURE_ERASE_ENHANCED",
+      "BLKDISCARD",
+      "FDE_KEY_DESTROY",
+      "FORENSIC_CARVING",
+      "FORENSIC_CLONING",
+      "FORENSIC_IMAGING",
+      "LUKS_KEYSLOT_ERASE",
+      "NVME_FORMAT_CRYPTO_ERASE",
+      "NVME_FORMAT_USER_DATA_ERASE",
+      "NVME_SANITIZE_BLOCK_ERASE",
+      "NVME_SANITIZE_CRYPTO_ERASE",
+      "NVME_SANITIZE_OVERWRITE",
+      "NVME_SANITIZE_PURGE_REQUIRED",
+      "OPAL_CRYPTO_ERASE",
+      "OVERWRITE_ZERO_1PASS",
+      "RAID_CONTROLLER_PASSTHROUGH_SANITIZE",
+      "SCSI_SANITIZE_BLOCK_ERASE",
+      "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE",
+      "SCSI_SANITIZE_OVERWRITE",
+      "SCSI_UNMAP",
+      "SHRED_RANDOM_NPASS",
+      "VENDOR_SECURE_ERASE",
+      "WINDOWS_CIPHER_W",
+      "WINDOWS_CLEAN_ALL",
+      "WINDOWS_SED_KEY_DESTROY"
+    ];
 
   var NIST_CATEGORIES = ["Clear", "Purge", "Destroy", "N/A"];
-  var PATTERNS = ["zero", "random", "firmware", "key_destruction", "carving", "imaging", "cloning"];
+  var PATTERNS = [
+      "carving",
+      "cloning",
+      "firmware",
+      "imaging",
+      "key_destruction",
+      "not_applicable",
+      "random",
+      "zero"
+    ];
   var STATUSES = ["success", "failure", "partial", "reset_triggered"];
-  var DEVICE_TYPES = ["internal_disk", "removable_disk", "image_file", "phone"];
-  var STORAGE_TYPES = ["HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN"];
+  var DEVICE_TYPES = [
+      "cloud_volume",
+      "file",
+      "file_set",
+      "folder",
+      "folder_tree",
+      "image_file",
+      "internal_disk",
+      "logical_volume",
+      "phone",
+      "raid_logical_volume",
+      "removable_disk",
+      "virtual_disk"
+    ];
+  var STORAGE_TYPES = [
+      "CLOUD_BLOCK",
+      "HDD",
+      "IMAGE_FILE",
+      "LOGICAL_VOLUME",
+      "NVMe",
+      "RAID_LOGICAL_VOLUME",
+      "SDCARD",
+      "SSD",
+      "UFS",
+      "UNKNOWN",
+      "VIRTUAL_DISK",
+      "eMMC",
+      "file",
+      "folder_tree"
+    ];
   var PLATFORMS = ["linux", "windows", "macos", "android"];
 
   var METHOD_TIERS = {
-    "OVERWRITE_ZERO_1PASS": ["Clear"],
-    "SHRED_RANDOM_NPASS": ["Clear"],
-    "BLKDISCARD": ["Clear", "Purge"],
-    "ATA_SECURE_ERASE": ["Purge"],
-    "ATA_SECURE_ERASE_ENHANCED": ["Purge"],
-    "NVME_FORMAT_USER_DATA_ERASE": ["Purge"],
-    "NVME_FORMAT_CRYPTO_ERASE": ["Purge"],
-    "NVME_SANITIZE_BLOCK_ERASE": ["Purge"],
-    "NVME_SANITIZE_CRYPTO_ERASE": ["Purge"],
-    "WINDOWS_CLEAN_ALL": ["Clear"],
-    "WINDOWS_CIPHER_W": ["Clear"],
-    "WINDOWS_SED_KEY_DESTROY": ["Purge"],
-    "ANDROID_FACTORY_RESET_FBE": ["Purge"],
-    "ANDROID_USER_SPACE_OVERWRITE": ["Clear"],
-    "FORENSIC_CARVING": ["N/A"],
-    "FORENSIC_IMAGING": ["N/A"],
-    "FORENSIC_CLONING": ["N/A"]
-  };
+      "ANDROID_FACTORY_RESET_FBE": ["Purge"],
+      "ANDROID_USER_SPACE_OVERWRITE": ["Clear"],
+      "ATA_SANITIZE_BLOCK_ERASE": ["Purge"],
+      "ATA_SANITIZE_CRYPTO_SCRAMBLE": ["Purge"],
+      "ATA_SANITIZE_OVERWRITE": ["Purge"],
+      "ATA_SECURE_ERASE": ["Purge"],
+      "ATA_SECURE_ERASE_ENHANCED": ["Purge"],
+      "BLKDISCARD": ["Clear", "Purge"],
+      "FDE_KEY_DESTROY": ["Purge"],
+      "FORENSIC_CARVING": ["N/A"],
+      "FORENSIC_CLONING": ["N/A"],
+      "FORENSIC_IMAGING": ["N/A"],
+      "LUKS_KEYSLOT_ERASE": ["Purge"],
+      "NVME_FORMAT_CRYPTO_ERASE": ["Purge"],
+      "NVME_FORMAT_USER_DATA_ERASE": ["Purge"],
+      "NVME_SANITIZE_BLOCK_ERASE": ["Purge"],
+      "NVME_SANITIZE_CRYPTO_ERASE": ["Purge"],
+      "NVME_SANITIZE_OVERWRITE": ["Purge"],
+      "NVME_SANITIZE_PURGE_REQUIRED": ["Purge"],
+      "OPAL_CRYPTO_ERASE": ["Purge"],
+      "OVERWRITE_ZERO_1PASS": ["Clear"],
+      "RAID_CONTROLLER_PASSTHROUGH_SANITIZE": ["Purge"],
+      "SCSI_SANITIZE_BLOCK_ERASE": ["Purge"],
+      "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE": ["Purge"],
+      "SCSI_SANITIZE_OVERWRITE": ["Purge"],
+      "SCSI_UNMAP": ["Clear"],
+      "SHRED_RANDOM_NPASS": ["Clear"],
+      "VENDOR_SECURE_ERASE": ["Purge"],
+      "WINDOWS_CIPHER_W": ["Clear"],
+      "WINDOWS_CLEAN_ALL": ["Clear"],
+      "WINDOWS_SED_KEY_DESTROY": ["Purge"],
+    };
 
   var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   var DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
@@ -387,7 +452,10 @@
           errs.push("result.verification: must be an object");
         } else {
           checkObj(result.verification, "result.verification", [],
-            ["method", "samples_checked", "sample_bytes_each", "all_samples_match_wipe_pattern", "planted_pattern_hits_after", "pre_wipe_sample_hash"]
+            ["method", "samples_checked", "sample_bytes_each", "all_samples_match_wipe_pattern",
+               "planted_pattern_hits_after", "pre_wipe_sample_hash", "sample_strategy",
+               "population_blocks", "confidence_percent", "residual_fraction_upper_bound_ppm",
+               "attestation", "smart_delta"]
           );
         }
       }

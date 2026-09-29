@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import io
 from pathlib import Path
+from typing import Optional
 
 import qrcode
 from reportlab.lib import colors
@@ -38,8 +39,24 @@ _STATUS_COLORS = {
 }
 
 
-def _make_qr_bytes(data: str) -> bytes:
-    img = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=2)
+# A QR symbol is only machine-readable if the renderer gives each module enough
+# pixels. Rasterising an embedded image for print resolves at ~300 dpi; anything
+# below ~8 px per module produces a symbol that decodes on the authoring screen
+# and nowhere else. Rather than emit an unscannable symbol, s0 sizes the QR to
+# the payload it has to carry.
+QR_PRINT_DPI = 300
+QR_MIN_PIXELS_PER_MODULE = 8
+QR_MM = 45
+QR_MAX_MM = 105
+QR_ECC = "L"
+
+
+def _qr_png(data: str, *, border: int = 3, ec_level: str = QR_ECC) -> bytes:
+    """Render `data` to PNG bytes at the requested error-correction level."""
+    img = qrcode.QRCode(
+        error_correction=getattr(qrcode.constants, f"ERROR_CORRECT_{ec_level}"),
+        border=border,
+    )
     img.add_data(data)
     img.make(fit=True)
     buf = io.BytesIO()
@@ -47,9 +64,51 @@ def _make_qr_bytes(data: str) -> bytes:
     return buf.getvalue()
 
 
+def qr_module_count(data: str, *, ec_level: str = QR_ECC) -> int:
+    """Side length in modules (including border) of the QR symbol encoding `data`.
+
+    Raises ValueError when the payload exceeds QR version 40 (2953 bytes at ECC L),
+    which is the hard capacity ceiling of the symbol.
+    """
+    img = qrcode.QRCode(
+        error_correction=getattr(qrcode.constants, f"ERROR_CORRECT_{ec_level}"),
+        border=3,
+    )
+    img.add_data(data)
+    img.make(fit=True)
+    return img.modules_count
+
+
+def qr_size_mm_for(data: str, *, max_mm: float = QR_MAX_MM, ec_level: str = QR_ECC) -> Optional[float]:
+    """Smallest printable size (mm) that keeps `data` scannable, or None if it
+    cannot be made scannable within `max_mm` or exceeds QR version 40 capacity.
+    """
+    try:
+        modules = qr_module_count(data, ec_level=ec_level)
+    except ValueError:
+        return None
+    need_px = modules * QR_MIN_PIXELS_PER_MODULE
+    need_mm = need_px / QR_PRINT_DPI * 25.4
+    return need_mm if need_mm <= max_mm else None
+
+
+def qr_scannable_at(data: str, *, size_mm: float = QR_MM, ec_level: str = QR_ECC) -> bool:
+    """True when `data` renders as a symbol a real scanner can read at `size_mm`."""
+    try:
+        modules = qr_module_count(data, ec_level=ec_level)
+    except ValueError:
+        return False
+    px = size_mm / 25.4 * QR_PRINT_DPI
+    return px / modules >= QR_MIN_PIXELS_PER_MODULE
+
+
+def _make_qr_bytes(data: str) -> bytes:
+    return _qr_png(data)
+
+
 def _make_qr_image(data: str, out_dir: Path, name: str = "cert_qr.png") -> Path:
     path = out_dir / name
-    path.write_bytes(_make_qr_bytes(data))
+    path.write_bytes(_qr_png(data))
     return path
 
 
@@ -77,8 +136,16 @@ def generate_pdf(
     out_path: str | Path,
     *,
     qr_url_template: str = QR_URL_TEMPLATE_DEFAULT,
+    embed_full_json: bool = False,
+    qr_size_mm: float = QR_MM,
 ) -> Path:
-    """Render a SIGNED certificate dict to PDF. Raises if the cert has no signature."""
+    """Render a SIGNED certificate dict to PDF. Raises if the cert has no signature.
+
+    The QR encodes the verification URL by default. The full signed JSON is only
+    embedded when it is still machine-scannable at the printed size — a 1.7 KB
+    payload would render ~177 modules into 45 mm, roughly 6 px per module, which
+    no camera or verifier can decode. The JSON remains the artifact of record.
+    """
     if "signature" not in cert:
         raise ValueError("refusing to render an UNSIGNED certificate to PDF")
     out_path = Path(out_path)
@@ -95,14 +162,28 @@ def generate_pdf(
     default_url = QR_URL_TEMPLATE_DEFAULT.format(cert_uuid=cert["cert_uuid"])
     sanitized_verify_url = _sanitize_qr_url(raw_url, default=default_url)
 
-    # QR content: full signed cert if it fits comfortably in a QR-M symbol.
     full_json = canonicalize_str(cert)
-    if len(full_json.encode("utf-8")) <= 2300:
-        qr_data, qr_caption = full_json, "Full signed certificate (offline-verifiable)"
+    qr_notes: list[str] = []
+
+    # Prefer a fully offline-verifiable certificate: embed the complete signed
+    # JSON when it can be rendered at a size a camera can actually read. The QR
+    # is sized to the payload rather than fixed at 45 mm, because a 1.7 KB
+    # payload needs a version-40 symbol (~157 modules) and would otherwise be
+    # ~3 px per module — undecodable everywhere except on screen.
+    json_size = qr_size_mm_for(full_json)
+    if json_size is not None:
+        qr_data = full_json
+        qr_size_mm = max(QR_MM, json_size)
+        qr_caption = "Full signed certificate (offline-verifiable)"
     else:
         qr_data = sanitized_verify_url
+        qr_size_mm = QR_MM
         qr_caption = "Verification URL (locator only — verify the signature)"
-
+        qr_notes.append(
+            "The full signed JSON is too dense to render as a machine-scannable symbol "
+            f"within {QR_MAX_MM:g} mm, so the QR carries the verification URL instead. "
+            "The certificate JSON remains the artifact of record."
+        )
 
     doc = SimpleDocTemplate(
         str(out_path), pagesize=A4,
@@ -138,7 +219,7 @@ def generate_pdf(
     if is_demo:
         demo_banner = Table(
             [[Paragraph(
-                "<para color='#990000' align='center'><b>⚠️ DEMONSTRATION CERTIFICATE — SIGNED WITH PUBLIC DEMO KEY</b><br/>"
+                "<para color='#990000' align='center'><b>[!] DEMONSTRATION CERTIFICATE - SIGNED WITH PUBLIC DEMO KEY</b><br/>"
                 "<font size='7.5'>This certificate was signed with an unaccredited public demonstration key. "
                 "DO NOT use for legal chain-of-custody or regulatory compliance.</font></para>",
                 styles["Normal"])]],
@@ -226,12 +307,20 @@ def generate_pdf(
     story.append(Spacer(1, 6 * mm))
 
     qr_bytes = _make_qr_bytes(qr_data)
-    qr_img = Image(io.BytesIO(qr_bytes), width=42 * mm, height=42 * mm)
-    qr_tbl = Table([[qr_img, Paragraph(
+    qr_img = Image(io.BytesIO(qr_bytes), width=qr_size_mm * mm, height=qr_size_mm * mm)
+    qr_caption_html = (
         f"<font size='8'>{qr_caption}<br/><br/>The QR and this PDF are renderings of the "
         f"signed JSON, which is the artifact of record. Signature covers every field above; "
-        f"any alteration invalidates it.</font>", styles["Normal"])]],
-        colWidths=[50 * mm, 120 * mm])
+        f"any alteration invalidates it."
+        f"<br/><br/><font size='7'>Printed at {qr_size_mm:.0f} mm square "
+        f"({qr_module_count(qr_data)} modules) to stay machine-scannable.</font></font>"
+    )
+    if qr_notes:
+        qr_caption_html += "<br/>" + "<br/>".join(
+            f"<font size='7'>{_xml_escape(n)}</font>" for n in qr_notes
+        )
+    qr_tbl = Table([[qr_img, Paragraph(qr_caption_html, styles["Normal"])]],
+                   colWidths=[115 * mm, 55 * mm])
     story.append(qr_tbl)
 
     verify_url = sanitized_verify_url
@@ -239,14 +328,14 @@ def generate_pdf(
         story.append(Spacer(1, 4 * mm))
         escaped_url = _xml_escape(verify_url)
         story.append(Paragraph(
-            f'<font size="8">🔗 <a href="{escaped_url}" color="#1d4ed8">'
+            f'<font size="8">[>] <a href="{escaped_url}" color="#1d4ed8">'
             f'<u>Verify this certificate online at {escaped_url}</u></a></font>',
             styles["Normal"],
         ))
 
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(
-        '<font size="6.5" color="#64748b">⚖ LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
+        '<font size="6.5" color="#64748b">LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
         'Issued solely for authorized media operations and legal chain of custody. '
         'Verify authenticity at https://s0-verify.pages.dev/ or via `s0 verify`.</font>',
         styles["Normal"]
@@ -257,10 +346,21 @@ def generate_pdf(
 
 
 def write_qr_file(cert: dict, out_path: str | Path) -> Path:
-    """Standalone QR PNG of the full signed certificate."""
+    """Standalone QR PNG for a signed certificate.
+
+    Prefers the complete signed JSON so the PNG is self-verifying offline. Very
+    large certificates can exceed the QR symbol's hard capacity ceiling
+    (version 40, 2953 bytes at ECC L); those fall back to the verification URL
+    rather than failing the whole operation.
+    """
     if "signature" not in cert:
         raise ValueError("refusing to render an UNSIGNED certificate to QR")
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    _make_qr_image(canonicalize_str(cert), out_path.parent, out_path.name)
+    payload = canonicalize_str(cert)
+    try:
+        qr_module_count(payload)
+    except ValueError:
+        payload = QR_URL_TEMPLATE_DEFAULT.format(cert_uuid=cert["cert_uuid"])
+    _make_qr_image(payload, out_path.parent, out_path.name)
     return out_path

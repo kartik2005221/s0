@@ -179,112 +179,226 @@ function handleFile(file) {
       jsonInput.value = evt.target.result;
       runVerification();
     };
+    reader.onerror = function() {
+      setPdfStatus("Could not read " + (file.name || "the selected file") + ".", true);
+    };
     reader.readAsText(file);
   }
 }
 
 // --- QR Code Decoding on Canvas Image ---
-function decodeQrFromCanvas(canvas) {
-  if (typeof jsQR === "undefined") {
+//
+// jsQR is a third-party decoder we do not control. Some builds (including the one
+// vendored here) throw a TypeError from inside locate() for certain
+// `inversionAttempts` values, so every invocation is isolated: a decoder fault is
+// reported as "no code found", never propagated to the caller. "attemptBoth"
+// covers the dontInvert case internally, which is why the previously used
+// single-mode inversion retry (and its guaranteed crash) is no longer needed.
+var QR_DECODE_INVERSION_MODE = "attemptBoth";
+
+function jsQRSafe(imgData) {
+  if (typeof jsQR !== "function") {
     console.warn("jsQR library not loaded");
     return null;
   }
-  var ctx = canvas.getContext("2d");
-  var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  var code = jsQR(imgData.data, imgData.width, imgData.height, {
-    inversionAttempts: "dontInvert"
-  });
-  if (!code) {
-    // Try with inverted colors if needed
-    code = jsQR(imgData.data, imgData.width, imgData.height, {
-      inversionAttempts: "onlyInvert"
+  try {
+    var code = jsQR(imgData.data, imgData.width, imgData.height, {
+      inversionAttempts: QR_DECODE_INVERSION_MODE
     });
+    return code && code.data ? code.data : null;
+  } catch (err) {
+    console.warn("QR decode attempt failed:", err && err.message);
+    return null;
   }
-  return code ? code.data : null;
+}
+
+function decodeQrFromCanvas(canvas) {
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return jsQRSafe(imgData);
+}
+
+// Render one PDF page onto an opaque white canvas. pdf.js leaves untouched regions
+// transparent, and a transparent (alpha=0) pixel confuses QR binarisers.
+async function renderPdfPageToCanvas(page, scale) {
+  var viewport = page.getViewport({ scale: scale });
+  if (!viewport || !viewport.width || !viewport.height) {
+    throw new Error("pdf.js returned an unusable viewport for this page");
+  }
+  var canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.floor(viewport.width));
+  canvas.height = Math.max(1, Math.floor(viewport.height));
+  var ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+  return canvas;
 }
 
 // --- Image File Handler (QR Image) ---
 function handleImageFile(file) {
+  setPdfStatus("Reading image…", false);
   var reader = new FileReader();
   reader.onload = function(e) {
     var img = new Image();
     img.onload = function() {
       var canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      var ctx = canvas.getContext("2d");
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      var ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
 
       var qrData = decodeQrFromCanvas(canvas);
       if (qrData) {
+        setPdfStatus("", false);
         processQrPayload(qrData, file.name);
       } else {
-        alert("No readable QR code found in the image. Please ensure the QR code is clear and uncropped.");
+        setPdfStatus(
+          "No readable QR code was found in " + (file.name || "the image") +
+          ". Screenshots work best when the QR is square, uncropped and fully visible.",
+          true
+        );
       }
     };
+    img.onerror = function() {
+      setPdfStatus((file.name || "The image") + " could not be decoded. Try exporting it as PNG.", true);
+    };
     img.src = e.target.result;
+  };
+  reader.onerror = function() {
+    setPdfStatus("Could not read " + (file.name || "the image") + ".", true);
   };
   reader.readAsDataURL(file);
 }
 
-// --- PDF File Handler (Render Page 1 & Scan QR) ---
+// --- PDF File Handler ---
+//
+// s0 PDF certificates are rendered from a flowable layout, so the QR block lands on
+// page 2 whenever the device/wipe/signature tables overflow the first page. Scanning
+// only page 1 is why s0 certificates used to fail here. We therefore walk every page
+// in ascending order, attempt an optical QR decode at a small ladder of scales, and
+// independently fall back to the PDF text layer — which always carries the
+// certificate UUID. Every stage is failure-isolated so that one bad page, one missing
+// glyph or one decoder fault cannot abort verification.
+var PDF_QR_SCALE_LADDER = [2, 3, 4];
+var PDF_MAX_QR_PAGES = 24;
+var UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+function setPdfStatus(message, isError) {
+  var el = document.getElementById("fileStatus");
+  if (!el) return;
+  el.textContent = message;
+  el.style.display = message ? "block" : "none";
+  el.style.color = isError ? "var(--danger)" : "var(--text-secondary)";
+}
+
 async function handlePdfFile(file) {
   if (typeof pdfjsLib === "undefined") {
     alert("PDF processing library is loading, please try again in a moment.");
     return;
   }
 
+  setPdfStatus("Reading PDF…", false);
+
+  var doc = null;
   try {
     var arrayBuffer = await file.arrayBuffer();
-    var loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    var pdf = await loadingTask.promise;
-    var page = await pdf.getPage(1);
-
-    // Render at scale 2.0 to ensure QR is sharp enough for jsQR
-    var scale = 2.0;
-    var viewport = page.getViewport({ scale: scale });
-
-    var canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    var ctx = canvas.getContext("2d");
-
-    var renderContext = {
-      canvasContext: ctx,
-      viewport: viewport
-    };
-    await page.render(renderContext).promise;
-
-    var qrData = decodeQrFromCanvas(canvas);
-    if (qrData) {
-      processQrPayload(qrData, file.name + " (Embedded QR)");
-      return;
-    }
-
-    // Fallback: If optical QR scan missed, try parsing textual certificate fields
-    var textContent = await page.getTextContent();
-    var fullText = textContent.items.map(function(item) { return item.str; }).join(" ");
-
-    // Check if certificate UUID is in text
-    var uuidMatch = fullText.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-    if (uuidMatch) {
-      var certUuid = uuidMatch[0];
-      handleCertLocator(certUuid, "PDF Certificate: " + file.name);
-      return;
-    }
-
-    alert("PDF loaded, but could not detect a valid s0 verification QR code or certificate UUID on Page 1.");
+    var loadingTask = pdfjsLib.getDocument({
+      data: arrayBuffer,
+      cMapUrl: "vendor/",
+      cMapPacked: true
+    });
+    doc = await loadingTask.promise;
   } catch (err) {
-    console.error("PDF processing error:", err);
-    alert("Failed to parse PDF document: " + err.message);
+    console.error("PDF load error:", err);
+    setPdfStatus("This file could not be opened as a PDF (" + (err && err.message) + ").", true);
+    alert("Failed to open PDF document: " + (err && err.message ? err.message : "unknown error"));
+    return;
   }
+
+  var pageCount = doc.numPages || 0;
+  var pagesToScan = Math.min(pageCount, PDF_MAX_QR_PAGES);
+  var qrData = null;
+  var qrSource = null;
+  var textLayers = [];
+  var decodeFaults = [];
+
+  for (var pno = 1; pno <= pagesToScan && !qrData; pno++) {
+    var page = null;
+    try {
+      page = await doc.getPage(pno);
+    } catch (err) {
+      decodeFaults.push("page " + pno + " unreadable");
+      continue;
+    }
+
+    // Text layer first: cheap, deterministic, and independent of the rasteriser.
+    try {
+      var textContent = await page.getTextContent();
+      if (textContent && textContent.items && textContent.items.length) {
+        textLayers.push(textContent.items.map(function (item) { return item.str; }).join(" "));
+      }
+    } catch (err) {
+      decodeFaults.push("page " + pno + " text layer unavailable");
+    }
+
+    for (var s = 0; s < PDF_QR_SCALE_LADDER.length && !qrData; s++) {
+      try {
+        var canvas = await renderPdfPageToCanvas(page, PDF_QR_SCALE_LADDER[s]);
+        var decoded = decodeQrFromCanvas(canvas);
+        if (decoded) {
+          qrData = decoded;
+          qrSource = file.name + " (page " + pno + ")";
+        }
+        // Release the backing store promptly; large pages are memory-hungry.
+        canvas.width = 1;
+        canvas.height = 1;
+      } catch (err) {
+        decodeFaults.push("page " + pno + " render failed at scale " + PDF_QR_SCALE_LADDER[s]);
+      }
+    }
+    page.cleanup && page.cleanup();
+  }
+
+  if (qrData) {
+    processQrPayload(qrData, qrSource);
+    if (doc.cleanup) doc.cleanup();
+    return;
+  }
+
+  // Optical decode failed — recover the certificate identity from the text layer
+  // across every scanned page instead of failing outright.
+  var fullText = textLayers.join(" ");
+  var uuidMatch = fullText.match(UUID_RE);
+  if (uuidMatch) {
+    handleCertLocator(uuidMatch[0], "PDF Certificate: " + file.name);
+    if (doc.cleanup) doc.cleanup();
+    return;
+  }
+
+  var hint = "";
+  if (decodeFaults.length) {
+    hint = " (" + decodeFaults.length + " decode step(s) degraded: " + decodeFaults[0] + ")";
+  }
+  if (pageCount > PDF_MAX_QR_PAGES) {
+    hint += " Only the first " + PDF_MAX_QR_PAGES + " of " + pageCount + " pages were scanned.";
+  }
+  setPdfStatus(
+    "No s0 verification QR code or certificate UUID was found in this PDF" + hint +
+    ". If this is an s0 certificate, drag & drop the matching certificate JSON to verify the signature.",
+    true
+  );
+  if (doc.cleanup) doc.cleanup();
 }
 
 // Process QR Payload: can be raw JSON or a verification URL
 function processQrPayload(payload, sourceDesc) {
-  var clean = payload.trim();
+  var clean = (payload || "").trim();
   if (clean.startsWith("{") && clean.endsWith("}")) {
     // Full signed certificate canonical JSON inside QR!
+    setPdfStatus("", false);
     jsonInput.value = clean;
     runVerification();
     return;
@@ -320,6 +434,7 @@ function processQrPayload(payload, sourceDesc) {
     return;
   }
 
+  setPdfStatus("The QR code decoded, but its contents are not an s0 certificate or verification URL.", true);
   alert("Scanned QR content is not an s0 certificate or verification URL:\n" + clean.substring(0, 100));
 }
 
@@ -385,6 +500,7 @@ document.getElementById("btnClear").addEventListener("click", function() {
   jsonInput.value = "";
   document.getElementById("emptyState").style.display = "block";
   document.getElementById("resultContainer").style.display = "none";
+  setPdfStatus("", false);
 });
 
 // Scenario loading
@@ -536,9 +652,15 @@ function showResult(res, cert) {
     nistContainer.appendChild(badgeSpan);
 
     var verif = (cert.result && cert.result.verification) || {};
-    var verifText = verif.samples_checked ? (verif.samples_checked + " samples checked (100% match wipe pattern)") : "Standard verification";
+    var sampleCount = verif.samples_checked || 0;
+    var sampleBytes = verif.sample_bytes_each || 0;
+    var verifText = sampleCount
+      ? (sampleCount + " read-back sample" + (sampleCount === 1 ? "" : "s") +
+         (sampleBytes ? " × " + sampleBytes.toLocaleString() + " B" : "") +
+         (verif.all_samples_match_wipe_pattern === false ? " — NOT all matched" : " — all match the wipe pattern"))
+      : (verif.method ? verif.method.replace(/_/g, " ") : "No post-operation verification recorded");
     if (verif.planted_pattern_hits_after !== undefined) {
-      verifText += " • Planted markers: " + verif.planted_pattern_hits_after + " hits";
+      verifText += " • Planted markers: " + verif.planted_pattern_hits_after + " hit(s)";
     }
     document.getElementById("resForensic").textContent = verifText;
 

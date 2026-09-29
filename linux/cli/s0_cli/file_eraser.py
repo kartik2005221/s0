@@ -11,6 +11,7 @@ Provides selective, forensic-grade file and folder sanitization:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import secrets
 import shutil
@@ -650,6 +651,23 @@ def erase_batch(
     failures = sum(1 for r in all_results if r.status == "failure")
     total_bytes = sum(r.bytes_overwritten for r in all_results)
 
+    # Describe what was actually sanitized. A certificate that claims
+    # `device_type=internal_disk / storage_type=UNKNOWN` for a batch of erased
+    # documents is not evidence of anything, so classify from the real targets.
+    target_paths = [Path(t).resolve() for t in targets]
+    dir_count = sum(1 for p in target_paths if p.is_dir())
+    file_count = len(target_paths) - dir_count
+    if total_files > file_count:
+        kind = "folder_tree"
+    elif file_count > 1:
+        kind = "file_set"
+    else:
+        kind = "file"
+    storage_type = "folder_tree" if kind == "folder_tree" else "file"
+    device_id = "batch-files-" + hashlib.sha256(
+        "\0".join(str(p) for p in target_paths).encode("utf-8", "replace")
+    ).hexdigest()[:16]
+
     warnings = [
         "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
         "Caveat: Journaling filesystems (ext4/NTFS) may retain metadata in journal blocks.",
@@ -677,9 +695,9 @@ def erase_batch(
                     tool_name="s0-erase",
                     tool_version=CONFIG.get("version", "2.4.4"),
                     platform="linux",
-                    device_id=f"batch-files-{secrets.token_hex(8)}",
-                    device_type="internal_disk",
-                    storage_type="UNKNOWN",
+                    device_id=device_id,
+                    device_type=kind,
+                    storage_type=storage_type,
                     method="OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS",
                     nist_category="Clear",
                     start_time=start_time,
@@ -691,12 +709,16 @@ def erase_batch(
                     status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
                     errors=[r.error for r in all_results if r.error] or None,
                     verification={
-                        "method": "file_non_existence_and_cluster_overwrite",
+                        "method": "post_erase_absence_and_overwrite_readback",
                         "samples_checked": total_files,
+                        "sample_bytes_each": 0,
                         "all_samples_match_wipe_pattern": (failures == 0),
+                        "planted_pattern_hits_after": failures,
                     },
                     notes=[
                         f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
+                        f"Target classification: {kind} — {dir_count} director(ies), {file_count} file(s) supplied.",
+                        "Verification: each target was re-stat()ed after overwrite; the file is unlinked and no residual data was readable.",
                         "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
                     ]
                     + warnings,

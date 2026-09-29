@@ -36,3 +36,6 @@ tmp/
 skills-lock.json
 
 .env*
+
+# Local test artifacts produced by portal PDF verification runs
+verification-portal/tests/x*.pdf

@@ -16,6 +16,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import secrets
@@ -512,8 +513,27 @@ def _find_target(path: str):
 
 @app.get("/")
 def index() -> HTMLResponse:
+    """Serve the dashboard, injecting the per-session auth token.
+
+    The dashboard JS reads the token from, in order: the ``?token=`` query string,
+    sessionStorage, ``<meta name="s0-auth-token">``, then ``window.appConfig``.
+    Only the first is populated by ``s0 web`` when it opens a browser, so any
+    other way of reaching the dashboard — a bookmark, a reopened tab, the live-ISO
+    kiosk, or a server restarted under a new token — left every API call
+    returning 401 with no visible error. Injecting the meta tag server-side makes
+    ``http://127.0.0.1:8669/`` self-sufficient.
+    """
     index_path = Path(__file__).parent / "static" / "index.html"
     content = index_path.read_text(encoding="utf-8")
+    meta = (
+        '<meta name="s0-auth-token" content="'
+        + html.escape(_SESSION_AUTH_TOKEN, quote=True)
+        + '">'
+    )
+    if "<head>" in content:
+        content = content.replace("<head>", "<head>\n  " + meta, 1)
+    else:  # pragma: no cover - index.html always has a head
+        content = meta + content
     return HTMLResponse(content)
 
 

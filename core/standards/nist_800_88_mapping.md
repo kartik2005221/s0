@@ -56,6 +56,25 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 | `WINDOWS_SED_KEY_DESTROY` / BitLocker key destruction | cryptographic erase | Purge³ | Windows app | ❌ source only |
 | `ANDROID_FACTORY_RESET_FBE` | `DevicePolicyManager.wipeData()` on FBE device | Purge³ | Android app | 📋 planned — not yet implemented |
 | `ANDROID_USER_SPACE_OVERWRITE` | best-effort file overwrite pre-reset | Clear-at-best | Android app | 📋 planned — not yet implemented |
+| `ATA_SANITIZE_BLOCK_ERASE` | ATA-4/ACS-4 **Device Configuration / Sanitize** feature set, command `0xB4`, FEATURE `0x0012` ("BkEr") | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `ATA_SANITIZE_CRYPTO_SCRAMBLE` | `0xB4` FEATURE `0x0011` ("Cryp") | Purge³ | Linux boot media | 📋 registered; driver not yet implemented |
+| `ATA_SANITIZE_OVERWRITE` | `0xB4` FEATURE `0x0014`; `LBA[47:32]="OW"`, NSECT = pass count (**0 means 16 passes**) | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `NVME_SANITIZE_OVERWRITE` | NVMe **admin opcode `0x84`**, SANACT `0x03`, CDW11 = OVRPAT, CDW10[7:4] = OWPASS (`0` ⇒ 16) | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `NVME_SANITIZE_PURGE_REQUIRED` | `0x84`, SANACT `0x06` + SPRRS — the only NVMe option that asserts IEEE 2883 conformance | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `SCSI_SANITIZE_BLOCK_ERASE` | SCSI **opcode `0x48`**, service action `0x02` | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE` | `0x48`, service action `0x03` | Purge³ | Linux boot media | 📋 registered; driver not yet implemented |
+| `SCSI_SANITIZE_OVERWRITE` | `0x48`, service action `0x01` + pass count / IPL parameter list | Purge | Linux boot media | 📋 registered; driver not yet implemented |
+| `SCSI_UNMAP` | `0x42` deallocate-LBA descriptors (max 4095 per command) | Clear⁵ | Linux boot media | 📋 registered; driver not yet implemented |
+| `LUKS_KEYSLOT_ERASE` | `cryptsetup luksErase` — destroys every keyslot, volume key unrecoverable | Purge³ | Linux boot media | 📋 registered; driver not yet implemented |
+| `OPAL_CRYPTO_ERASE` | TCG Opal SSC GenKey/Erase via ATA TRUSTED SEND/RECEIVE (`0x5E`/`0x5C`) | Purge³ | Linux boot media | 📋 registered; driver not yet implemented |
+| `FDE_KEY_DESTROY` | platform FDE key destruction (BitLocker protector delete, FileVault cryptoUser removal) | Purge³ | Windows / macOS | 📋 registered; driver not yet implemented |
+| `VENDOR_SECURE_ERASE` | vendor toolchain firmware erase (Intel SSD Toolbox, Samsung Magician, Crucial) | Purge⁶ | Windows / macOS | 📋 registered; driver not yet implemented |
+| `RAID_CONTROLLER_PASSTHROUGH_SANITIZE` | issue SANITIZE to the physical member drive through the controller (`storcli`/`ssacli`/`perccli`) | Purge⁷ | Linux boot media | 📋 registered; driver not yet implemented |
+
+> **Opcode correction.** Several secondary sources list the NVMe Sanitize admin opcode as
+> `0xF4`. It is **`0x84`** (`nvme_admin_sanitize_nvm` in the Linux `nvme.h` UAPI header, and the
+> NVMe 1.4/2.0 admin opcode table). `0xF4` is not an NVMe admin command. The registry above uses
+> `0x84`.
 
 ¹ **Conditional:** a discard is a Purge only if the drive guarantees deterministic read-after-
    discard (DRAT/RZAT per its specification). Otherwise treat the outcome as Clear-equivalent at
@@ -66,6 +85,31 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 ³ Cryptographic erase requires the medium to have actually been encrypted with adequate strength
    beforehand. If precondition fails, the claimed tier drops and the certificate says so.
 ⁴ Free-space only — cannot wipe files still allocated; documented as partial coverage.
+⁵ UNMAP is deallocation, not destruction. It reaches only the thin-provisioning layer and is
+   Clear at most; a Purge claim requires the device to guarantee deterministic
+   read-after-discard, exactly as for `BLKDISCARD`.
+⁶ Vendor tools report success but expose no machine-readable attestation s0 can pin;
+   the vendor, tool version and firmware revision must be recorded in `notes`.
+⁷ Behind a RAID controller, sanitize must reach the physical member drive. Controller
+   write cache and a failing member mean the array must not be certified until every
+   member reports success.
+
+## 3.1 Standards currency (2026)
+
+The registry above is written against **NIST SP 800-88 Rev. 2** (published 2025-09-26, which
+withdrew Rev. 1 the same day) and **IEEE 2883-2022**. Two changes matter operationally:
+
+1. Rev. 2 explicitly states that **multi-pass overwrite is not needed** for Clear and names
+   the DoD 5220.22-M pass-count requirement as obsolete. s0's one-pass default (section 4) is
+   the current guidance, not a shortcut.
+2. Rev. 2 splits **Verification** ("did the operation run and complete") from **Validation**
+   ("was the chosen technique sufficient for this data"), and treats an operator selecting a
+   technique the medium cannot support as a validation failure rather than a warning.
+   s0 therefore refuses to silently downgrade a requested tier; see `docs/project/industry-plan.md`.
+
+Rev. 1's per-media technique tables were replaced by IEEE 2883 in Rev. 2; the Rev. 1 Appendix A
+tables remain in this file as engineering reference only.
+
 
 ## 4. Overwrite passes: the honest position
 
