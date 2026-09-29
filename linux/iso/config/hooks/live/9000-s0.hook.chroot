@@ -16,6 +16,11 @@ if [ -f /root/repo-snapshot/s0_config.json ]; then
     mkdir -p /etc/s0
     cp /root/repo-snapshot/s0_config.json /etc/s0/s0_config.json
     cp /root/repo-snapshot/s0_config.json /opt/s0/s0_config.json
+if [ -d /root/repo-snapshot/vendor ]; then
+    cp -r /root/repo-snapshot/vendor /opt/s0/
+    echo "==> installing vendored pydantic v2 wheels"
+    pip3 install --break-system-packages --no-deps /opt/s0/vendor/*.whl 2>/dev/null || \
+    python3 -m pip install --break-system-packages --no-deps /opt/s0/vendor/*.whl 2>/dev/null || true
 fi
 rm -rf /opt/s0/core/tests /opt/s0/linux/cli/tests /opt/s0/web/tests 2>/dev/null || true
 chmod -R go-w /opt/s0
@@ -39,7 +44,7 @@ chmod 0755 /usr/local/bin/s0 /usr/local/bin/s0-verify
 
 echo "==> kiosk user and security group (s0-kiosk)"
 groupadd -r s0-kiosk 2>/dev/null || true
-useradd -m -s /bin/bash -G video,input,disk,render,s0-kiosk s0 2>/dev/null || usermod -aG s0-kiosk s0 2>/dev/null || true
+useradd -m -s /bin/bash -G video,input,render,s0-kiosk s0 2>/dev/null || usermod -aG s0-kiosk s0 2>/dev/null || true
 mkdir -p /run/s0
 chown root:s0-kiosk /run/s0 2>/dev/null || true
 chmod 0750 /run/s0 2>/dev/null || true

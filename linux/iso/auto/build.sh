@@ -24,6 +24,9 @@ done
 if [ -d "$REPO_ROOT/web" ]; then
     cp -r "$REPO_ROOT/web" "$STAGING_DIR/"
 fi
+if [ -d "$REPO_ROOT/vendor" ]; then
+    cp -r "$REPO_ROOT/vendor" "$STAGING_DIR/"
+fi
 if [ -f "$REPO_ROOT/s0_config.json" ]; then
     cp "$REPO_ROOT/s0_config.json" "$STAGING_DIR/"
 fi
