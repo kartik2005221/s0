@@ -16,6 +16,7 @@ if [ -f /root/repo-snapshot/s0_config.json ]; then
     mkdir -p /etc/s0
     cp /root/repo-snapshot/s0_config.json /etc/s0/s0_config.json
     cp /root/repo-snapshot/s0_config.json /opt/s0/s0_config.json
+fi
 if [ -d /root/repo-snapshot/vendor ]; then
     cp -r /root/repo-snapshot/vendor /opt/s0/
     echo "==> installing vendored pydantic v2 wheels"
