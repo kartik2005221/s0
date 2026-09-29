@@ -113,3 +113,31 @@ def test_mutated_payload_hash_cross_verification(node_available):
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
     assert data["status"] == "PAYLOAD_HASH_MISMATCH"
+
+
+def test_float_and_duplicate_key_rejection(node_available):
+    script = """
+    const V = require('./verify');
+    const validJson = JSON.stringify(require('./tests/sample_valid_cert.json'));
+    // Float smuggle: replace 1048576 with 1048576.0
+    const floatJson = validJson.replace('1048576', '1048576.0');
+    const keys = require('./keys.json');
+
+    const resFloat = V.verifyCertificate(floatJson, keys.trusted_keys);
+    if (resFloat.ok || resFloat.status !== 'SCHEMA_INVALID') {
+      console.error('Expected SCHEMA_INVALID for float, got: ' + JSON.stringify(resFloat));
+      process.exit(1);
+    }
+
+    // Duplicate key
+    const dupJson = '{"foo": 1, "foo": 2}';
+    const errs = V.detectRawFloatsInJson(dupJson);
+    if (!errs.some(e => e.includes('duplicate key'))) {
+      console.error('Expected duplicate key error, got: ' + JSON.stringify(errs));
+      process.exit(2);
+    }
+    """
+    result = subprocess.run(
+        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
+    )
+    assert result.returncode == 0, f"Node.js error: {result.stderr}"

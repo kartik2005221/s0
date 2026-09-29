@@ -191,9 +191,100 @@
     }
   }
 
+  function detectRawFloatsInJson(rawStr) {
+    if (typeof rawStr !== "string") return [];
+    var errs = [];
+    var inString = false;
+    var escaped = false;
+    var token = "";
+    var depth = 0;
+    var keyStack = [{}];
+    var lastKey = null;
+
+    for (var i = 0; i < rawStr.length; i++) {
+      var ch = rawStr[i];
+      if (inString) {
+        if (escaped) {
+          token += ch;
+          escaped = false;
+        } else if (ch === "\\") {
+          escaped = true;
+          token += ch;
+        } else if (ch === '"') {
+          inString = false;
+          var j = i + 1;
+          while (j < rawStr.length && (rawStr[j] === ' ' || rawStr[j] === '\t' || rawStr[j] === '\r' || rawStr[j] === '\n')) {
+            j++;
+          }
+          if (j < rawStr.length && rawStr[j] === ':') {
+            lastKey = token;
+            if (keyStack[depth]) {
+              if (keyStack[depth][lastKey]) {
+                errs.push("duplicate key '" + lastKey + "' in JSON object");
+              } else {
+                keyStack[depth][lastKey] = true;
+              }
+            }
+          }
+          token = "";
+        } else {
+          token += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inString = true;
+          token = "";
+        } else if (ch === '{') {
+          depth++;
+          keyStack[depth] = {};
+        } else if (ch === '}') {
+          if (depth > 0) {
+            delete keyStack[depth];
+            depth--;
+          }
+        } else if (ch === '-' || (ch >= '0' && ch <= '9')) {
+          var numToken = ch;
+          var k = i + 1;
+          while (k < rawStr.length) {
+            var c = rawStr[k];
+            if ((c >= '0' && c <= '9') || c === '.' || c === 'e' || c === 'E' || c === '+' || c === '-') {
+              numToken += c;
+              k++;
+            } else {
+              break;
+            }
+          }
+          i = k - 1;
+          if (numToken.indexOf('.') !== -1 || numToken.indexOf('e') !== -1 || numToken.indexOf('E') !== -1) {
+            errs.push("float values are forbidden in schema v1: found '" + numToken + "'");
+          }
+        }
+      }
+    }
+    return errs;
+  }
+
   function validate(cert, options) {
     var requireSignature = (options && options.requireSignature !== undefined) ? options.requireSignature : true;
+    var rawJson = (options && options.rawJson) ? options.rawJson : (typeof cert === "string" ? cert : null);
     var errs = [];
+
+    if (rawJson) {
+      var rawErrs = detectRawFloatsInJson(rawJson);
+      for (var r = 0; r < rawErrs.length; r++) {
+        errs.push(rawErrs[r]);
+      }
+    }
+
+    var targetCert = cert;
+    if (typeof cert === "string") {
+      try {
+        targetCert = JSON.parse(cert);
+      } catch (pe) {
+        return ["certificate must be valid JSON: " + (pe.message || pe)];
+      }
+    }
+    cert = targetCert;
 
     function need(cond, msg) {
       if (!cond) errs.push(msg);
@@ -331,7 +422,7 @@
   // -------------------------------------------------------------------------
   // Certificate Verification
   // -------------------------------------------------------------------------
-  function verifyCertificate(cert, trustedKeys) {
+  function verifyCertificate(cert, trustedKeys, options) {
     if (!trustedKeys || (Array.isArray(trustedKeys) && trustedKeys.length === 0)) {
       return {
         ok: false,
@@ -339,6 +430,21 @@
         reason: "No trusted public keys supplied to verifier",
         errors: ["no trusted public keys provided"]
       };
+    }
+
+    var rawJson = (options && options.rawJson) ? options.rawJson : (typeof cert === "string" ? cert : null);
+    var certObj = cert;
+    if (typeof cert === "string") {
+      try {
+        certObj = JSON.parse(cert);
+      } catch (parseErr) {
+        return {
+          ok: false,
+          status: "JSON_PARSE_ERROR",
+          reason: "Invalid JSON format: " + (parseErr.message || parseErr),
+          errors: ["invalid JSON format: " + (parseErr.message || parseErr)]
+        };
+      }
     }
 
     var keysList = Array.isArray(trustedKeys) ? trustedKeys : [trustedKeys];
@@ -390,7 +496,7 @@
       };
     }
 
-    var schemaErrors = validate(cert, { requireSignature: true });
+    var schemaErrors = validate(certObj, { requireSignature: true, rawJson: rawJson });
     if (schemaErrors.length > 0) {
       return {
         ok: false,
@@ -405,7 +511,7 @@
     var computedHash;
 
     try {
-      var payloadObj = payloadOf(cert);
+      var payloadObj = payloadOf(certObj);
       payloadStr = canonicalizeStr(payloadObj);
       payloadBytes = Crypto.utf8ToBytes(payloadStr);
       computedHash = "sha256:" + Crypto.sha256Hex(payloadBytes);
@@ -418,8 +524,8 @@
       };
     }
 
-    var claimedFp = cert.signature.public_key_fingerprint;
-    var sigB64 = cert.signature.signature_base64url;
+    var claimedFp = certObj.signature.public_key_fingerprint;
+    var sigB64 = certObj.signature.signature_base64url;
     var sigBytes;
     try {
       sigBytes = Crypto.base64UrlToBytes(sigB64);
@@ -452,11 +558,11 @@
       var keyObj = matchingKeys[j];
       var isValid = Crypto.ed25519Verify(payloadBytes, sigBytes, keyObj.rawPublicKeyBytes);
       if (isValid) {
-        if (cert.signature && cert.signature.signed_payload_hash && cert.signature.signed_payload_hash !== computedHash) {
+        if (certObj.signature && certObj.signature.signed_payload_hash && certObj.signature.signed_payload_hash !== computedHash) {
           return {
             ok: false,
             status: "PAYLOAD_HASH_MISMATCH",
-            reason: "signed_payload_hash mismatch: certificate claims " + cert.signature.signed_payload_hash + " but recomputed payload hash is " + computedHash,
+            reason: "signed_payload_hash mismatch: certificate claims " + certObj.signature.signed_payload_hash + " but recomputed payload hash is " + computedHash,
             errors: ["signature.signed_payload_hash does not match recomputed canonical payload hash"]
           };
         }
@@ -473,10 +579,10 @@
           isDemoKey: isDemoKey,
           matchedKey: keyObj,
           reason: reasonText,
-          issuer: keyObj.issuer || cert.issuer.organization,
+          issuer: keyObj.issuer || (certObj.issuer ? certObj.issuer.organization : "Unknown"),
           fingerprint: claimedFp,
           computedPayloadHash: computedHash,
-          claimedPayloadHash: cert.signature.signed_payload_hash,
+          claimedPayloadHash: certObj.signature ? certObj.signature.signed_payload_hash : null,
           canonicalPayload: payloadStr
         };
       }
@@ -488,7 +594,7 @@
       reason: "Signature does NOT match payload — the certificate content has been modified after signing, or the signature is corrupt",
       fingerprint: claimedFp,
       computedPayloadHash: computedHash,
-      claimedPayloadHash: cert.signature.signed_payload_hash,
+      claimedPayloadHash: certObj.signature ? certObj.signature.signed_payload_hash : null,
       canonicalPayload: payloadStr,
       errors: ["Ed25519 signature verification failed"]
     };
@@ -503,6 +609,7 @@
     canonicalize: canonicalize,
     payloadOf: payloadOf,
     validate: validate,
-    verifyCertificate: verifyCertificate
+    verifyCertificate: verifyCertificate,
+    detectRawFloatsInJson: detectRawFloatsInJson
   };
 }));

@@ -433,7 +433,7 @@ function runVerification() {
     return;
   }
 
-  var result = S0Verifier.verifyCertificate(certObj, PINNED_KEYS);
+  var result = S0Verifier.verifyCertificate(certObj, PINNED_KEYS, { rawJson: rawText });
   showResult(result, certObj);
 }
 

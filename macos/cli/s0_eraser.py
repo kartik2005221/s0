@@ -784,6 +784,16 @@ def wipe_drive_or_partition_macos(
 
     try:
         with open(open_path, "r+b", buffering=0) as f:
+            num_samples = 32
+            sample_size = min(4096, capacity)
+            pre_samples = []
+            if capacity >= sample_size and pattern == "random":
+                step = max(1, (capacity - sample_size) // max(1, (num_samples - 1)))
+                for i in range(num_samples):
+                    offset = min(i * step, capacity - sample_size)
+                    f.seek(offset)
+                    pre_samples.append(f.read(sample_size))
+
             for _ in range(passes):
                 f.seek(0)
                 rem = capacity
@@ -802,8 +812,6 @@ def wipe_drive_or_partition_macos(
                 bar.finish(extra=_get_temp(open_path))
 
             # Sampled verification
-            num_samples = 32
-            sample_size = min(4096, capacity)
             if capacity >= sample_size:
                 step = max(1, (capacity - sample_size) // max(1, (num_samples - 1)))
                 for i in range(num_samples):
@@ -817,6 +825,9 @@ def wipe_drive_or_partition_macos(
                             break
                     else:
                         if len(sample) == 0:
+                            verification_passed = False
+                            break
+                        if pre_samples and i < len(pre_samples) and sample == pre_samples[i]:
                             verification_passed = False
                             break
 

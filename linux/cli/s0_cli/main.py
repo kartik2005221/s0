@@ -694,7 +694,7 @@ def cmd_wipe(args) -> int:
         print(f"planted {count} copies of a demo marker (will require 0 hits after)", file=sys.stderr)
 
     if args.pattern == "random":
-        offsets, pre_samples = take_pre_samples(target)
+        offsets, pre_samples = take_pre_samples(target, samples=getattr(args, "verify_samples", 64))
 
     # Initialize unified progress bar
     total_bytes = target.capacity_bytes * getattr(args, "passes", 1)
