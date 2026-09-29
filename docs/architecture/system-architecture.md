@@ -50,10 +50,10 @@ graph TB
     VP_KEYS --> VP_JS
     VP_CRYPTO --> VP_JS
 
-    style CORE fill:#00ADB5,color:#222831,stroke:#00ADB5
-    style VERIFY fill:#393E46,color:#EEEEEE,stroke:#00ADB5
-    style MODULES fill:#222831,color:#EEEEEE,stroke:#393E46
-    style UI fill:#222831,color:#EEEEEE,stroke:#393E46
+    style CORE fill:#FF6500,color:#070D18,stroke:#FF6500
+    style VERIFY fill:#142338,color:#EEEEEE,stroke:#FF6500
+    style MODULES fill:#070D18,color:#EEEEEE,stroke:#142338
+    style UI fill:#070D18,color:#EEEEEE,stroke:#142338
 ```
 
 ### Repository Layout
@@ -134,16 +134,16 @@ flowchart TD
 
     VERIFY["Post-wipe Verification\n64-block sampled readback\n4096 bytes × 64 = 262,144 bytes total"] --> CERT["Ed25519-signed certificate\n→ PDF + QR export\n→ Append to audit ledger"]
 
-    style M1 fill:#00ADB5,color:#222831
-    style M2 fill:#00ADB5,color:#222831
-    style M3 fill:#00ADB5,color:#222831
-    style M4 fill:#00ADB5,color:#222831
-    style M5 fill:#00ADB5,color:#222831
-    style M6 fill:#393E46,color:#EEEEEE
-    style M6B fill:#393E46,color:#EEEEEE
-    style M7 fill:#393E46,color:#EEEEEE
-    style M8 fill:#393E46,color:#EEEEEE
-    style CERT fill:#222831,color:#EEEEEE,stroke:#00ADB5
+    style M1 fill:#FF6500,color:#070D18
+    style M2 fill:#FF6500,color:#070D18
+    style M3 fill:#FF6500,color:#070D18
+    style M4 fill:#FF6500,color:#070D18
+    style M5 fill:#FF6500,color:#070D18
+    style M6 fill:#142338,color:#EEEEEE
+    style M6B fill:#142338,color:#EEEEEE
+    style M7 fill:#142338,color:#EEEEEE
+    style M8 fill:#142338,color:#EEEEEE
+    style CERT fill:#070D18,color:#EEEEEE,stroke:#FF6500
 ```
 
 ### NIST Tier Mapping
@@ -324,11 +324,11 @@ flowchart TD
     E5 --> SCORE["Confidence Scoring\nscoring.py"]
     SCORE --> OUTPUT["Recovered files with\nSHA-256 hash + confidence %"]
 
-    style E1 fill:#00ADB5,color:#222831
-    style E2 fill:#00ADB5,color:#222831
-    style E3 fill:#00ADB5,color:#222831
-    style E4 fill:#00ADB5,color:#222831
-    style E5 fill:#393E46,color:#EEEEEE
+    style E1 fill:#FF6500,color:#070D18
+    style E2 fill:#FF6500,color:#070D18
+    style E3 fill:#FF6500,color:#070D18
+    style E4 fill:#FF6500,color:#070D18
+    style E5 fill:#142338,color:#EEEEEE
 ```
 
 ### Engine 1 — Signature Carver (`engine.py` + `signatures.py`)
@@ -635,7 +635,7 @@ A certificate is a self-describing JSON document that bundles the operation reco
   "schema_version": 1,
   "cert_uuid": "550e8400-e29b-41d4-a716-446655440000",
   "issued_at": "2026-09-09T13:33:57Z",
-  "tool_version": "2.0.0",
+  "tool_version": "2.4.3",
   "operator": {
     "id": "alice@example.com",
     "key_fingerprint": "sha256:a1b2c3d4..."
@@ -697,7 +697,7 @@ flowchart LR
     style GREEN fill:#2e7d32,color:#fff
     style AMBER fill:#e65100,color:#fff
     style RED fill:#b71c1c,color:#fff
-    style BROWSER fill:#222831,color:#EEEEEE,stroke:#00ADB5
+    style BROWSER fill:#070D18,color:#EEEEEE,stroke:#FF6500
 ```
 
 ### Key Pinning (`keys.json`)
