@@ -83,8 +83,8 @@ flowchart LR
 - **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
 - **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
 - **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`s0-docs.gitbook.io`, `s0-verify.pages.dev`, `s0-install.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
-- **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/macOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
-- **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Module 4 (Blockchain Cryptographic Audit Ledger).
+- **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/MacOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
+- **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Hash-Chained Cryptographic Audit Ledger.
 
 ### Security
 - **Path Traversal Hardening:** Patched potential path traversal vulnerabilities in `cmd_uninstall` directory cleanup and live image downloads.
@@ -105,7 +105,7 @@ flowchart LR
 - **Automated ISO Download & Verification:** Built-in public GitHub Releases discovery and streaming download with real-time progress bar (`ProgressBar`) and strict SHA-256 integrity validation against release signatures.
 - **Native Block Flashing Engine:** Cross-platform raw block writer with partition unmounting (`umount`, `diskutil unmountDisk`, Win32 dismount), interactive safety confirmation prompt, and streaming progress bar.
 - **Versioned ISO Release Naming:** Updated `.github/workflows/build-iso.yml` to package and attach versioned hybrid ISOs (`s0-live-v2.4.0-amd64.hybrid.iso`) with corresponding checksum files.
-- **Cross-Platform CLI Context & Tips:** Added intelligent device path error detection (e.g. Linux path on Windows or Windows path on Linux/macOS) with actionable platform syntax tips.
+- **Cross-Platform CLI Context & Tips:** Added intelligent device path error detection (e.g. Linux path on Windows or Windows path on Linux/MacOS) with actionable platform syntax tips.
 
 ### Fixed
 - **Documentation Portal Desktop Sidebar Navigation:** Fixed desktop sidebar navigation regression by properly scoping mobile drawer drill-down back bars inside `@media screen and (max-width: 76.1875em)`, eliminating unwanted orange back arrows on desktop viewports.

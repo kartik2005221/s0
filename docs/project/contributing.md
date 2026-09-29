@@ -70,7 +70,7 @@ s0/
 ### Prerequisites
 - Python 3.10+ (Python 3.12 or 3.14 recommended)
 - Git
-- OpenSSL / libsodium (standard on modern Linux/macOS)
+- OpenSSL / libsodium (standard on modern Linux/MacOS)
 
 ### One-Command Automated Setup
 The fastest way to initialize the development environment and verify your toolchain is running the master build orchestrator:

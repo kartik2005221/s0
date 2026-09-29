@@ -307,11 +307,10 @@ s0 audit verify
 ```
 
 Expected Output:
-```
-==> Auditing Hash-Chained Cryptographic Ledger...
-Chain Status : [OK] VALID & CONTINUOUS
-Blocks Tested: 24
-Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
+```text
+[s0 audit]  Total Blocks : 24
+[s0 audit]  Status       : OK : VALID & CONTINUOUS
+[s0 audit]  Details      : Hash-chain continuity mathematically verified across 24 blocks from genesis to tip.
 ```
 
 ---
@@ -324,14 +323,12 @@ s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_pub
 ```
 
 Output:
-```
-[OK] CERTIFICATE AUTHENTIC & VERIFIED
-UUID         : a8f3b201-9c42-4f1e-8e77-5d2a938c110e
-Status       : success
-NIST Tier    : Purge
-Device       : S464NX0M123456K
-Issuer       : Digital Forensic Unit
-Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e339d251a
+```text
+[s0 verify]  Status       : OK : CERTIFICATE AUTHENTIC & VERIFIED
+[s0 verify]  UUID         : a8f3b201-9c42-4f1e-8e77-5d2a938c110e
+[s0 verify]  Device       : S464NX0M123456K
+[s0 verify]  Issuer       : Digital Forensic Unit
+[s0 verify]  Fingerprint  : sha256:d8a264a93c94f09d846b9ec14389df0398bb2c954627d37a5b39922e339d251a
 ```
 
 ### 8.2 Air-Gapped Web Verification

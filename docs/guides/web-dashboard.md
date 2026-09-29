@@ -2,7 +2,7 @@
 
 > **Interface Type:** Local Forensics Operator Console  
 > **Backend Architecture:** FastAPI (Python 3.10+) asynchronous server  
-> **Frontend Stack:** Vanilla HTML5, CSS3 (Forensic Dark Theme `#222831`), JavaScript (Zero external framework dependencies)  
+> **Frontend Stack:** Vanilla HTML5, CSS3 (Forensic Dark Theme `#070D18`), JavaScript (Zero external framework dependencies)  
 > **Default Bind Address:** `127.0.0.1:8669` (Strict loopback isolation)
 
 ---
@@ -250,7 +250,7 @@ To ensure 100% air-gapped forensic operation without external telemetry leaks:
 - All Google Fonts CDN links have been removed in favor of local `.woff2` font bundles served directly from `/static/fonts/` and `/fonts/`.
 
 ### Central Workspace Configuration (`s0_config.json`)
-The Web Dashboard automatically reads `/home/kartik/s0/s0_config.json` via `/api/config` on startup:
+The Web Dashboard automatically reads `s0_config.json` via `/api/config` on startup:
 - Default operator identifier, laboratory name, output directory, and verification URLs are automatically pre-populated into all dashboard forms.
 - If customized in `s0_config.json`, the entire workstation reflects the updated organization details immediately upon page load.
 

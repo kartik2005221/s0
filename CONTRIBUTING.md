@@ -36,7 +36,7 @@ If you discover a vulnerability affecting data destruction guarantees, signature
 ### Prerequisites
 - Python 3.10+ (tested through Python 3.14)
 - Git
-- `gcc`, `make`, and standard POSIX utilities (Linux/macOS)
+- `gcc`, `make`, and standard POSIX utilities (Linux/MacOS)
 - Platform-specific build tools:
   - **Linux:** `hdparm`, `nvme-cli`, `util-linux` (`blkdiscard`, `lsblk`)
   - **macOS:** Xcode command-line tools (`xcode-select --install`)
