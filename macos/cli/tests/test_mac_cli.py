@@ -392,4 +392,34 @@ def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
     assert cert is None
 
 
+def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
+    """On Apple Silicon, boot disk reports APFS container 'disk3', but physical SSD is 'disk0'.
+    Both disk0 (physical store) and disk3 (container) must be refused."""
+    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import macos.cli.s0_eraser as mod
+
+    monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
+    monkeypatch.setattr(mod, "_resolve_apfs_physical_store", lambda c: "disk0" if c == "disk3" else None)
+
+    # Physical disk0 must be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*physical internal SSD"):
+        check_macos_wipe_safety("/dev/disk0", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*physical internal SSD"):
+        check_macos_wipe_safety("/dev/rdisk0", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*physical internal SSD"):
+        check_macos_wipe_safety("/dev/disk0s2", force=False)
+
+    # Synthesized container disk3 must also be refused
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*boot disk"):
+        check_macos_wipe_safety("/dev/disk3", force=False)
+
+    with pytest.raises(PermissionError, match="SAFETY REFUSAL.*boot disk"):
+        check_macos_wipe_safety("/dev/disk3s1", force=False)
+
+    # An unrelated external USB disk (e.g. disk4) passes
+    check_macos_wipe_safety("/dev/disk4", force=False)
+
+
 

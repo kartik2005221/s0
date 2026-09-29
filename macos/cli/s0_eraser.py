@@ -531,6 +531,27 @@ def _get_macos_boot_disk() -> Optional[str]:
     return None
 
 
+def _resolve_apfs_physical_store(container_disk: str) -> Optional[str]:
+    """Given an APFS container (e.g. 'disk3') or volume, find its backing physical disk."""
+    if shutil.which("diskutil") is None:
+        return None
+    try:
+        proc = subprocess.run(
+            ["diskutil", "info", container_disk],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        if proc.returncode == 0:
+            for line in proc.stdout.splitlines():
+                if "APFS Physical Store:" in line or "Part of Whole:" in line:
+                    val = line.split(":", 1)[1].strip()
+                    m = re.match(r"(r?disk\d+)", val.replace("/dev/", ""))
+                    if m:
+                        return m.group(1).lstrip("r")
+    except Exception:
+        pass
+    return None
+
+
 def _is_macos_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     """Check if candidate_mount is parent_path or a sub-partition of parent_path on macOS.
 
@@ -571,7 +592,17 @@ def check_macos_wipe_safety(target: str, force: bool = False) -> None:
     """Refuse destructive wiping of internal macOS boot disk or active system mounts."""
     norm = target.strip().rstrip("/")
 
-    # 1. Dynamic boot disk detection
+    # 1. Unconditionally refuse physical internal drive (disk0 / rdisk0)
+    _canon_target = norm.replace("/dev/", "").replace("rdisk", "disk").lower()
+    if _canon_target == "disk0" or _canon_target.startswith("disk0s"):
+        if not force:
+            raise PermissionError(
+                f"SAFETY REFUSAL: Target '{target}' is the macOS physical internal SSD (disk0). "
+                "Wiping the primary internal system disk is prohibited. "
+                "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
+            )
+
+    # 2. Dynamic boot disk detection (e.g. APFS container or root partition)
     boot_disk = _get_macos_boot_disk()
     if boot_disk:
         boot_dev = f"/dev/{boot_disk}"
@@ -582,15 +613,19 @@ def check_macos_wipe_safety(target: str, force: bool = False) -> None:
                     "Wiping the running operating system disk is prohibited. "
                     "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
                 )
-    else:
-        # Fallback: refuse disk0 / rdisk0 if dynamic detection is unavailable
-        if norm in ("/dev/disk0", "/dev/rdisk0", "disk0", "rdisk0") or norm.startswith(("/dev/disk0s", "/dev/rdisk0s")):
-            if not force:
-                raise PermissionError(
-                    f"SAFETY REFUSAL: Target '{target}' is the macOS internal boot drive (disk0). "
-                    "Wiping the running operating system disk is prohibited. "
-                    "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
-                )
+
+        # 3. Resolve physical store backing the boot container
+        physical_store = _resolve_apfs_physical_store(boot_disk)
+        if physical_store:
+            ps_dev = f"/dev/{physical_store}"
+            if _is_macos_dev_or_subpartition(ps_dev, norm) or _is_macos_dev_or_subpartition(norm, ps_dev):
+                if not force:
+                    raise PermissionError(
+                        f"SAFETY REFUSAL: Target '{target}' is the physical store ({ps_dev}) "
+                        f"backing the boot APFS container ({boot_disk}). "
+                        "Wiping the running operating system disk is prohibited. "
+                        "For whole-machine bare-metal sanitization, boot the s0 Live ISO."
+                    )
 
     # 2. Check active mount points (whole-disk and partition aware)
     try:
