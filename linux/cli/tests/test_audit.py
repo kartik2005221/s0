@@ -213,3 +213,34 @@ def test_detect_tampering_with_blanked_block_signature_default_verify(test_audit
     assert rep_after.broken_block_index == 1
     assert "unsigned" in rep_after.reason.lower()
 
+
+def test_tail_truncation_detected_via_checkpoint(test_audit_db, sample_cert):
+    """Deleting the latest block(s) from the tail must be detected by checkpoint comparison."""
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db)
+
+    # Initial chain of 3 blocks is valid
+    rep_before = verify_audit_ledger(test_audit_db)
+    assert rep_before.is_valid is True
+    assert rep_before.total_blocks_verified == 3
+
+    # Maliciously delete block #2 (the tail) without updating checkpoint
+    conn = sqlite3.connect(str(test_audit_db))
+    conn.execute("DELETE FROM audit_blocks WHERE block_index = 2")
+    conn.commit()
+    conn.close()
+
+    # Verification must catch truncation
+    rep_after = verify_audit_ledger(test_audit_db)
+    assert rep_after.is_valid is False
+    assert "truncation detected" in rep_after.reason.lower()
+
+
+def test_nonexistent_db_fails_verification(tmp_path):
+    """Verifying a non-existent DB must report failure, NOT create a new genesis block."""
+    missing = tmp_path / "does_not_exist.db"
+    rep = verify_audit_ledger(missing)
+    assert rep.is_valid is False
+    assert "not found" in rep.reason.lower()
+    assert not missing.exists()
+

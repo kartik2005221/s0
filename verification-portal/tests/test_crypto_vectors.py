@@ -92,3 +92,24 @@ def test_tampered_cert_cross_verification(node_available):
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
     assert data["status"] == "TAMPERED_OR_CORRUPT"
+
+
+def test_mutated_payload_hash_cross_verification(node_available):
+    script = """
+    const V = require('./verify');
+    const cert = JSON.parse(JSON.stringify(require('./tests/sample_valid_cert.json')));
+    const keys = require('./keys.json');
+    cert.signature.signed_payload_hash = 'sha256:' + '0'.repeat(64);
+    const res = V.verifyCertificate(cert, keys.trusted_keys);
+    console.log(JSON.stringify(res));
+    if (res.ok || res.status !== 'PAYLOAD_HASH_MISMATCH') {
+      process.exit(1);
+    }
+    """
+    result = subprocess.run(
+        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
+    )
+    assert result.returncode == 0, f"Node.js error: {result.stderr}"
+    data = json.loads(result.stdout.strip())
+    assert data["ok"] is False
+    assert data["status"] == "PAYLOAD_HASH_MISMATCH"

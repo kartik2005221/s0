@@ -70,8 +70,47 @@ def verify_audit_ledger(
     """Verify 100% cryptographic continuity of the hash-chained audit ledger."""
     if db_path is None:
         db_path = get_default_audit_db()
-    init_audit_db(db_path)
+    db_file = Path(db_path)
+    if not db_file.is_file():
+        return ChainAuditReport(
+            is_valid=False,
+            total_blocks_verified=0,
+            reason="Audit database not found — cannot verify a non-existent ledger.",
+            details=["Database file does not exist."],
+        )
+
     conn = get_db_connection(db_path)
+    cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_blocks'")
+    if not cur.fetchone():
+        conn.close()
+        return ChainAuditReport(
+            is_valid=False,
+            total_blocks_verified=0,
+            reason="Audit ledger is empty (no genesis block found).",
+            details=["Database missing audit_blocks table."],
+        )
+
+    checkpoint_tip_index = None
+    checkpoint_tip_hash = None
+    cur_cp = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chain_checkpoint'")
+    if cur_cp.fetchone():
+        cp_row = conn.execute("SELECT * FROM chain_checkpoint WHERE id = 1").fetchone()
+        if cp_row:
+            checkpoint_tip_index = cp_row["tip_index"]
+            checkpoint_tip_hash = cp_row["tip_hash"]
+
+    cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
+    if cp_file.is_file():
+        try:
+            cp_data = json.loads(cp_file.read_text(encoding="utf-8"))
+            f_idx = cp_data.get("tip_index")
+            f_hash = cp_data.get("tip_hash")
+            if f_idx is not None and (checkpoint_tip_index is None or f_idx > checkpoint_tip_index):
+                checkpoint_tip_index = f_idx
+                checkpoint_tip_hash = f_hash
+        except Exception:
+            pass
+
     cur = conn.execute("SELECT * FROM audit_blocks ORDER BY block_index ASC")
     blocks = cur.fetchall()
     conn.close()
@@ -241,6 +280,28 @@ def verify_audit_ledger(
 
         details.append(f"Block #{block_idx} ({b['operation_type']}): Verified (Hash: {b['block_hash'][:16]}...)")
         expected_prev = b["block_hash"]
+
+    if checkpoint_tip_index is not None and blocks:
+        actual_tip_index = blocks[-1]["block_index"]
+        actual_tip_hash = blocks[-1]["block_hash"]
+        if actual_tip_index < checkpoint_tip_index:
+            return ChainAuditReport(
+                is_valid=False,
+                total_blocks_verified=len(blocks),
+                broken_block_index=actual_tip_index,
+                reason=f"Ledger truncation detected: checkpoint recorded tip block #{checkpoint_tip_index}, but ledger only contains {len(blocks)} blocks (tip #{actual_tip_index}).",
+                details=details,
+                is_demo_signed=is_demo_signed,
+            )
+        if actual_tip_index == checkpoint_tip_index and checkpoint_tip_hash and actual_tip_hash != checkpoint_tip_hash:
+            return ChainAuditReport(
+                is_valid=False,
+                total_blocks_verified=len(blocks),
+                broken_block_index=actual_tip_index,
+                reason=f"Ledger tip mismatch: checkpoint recorded tip hash {checkpoint_tip_hash}, but ledger tip is {actual_tip_hash}.",
+                details=details,
+                is_demo_signed=is_demo_signed,
+            )
 
     demo_warning = None
     if is_demo_signed:

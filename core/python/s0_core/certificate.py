@@ -394,9 +394,16 @@ def verify_certificate(cert: dict, trusted_keys) -> tuple[bool, str]:
         )
     for key in matching:
         if crypto.verify_payload(key, payload, sig):
+            actual_payload_hash = crypto.payload_sha256(payload)
+            claimed_payload_hash = cert.get("signature", {}).get("signed_payload_hash")
+            if claimed_payload_hash and claimed_payload_hash != actual_payload_hash:
+                return False, (
+                    f"signed_payload_hash mismatch: certificate claims {claimed_payload_hash} "
+                    f"but recomputed payload hash is {actual_payload_hash}"
+                )
             return True, (
                 f"valid Ed25519 signature from pinned key {claimed_fp}; "
-                f"payload sha256 {crypto.payload_sha256(payload)}"
+                f"payload sha256 {actual_payload_hash}"
             )
     return False, (
         "signature does NOT match payload — the certificate content has been "

@@ -131,6 +131,17 @@ def init_audit_db(db_path: str | Path | None = None) -> Path:
             """
         )
 
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chain_checkpoint (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                tip_index INTEGER NOT NULL,
+                tip_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """
+        )
+
         cols = [col["name"] for col in conn.execute("PRAGMA table_info(audit_blocks)").fetchall()]
         if "block_signature" not in cols:
             conn.execute("ALTER TABLE audit_blocks ADD COLUMN block_signature TEXT DEFAULT ''")
@@ -174,6 +185,18 @@ def init_audit_db(db_path: str | Path | None = None) -> Path:
                     "GENESIS_BLOCK_SIGNATURE",
                 ),
             )
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO chain_checkpoint (id, tip_index, tip_hash, updated_at)
+                VALUES (1, ?, ?, ?);
+                """,
+                (0, genesis_hash, genesis_time),
+            )
+            try:
+                cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
+                cp_file.write_text(json.dumps({"tip_index": 0, "tip_hash": genesis_hash, "updated_at": genesis_time}), encoding="utf-8")
+            except Exception:
+                pass
     conn.close()
     return Path(db_path)
 
@@ -205,7 +228,13 @@ def record_audit_event(
 
         sig_obj = certificate.get("signature", {})
         signature = sig_obj.get("signature_base64url", "unsigned")
-        payload_hash = sig_obj.get("signed_payload_hash", "sha256:" + "0" * 64).replace("sha256:", "")
+        try:
+            from s0_core.canonical import canonicalize
+            from s0_core.certificate import payload_of
+            from s0_core import crypto
+            payload_hash = crypto.payload_sha256(canonicalize(payload_of(certificate))).replace("sha256:", "")
+        except Exception:
+            payload_hash = sig_obj.get("signed_payload_hash", "sha256:" + "0" * 64).replace("sha256:", "")
 
         block_hash = compute_block_hash(
             new_index,
@@ -263,8 +292,31 @@ def record_audit_event(
                 block_signature,
             ),
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chain_checkpoint (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                tip_index INTEGER NOT NULL,
+                tip_hash TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO chain_checkpoint (id, tip_index, tip_hash, updated_at)
+            VALUES (1, ?, ?, ?);
+            """,
+            (new_index, block_hash, timestamp),
+        )
 
     conn.close()
+
+    try:
+        cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
+        cp_file.write_text(json.dumps({"tip_index": new_index, "tip_hash": block_hash, "updated_at": timestamp}), encoding="utf-8")
+    except Exception:
+        pass
 
     return AuditBlock(
         block_index=new_index,

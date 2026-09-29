@@ -452,6 +452,14 @@
       var keyObj = matchingKeys[j];
       var isValid = Crypto.ed25519Verify(payloadBytes, sigBytes, keyObj.rawPublicKeyBytes);
       if (isValid) {
+        if (cert.signature && cert.signature.signed_payload_hash && cert.signature.signed_payload_hash !== computedHash) {
+          return {
+            ok: false,
+            status: "PAYLOAD_HASH_MISMATCH",
+            reason: "signed_payload_hash mismatch: certificate claims " + cert.signature.signed_payload_hash + " but recomputed payload hash is " + computedHash,
+            errors: ["signature.signed_payload_hash does not match recomputed canonical payload hash"]
+          };
+        }
         var isDemoKey = (claimedFp === "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06") ||
           (keyObj.issuer && (keyObj.issuer.toLowerCase().indexOf("unaccredited") !== -1 || keyObj.issuer.toLowerCase().indexOf("demo") !== -1));
         var keyLabel = keyObj.issuer || ("pinned key " + claimedFp);

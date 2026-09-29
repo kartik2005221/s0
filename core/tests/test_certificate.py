@@ -38,6 +38,14 @@ def test_verify_rejects_tampered(signed_cert, keys):
     assert "does NOT match" in reason
 
 
+def test_verify_rejects_mutated_signed_payload_hash(signed_cert, keys):
+    tampered = json.loads(json.dumps(signed_cert))
+    tampered["signature"]["signed_payload_hash"] = "sha256:" + "0" * 64
+    ok, reason = certificate.verify_certificate(tampered, [keys["pub"]])
+    assert not ok
+    assert "signed_payload_hash mismatch" in reason
+
+
 def test_verify_no_keys_supplied(signed_cert):
     ok, reason = certificate.verify_certificate(signed_cert, [])
     assert not ok and "no trusted public keys" in reason
