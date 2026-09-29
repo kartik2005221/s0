@@ -656,7 +656,7 @@ def erase_batch_windows(
 
 def check_windows_wipe_safety(target: str, force: bool = False) -> None:
     """Verify target safety before destructive raw disk or partition wiping."""
-    norm = target.strip().upper()
+    norm = target.strip().replace("/", "\\").upper()
     sys_drive = os.environ.get("SystemDrive", "C:").upper().rstrip("\\")
     sys_root = os.environ.get("SystemRoot", r"C:\Windows").upper()
     sys_root_drive = sys_root[:2] if len(sys_root) >= 2 else "C:"
@@ -665,14 +665,21 @@ def check_windows_wipe_safety(target: str, force: bool = False) -> None:
     bad_targets = {
         sys_drive,
         sys_root_drive,
+        sys_drive.rstrip(":"),
+        sys_root_drive.rstrip(":"),
         f"{sys_drive}\\",
         f"{sys_root_drive}\\",
         rf"\\.\{sys_drive}",
         rf"\\.\{sys_root_drive}",
         rf"\\.\{sys_drive}\\",
         rf"\\.\{sys_root_drive}\\",
+        rf"\\?\{sys_drive}",
+        rf"\\?\{sys_root_drive}",
+        rf"\\?\{sys_drive}\\",
+        rf"\\?\{sys_root_drive}\\",
     }
-    if norm in bad_targets or norm.rstrip("\\") in bad_targets:
+    clean = norm.rstrip("\\")
+    if norm in bad_targets or clean in bad_targets:
         raise PermissionError(
             f"SAFETY REFUSAL: Target '{target}' is the active Windows system volume ({sys_drive}). "
             "Erasing the running operating system partition is prohibited to prevent immediate crash. "
@@ -680,7 +687,7 @@ def check_windows_wipe_safety(target: str, force: bool = False) -> None:
         )
 
     # Disallow wiping primary physical disk 0 without explicit force
-    if norm in (r"\\.\PHYSICALDRIVE0", "PHYSICALDRIVE0", "0"):
+    if clean in (r"\\.\PHYSICALDRIVE0", "PHYSICALDRIVE0", "0", r"\\?\PHYSICALDRIVE0"):
         if not force:
             raise PermissionError(
                 "SAFETY REFUSAL: Target '\\\\.\\PhysicalDrive0' is the primary physical drive hosting Windows. "
@@ -713,9 +720,9 @@ def dismount_and_lock_windows_volume(volume_path: str) -> bool:
 
     bytes_ret = ctypes.c_ulong()
     try:
-        kernel32.DeviceIoControl(h, FSCTL_LOCK_VOLUME, None, 0, None, 0, ctypes.byref(bytes_ret), None)
-        kernel32.DeviceIoControl(h, FSCTL_DISMOUNT_VOLUME, None, 0, None, 0, ctypes.byref(bytes_ret), None)
-        return True
+        ok_lock = kernel32.DeviceIoControl(h, FSCTL_LOCK_VOLUME, None, 0, None, 0, ctypes.byref(bytes_ret), None)
+        ok_dismount = kernel32.DeviceIoControl(h, FSCTL_DISMOUNT_VOLUME, None, 0, None, 0, ctypes.byref(bytes_ret), None)
+        return bool(ok_lock and ok_dismount)
     except Exception:
         return False
     finally:
@@ -955,7 +962,7 @@ def wipe_drive_or_partition_windows(
                     "all_samples_match_wipe_pattern": verification_passed,
                 },
                 notes=result.notes + [
-                    "Direct raw sector overwriting executed with FILE_FLAG_WRITE_THROUGH and FlushFileBuffers.",
+                    "Direct raw sector overwriting executed with unbuffered I/O and FlushFileBuffers.",
                     "Filesystem structures, partition tables, and directory records eradicated.",
                 ],
             )

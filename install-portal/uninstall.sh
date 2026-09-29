@@ -51,6 +51,19 @@ if [ -d "$INSTALL_DIR" ]; then
         echo "  (Missing .s0_install_marker or s0_config.json)" >&2
         exit 1
     fi
+
+    # Preserve forensic audit ledger by default
+    if [ -f "$INSTALL_DIR/s0_audit.db" ]; then
+        if [ "${1:-}" = "--purge-all" ] || [ "${1:-}" = "--purge" ] || [ "${S0_PURGE_ALL:-}" = "1" ]; then
+            echo "==> Purging audit ledger as requested..."
+        else
+            BAK_FILE="$HOME/s0_audit.db.bak.$(date +%Y%m%d_%H%M%S)"
+            cp -p "$INSTALL_DIR/s0_audit.db" "$BAK_FILE" 2>/dev/null || true
+            echo "==> Audit ledger safely preserved at: $BAK_FILE"
+            echo "    (Pass --purge-all if you intentionally wish to destroy audit history)"
+        fi
+    fi
+
     echo "==> Removing installation directory $INSTALL_DIR..."
     rm -rf "$INSTALL_DIR"
 fi

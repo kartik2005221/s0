@@ -32,9 +32,9 @@ flowchart TD
     AUDIT --> AL["audit list"]
     AUDIT --> AV["audit verify"]
 
-    classDef root fill:#00ADB5,stroke:#00ADB5,color:#222831,font-weight:bold;
-    classDef sub fill:#393E46,stroke:#00ADB5,color:#EEEEEE;
-    classDef leaf fill:#222831,stroke:#393E46,color:#EEEEEE;
+    classDef root fill:#FF6500,stroke:#FF6500,color:#070D18,font-weight:bold;
+    classDef sub fill:#142338,stroke:#FF6500,color:#EEEEEE;
+    classDef leaf fill:#070D18,stroke:#142338,color:#EEEEEE;
 
     class S0 root;
     class LIST,PLAN,WIPE,ERASE,IMAGE,CARVE,AUDIT,VERIFY,KEYGEN,UPGRADE,WEB sub;
@@ -474,7 +474,7 @@ s0 wipe --targets PATH... \
 
 | Flag | Type | Default | Required | Description |
 |------|------|---------|----------|-------------|
-| `--targets` | path(s) | — | no | One or more file or directory paths to erase (or specify single target via `--target`). Directories are recursed. |
+| `--targets` | path(s) | — | yes (one of `--target` / `--targets`) | One or more file or directory paths to erase (or specify single target via `--target`). Directories are recursed. |
 | `--passes` | integer | `1` | no | Number of overwrite passes per file. |
 | `--pattern` | `zero` \| `random` | `zero` | no | Byte pattern for overwrite passes. |
 | `--out-dir` | path | `.` | no | Directory where the erasure certificate is written. |
@@ -877,27 +877,30 @@ Cryptographically verify the integrity of the entire audit chain. Each block's s
 {% tab title="Synopsis" %}
 
 ```bash
-s0 audit verify
+s0 audit verify [--key PEM]
 ```
 {% endtab %}
 {% tab title="Flags" %}
 
-*No flags. Operates on the full chain in `~/.s0/s0_audit.db`.*
+| Flag | Type | Default | Required | Description |
+|------|------|---------|----------|-------------|
+| `--key` | path | demo key | no, but recommended | Path to trusted authority public key PEM file for cryptographic signature verification. |
 {% endtab %}
 {% tab title="Help Screen" %}
 
 ```text
-usage: s0 audit verify [-h]
+usage: s0 audit verify [-h] [--key KEY]
 
 options:
   -h, --help  show this help message and exit
+  --key KEY   trusted authority public key PEM to verify signatures
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
 
 - **Operational Verification**:
     - Run `s0 audit verify` daily in cron or before presenting evidence certificates in legal proceedings.
-    - Any verification failure (`BROKEN / TAMPER DETECTED`) indicates unauthorized database modification, physical sector corruption, or deliberate tampering.
+    - Any verification failure (`ERROR : BROKEN / TAMPER DETECTED`) indicates unauthorized database modification, physical sector corruption, or deliberate tampering.
 {% endtab %}
 {% tab title="Examples" %}
 
@@ -906,8 +909,10 @@ options:
 s0 audit verify
 ```
 ```text
-Verifying 4 audit blocks...
-[OK] VALID & CONTINUOUS — all 4 blocks intact, chain unbroken.
+[s0 audit]  Auditing hash-chained cryptographic ledger...
+[s0 audit]  Chain Status  : OK : VALID & CONTINUOUS
+[s0 audit]  Blocks Tested : 4
+[s0 audit]  Details       : All blocks valid and hash-chain continuous
 ```
 
 **Detect tampering**
@@ -915,10 +920,10 @@ Verifying 4 audit blocks...
 s0 audit verify
 ```
 ```text
-Verifying 4 audit blocks...
-[FAIL] BROKEN / TAMPER DETECTED — block 1 hash mismatch.
-   Expected : 9f8e7d6c...
-   Got      : 00000000...
+[s0 audit]  Auditing hash-chained cryptographic ledger...
+[s0 audit]  Chain Status  : ERROR : BROKEN / TAMPER DETECTED
+[s0 audit]  Blocks Tested : 1
+[s0 audit]  Details       : Block #1 hash mismatch
 ```
 
 **Use in shell scripts**

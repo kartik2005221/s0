@@ -1376,6 +1376,8 @@ def cmd_uninstall(args) -> int:
             bak_dest = Path.home() / f"s0_audit.db.bak.{timestamp}"
             try:
                 shutil.copy2(audit_db, bak_dest)
+                legacy_dest = Path.home() / "s0_audit.db.bak"
+                shutil.copy2(audit_db, legacy_dest)
                 print(f"[s0 uninstall]  Audit ledger safely preserved at: {bak_dest}")
                 print("                (Use --purge-all if you intentionally wish to destroy the audit log.)")
             except Exception as exc:
@@ -1832,7 +1834,8 @@ def build_parser() -> argparse.ArgumentParser:
     # 7. Uninstall Subcommand
     uinst = sub.add_parser("uninstall", help="safely remove s0 suite from this system")
     uinst.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
-    uinst.add_argument("--keep-audit", action="store_true", help="back up audit ledger (~/.s0/s0_audit.db) before removal")
+    uinst.add_argument("--purge-all", "--purge", action="store_true", help="permanently delete audit ledger without backup")
+    uinst.add_argument("--keep-audit", action="store_true", help="legacy flag: audit ledger is now backed up by default")
     uinst.set_defaults(func=cmd_uninstall)
 
     # 8. Forensic Imaging & Cloning Subcommands (image & clone alias)
