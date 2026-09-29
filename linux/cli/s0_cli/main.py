@@ -263,7 +263,7 @@ def _print_plan(
     print(f"[s0 plan]  Method        : {plan.method_id}")
     print(f"[s0 plan]  NIST Category : {plan.nist_category}")
     print(f"[s0 plan]  Summary       : {plan.summary}")
-    if plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id or getattr(plan, "is_firmware", False):
+    if plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id:
         print("[s0 plan]  Firmware Note : Firmware-level Purge methods are simulated/fixture-tested;")
         print("                         real-world behavior varies across vendors. Verify device support.")
     if plan.commands:
@@ -328,6 +328,7 @@ def cmd_list(args) -> int:
     if not targets:
         print("(no block devices found)")
         return 0
+    print("[s0 list]  Inventorying attached block devices and forensic images...\n")
     path_w = max(14, max(len(t.path) for t in targets))
     print(
         f"{'PATH':<{path_w}} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
@@ -488,10 +489,10 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
-            print(f"\ntarget          : {target.path}")
-            print(f"method          : OVERWRITE_ZERO_1PASS (Windows Native)")
-            print(f"nist category   : Clear")
-            print(f"summary         : Windows raw volume overwrite with volume lock and dismount")
+            print(f"\n[s0 wipe]  Target        : {target.path}")
+            print(f"[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (Windows Native)")
+            print(f"[s0 wipe]  NIST Category : Clear")
+            print(f"[s0 wipe]  Summary       : Windows raw volume overwrite with volume lock and dismount")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (Windows Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
@@ -518,7 +519,7 @@ def cmd_wipe(args) -> int:
         try:
             blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
             if not getattr(args, "json", False):
-                print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+                print(f"[s0 wipe]  Audit Ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -542,8 +543,10 @@ def cmd_wipe(args) -> int:
         if args.json:
             print(json.dumps({"status": cert["result"]["status"], "certificate": str(cert_json), "pdf": str(pdf_path) if pdf_path else None, "cert_uuid": cert["cert_uuid"]}, indent=2))
         else:
-            print(f"\nresult        : {cert['result']['status']}")
-            print(f"certificate   : {cert_json}" + (f"\nPDF           : {pdf_path}" if pdf_path else ""))
+            print(f"\n[s0 wipe]  Result        : {cert['result']['status']}")
+            print(f"[s0 wipe]  Certificate   : {cert_json}")
+            if pdf_path:
+                print(f"[s0 wipe]  PDF           : {pdf_path}")
         return 0 if res_win.status == "success" else 1
 
     if sys.platform == "darwin" and target.kind == "block":
@@ -560,11 +563,11 @@ def cmd_wipe(args) -> int:
             return 2
 
         if not args.yes:
-            print(f"\ntarget          : {target.path}")
-            print(f"method          : OVERWRITE_ZERO_1PASS (macOS Native)")
-            print(f"nist category   : Clear")
-            print(f"summary         : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
-            print(f"hpa/dco         : Not supported on macOS (requires Linux with hdparm)")
+            print(f"\n[s0 wipe]  Target        : {target.path}")
+            print(f"[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (macOS Native)")
+            print(f"[s0 wipe]  NIST Category : Clear")
+            print(f"[s0 wipe]  Summary       : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
+            print(f"[s0 wipe]  HPA/DCO       : Not supported on macOS (requires Linux with hdparm)")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (macOS Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
@@ -591,7 +594,7 @@ def cmd_wipe(args) -> int:
         try:
             blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
             if not getattr(args, "json", False):
-                print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+                print(f"[s0 wipe]  Audit Ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -618,8 +621,10 @@ def cmd_wipe(args) -> int:
         if args.json:
             print(json.dumps({"status": cert["result"]["status"], "certificate": str(cert_json), "pdf": str(pdf_path) if pdf_path else None, "cert_uuid": cert["cert_uuid"]}, indent=2))
         else:
-            print(f"\nresult        : {cert['result']['status']}")
-            print(f"certificate   : {cert_json}" + (f"\nPDF           : {pdf_path}" if pdf_path else ""))
+            print(f"\n[s0 wipe]  Result        : {cert['result']['status']}")
+            print(f"[s0 wipe]  Certificate   : {cert_json}")
+            if pdf_path:
+                print(f"[s0 wipe]  PDF           : {pdf_path}")
         return 0 if res_mac.status == "success" else 1
 
     try:
@@ -644,10 +649,34 @@ def cmd_wipe(args) -> int:
     plan = candidate.method.plan(target)
 
     hpa_dco = None
-    if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
-        hpa_dco = hpa_dco_report(target)
-        if hpa_dco.get("hpa_present") or hpa_dco.get("dco_present"):
-            if not getattr(plan, "is_firmware", False):
+    is_virtual_block = target.path.startswith(("/dev/loop", "/dev/ram", "/dev/zram"))
+    if target.kind == "block" and not target.path.startswith("/dev/nvme") and not is_virtual_block:
+        if not shutil.which("hdparm"):
+            hpa_msg = (
+                f"hdparm is not installed — cannot verify whether {target.path} has "
+                f"a Host Protected Area (HPA) or Device Configuration Overlay (DCO). "
+                f"Install hdparm or pass --force to proceed without verification."
+            )
+            if not args.force:
+                print(f"REFUSED: {hpa_msg}", file=sys.stderr)
+                return 2
+            warnings.append(hpa_msg)
+        else:
+            hpa_dco = hpa_dco_report(target)
+            hpa_present = hpa_dco.get("hpa_present")
+            dco_present = hpa_dco.get("dco_present")
+            is_fw = plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id
+            if hpa_present is None and dco_present is None:
+                hpa_msg = (
+                    f"HPA/DCO status for {target.path} is indeterminate "
+                    f"({hpa_dco.get('note') or 'device did not respond to hdparm'}). "
+                    f"Pass --force to proceed anyway."
+                )
+                if not args.force:
+                    print(f"REFUSED: {hpa_msg}", file=sys.stderr)
+                    return 2
+                warnings.append(hpa_msg)
+            elif (hpa_present or dco_present) and not is_fw:
                 hpa_msg = (
                     f"target {target.path} has an active Host Protected Area (HPA) or Device Configuration Overlay (DCO) "
                     f"(visible: {hpa_dco.get('visible_max')}, native: {hpa_dco.get('native_max')}). "
@@ -663,7 +692,7 @@ def cmd_wipe(args) -> int:
 
     if not args.yes:
         _print_plan(target, candidate, alternatives, warnings, hpa_dco)
-        if getattr(plan, "is_firmware", False) or "ATA_SECURE_ERASE" in plan.method_id or "NVME" in plan.method_id:
+        if "ATA_SECURE_ERASE" in plan.method_id or "NVME" in plan.method_id:
             print("\n⚠  NOTICE: Firmware-level Purge methods (ATA/NVMe) are simulated/fixture-tested;", file=sys.stderr)
             print("   real-world behavior varies across vendors. Verify device support prior to production use.", file=sys.stderr)
         answer = input(
@@ -796,7 +825,7 @@ def cmd_wipe(args) -> int:
     try:
         blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
         if not getattr(args, "json", False):
-            print(f"audit ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+            print(f"[s0 wipe]  Audit Ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
     except Exception as exc:
         print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -837,9 +866,11 @@ def cmd_wipe(args) -> int:
             )
         )
     else:
-        print(f"\nresult        : {cert['result']['status']}")
-        print(f"verification  : {json.dumps(verif)}")
-        print(f"certificate   : {cert_json}" + (f"\nPDF           : {pdf_path}" if pdf_path else ""))
+        print(f"\n[s0 wipe]  Result        : {cert['result']['status']}")
+        print(f"[s0 wipe]  Verification  : {json.dumps(verif)}")
+        print(f"[s0 wipe]  Certificate   : {cert_json}")
+        if pdf_path:
+            print(f"[s0 wipe]  PDF           : {pdf_path}")
     return 0 if ok else 1
 
 
@@ -909,15 +940,15 @@ def cmd_erase_files(args) -> int:
         print("\n⚠  Erasure interrupted by user (Ctrl+C). Some files may be partially erased.", file=sys.stderr)
         return 130
 
-    print(f"\nFiles Processed: {summary.total_files}")
-    print(f"Successful     : {summary.successful_files}")
-    print(f"Failed         : {summary.failed_files}")
-    print(f"Bytes Sanitized: {summary.total_bytes_processed} bytes")
+    print(f"\n[s0 erase-file]  Files Processed : {summary.total_files}")
+    print(f"[s0 erase-file]  Successful      : {summary.successful_files}")
+    print(f"[s0 erase-file]  Failed          : {summary.failed_files}")
+    print(f"[s0 erase-file]  Bytes Sanitized : {summary.total_bytes_processed} bytes")
 
     if summary.certificate:
         try:
             blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key_path)
-            print(f"Audit Ledger   : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+            print(f"[s0 erase-file]  Audit Ledger    : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -925,7 +956,7 @@ def cmd_erase_files(args) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         cert_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
         cert_p.write_text(json.dumps(summary.certificate, indent=2) + "\n")
-        print(f"Certificate    : {cert_p}")
+        print(f"[s0 erase-file]  Certificate     : {cert_p}")
 
         if not getattr(args, "no_pdf", False):
             try:
@@ -938,7 +969,7 @@ def cmd_erase_files(args) -> int:
                 qr_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(summary.certificate, qr_p)
-                print(f"PDF Certificate: {pdf_p}")
+                print(f"[s0 erase-file]  PDF Certificate : {pdf_p}")
             except Exception:
                 pass
         if getattr(args, "json", False):
@@ -1057,9 +1088,9 @@ def cmd_carve(args) -> int:
         print("\n⚠  File carving interrupted by user (Ctrl+C).", file=sys.stderr)
         return 130
 
-    print(f"\nBytes Scanned  : {summary.total_bytes_scanned}")
-    print(f"Candidates Found: {summary.total_candidates_found}")
-    print(f"Files Recovered : {summary.files_recovered}")
+    print(f"\n[s0 carve]  Bytes Scanned    : {summary.total_bytes_scanned}")
+    print(f"[s0 carve]  Candidates Found : {summary.total_candidates_found}")
+    print(f"[s0 carve]  Files Recovered  : {summary.files_recovered}")
 
     if summary.carved_files:
         print(f"\n{'ID':<14} {'EXT':<6} {'SIZE':>10}  {'CONF':>6}  {'SHA256 (PREFIX)':<20} FILENAME")
@@ -1072,12 +1103,12 @@ def cmd_carve(args) -> int:
 
     idx_file = Path(args.out_dir) / "recovery_index.json"
     if idx_file.exists():
-        print(f"Recovery Index File       : {idx_file}")
+        print(f"[s0 carve]  Recovery Index   : {idx_file}")
 
     if summary.manifest_certificate:
         try:
             blk = record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key_path)
-            print(f"Audit Ledger              : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+            print(f"[s0 carve]  Audit Ledger     : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -1086,7 +1117,7 @@ def cmd_carve(args) -> int:
             out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
         )
         cert_p.write_text(json.dumps(summary.manifest_certificate, indent=2) + "\n")
-        print(f"\nForensic Recovery Manifest: {cert_p}")
+        print(f"[s0 carve]  Manifest File    : {cert_p}")
 
         if not getattr(args, "no_pdf", False):
             try:
@@ -1099,7 +1130,7 @@ def cmd_carve(args) -> int:
                 qr_p = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(summary.manifest_certificate, qr_p)
-                print(f"PDF Certificate           : {pdf_p}")
+                print(f"[s0 carve]  PDF Certificate  : {pdf_p}")
             except Exception:
                 pass
 
@@ -1114,7 +1145,7 @@ def cmd_carve(args) -> int:
 def cmd_audit(args) -> int:
     if args.audit_action == "list":
         blocks = list_audit_blocks(limit=args.limit)
-        print(f"==> S0 Hash-Chained Cryptographic Audit Ledger ({len(blocks)} blocks)")
+        print(f"[s0 audit]  Ledger        : Hash-Chained Cryptographic Audit Ledger ({len(blocks)} blocks)")
         print(
             f"{'IDX':<5} {'TIMESTAMP':<20} {'OPERATION':<14} {'OPERATOR':<14} {'TARGET_ID':<20} {'BLOCK_HASH':<16}"
         )
@@ -1125,7 +1156,7 @@ def cmd_audit(args) -> int:
         return 0
 
     elif args.audit_action == "verify":
-        print("==> Auditing Hash-Chained Cryptographic Ledger...")
+        print("[s0 audit]  Auditing hash-chained cryptographic ledger...")
         trusted_keys = None
         if getattr(args, "key", None):
             from s0_core.crypto import load_public_pem
@@ -1134,15 +1165,19 @@ def cmd_audit(args) -> int:
         report = verify_audit_ledger(trusted_public_keys=trusted_keys)
         if report.is_valid:
             if getattr(report, "is_demo_signed", False):
-                print(f"Chain Status : ⚠️ VALID & CONTINUOUS — UNACCREDITED DEMO KEY")
+                print("[s0 audit]  Chain Status  : WARN : VALID & CONTINUOUS — UNACCREDITED DEMO KEY")
                 if getattr(report, "demo_key_warning", None):
                     print(f"               {report.demo_key_warning}")
             else:
-                print(f"Chain Status : ✅ VALID & CONTINUOUS")
+                print("[s0 audit]  Chain Status  : OK : VALID & CONTINUOUS")
         else:
-            print(f"Chain Status : ❌ BROKEN / TAMPER DETECTED")
-        print(f"Blocks Tested: {report.total_blocks_verified}")
-        print(f"Details      : {report.reason}")
+            reason = report.reason or ""
+            if "not in the trusted key set" in reason or "unknown issuer key" in reason:
+                print("[s0 audit]  Chain Status  : WARN : UNVERIFIABLE — SIGNING KEY NOT IN TRUST SET")
+            else:
+                print("[s0 audit]  Chain Status  : ERROR : BROKEN / TAMPER DETECTED")
+        print(f"[s0 audit]  Blocks Tested : {report.total_blocks_verified}")
+        print(f"[s0 audit]  Details       : {report.reason}")
         return 0 if report.is_valid else 1
 
     return 0
@@ -1183,16 +1218,16 @@ def cmd_verify(args) -> int:
     from s0_core.certificate import verify_certificate
     ok, reason = verify_certificate(cert_data, pub_keys)
     if ok:
-        print(f"✅ CERTIFICATE AUTHENTIC & VERIFIED")
-        print(f"UUID         : {cert_data.get('cert_uuid')}")
-        print(f"Status       : {cert_data.get('result', {}).get('status')}")
-        print(f"NIST Tier    : {cert_data.get('wipe', {}).get('nist_category')}")
-        print(f"Device       : {cert_data.get('device', {}).get('device_id')}")
-        print(f"Issuer       : {cert_data.get('issuer', {}).get('organization')}")
-        print(f"Fingerprint  : {cert_data.get('signature', {}).get('public_key_fingerprint')}")
+        print("[s0 verify]  Status       : OK : CERTIFICATE AUTHENTIC & VERIFIED")
+        print(f"[s0 verify]  UUID         : {cert_data.get('cert_uuid')}")
+        print(f"[s0 verify]  Result       : {cert_data.get('result', {}).get('status')}")
+        print(f"[s0 verify]  NIST Tier    : {cert_data.get('wipe', {}).get('nist_category')}")
+        print(f"[s0 verify]  Device       : {cert_data.get('device', {}).get('device_id')}")
+        print(f"[s0 verify]  Issuer       : {cert_data.get('issuer', {}).get('organization')}")
+        print(f"[s0 verify]  Fingerprint  : {cert_data.get('signature', {}).get('public_key_fingerprint')}")
         return 0
     else:
-        print(f"❌ CERTIFICATE VERIFICATION FAILED: {reason}", file=sys.stderr)
+        print(f"[s0 verify]  Status       : ERROR : CERTIFICATE VERIFICATION FAILED: {reason}", file=sys.stderr)
         return 1
 
 
@@ -1207,10 +1242,10 @@ def cmd_keygen(args) -> int:
     crypto.write_private_pem(priv, priv_p)
     crypto.write_public_pem(pub, pub_p)
     fp = crypto.public_key_fingerprint(pub)
-    print(f"Generated Ed25519 Keypair:")
-    print(f"  Private Key : {priv_p} (Keep secret & offline!)")
-    print(f"  Public Key  : {pub_p}")
-    print(f"  Fingerprint : {fp}")
+    print("[s0 keygen]  Generated Ed25519 Keypair :")
+    print(f"[s0 keygen]    Private Key : {priv_p} (Keep secret & offline!)")
+    print(f"[s0 keygen]    Public Key  : {pub_p}")
+    print(f"[s0 keygen]    Fingerprint : {fp}")
     return 0
 
 
@@ -1242,7 +1277,7 @@ def cmd_upgrade(args) -> int:
                     break
 
     if not repo_dir:
-        print("[ERROR] Could not locate S0 git installation repository.", file=sys.stderr)
+        print("[s0 upgrade]  ERROR : Could not locate S0 git installation repository.", file=sys.stderr)
         print("To install or upgrade S0, run:")
         if sys.platform == "win32":
             print("  irm https://s0-install.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
@@ -1254,38 +1289,38 @@ def cmd_upgrade(args) -> int:
             print("  bash s0-upgrade.sh")
         return 1
 
-    print(f"[*] Found S0 installation at: {repo_dir}")
+    print(f"[s0 upgrade]  Found S0 installation at: {repo_dir}")
     try:
         cur_hash = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_dir), text=True
         ).strip()
-        print(f"[*] Current commit: {cur_hash}")
-        print("[*] Pulling latest changes from GitHub origin/master...")
+        print(f"[s0 upgrade]  Current commit: {cur_hash}")
+        print("[s0 upgrade]  Pulling latest changes from GitHub origin/master...")
         subprocess.check_call(["git", "fetch", "origin", "master", "-q"], cwd=str(repo_dir))
         latest_hash = subprocess.check_output(
             ["git", "rev-parse", "--short", "origin/master"], cwd=str(repo_dir), text=True
         ).strip()
 
         if cur_hash == latest_hash and not getattr(args, "force", False):
-            print(f"[✓] S0 is already up-to-date at commit {cur_hash}.")
+            print(f"[s0 upgrade]  OK : S0 is already up-to-date at commit {cur_hash}.")
         else:
             subprocess.check_call(["git", "pull", "--ff-only", "origin", "master", "-q"], cwd=str(repo_dir))
-            print(f"[✓] Source updated: {cur_hash} → {latest_hash}")
+            print(f"[s0 upgrade]  OK : Source updated: {cur_hash} → {latest_hash}")
 
         py_bin = sys.executable
-        print("[*] Refreshing dependencies...")
+        print("[s0 upgrade]  Refreshing dependencies...")
         subprocess.check_call([py_bin, "-m", "pip", "install", "--upgrade", "pip", "-q"])
         subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "core" / "python"), "-q"])
         subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "linux" / "cli"), "-q"])
         subprocess.check_call([py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
-        print("[✓] Dependencies refreshed.")
+        print("[s0 upgrade]  OK : Dependencies refreshed.")
 
         ver = subprocess.check_output([py_bin, "-m", "s0_cli.main", "--version"], text=True).strip()
         print()
-        print(f"✅ S0 upgraded successfully to {ver} ({latest_hash})")
+        print(f"[s0 upgrade]  OK : S0 upgraded successfully to {ver} ({latest_hash})")
         return 0
     except Exception as exc:
-        print(f"[ERROR] Upgrade failed: {exc}", file=sys.stderr)
+        print(f"[s0 upgrade]  ERROR : Upgrade failed: {exc}", file=sys.stderr)
         return 1
 
 
@@ -1297,7 +1332,7 @@ def cmd_uninstall(args) -> int:
     print()
 
     if sys.platform == "win32":
-        print("[*] On Windows, run the official uninstallation script:")
+        print("[s0 uninstall]  On Windows, run the official uninstallation script:")
         print("    curl -fsSL https://s0-install.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
         print("    # Inspect s0-uninstall.ps1 before running, then run:")
         print("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
@@ -1319,22 +1354,22 @@ def cmd_uninstall(args) -> int:
                     break
 
     if not repo_dir:
-        print("[ERROR] Could not locate S0 installation directory.", file=sys.stderr)
+        print("[s0 uninstall]  ERROR : Could not locate S0 installation directory.", file=sys.stderr)
         print("To manually uninstall S0, download and run the script:")
         print("  curl -fsSL https://s0-install.pages.dev/uninstall-sh -o s0-uninstall.sh")
         print("  # Inspect s0-uninstall.sh before running, then run:")
         print("  bash s0-uninstall.sh")
         return 1
 
-    print(f"[*] Target S0 directory: {repo_dir}")
+    print(f"[s0 uninstall]  Target S0 directory: {repo_dir}")
     audit_db = Path.home() / ".s0" / "s0_audit.db"
     if getattr(args, "keep_audit", False) and audit_db.is_file():
         bak_dest = Path.home() / "s0_audit.db.bak"
         try:
             shutil.copy2(audit_db, bak_dest)
-            print(f"[✓] Audit ledger backed up to: {bak_dest}")
+            print(f"[s0 uninstall]  Audit ledger backed up to: {bak_dest}")
         except Exception as exc:
-            print(f"[!] Warning: Could not back up audit ledger: {exc}", file=sys.stderr)
+            print(f"[s0 uninstall]  WARN : Could not back up audit ledger: {exc}", file=sys.stderr)
 
     if not getattr(args, "yes", False):
         try:
@@ -1346,7 +1381,7 @@ def cmd_uninstall(args) -> int:
             print("Uninstallation cancelled.")
             return 0
 
-    print("[*] Removing symlinks...")
+    print("[s0 uninstall]  Removing symlinks...")
     symlink_candidates = [
         Path.home() / ".local" / "bin" / "s0",
         Path.home() / "bin" / "s0",
@@ -1356,24 +1391,24 @@ def cmd_uninstall(args) -> int:
         if sym.is_symlink() or sym.exists():
             try:
                 sym.unlink()
-                print(f"[✓] Removed symlink: {sym}")
+                print(f"[s0 uninstall]  OK : Removed symlink: {sym}")
             except Exception as exc:
-                print(f"[!] Could not remove {sym}: {exc}", file=sys.stderr)
+                print(f"[s0 uninstall]  WARN : Could not remove {sym}: {exc}", file=sys.stderr)
 
     # If repo_dir strictly resolves to ~/.s0, remove it safely
     home_s0 = (Path.home() / ".s0").resolve()
     if repo_dir.resolve() == home_s0:
-        print(f"[*] Removing installation directory: {repo_dir}...")
+        print(f"[s0 uninstall]  Removing installation directory: {repo_dir}...")
         try:
             shutil.rmtree(repo_dir, ignore_errors=True)
-            print("[✓] Directory removed.")
+            print("[s0 uninstall]  OK : Directory removed.")
         except Exception as exc:
-            print(f"[!] Error removing directory: {exc}", file=sys.stderr)
+            print(f"[s0 uninstall]  ERROR : Error removing directory: {exc}", file=sys.stderr)
     else:
-        print(f"[*] Notice: {repo_dir} is a development checkout or custom repository; files preserved.")
+        print(f"[s0 uninstall]  Notice: {repo_dir} is a development checkout or custom repository; files preserved.")
 
     print()
-    print("✅ S0 uninstalled successfully.")
+    print("[s0 uninstall]  OK : S0 uninstalled successfully.")
     return 0
 
 
@@ -1448,10 +1483,10 @@ def cmd_image(args) -> int:
         force=getattr(args, "force", False),
     )
 
-    print(f"[*] Source      : {args.source}")
-    print(f"[*] Destination : {args.destination}")
-    print(f"[*] Block Size  : {args.block_size:,} bytes")
-    print(f"[*] Fault Tol.  : {'Enabled (Zero-fill bad blocks)' if not args.no_recovery else 'Disabled (Abort on error)'}")
+    print(f"[s0 image]  Source          : {args.source}")
+    print(f"[s0 image]  Destination     : {args.destination}")
+    print(f"[s0 image]  Block Size      : {args.block_size:,} bytes")
+    print(f"[s0 image]  Fault Tol.      : {'Enabled (Zero-fill bad blocks)' if not args.no_recovery else 'Disabled (Abort on error)'}")
     print()
 
     try:
@@ -1464,29 +1499,29 @@ def cmd_image(args) -> int:
     print()
 
     if result.error:
-        print(f"❌ ACQUISITION FAILED: {result.error}", file=sys.stderr)
+        print(f"[s0 image]  Status          : ERROR : ACQUISITION FAILED: {result.error}", file=sys.stderr)
         return 1
 
     if result.bad_sectors_count > 0:
-        print(f"⚠  ACQUISITION COMPLETED WITH ERRORS ({result.bad_sectors_count} bad sectors zero-filled)", file=sys.stderr)
+        print(f"[s0 image]  Status          : WARN : ACQUISITION COMPLETED WITH ERRORS ({result.bad_sectors_count} bad sectors zero-filled)")
     else:
-        print("✅ FORENSIC ACQUISITION COMPLETED SUCCESSFULLY")
+        print("[s0 image]  Status          : OK : FORENSIC ACQUISITION COMPLETED")
 
-    print(f"   Operation       : {'Drive Clone' if result.is_clone else 'Raw Bit-Stream Image'}")
-    print(f"   Bytes Acquired  : {result.bytes_copied:,} bytes ({result.bytes_copied / (1024**3):.2f} GB)")
-    print(f"   Duration        : {result.duration_seconds:.2f} seconds ({result.speed_mbps:.1f} MB/s)")
-    print(f"   Bad Sectors     : {result.bad_sectors_count}")
-    hash_label = "Image SHA-256 (with bad sectors zero-filled)" if result.bad_sectors_count > 0 else "Source SHA-256"
-    print(f"   {hash_label:<16}: {result.source_sha256}")
-    print(f"   Source MD5      : {result.source_md5}")
+    print(f"[s0 image]  Operation       : {'Drive Clone' if result.is_clone else 'Raw Bit-Stream Image'}")
+    print(f"[s0 image]  Bytes Acquired  : {result.bytes_copied:,} bytes ({result.bytes_copied / (1024**3):.2f} GB)")
+    print(f"[s0 image]  Duration        : {result.duration_seconds:.2f} seconds ({result.speed_mbps:.1f} MB/s)")
+    print(f"[s0 image]  Bad Sectors     : {result.bad_sectors_count}")
+    hash_label = "Image SHA-256" if result.bad_sectors_count > 0 else "Source SHA-256"
+    print(f"[s0 image]  {hash_label:<16}: {result.source_sha256}")
+    print(f"[s0 image]  Source MD5      : {result.source_md5}")
     if result.manifest_path:
-        print(f"   Manifest File   : {result.manifest_path}")
+        print(f"[s0 image]  Manifest File   : {result.manifest_path}")
     if result.manifest_certificate:
         if getattr(result, "audit_ledger_recorded", False):
-            print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
+            print(f"[s0 image]  Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
         else:
             err_suffix = f": {result.audit_ledger_error}" if getattr(result, "audit_ledger_error", None) else ""
-            print(f"   Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed, WARNING: Audit Ledger write failed{err_suffix})")
+            print(f"[s0 image]  Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed, WARNING: Audit Ledger write failed{err_suffix})")
         if not getattr(args, "no_pdf", False):
             try:
                 from s0_core import pdfgen
@@ -1499,9 +1534,9 @@ def cmd_image(args) -> int:
                 qr_p = out_dir_p / f"certificate_{result.manifest_certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(result.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(result.manifest_certificate, qr_p)
-                print(f"   PDF Certificate : {pdf_p}")
+                print(f"[s0 image]  PDF Certificate : {pdf_p}")
             except Exception as exc:
-                print(f"   [!] PDF generation warning: {exc}", file=sys.stderr)
+                print(f"[s0 image]  WARN : PDF generation warning: {exc}", file=sys.stderr)
     print()
     return 0
 
@@ -1534,9 +1569,9 @@ def cmd_web(args) -> int:
             is_root = False
 
     if not is_root:
-        print("\033[1;33m[!] WARNING: s0 web is running without root (sudo) privileges.\033[0m")
-        print("\033[33m    Drive wiping and raw disk acquisition will not be available.\033[0m")
-        print("\033[33m    For full forensic drive operations, launch with: sudo s0 web\033[0m\n")
+        print("\033[1;33m[s0 web]  WARN : s0 web is running without root (sudo) privileges.\033[0m")
+        print("\033[33m[s0 web]         Drive wiping and raw disk acquisition will not be available.\033[0m")
+        print("\033[33m[s0 web]         For full forensic drive operations, launch with: sudo s0 web\033[0m\n")
 
     # Verify dependencies: fastapi and uvicorn
     deps_missing = []
@@ -1550,21 +1585,21 @@ def cmd_web(args) -> int:
         deps_missing.append("uvicorn")
 
     if deps_missing:
-        print(f"\n[s0 web] Missing required web dashboard dependencies: {', '.join(deps_missing)}", file=sys.stderr)
+        print(f"\n[s0 web]  WARN : Missing required web dashboard dependencies: {', '.join(deps_missing)}", file=sys.stderr)
         try:
             ans = input(f"Would you like s0 to install {' '.join(deps_missing)} now? [Y/n]: ").strip().lower()
         except (KeyboardInterrupt, EOFError):
             print("\nAborted.", file=sys.stderr)
             return 1
         if ans in ("", "y", "yes"):
-            print(f"[s0 web] Installing {' '.join(deps_missing)}...")
+            print(f"[s0 web]  Installing {' '.join(deps_missing)}...")
             res = subprocess.run([sys.executable, "-m", "pip", "install", *deps_missing], check=False)
             if res.returncode != 0:
-                print(f"❌ Failed to install dependencies. Please run: pip install {' '.join(deps_missing)}", file=sys.stderr)
+                print(f"[s0 web]  ERROR : Failed to install dependencies. Please run: pip install {' '.join(deps_missing)}", file=sys.stderr)
                 return 1
-            print("[s0 web] Dependencies installed successfully.\n")
+            print("[s0 web]  OK : Dependencies installed successfully.\n")
         else:
-            print(f"Aborted. Install manually: pip install {' '.join(deps_missing)}", file=sys.stderr)
+            print(f"[s0 web]  ERROR : Aborted. Install manually: pip install {' '.join(deps_missing)}", file=sys.stderr)
             return 1
 
     # Locate web dashboard app directory
@@ -1581,7 +1616,7 @@ def cmd_web(args) -> int:
             break
 
     if not web_dir:
-        print("❌ Error: Could not locate s0 Web Dashboard files (app.py).", file=sys.stderr)
+        print("[s0 web]  ERROR : Could not locate s0 Web Dashboard files (app.py).", file=sys.stderr)
         return 1
 
     import secrets
@@ -1602,11 +1637,11 @@ def cmd_web(args) -> int:
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║      S0 (Sector Zero) — Unified Web Forensics Dashboard         ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
-    print(f"[*] Address : {url}")
-    print(f"[*] Auth URL: {auth_url}")
-    print(f"[*] Token   : {token_path} (mode 0600)")
-    print(f"[*] Binding : {host} (Strict loopback isolation)")
-    print(f"[*] Status  : Live — Press CTRL+C to stop")
+    print(f"[s0 web]  Address  : {url}")
+    print(f"[s0 web]  Auth URL : {auth_url}")
+    print(f"[s0 web]  Token    : {token_path} (mode 0600)")
+    print(f"[s0 web]  Binding  : {host} (Strict loopback isolation)")
+    print(f"[s0 web]  Status   : Live — Press CTRL+C to stop")
     print()
 
     cmd = [
@@ -1638,13 +1673,13 @@ def cmd_web(args) -> int:
     try:
         proc.wait()
     except KeyboardInterrupt:
-        print("\n[s0 web] Stopping web dashboard...")
+        print("\n[s0 web]  Stopping web dashboard...")
         proc.terminate()
         try:
             proc.wait(timeout=3)
         except subprocess.TimeoutExpired:
             proc.kill()
-        print("[s0 web] Server terminated.")
+        print("[s0 web]  Server terminated.")
 
     return 0
 

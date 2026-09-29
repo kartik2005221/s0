@@ -204,7 +204,18 @@ def verify_audit_ledger(
                 if effective_keys:
                     matching_keys = [k for k in effective_keys if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp]
                     if not matching_keys:
-                        matching_keys = list(effective_keys)
+                        return ChainAuditReport(
+                            is_valid=False,
+                            total_blocks_verified=idx,
+                            broken_block_index=block_idx,
+                            reason=(
+                                f"Block #{block_idx} was signed with key fingerprint '{claimed_fp}' which "
+                                f"is not in the trusted key set. This may indicate the block was signed "
+                                f"with a custom key not loaded via --key, or the key was not trusted. "
+                                f"Re-run with --key <path-to-public-key.pem> if you used a custom key."
+                            ),
+                            details=details,
+                        )
                     validating_keys = [k for k in matching_keys if crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig)]
                     if not validating_keys:
                         return ChainAuditReport(

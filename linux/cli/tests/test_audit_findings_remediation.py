@@ -287,3 +287,72 @@ def test_csprng_sample_offsets():
     assert len(offs_large) == 16
     assert all(off % 512 == 0 for off in offs_large)
 
+
+def test_mount_octal_unescaping():
+    from s0_cli.devices import _unescape_mount_field
+
+    assert _unescape_mount_field(r"/media/My\040Drive/disk\040image") == "/media/My Drive/disk image"
+    assert _unescape_mount_field(r"/mnt/test\011tab\012newline") == "/mnt/test\ttab\nnewline"
+    assert _unescape_mount_field(r"/dev/sda1") == "/dev/sda1"
+
+
+def test_partition_boundary_matching():
+    from s0_cli.devices import _is_partition, _is_dev_or_subpartition
+
+    assert _is_partition("sda") is False
+    assert _is_partition("sda1") is True
+    assert _is_partition("sda10") is True
+    assert _is_partition("nvme0n1") is False
+    assert _is_partition("nvme0n1p1") is True
+    assert _is_partition("loop0") is False
+    assert _is_partition("loop0p1") is True
+    assert _is_partition("mmcblk0") is False
+    assert _is_partition("mmcblk0p1") is True
+
+    # Subpartition relationships
+    assert _is_dev_or_subpartition("/dev/sda", "/dev/sda1") is True
+    assert _is_dev_or_subpartition("/dev/sda1", "/dev/sda10") is False
+    assert _is_dev_or_subpartition("/dev/nvme0n1", "/dev/nvme0n1p3") is True
+    assert _is_dev_or_subpartition("/dev/nvme0n1p1", "/dev/nvme0n1p10") is False
+
+
+def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
+    import shutil
+    from s0_cli.main import cmd_wipe
+    import argparse
+
+    monkeypatch.setattr(shutil, "which", lambda cmd: None)
+    monkeypatch.setattr("s0_cli.main._resolve_target", lambda path: Target(path="/dev/sde", kind="block", capacity_bytes=100*1024*1024, sector_size=512, storage_type="HDD"))
+    monkeypatch.setattr("s0_cli.main.check_safety", lambda target, force=False: [])
+    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: None)
+    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+
+    args = argparse.Namespace(
+        target="/dev/sde",
+        targets=None,
+        method=None,
+        passes=1,
+        pattern="zero",
+        verify=True,
+        verify_samples=8,
+        verify_pattern_readback=True,
+        no_firmware=True,
+        discard_purge_justification=None,
+        key=None,
+        out=None,
+        yes=True,
+        force=False,
+        json=False,
+        operator_name="Auditor",
+        operator_id="AUD-01",
+        operator_role="Tester",
+        organization="TestOrg",
+        destruction_purpose="Test",
+        internal_ticket_id=None,
+    )
+    rc = cmd_wipe(args)
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "hdparm is not installed" in err
+
+

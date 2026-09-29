@@ -46,16 +46,22 @@ def _sys_int(device_name: str, rel: str) -> int | None:
         return None
 
 
+def _unescape_mount_field(s: str) -> str:
+    """Decode kernel octal escapes in /proc/mounts (\\040=space, \\011=tab, \\012=newline, \\134=backslash, etc.)."""
+    return re.sub(r"\\([0-7]{3})", lambda m: chr(int(m.group(1), 8)), s)
+
+
 def _mounted_paths() -> set[str]:
     mounts = set()
     try:
-        with open("/proc/mounts") as f:
+        with open("/proc/mounts", "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.split()
                 if len(parts) >= 2:
-                    mounts.add(parts[0])
+                    dev = _unescape_mount_field(parts[0])
+                    mounts.add(dev)
                     try:
-                        mounts.add(os.path.realpath(parts[0]))
+                        mounts.add(os.path.realpath(dev))
                     except OSError:
                         pass
     except OSError:
@@ -276,6 +282,15 @@ def device_id_for(target: Target) -> str:
     return "sha256:" + hashlib.sha256(target.path.encode()).hexdigest()
 
 
+def _is_partition(dev_name: str) -> bool:
+    """Return True if dev_name is a partition rather than a whole disk."""
+    if re.search(r"(?<=\d)p\d+$", dev_name):
+        return True
+    if re.match(r"^(?:sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+)\d+$", dev_name):
+        return True
+    return False
+
+
 def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     """Check if candidate_mount is parent_path or a sub-partition of parent_path."""
     parent_real = os.path.realpath(parent_path)
@@ -283,10 +298,10 @@ def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     if parent_real == cand_real:
         return True
 
-    # If parent_real is already a partition (ends in digit), only exact match applies
+    # If parent_real is already a partition, only exact match applies
     # (e.g. /dev/sda1 must not match /dev/sda10)
     p_name = Path(parent_real).name
-    if re.search(r"\d+$", p_name) and not (p_name.startswith("loop") and not re.search(r"p\d+$", p_name)):
+    if _is_partition(p_name):
         return False
 
     # Parent is a whole drive (e.g. /dev/sda, /dev/nvme0n1, /dev/loop0)
@@ -353,8 +368,8 @@ def _get_root_mount_source() -> Optional[str]:
         with open("/proc/mounts", "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.split()
-                if len(parts) >= 2 and parts[1] == "/":
-                    src = parts[0]
+                if len(parts) >= 2 and _unescape_mount_field(parts[1]) == "/":
+                    src = _unescape_mount_field(parts[0])
                     if src.startswith("/"):
                         return os.path.realpath(src)
     except Exception:
@@ -440,7 +455,7 @@ def is_os_device(device_path: str) -> bool:
         dev_real = os.path.realpath(device_path)
         underlying_devs = _get_underlying_devices(root_src)
         for u_dev in underlying_devs:
-            if dev_real == u_dev or u_dev.startswith(dev_real):
+            if dev_real == u_dev:
                 return True
             if _is_dev_or_subpartition(dev_real, u_dev):
                 return True
