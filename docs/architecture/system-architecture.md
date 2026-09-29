@@ -635,7 +635,7 @@ A certificate is a self-describing JSON document that bundles the operation reco
   "schema_version": 1,
   "cert_uuid": "550e8400-e29b-41d4-a716-446655440000",
   "issued_at": "2026-09-09T13:33:57Z",
-  "tool_version": "2.4.3",
+  "tool_version": "2.4.4",
   "operator": {
     "id": "alice@example.com",
     "key_fingerprint": "sha256:a1b2c3d4..."

@@ -138,7 +138,7 @@ s0 --version
 Expected output (version numbers may differ):
 
 ```
-s0 2.4.3
+s0 2.4.4
 ```
 
 {% hint style="success" %}
@@ -496,7 +496,7 @@ To eliminate the need for passing repeated command-line arguments and ensure org
 
 ```json
 {
-  "version": "2.4.3",
+  "version": "2.4.4",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
   "website_url": "https://s0-site.pages.dev/",

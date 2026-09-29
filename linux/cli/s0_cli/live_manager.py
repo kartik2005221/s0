@@ -241,7 +241,7 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
         url = f"https://api.github.com/repos/{repo}/releases/tags/{tag}"
 
     headers = {
-        "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.3')} (LiveDownloader)",
+        "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.4')} (LiveDownloader)",
         "Accept": "application/vnd.github.v3+json",
     }
     token = _get_auth_token()
@@ -277,7 +277,7 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
                 pass
 
         # Fallback to direct asset download URLs without GitHub API (e.g. rate limit HTTP 403)
-        tag_synth = CONFIG.get("version", "2.4.3")
+        tag_synth = CONFIG.get("version", "2.4.4")
         if not tag_synth.startswith("v"):
             tag_synth = f"v{tag_synth}"
         if version.lower() != "latest" and version.strip():
@@ -345,7 +345,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         fallback_assets = []
 
         headers = {
-            "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.3')} (LiveDownloader)",
+            "User-Agent": f"s0-cli/{CONFIG.get('version', '2.4.4')} (LiveDownloader)",
             "Accept": "application/vnd.github.v3+json",
         }
         token = _get_auth_token()

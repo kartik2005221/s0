@@ -218,7 +218,7 @@ ok; info "symlink: ${BIN_DIR}/s0 → ${INSTALL_DIR}/.venv/bin/s0"
 echo ""
 printf "${_bold}${_green}✅ S0 installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
-printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.3")"
+printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.4")"
 printf "   Web Console: sudo s0 web\n"
 echo ""
 

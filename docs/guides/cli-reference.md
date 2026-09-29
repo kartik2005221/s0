@@ -1155,7 +1155,7 @@ s0 upgrade
 [s0 upgrade]  Refreshing dependencies...
 [s0 upgrade]  OK : Dependencies refreshed.
 
-[s0 upgrade]  OK : S0 upgraded successfully to 2.4.3 (4a9f12c)
+[s0 upgrade]  OK : S0 upgraded successfully to 2.4.4 (4a9f12c)
 ```
 
 **Force reinstall dependencies**
@@ -1430,7 +1430,7 @@ Fetch official release assets directly from GitHub with automatic SHA-256 integr
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.3`) |
+| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.4`) |
 | `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
 
 #### 3. `s0 live flash`

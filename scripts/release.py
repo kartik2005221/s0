@@ -37,19 +37,27 @@ FILES SYNCHRONIZED BY THIS SCRIPT
 2.  core/python/pyproject.toml              (s0-core Python package metadata)
 3.  linux/cli/pyproject.toml                (s0-cli Python package metadata)
 4.  core/python/s0_core/config.py           (DEFAULT_CONFIG fallback)
-5.  linux/cli/s0_cli/__init__.py            (__version__ export)
-6.  linux/cli/s0_cli/imager.py              (tool_version fallback)
-7.  linux/cli/s0_cli/live_manager.py        (User-Agent header version)
-8.  macos/cli/s0_eraser.py                  (macOS CLI version string)
-9.  windows/cli/s0_eraser.py                (Windows CLI version string)
-10. install-portal/install.sh               (Web/sh installer fallback echo)
-11. README.md                               (Release badge link)
-12. PLAN.md                                 (Roadmap status line)
-13. docs/project/evaluator-guide.md         (Software release metadata)
-14. docs/project/README.md                  (Release notes table link)
-15. docs/getting-started/quickstart.md      (Config JSON example)
-16. docs/architecture/certificate-spec.md   (Certificate JSON spec example)
-17. docs/project/changelog.md               (Release header verification & stubbing)
+5.  core/python/s0_core/__init__.py         (__version__ export)
+6.  linux/cli/s0_cli/__init__.py            (__version__ export)
+7.  linux/cli/s0_cli/imager.py              (tool_version fallback)
+8.  linux/cli/s0_cli/file_eraser.py         (tool_version fallback)
+9.  linux/cli/s0_cli/carver/engine.py       (tool_version fallback)
+10. linux/cli/s0_cli/live_manager.py        (User-Agent header & tag_synth versions)
+11. macos/cli/s0_eraser.py                  (macOS CLI version string & tool_version)
+12. windows/cli/s0_eraser.py                (Windows CLI version string & tool_version)
+13. scripts/benchmark_perf.py               (Benchmark tool_version)
+14. install-portal/install.sh               (Web/sh installer fallback echo)
+15. README.md                               (Release badge link)
+16. PLAN.md                                 (Roadmap status line)
+17. docs/project/evaluator-guide.md         (Software release metadata)
+18. docs/project/README.md                  (Release notes table link)
+19. docs/getting-started/quickstart.md      (CLI output & config JSON examples)
+20. docs/architecture/certificate-spec.md   (Certificate JSON spec example)
+21. docs/architecture/system-architecture.md(System architecture certificate spec)
+22. docs/architecture/performance.md        (Performance benchmark evaluation date)
+23. docs/guides/cli-reference.md            (CLI upgrade sample & download flag)
+24. docs/guides/live-iso.md                 (Live ISO downloads, filenames, checksums)
+25. docs/project/changelog.md               (Release header verification & stubbing)
 ================================================================================
 """
 
@@ -160,55 +168,133 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> List[Path]:
     if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
         modified_files.append(p)
 
-    # 7. linux/cli/s0_cli/live_manager.py
+    # 7. linux/cli/s0_cli/file_eraser.py
+    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "file_eraser.py"
+    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
+        modified_files.append(p)
+
+    # 8. linux/cli/s0_cli/carver/engine.py
+    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "carver" / "engine.py"
+    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
+        modified_files.append(p)
+
+    # 9. linux/cli/s0_cli/live_manager.py
     p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "live_manager.py"
-    if update_file_regex(p, r'CONFIG\.get\(\'version\',\s*\'[^\']+\'\)', f"CONFIG.get('version', '{target_version}')", dry_run):
-        modified_files.append(p)
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
+        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
 
-    # 8. macos/cli/s0_eraser.py
+    # 10. macos/cli/s0_eraser.py
     p = REPO_ROOT / "macos" / "cli" / "s0_eraser.py"
-    if update_file_regex(p, r'CONFIG\.get\(\'version\',\s*\'[^\']+\'\)', f"CONFIG.get('version', '{target_version}')", dry_run):
-        modified_files.append(p)
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
+        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
 
-    # 9. windows/cli/s0_eraser.py
+    # 11. windows/cli/s0_eraser.py
     p = REPO_ROOT / "windows" / "cli" / "s0_eraser.py"
-    if update_file_regex(p, r'CONFIG\.get\(\'version\',\s*\'[^\']+\'\)', f"CONFIG.get('version', '{target_version}')", dry_run):
-        modified_files.append(p)
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
+        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
 
-    # 10. install-portal/install.sh (and scripts/install.sh if not symlink)
+    # 12. scripts/benchmark_perf.py
+    p = REPO_ROOT / "scripts" / "benchmark_perf.py"
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
+        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
+
+    # 13. install-portal/install.sh (and scripts/install.sh if not symlink)
     p = REPO_ROOT / "install-portal" / "install.sh"
     if update_file_regex(p, r'(\|\|\s*echo\s*)"[^"]+"(\))', f'\\g<1>"{target_version}"\\g<2>', dry_run):
         modified_files.append(p)
 
-    # 11. README.md (Release badge)
+    # 14. README.md (Release badge)
     p = REPO_ROOT / "README.md"
     if update_file_regex(p, r'badge/Release-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue\.svg', f'badge/Release-v{target_version}-blue.svg', dry_run):
         modified_files.append(p)
 
-    # 12. PLAN.md
+    # 15. PLAN.md
     p = REPO_ROOT / "PLAN.md"
     if update_file_regex(p, r'Production Release \(v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?\)', f'Production Release (v{target_version})', dry_run):
         modified_files.append(p)
 
-    # 13. docs/project/evaluator-guide.md
+    # 16. docs/project/evaluator-guide.md
     p = REPO_ROOT / "docs" / "project" / "evaluator-guide.md"
     if update_file_regex(p, r'(\*\*Software Release:\*\*\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?', f'\\g<1>{target_version}', dry_run):
         modified_files.append(p)
 
-    # 14. docs/project/README.md
+    # 17. docs/project/README.md
     p = REPO_ROOT / "docs" / "project" / "README.md"
     if update_file_regex(p, r'(current\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*release)', f'\\g<1>{target_version}\\g<3>', dry_run):
         modified_files.append(p)
 
-    # 15. docs/getting-started/quickstart.md (config sample)
+    # 18. docs/getting-started/quickstart.md (CLI output & config JSON samples)
     p = REPO_ROOT / "docs" / "getting-started" / "quickstart.md"
-    if update_file_regex(p, r'("version"\s*:\s*)"[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",', f'\\g<1>"{target_version}",', dry_run):
-        modified_files.append(p)
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r'("version"\s*:\s*)"[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",', f'\\g<1>"{target_version}",', content)
+        c2, n2 = re.subn(r'(\n\s*s0\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\n)', f'\\g<1>{target_version}\\g<3>', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
 
-    # 16. docs/architecture/certificate-spec.md (tool version in JSON sample)
+    # 19. docs/architecture/certificate-spec.md (tool version in JSON sample)
     p = REPO_ROOT / "docs" / "architecture" / "certificate-spec.md"
     if update_file_regex(p, r'("name":\s*"s0",\s*\n\s*"version":\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
         modified_files.append(p)
+
+    # 20. docs/architecture/system-architecture.md (tool_version in JSON sample)
+    p = REPO_ROOT / "docs" / "architecture" / "system-architecture.md"
+    if update_file_regex(p, r'("tool_version":\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
+        modified_files.append(p)
+
+    # 21. docs/architecture/performance.md (benchmark evaluation version)
+    p = REPO_ROOT / "docs" / "architecture" / "performance.md"
+    if update_file_regex(p, r'(\(\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\))', f'\\g<1>{target_version}\\g<3>', dry_run):
+        modified_files.append(p)
+
+    # 22. docs/guides/cli-reference.md (upgrade notice & version parameter)
+    p = REPO_ROOT / "docs" / "guides" / "cli-reference.md"
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r'(S0 upgraded successfully to\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?', f'\\g<1>{target_version}', content)
+        c2, n2 = re.subn(r'(\(e\.g\.,\s*`v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(`\))', f'\\g<1>{target_version}\\g<3>', c1)
+        if (n1 > 0 or n2 > 0) and c2 != content:
+            if not dry_run:
+                p.write_text(c2, encoding="utf-8")
+            modified_files.append(p)
+
+    # 23. docs/guides/live-iso.md (hybrid ISO filenames & download URLs)
+    p = REPO_ROOT / "docs" / "guides" / "live-iso.md"
+    if p.is_file():
+        content = p.read_text(encoding="utf-8")
+        c1, n1 = re.subn(r's0-live-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-amd64', f's0-live-v{target_version}-amd64', content)
+        c2, n2 = re.subn(r'download/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?/', f'download/v{target_version}/', c1)
+        c3, n3 = re.subn(r'(download\s+v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s+-R)', f'\\g<1>{target_version}\\g<3>', c2)
+        if (n1 > 0 or n2 > 0 or n3 > 0) and c3 != content:
+            if not dry_run:
+                p.write_text(c3, encoding="utf-8")
+            modified_files.append(p)
 
     return modified_files
 

@@ -34,6 +34,31 @@ flowchart LR
     M1 --> M2 --> M3 --> M4
 ```
 
+## [2.4.4] — 2026-09-29
+
+### Security & Safety
+- **Cross-Platform OS & Boot Drive Safety:** Enforced unconditional physical `disk0` protection and APFS container/synthesized store resolution on macOS, Fedora/Linux LUKS/dm-crypt backing device resolution, and Windows boot-drive safeguards.
+- **Fail-Closed HPA/DCO Guard:** Implemented fail-closed handling on indeterminate Host Protected Area (HPA) and Device Configuration Overlay (DCO) capacity checks, and documented platform limitations in macOS wipe summaries.
+- **Web Console Hardening:** Mandated token-based API authentication for mutating operations, added strict numeric and path parameter bounds, reinforced path traversal mitigations, and ensured truthful error reporting on failed wipes.
+- **Cryptographic Audit Verification Integrity:** Enforced verification of `signed_payload_hash` against canonical certificate payload to detect payload mutation, added checkpoint-based ledger truncation detection, and clarified unknown key audit errors.
+- **Forensic Carver Hardening:** Fixed ZIP End of Central Directory (EOCD) truncation, added structural validation for archive headers/trailers, and enforced extraction memory caps.
+- **Media Imaging & Erasure Safeguards:** Prevented destination drive self-overwrites in `s0 image`, scrubbed sensitive filenames from audit logs, surfaced truthful imaging status, and added warnings when targeting hard links during file wiping.
+- **Installer & Uninstaller Reliability:** Verified exit codes in Windows `.cmd` and PowerShell scripts, implemented retry loops for transient network failures, and preserved the cryptographic audit ledger across uninstallation.
+
+### Added
+- **Standardized Bracketed CLI Output:** Unified command line outputs across all modules (`s0 wipe`, `s0 image`, `s0 carve`, `s0 verify`, `s0 audit`, `s0 plan`, `s0 live`, `s0 upgrade`) to standard bracketed `[s0 <cmd>]` layout.
+- **Zero-Dependency Live ISO Downloader:** Added `download_iso.sh` (Linux/macOS) and `download_iso.ps1` (Windows) hosted directly on the install portal for air-gapped bootstrapping.
+- **Portal & Website Synchronization:** Unified headers, footers, SVG logo brand assets, and favicon manifests across Web Dashboard, Install Portal, Verification Portal, and the official project website (`s0-site.pages.dev`).
+- **Comprehensive Release Tooling (`scripts/release.py`):** Enhanced release automation to synchronize 25 core files, configuration schemas, CLI engines, benchmark harnesses, and documentation suites automatically.
+
+### Changed
+- **Audit Ledger Nomenclature Refinement:** Formally transitioned "blockchain" terminology to "hash-chained cryptographic audit ledger" throughout all user-facing documentation, CLI output, and internal comments, demoting the ledger to a supporting feature.
+- **Purge of Unverified Claims:** Removed unverified certification assertions across core modules, portals, CLI documentation, and legal notices.
+- **Verification Consistency:** Normalized random-pattern verification algorithms across operating systems and aligned floating-point throughput calculation in verification routines.
+- **Documentation Refinement:** Standardized documentation tab layout (Linux/MacOS, Windows PowerShell, Windows CMD) and purged code block comments and legacy badge chips.
+
+---
+
 ## [2.4.3] — 2026-09-26
 
 ### Security & Safety

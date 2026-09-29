@@ -622,7 +622,7 @@ def erase_batch_windows(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-windows-eraser",
-                tool_version=CONFIG.get("version", "2.2.1"),
+                tool_version=CONFIG.get("version", "2.4.4"),
                 platform="windows",
                 device_id=f"win-batch-{secrets.token_hex(8)}",
                 device_type="internal_disk",
@@ -942,7 +942,7 @@ def wipe_drive_or_partition_windows(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-windows-eraser",
-                tool_version=CONFIG.get("version", "2.2.1"),
+                tool_version=CONFIG.get("version", "2.4.4"),
                 platform="windows",
                 device_id=f"win-{target_type}-{secrets.token_hex(6)}",
                 device_type=schema_dev_type,
@@ -994,7 +994,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     parser = argparse.ArgumentParser(description="S0 (Sector Zero) Windows Native Forensic Sanitization Suite (Files, Partitions, Drives)")
-    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.4.3')}")
+    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.4.4')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument("--wipe-partition", help="Drive letter of secondary partition to wipe (e.g. D:, E:)")
     parser.add_argument("--wipe-drive", help="Physical drive path to wipe (e.g. \\\\.\\PhysicalDrive1 or disk number)")

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "version": "2.4.3",
+    "version": "2.4.4",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
     "documentation_url": "https://s0-docs.gitbook.io/",

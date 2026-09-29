@@ -675,7 +675,7 @@ def erase_batch(
                     organization=organization,
                     operator_id=operator_id,
                     tool_name="s0-erase",
-                    tool_version=CONFIG.get("version", "2.2.1"),
+                    tool_version=CONFIG.get("version", "2.4.4"),
                     platform="linux",
                     device_id=f"batch-files-{secrets.token_hex(8)}",
                     device_type="internal_disk",

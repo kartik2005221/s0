@@ -33,6 +33,7 @@ sys.path.insert(0, str(REPO_ROOT / "core" / "python"))
 sys.path.insert(0, str(REPO_ROOT / "linux" / "cli"))
 
 from s0_core import canonical, certificate, crypto
+from s0_core.config import CONFIG
 from s0_cli.audit import (
     AuditBlock,
     init_audit_db,
@@ -121,7 +122,7 @@ def bench_ed25519(iterations: int = 500) -> dict:
         organization="Benchmark Lab",
         operator_id="op-bench",
         tool_name="s0-bench",
-        tool_version="2.2.1",
+        tool_version=CONFIG.get("version", "2.4.4"),
         platform=sys.platform,
         device_id="bench-dev-01",
         device_type="image_file",
@@ -183,7 +184,7 @@ def bench_audit_ledger(block_count: int = 100) -> dict:
                 organization="Audit Bench Lab",
                 operator_id=f"op-audit-{i}",
                 tool_name="s0-bench",
-                tool_version="2.2.1",
+                tool_version=CONFIG.get("version", "2.4.4"),
                 platform="linux",
                 device_id=f"drive-bench-{i}",
                 device_type="image_file",

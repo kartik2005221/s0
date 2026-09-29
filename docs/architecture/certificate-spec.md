@@ -155,7 +155,7 @@ Below is an authentic certificate issued following an NVMe Purge operation:
   },
   "tool": {
     "name": "s0",
-    "version": "2.4.3",
+    "version": "2.4.4",
     "platform": "linux",
     "os_kernel": "Linux 6.8.0-generic x86_64"
   },

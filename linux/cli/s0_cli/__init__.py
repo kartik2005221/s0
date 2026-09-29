@@ -8,9 +8,9 @@ if (_repo_root / "windows").is_dir() and str(_repo_root) not in sys.path:
 
 try:
     from s0_core.config import CONFIG
-    __version__ = CONFIG.get("version", "2.4.3")
+    __version__ = CONFIG.get("version", "2.4.4")
 except ImportError:
-    __version__ = "2.4.3"
+    __version__ = "2.4.4"
 
 
 def _get_git_commit() -> str:
