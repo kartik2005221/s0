@@ -252,6 +252,7 @@ def erase_single_file(
     pattern: str = "zero",
     chunk_size: int = 65536,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    force: bool = False,
 ) -> FileEraseResult:
     if pattern not in ("zero", "random"):
         return FileEraseResult(
@@ -379,6 +380,18 @@ def erase_single_file(
                 error="Target is not a regular file; refusing to erase",
             )
 
+        if st.st_nlink > 1 and not force:
+            os.close(raw_fd)
+            return FileEraseResult(
+                path=path_str,
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=f"File has {st.st_nlink} hard links; overwriting will destroy data across all links without removing them. Use --force to proceed.",
+            )
+
         # Safely clear locks/xattrs using verified file descriptor (fchmod, no symlink following)
         platform_cleanse_attributes(path_str, fd=raw_fd)
 
@@ -440,15 +453,45 @@ def erase_single_file(
         except Exception:
             pass
 
-        # 3. Directory entry scrubbing: rename to random name before unlinking
+        # 3. Directory entry scrubbing: multi-pass exact-length rename before unlinking
+        # to overwrite directory block slack space in-place (especially on ext4)
+        orig_len = max(1, len(path_obj.name))
         parent_dir = path_obj.parent
-        random_name = parent_dir / f".tw_del_{secrets.token_hex(16)}"
+        current_path = path_obj
+
+        for _ in range(3):
+            scrub_name = secrets.token_hex((orig_len + 1) // 2)[:orig_len]
+            target_path = parent_dir / scrub_name
+            try:
+                os.rename(current_path, target_path)
+                current_path = target_path
+            except Exception:
+                break
+
+        random_name = parent_dir / f".s0_del_{secrets.token_hex(8)}"
         try:
-            os.rename(path_str, random_name)
-            os.unlink(random_name)
+            os.rename(current_path, random_name)
+            current_path = random_name
         except Exception:
-            # Fallback to direct unlink if rename fails (e.g. read-only parent)
-            os.unlink(path_str)
+            pass
+
+        try:
+            os.unlink(current_path)
+            if sys.platform != "win32":
+                try:
+                    parent_fd = os.open(str(parent_dir), os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+                    try:
+                        os.fsync(parent_fd)
+                    finally:
+                        os.close(parent_fd)
+                except Exception:
+                    pass
+        except Exception:
+            # Fallback to direct unlink if needed
+            try:
+                os.unlink(path_str)
+            except Exception:
+                pass
 
         # 4. Post-erase verification: file must not exist
         if path_obj.exists():
@@ -499,6 +542,7 @@ def erase_folder(
     passes: int = 1,
     pattern: str = "zero",
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    force: bool = False,
 ) -> List[FileEraseResult]:
     """Recursively sanitize all files and scrub directories in a folder."""
     if pattern not in ("zero", "random"):
@@ -524,7 +568,7 @@ def erase_folder(
         for f in files:
             file_p = os.path.join(root, f)
             res = erase_single_file(
-                file_p, passes=passes, pattern=pattern, progress_callback=progress_callback
+                file_p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force
             )
             results.append(res)
 
@@ -578,6 +622,7 @@ def erase_batch(
     signing_key_path: Optional[str | Path] = None,
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
     generate_certificate: bool = True,
+    force: bool = False,
 ) -> BatchEraseSummary:
     """Execute batch file & folder erasure and generate an Ed25519-signed certificate."""
     if pattern not in ("zero", "random"):
@@ -589,12 +634,12 @@ def erase_batch(
         p = Path(t).resolve()
         if p.is_dir():
             dir_res = erase_folder(
-                p, passes=passes, pattern=pattern, progress_callback=progress_callback
+                p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force
             )
             all_results.extend(dir_res)
         else:
             file_res = erase_single_file(
-                p, passes=passes, pattern=pattern, progress_callback=progress_callback
+                p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force
             )
             all_results.append(file_res)
 

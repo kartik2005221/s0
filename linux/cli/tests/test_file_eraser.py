@@ -147,3 +147,28 @@ def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
     rc2 = s0_main(["wipe", "--target", str(target2), "--out-dir", str(out_dir)])
     assert rc2 == 0
     assert not target2.exists()
+
+
+def test_erase_hardlink_safety(tmp_path):
+    from s0_cli.file_eraser import erase_single_file
+
+    orig = tmp_path / "original.txt"
+    orig.write_bytes(b"SHARED HARDLINK DATA")
+
+    link = tmp_path / "hardlink.txt"
+    os.link(orig, link)
+
+    assert orig.stat().st_nlink == 2
+
+    # 1. Refuse erasure without --force
+    res = erase_single_file(orig, force=False)
+    assert res.status == "failure"
+    assert "hard links" in res.error
+    assert orig.exists()
+    assert link.exists()
+
+    # 2. Allow with force=True
+    res_force = erase_single_file(orig, force=True)
+    assert res_force.status == "success"
+    assert not orig.exists()
+

@@ -52,6 +52,7 @@ class ImagingOptions:
     key_path: Optional[str | Path] = None
     no_certificate: bool = False
     out_dir: str = "."
+    force: bool = False
 
 
 @dataclass
@@ -151,6 +152,10 @@ def acquire_image(
         # Destination is a regular file
         out_parent = dst_p.parent.resolve()
         out_parent.mkdir(parents=True, exist_ok=True)
+        if dst_p.is_symlink():
+            raise SafetyError(f"Refusing to write image to symbolic link: {dst_p}")
+        if dst_p.exists() and not getattr(options, "force", False):
+            raise SafetyError(f"Destination image file {dst_p} already exists. Use --force to overwrite.")
         # Check free disk space if capacity is known
         if src_capacity > 0:
             try:
@@ -180,7 +185,18 @@ def acquire_image(
     dst_f = None
     try:
         src_f = open(src_path, "rb")
-        dst_f = open(str(dst_p), "wb" if not is_clone else "r+b")
+        if not is_clone:
+            flags = os.O_WRONLY | os.O_CREAT
+            if sys.platform != "win32":
+                flags |= getattr(os, "O_NOFOLLOW", 0)
+            if not getattr(options, "force", False):
+                flags |= os.O_EXCL
+            else:
+                flags |= os.O_TRUNC
+            fd = os.open(str(dst_p), flags, 0o644)
+            dst_f = open(fd, "wb")
+        else:
+            dst_f = open(str(dst_p), "r+b")
 
         while True:
             current_offset = bytes_copied

@@ -899,6 +899,7 @@ def cmd_erase_files(args) -> int:
             signing_key_path=key_path,
             progress_callback=erase_progress_cb,
             generate_certificate=not getattr(args, "no_certificate", False),
+            force=getattr(args, "force", False),
         )
         if bar:
             bar.finish()
@@ -1106,7 +1107,7 @@ def cmd_carve(args) -> int:
 
 
 # --------------------------------------------------------------------------- #
-# Module 4: Hash-Chained Audit Ledger Subcommands
+# Hash-Chained Audit Ledger Subcommands
 # --------------------------------------------------------------------------- #
 
 
@@ -1444,6 +1445,7 @@ def cmd_image(args) -> int:
         key_path=key_path,
         no_certificate=args.no_certificate,
         out_dir=args.out_dir,
+        force=getattr(args, "force", False),
     )
 
     print(f"[*] Source      : {args.source}")
@@ -1461,16 +1463,21 @@ def cmd_image(args) -> int:
         return 130
     print()
 
-    if not result.success:
+    if result.error:
         print(f"❌ ACQUISITION FAILED: {result.error}", file=sys.stderr)
         return 1
 
-    print("✅ FORENSIC ACQUISITION COMPLETED SUCCESSFULLY")
+    if result.bad_sectors_count > 0:
+        print(f"⚠  ACQUISITION COMPLETED WITH ERRORS ({result.bad_sectors_count} bad sectors zero-filled)", file=sys.stderr)
+    else:
+        print("✅ FORENSIC ACQUISITION COMPLETED SUCCESSFULLY")
+
     print(f"   Operation       : {'Drive Clone' if result.is_clone else 'Raw Bit-Stream Image'}")
     print(f"   Bytes Acquired  : {result.bytes_copied:,} bytes ({result.bytes_copied / (1024**3):.2f} GB)")
     print(f"   Duration        : {result.duration_seconds:.2f} seconds ({result.speed_mbps:.1f} MB/s)")
     print(f"   Bad Sectors     : {result.bad_sectors_count}")
-    print(f"   Source SHA-256  : {result.source_sha256}")
+    hash_label = "Image SHA-256 (with bad sectors zero-filled)" if result.bad_sectors_count > 0 else "Source SHA-256"
+    print(f"   {hash_label:<16}: {result.source_sha256}")
     print(f"   Source MD5      : {result.source_md5}")
     if result.manifest_path:
         print(f"   Manifest File   : {result.manifest_path}")
@@ -1797,6 +1804,7 @@ def build_parser() -> argparse.ArgumentParser:
         img.add_argument("--no-certificate", action="store_true", help="skip generating signed Ed25519 acquisition certificate")
         img.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
         img.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation when cloning to a physical disk")
+        img.add_argument("--force", action="store_true", help="overwrite destination image file if it already exists")
         img.set_defaults(func=cmd_image)
 
     # 9. Web Dashboard Subcommand

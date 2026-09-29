@@ -242,3 +242,34 @@ def test_cli_image_pdf_generation_and_no_pdf_flag(temp_workspace):
     assert len(pdfs_none) == 0, "Expected no PDF certificate when --no-pdf is specified"
 
 
+def test_image_destination_guards(temp_workspace):
+    from s0_cli.imager import ImagingOptions, acquire_image, SafetyError
+
+    src = temp_workspace / "guard_src.raw"
+    src.write_bytes(b"HELLO FORENSICS" * 100)
+
+    # 1. Destination already exists: fails without force
+    dst = temp_workspace / "existing_dst.raw"
+    dst.write_bytes(b"OLD DATA")
+    opt = ImagingOptions(source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=False)
+    with pytest.raises(SafetyError, match="already exists"):
+        acquire_image(opt)
+
+    # 2. Overwrite succeeds with force=True
+    opt_force = ImagingOptions(source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=True)
+    res = acquire_image(opt_force)
+    assert res.success is True
+    assert dst.read_bytes() == src.read_bytes()
+
+    # 3. Refuse destination if it is a symlink even with force
+    sym_dst = temp_workspace / "symlink_dst.raw"
+    target_f = temp_workspace / "symlink_target.raw"
+    target_f.write_bytes(b"TARGET")
+    sym_dst.symlink_to(target_f)
+
+    opt_sym = ImagingOptions(source=str(src), destination=str(sym_dst), out_dir=str(temp_workspace), no_certificate=True, force=True)
+    with pytest.raises(SafetyError, match="symbolic link"):
+        acquire_image(opt_sym)
+
+
+
