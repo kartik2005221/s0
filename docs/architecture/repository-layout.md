@@ -128,9 +128,32 @@ are genuinely platform-specific, so top level is honest for them.
 They are, however, a maintenance hazard: each contains its own copy of the
 signing and certificate logic, and for a tool that issues signed claims about
 device erasure, a second implementation of the signing path is a real custody
-risk. Collapsing them to thin launchers over `s0.wipe.planner` is tracked as
-follow-up work, not done here — it changes behaviour on two platforms that
-cannot be tested from this environment.
+risk. Collapsing them to thin launchers over `s0.wipe.planner` is deliberately
+**not** done here. It changes behaviour on two platforms that cannot be tested
+from this environment, so it needs its own decision, its own test plan and its
+own rollback — not to ride along in a layout commit. It is the first item of the
+remaining work.
+
+## `src/s0/platform/` is smaller than planned, on purpose
+
+The plan proposed `platform/linux.py`, `platform/windows.py` and
+`platform/macos.py` wrapping the ~60 `sys.platform` branches in `main.py`,
+`file_eraser.py`, `imager.py`, `live_manager.py`, `temperature.py` and
+`web/app.py`. That would be worse code. Those branches are small, local
+conditionals — `if sys.platform == "darwin"` — and each is already the simplest
+correct thing at its site. Behind a per-OS interface they gain a lookup and lose
+their context.
+
+What was genuinely duplicated was three rules, and they had already drifted:
+
+| Rule | Was | Now |
+|---|---|---|
+| `is_block_device` | 7 copies; macOS missed entirely, because `/dev/disk2` is a *character* device | `platform.is_block_device` |
+| Windows `physicaldrive` test | 3 copies, disagreeing on `//./` | `platform.is_windows_volume_path` |
+| Platform name for certificate metadata | 2 copies; the imager's reported FreeBSD as macOS | `platform.current` |
+
+So `s0/platform/` holds those three rules and nothing else. A new platform rule
+belongs here only if it is currently written out more than once.
 
 ## Verifying the layout
 
