@@ -356,3 +356,40 @@ def test_every_command_emits_a_clean_envelope(name, tmp_path, monkeypatch):
         assert doc["schema"] == f"s0.{name.split()[0]}/1"
         assert doc["status"] in ("success", "failure", "partial", "aborted", "refused")
         assert isinstance(doc["result"], (dict, list))
+
+
+def test_prose_column_is_cut_from_the_right_so_the_meaning_survives():
+    """A value that is not an identifier must keep its beginning.
+
+    Truncating "MFT + journal" from the left leaves "...al only", which names
+    nothing. Identifiers -- paths, digests -- are the opposite case and keep
+    their tail, which is what identifies them.
+    """
+    policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
+    render_table(policy, [Column("EVIDENCE", max_width=14, tail=False)],
+                 [["both structures"], ["journal only"]])
+    lines = policy.err_stream.getvalue().splitlines()
+    assert "EVIDENCE" in lines[0]
+    # 14 wide, so 11 characters plus the ellipsis, and the head of the value.
+    assert lines[2].strip() == "both struct..."
+
+
+def test_path_column_still_keeps_its_tail():
+    policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
+    render_table(policy, [Column("PATH", max_width=20)],
+                 [["/very/long/prefix/forever/carved_00001.png"]])
+    assert "carved_00001.png" in policy.err_stream.getvalue()
+
+
+def test_column_caption_is_never_ellipsised_away():
+    """A long value in one column must not squeeze a short caption to nothing."""
+    policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
+    render_table(
+        policy,
+        [Column("NAME", max_width=12), Column("EVIDENCE", max_width=13, tail=False)],
+        [["/a/very/long/path/indeed/name.txt", "both structures"]],
+    )
+    lines = policy.err_stream.getvalue().splitlines()
+    assert "EVIDENCE" in lines[0]
+    # 13 wide is 10 characters plus the ellipsis.
+    assert "both struc..." in lines[2]

@@ -20,7 +20,12 @@ from pathlib import Path
 import pytest
 
 from s0_cli.carver import mft
-from s0_cli.carver.ntfs_carver import parse_ntfs_boot_sector, scan_ntfs_deleted_records
+from s0_cli.carver import usn
+from s0_cli.carver.ntfs_carver import (
+    parse_ntfs_boot_sector,
+    read_usn_journal,
+    scan_ntfs_deleted_records,
+)
 
 SECTOR = 512
 REC = 1024
@@ -646,3 +651,273 @@ def test_non_ntfs_image_returns_nothing(tmp_path):
     other.write_bytes(b"\x00" * 8192)
     other.write_bytes(b"MSDOS5.0" + b"\x00" * 8184)
     assert scan_ntfs_deleted_records(other) == []
+
+
+# --------------------------------------------------------------------------- #
+# change journal
+# --------------------------------------------------------------------------- #
+
+
+def _journal_volume(tmp_path, records: list) -> Path:
+    """A volume whose $UsnJrnl:$J stream holds the given USN records.
+
+    The journal is located by scanning the MFT for a record named $UsnJrnl,
+    because it has no fixed record number -- and the stream is the *named* $J
+    attribute, not the default one, since $UsnJrnl also has a $Max and a $Chk.
+    """
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000000))],
+        extra_names=[b._attribute(0x30, "", b.file_name(".", (5, 1), 1700000000)),
+                     b._attribute(0x30, "", b.file_name("$Extend", (5, 1), 1700000000))],
+    )
+    journal = b"".join(records)
+    lcn = b.add_data(journal)
+    b.records[11] = b.record(
+        11, is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000000))],
+        extra_names=[b._attribute(0x30, "", b.file_name("$Extend", (5, 1), 1700000000)),
+                     b._attribute(0x30, "", b.file_name("..", (5, 1), 1700000000))],
+    )
+    b.records[30] = b.record(
+        30,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1700000000)),
+            b._attribute(0x30, "", b.file_name("$UsnJrnl", (11, 1), 1700000000)),
+            # All three streams of $UsnJrnl are *named*: $J holds the journal,
+            # $Max its configured size, $Chk a header. A reader that takes the
+            # first $DATA attribute, or the unnamed one, gets $Max or nothing.
+            b._attribute(0x80, "$J", journal,
+                         runs=[(lcn, -(-len(journal) // CLUSTER))]),
+            b._attribute(0x80, "$Max", b"\x01\x02\x03\x04", runs=[(lcn, 1)]),
+            b._attribute(0x80, "$Chk", b"\x05\x06\x07\x08", runs=[(lcn, 1)]),
+        ],
+    )
+    return b.write(tmp_path / "journal.img")
+
+
+def _usn(name: str, usn_value: int, timestamp: float, reason: int,
+         file_ref: int, parent_ref: int) -> bytes:
+    """A minimal USN_RECORD_V3, encoded the way Windows writes it."""
+    raw = name.encode("utf-16le")
+    # Records are 8-byte aligned in the journal, and RecordLength counts that
+    # padding, so the buffer has to be padded as well as the declared length.
+    length = (usn._V2_FIXED_LENGTH + len(raw) + 7) & ~7
+    out = bytearray(length)
+    struct.pack_into("<I", out, 0x00, length)
+    struct.pack_into("<H", out, 0x04, 3)                # major version
+    struct.pack_into("<H", out, 0x06, 0)                # minor version
+    struct.pack_into("<Q", out, 0x08, file_ref)
+    struct.pack_into("<Q", out, 0x10, parent_ref)
+    struct.pack_into("<Q", out, 0x18, usn_value)
+    struct.pack_into("<Q", out, 0x20, int((timestamp + 11644473600) * 10_000_000))
+    struct.pack_into("<I", out, 0x28, reason)
+    struct.pack_into("<I", out, 0x2C, 1)
+    struct.pack_into("<I", out, 0x30, 256)
+    struct.pack_into("<I", out, 0x34, 0x20)
+    struct.pack_into("<H", out, 0x38, len(raw))
+    struct.pack_into("<H", out, 0x3A, usn._V2_FIXED_LENGTH)
+    out[usn._V2_FIXED_LENGTH : usn._V2_FIXED_LENGTH + len(raw)] = raw
+    return bytes(out)
+
+
+def test_journal_is_found_by_name_and_read_in_usn_order(tmp_path):
+    img = _journal_volume(tmp_path, [
+        _usn("first.txt", 0x1000, 1_760_000_000.0, 0x100, 0x2A, 5),
+        _usn("second.txt", 0x2000, 1_760_000_100.0, 0x200, 0x2B, 5),
+    ])
+    w = []
+    records = read_usn_journal(img, warnings=w)
+    assert [r.name for r in records] == ["first.txt", "second.txt"]
+    assert [r.usn for r in records] == [0x1000, 0x2000]
+    assert w == []
+
+
+def test_only_the_j_stream_is_read_not_max_or_chk(tmp_path):
+    """$UsnJrnl has $Max and $Chk alongside $J, and only $J holds records.
+
+    Taking whichever data stream is found first, or the unnamed one, yields a
+    buffer that is not a journal at all.
+    """
+    img = _journal_volume(tmp_path, [
+        _usn("real.txt", 0x1000, 1_760_000_000.0, 0x100, 0x2A, 5),
+    ])
+    records = read_usn_journal(img)
+    assert [r.name for r in records] == ["real.txt"]
+
+
+def test_journal_reports_no_records_on_a_volume_without_one(tmp_path):
+    b = MftBuilder()
+    b.records[5] = b.record(5, is_dir=True,
+                            attributes=[b._attribute(0x10, "", b.standard_information(1700000000))])
+    w = []
+    assert read_usn_journal(b.write(tmp_path / "nojournal.img"), warnings=w) == []
+    assert any("no $UsnJrnl" in x or "No $UsnJrnl" in x for x in w), w
+
+
+def test_journal_timeline_reports_deletions_newest_first(tmp_path):
+    from s0_cli.carver.usn import build_timeline, summarize
+    img = _journal_volume(tmp_path, [
+        _usn("older.bin", 0x1000, 1_700_000_000.0, 0x200, 0x31, 5),
+        _usn("newest.bin", 0x4000, 1_760_000_000.0, 0x200, 0x32, 5),
+        _usn("middle.bin", 0x2000, 1_730_000_000.0, 0x200, 0x33, 5),
+    ])
+    timeline = build_timeline(read_usn_journal(img))
+    assert [e.name for e in timeline] == ["newest.bin", "middle.bin", "older.bin"]
+    assert summarize(timeline)["deleted"] == 3
+
+
+def test_journal_names_survive_when_the_mft_record_is_gone(tmp_path):
+    """The case record-level recovery cannot reach.
+
+    A file deleted, its MFT record reused, its clusters reused again: no MFT
+    evidence remains, but the journal still names it and dates the deletion.
+    """
+    from s0_cli.carver.usn import build_timeline
+    img = _journal_volume(tmp_path, [
+        _usn("gone-forever.docx", 0x1000, 1_760_003_600.0, 0x200, 0x99, 5),
+    ])
+    entries = build_timeline(read_usn_journal(img))
+    assert len(entries) == 1
+    assert entries[0].name == "gone-forever.docx"
+    assert entries[0].was_deleted
+    assert entries[0].deleted_at == pytest.approx(1_760_003_600, abs=1)
+    # Nothing in the MFT refers to it, which is the point.
+    from s0_cli.carver.ntfs_carver import scan_ntfs_deleted_records
+    assert all(e.name != "gone-forever.docx" for e in scan_ntfs_deleted_records(img))
+
+
+# --------------------------------------------------------------------------- #
+# journal evidence reaches the session report
+# --------------------------------------------------------------------------- #
+
+
+def test_session_reports_journal_names_separately_from_recovered_files(tmp_path):
+    """A name is evidence, not a recovered file, and must not be counted as one.
+
+    The journal holds names and times. It holds no file content, so a deleted
+    name from it is a lead worth recording -- but reporting it in
+    files_recovered would inflate the headline number with rows no bytes behind
+    them, which is the kind of thing that makes a recovery report untrustworthy.
+    """
+    from s0_cli.carver import carve_image
+    from s0_cli.carver.policy import CarvePolicy
+
+    img = _journal_volume(tmp_path, [
+        _usn("report.docx", 0x1000, 1_760_000_000.0, 0x100, 0x61, 5),
+        _usn("report.docx", 0x2000, 1_760_003_600.0, 0x200, 0x61, 5),
+    ])
+    policy = CarvePolicy.for_target(img.stat().st_size)
+    summary = carve_image(str(img), str(tmp_path / "out"), policy=policy,
+                          generate_certificate=False)
+
+    assert summary.deleted_names_from_journal, "the journal was not read"
+    row = next(r for r in summary.deleted_names_from_journal
+               if r["name"] == "report.docx")
+    assert row["was_deleted"] is True
+    assert row["deleted_at"] == pytest.approx(1_760_003_600, abs=1)
+    assert row["created_at"] == pytest.approx(1_760_000_000, abs=1)
+    assert row["content_recovered"] is False
+    # Nothing was written to disk for a name-only finding.
+    assert not list((tmp_path / "out").glob("*.docx"))
+    assert any("journal" in w.lower() for w in summary.warnings), summary.warnings
+
+
+def test_journal_name_corroborated_by_an_mft_record_is_flagged(tmp_path):
+    """A name in both the MFT and the journal is confirmed twice over."""
+    from s0_cli.carver import carve_image
+    from s0_cli.carver.policy import CarvePolicy
+
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000000))],
+        extra_names=[b._attribute(0x30, "", b.file_name(".", (5, 1), 1700000000))],
+    )
+    b.records[11] = b.record(
+        11, is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000000))],
+        extra_names=[b._attribute(0x30, "", b.file_name("$Extend", (5, 1), 1700000000)),
+                     b._attribute(0x30, "", b.file_name("..", (5, 1), 1700000000))],
+    )
+    journal = _usn("budget.xlsx", 0x3000, 1_760_005_000.0, 0x200, 0x62, 5)
+    jlcn = b.add_data(journal)
+    b.records[30] = b.record(
+        30,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1700000000)),
+            b._attribute(0x30, "", b.file_name("$UsnJrnl", (11, 1), 1700000000)),
+            b._attribute(0x80, "$J", journal, runs=[(jlcn, 1)]),
+        ],
+    )
+    # A deleted MFT record carrying the same name.
+    payload = b"PK\x03\x04" + b"spreadsheet content " * 40
+    plcn = b.add_data(payload)
+    b.records[42] = b.record(
+        42, allocated=False,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1750000000)),
+            b._attribute(0x30, "", b.file_name("budget.xlsx", (5, 1), 1750000000,
+                                              real_size=len(payload))),
+            b._attribute(0x80, "", payload, runs=[(plcn, -(-len(payload) // CLUSTER))]),
+        ],
+    )
+    img = b.write(tmp_path / "both.img")
+    policy = CarvePolicy.for_target(img.stat().st_size)
+    summary = carve_image(str(img), str(tmp_path / "out2"), policy=policy,
+                          generate_certificate=False)
+
+    row = next(r for r in summary.deleted_names_from_journal
+               if r["name"] == "budget.xlsx")
+    assert row["corroborated_by_mft"] is True
+    assert any(c.original_name == "budget.xlsx" for c in summary.carved_files)
+
+
+def test_volume_without_a_journal_says_so_rather_than_failing(tmp_path):
+    from s0_cli.carver import carve_image
+    from s0_cli.carver.policy import CarvePolicy
+
+    b = MftBuilder()
+    b.records[5] = b.record(5, is_dir=True,
+                            attributes=[b._attribute(0x10, "", b.standard_information(1700000000))])
+    img = b.write(tmp_path / "bare.img")
+    policy = CarvePolicy.for_target(img.stat().st_size)
+    summary = carve_image(str(img), str(tmp_path / "out3"), policy=policy,
+                          generate_certificate=False)
+    assert summary.deleted_names_from_journal == []
+    assert any("No $UsnJrnl" in w for w in summary.warnings), summary.warnings
+
+
+def test_cli_output_and_json_report_journal_names(tmp_path, capsys):
+    """The names have to reach the operator, in both output formats."""
+    import json
+    from s0_cli.main import main
+
+    img = _journal_volume(tmp_path, [
+        _usn("quarterly.xlsx", 0x1000, 1_760_000_000.0, 0x100, 0x71, 5),
+        _usn("quarterly.xlsx", 0x2000, 1_760_003_600.0, 0x200, 0x71, 5),
+    ])
+    out = tmp_path / "cli"
+    rc = main(["carve", "--target", str(img), "--out-dir", str(out),
+               "--no-pdf", "--no-color"])
+    assert rc == 0
+    # s0 writes human-facing output to stderr, not stdout; stdout is reserved
+    # for data so a pipeline can consume it.
+    text = capsys.readouterr()
+    combined = text.out + text.err
+    assert "quarterly.xlsx" in combined, combined[-2000:]
+    assert "change journal" in combined.lower()
+    assert "not included in the recovered count" in combined
+
+    rc = main(["carve", "--target", str(img), "--out-dir", str(out),
+               "--no-pdf", "--format", "json"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    result = payload["result"]
+    assert result["deleted_names_from_journal"], result.keys()
+    row = result["deleted_names_from_journal"][0]
+    assert row["name"] == "quarterly.xlsx"
+    assert row["was_deleted"] is True
+    assert row["content_recovered"] is False
+    assert row["deleted_at"] is not None

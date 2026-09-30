@@ -252,6 +252,10 @@ class Column:
     align: str = "l"                 # l | r
     max_width: Optional[int] = None
     min_width: int = 0
+    # True for identifiers, where an over-long value is cut from the left so the
+    # distinguishing tail survives. False for prose, which is cut from the right
+    # because its beginning is the part that carries the meaning.
+    tail: bool = True
 
 
 def render_table(policy: OutputPolicy, columns: Sequence[Column],
@@ -261,6 +265,11 @@ def render_table(policy: OutputPolicy, columns: Sequence[Column],
     Numeric columns are right-aligned, long paths are ellipsised from the left
     (the tail is what identifies a file), and the truncation notice follows the
     established "and N more" convention.
+
+    A cell that does not fit is cut from the *left* with a leading ellipsis, so
+    what survives is the end of the value. That is right for a path or a digest,
+    where the tail identifies the row, and wrong for prose like "MFT + journal",
+    where the tail is "al only" and tells the reader nothing.
     """
     rows = [[("" if c is None else str(c)) for c in row] for row in rows]
     truncated = 0
@@ -274,7 +283,14 @@ def render_table(policy: OutputPolicy, columns: Sequence[Column],
     for i, col in enumerate(columns):
         longest = max([len(col.title)] + [len(r[i]) for r in rows])
         if col.max_width:
-            longest = min(longest, col.max_width)
+            # Size the column to what it can actually show. A column whose every
+            # value is over-long would otherwise be sized by the longest of them
+            # and then clipped back to max_width, leaving a strip too narrow to
+            # hold even the caption: "EVIDENCE" rendered as "...l only".
+            if all(_exceeds(r[i], col) for r in rows):
+                longest = col.max_width
+            else:
+                longest = min(longest, col.max_width)
         widths.append(max(col.min_width, longest))
 
     header = "  ".join(
@@ -285,11 +301,28 @@ def render_table(policy: OutputPolicy, columns: Sequence[Column],
     for row in rows:
         cells = []
         for value, col, w in zip(row, columns, widths):
-            value = _ellipsise_left(value, w) if col.align == "l" else _ellipsise_right(value, w)
+            if col.align == "l":
+                value = _ellipsise_left(value, w) if col.tail else _ellipsise_end(value, w)
+            else:
+                value = _ellipsise_right(value, w)
             cells.append(value.ljust(w) if col.align == "l" else value.rjust(w))
         policy.err("  " + "  ".join(cells))
     if truncated:
         policy.err(f"  ... and {truncated} more (see the machine-readable index or use --limit 0)")
+
+
+def _exceeds(value: str, col: Column) -> bool:
+    """True if this value cannot fit the column even at its maximum width."""
+    return bool(col.max_width) and len(value) > col.max_width
+
+
+def _ellipsise_end(value: str, width: int) -> str:
+    """Cut from the right, keeping the beginning of the value."""
+    if len(value) <= width:
+        return value
+    if width <= 3:
+        return value[:width]
+    return value[: width - 3] + "..."
 
 
 def _ellipsise_left(value: str, width: int) -> str:

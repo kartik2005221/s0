@@ -13,6 +13,7 @@ import os
 import struct
 
 from . import mft as mft_mod
+from . import usn as usn_mod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional
@@ -561,3 +562,94 @@ def scan_ntfs_deleted_records(
     # Newest deletion first, then by record number so the order is deterministic.
     out.sort(key=lambda e: (-(e.mft_changed or 0), e.record_num))
     return out
+
+
+# --------------------------------------------------------------------------- #
+# change journal
+# --------------------------------------------------------------------------- #
+
+
+def find_usn_journal(
+    fh,
+    boot: NtfsBootSector,
+    partition_offset: int,
+    records: Dict[int, "mft_mod.MftRecord"],
+) -> Optional[tuple]:
+    """Locate the $J data stream of $UsnJrnl, the NTFS change journal.
+
+    $UsnJrnl is a metadata file living in $Extend and is not at a fixed record
+    number, so it has to be found by name. It exists only once Windows has
+    written to the volume -- mkntfs does not create it, and neither does a volume
+    that has only ever been mounted read-only -- so its absence is normal and is
+    reported as such rather than as a failure.
+
+    The journal is sparse and enormously larger than the history it holds, so
+    only the extents the run list actually names are read.
+    """
+    target = None
+    for rec in records.values():
+        if rec.name() == "$UsnJrnl":
+            target = rec
+            break
+    if target is None:
+        return None
+
+    for attr in target.attributes:
+        if attr.type != mft_mod.ATTR_DATA or attr.name != "$J":
+            continue
+        if not attr.non_resident or not attr.runs:
+            continue
+        return attr.runs, attr.real_size
+    return None
+
+
+def read_usn_journal(
+    image_path: str | Path,
+    partition_offset: int = 0,
+    max_journal_bytes: int = 256 * 1024 * 1024,
+    max_records: int = 500_000,
+    warnings: Optional[List[str]] = None,
+) -> List["usn_mod.UsnRecord"]:
+    """Read the NTFS change journal, newest changes last, in USN order.
+
+    Returns an empty list when the volume has no journal, which is expected for
+    anything not written by Windows.
+    """
+    if warnings is None:
+        warnings = []
+    boot = parse_ntfs_boot_sector(image_path, partition_offset=partition_offset)
+    if not boot:
+        return []
+
+    try:
+        with open(image_path, "rb") as fh:
+            runs = _mft_extents(fh, boot, partition_offset)
+            if not runs:
+                return []
+            records: Dict[int, mft_mod.MftRecord] = {}
+            for buf in _iter_mft_records(fh, boot, partition_offset, runs):
+                if not buf or len(buf) < 48 or buf[:4] != mft_mod.MFT_RECORD_MAGIC:
+                    continue
+                rec = mft_mod.parse_mft_record(buf, sector_size=boot.bytes_per_sector)
+                if rec and rec.record_num not in records:
+                    records[rec.record_num] = rec
+
+            found = find_usn_journal(fh, boot, partition_offset, records)
+            if not found:
+                warnings.append(
+                    "No $UsnJrnl change journal was found on this volume. Windows "
+                    "creates one on first use; a volume that has never been written "
+                    "by Windows has none, and names of deleted files cannot be "
+                    "recovered from the journal.")
+                return []
+            run_list, real_size = found
+
+            budget = min(real_size or max_journal_bytes, max_journal_bytes)
+            spans = mft_mod.runs_to_byte_spans(run_list, boot.cluster_size, budget)
+            journal = mft_mod.read_data(spans, fh, partition_offset, budget)
+            if not journal:
+                return []
+            return usn_mod.parse_usn_journal(journal, max_records=max_records)
+    except Exception as exc:
+        warnings.append(f"NTFS change journal could not be read: {exc}")
+        return []

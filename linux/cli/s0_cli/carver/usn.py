@@ -70,6 +70,11 @@ REASON_FILE_DELETE = 0x00000200
 REASON_RENAME_OLD = 0x00001000
 REASON_RENAME_NEW = 0x00002000
 
+# The reasons that state something about a name coming into being or ceasing to.
+_NAMING_REASONS = frozenset({
+    "FILE_CREATE", "FILE_DELETE", "RENAME_OLD_NAME", "RENAME_NEW_NAME",
+})
+
 # Header offsets shared by all three versions.
 _OFF_RECORD_LENGTH = 0x00
 _OFF_MAJOR = 0x04
@@ -293,6 +298,17 @@ class UsnTimelineEntry:
     @property
     def last_seen_at(self) -> Optional[float]:
         return self.deleted_at or self.created_at
+
+    @property
+    def establishes_named_object(self) -> bool:
+        """True when a create, delete or rename was recorded for this name.
+
+        A run of data-overwrite entries says bytes changed inside a file that
+        already existed; it is not a statement that the name came into being or
+        ceased to exist, and listing those as recoveries would inflate the count
+        with every write the volume ever saw.
+        """
+        return any(r in _NAMING_REASONS for r in self.reasons)
 
 
 def parse_usn_journal(

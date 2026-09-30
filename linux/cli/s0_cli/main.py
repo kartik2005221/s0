@@ -1179,6 +1179,20 @@ def cmd_erase_files(args) -> int:
 # --------------------------------------------------------------------------- #
 
 
+def _iso(ts) -> str:
+    """Render a UNIX timestamp as UTC, or a dash when there is no trustworthy one.
+
+    A deletion time that is absent is reported as absent. Printing a sentinel as
+    1601 or as the year 30828 would put a false date in an evidence report.
+    """
+    if ts is None:
+        return "—"
+    try:
+        return datetime.fromtimestamp(float(ts), timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    except (OverflowError, OSError, ValueError):
+        return "—"
+
+
 def cmd_carve(args) -> int:
     """Recover deleted and unallocated files from an image, image file or device."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "carve")
@@ -1321,6 +1335,7 @@ def cmd_carve(args) -> int:
                 "by_recovery_method": summary.by_method,
                 "allocation_aware_search": summary.free_space is not None,
                 "free_space": summary.free_space,
+                "deleted_names_from_journal": summary.deleted_names_from_journal,
                 "allocated_candidates_skipped": summary.allocated_candidates_skipped,
                 "allocated_bytes_skipped": summary.allocated_bytes_skipped,
                 "rejection_summary": [
@@ -1413,7 +1428,41 @@ def cmd_carve(args) -> int:
         ui.note("")
         ui.key("By category", ", ".join(f"{k}={v}" for k, v in sorted(summary.by_category.items())))
         ui.key("By method", ", ".join(f"{k}={v}" for k, v in sorted(summary.by_method.items())))
-    else:
+
+    if summary.deleted_names_from_journal:
+        rows = summary.deleted_names_from_journal
+        ui.note("")
+        ui.heading("Deleted names from the NTFS change journal")
+        ui.note(ui.status("info", (
+            f"{len(rows)} name(s). The journal records names and times, not "
+            f"content, so these are leads and not recovered files. They are "
+            f"not included in the recovered count above.")))
+        ui.table(
+            [
+                Column("DELETED NAME", max_width=34),
+                Column("PREVIOUS NAME", max_width=22),
+                Column("DELETED AT", align="r"),
+                Column("MFT ENTRY", align="r"),
+                # Prose, not an identifier: the start of the value is the part
+                # that carries the meaning, so it is cut from the right.
+                Column("EVIDENCE", max_width=14, tail=False),
+            ],
+            [
+                [
+                    r["name"],
+                    r.get("renamed_from") or "—",
+                    _iso(r.get("deleted_at")),
+                    str(r.get("mft_entry", "—")),
+                    "both structures" if r.get("corroborated_by_mft") else "journal only",
+                ]
+                for r in rows[:20]
+            ],
+            max_rows=20,
+        )
+        if len(rows) > 20:
+            ui.note(f"  ... and {len(rows) - 20} more; see the recovery index.")
+
+    if not ranked:
         ui.note(ui.status("warn", "no file passed both boundary resolution and "
                                   "structural validation"))
         if summary.rejection_summary:

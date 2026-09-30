@@ -53,7 +53,8 @@ from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
 from .fragmentation import reconstruct_bifragment_stream
-from .ntfs_carver import scan_ntfs_deleted_records
+from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
+from .usn import build_timeline
 from .policy import CarveBudget, CarvePolicy
 from .scoring import calculate_shannon_entropy, score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, get_signature_by_ext, signature_from_dict, sniff
@@ -151,6 +152,11 @@ class CarvingSessionSummary:
     free_space: Optional[dict] = None
     allocated_candidates_skipped: int = 0
     allocated_bytes_skipped: int = 0
+    # Names and deletion times recovered from the NTFS change journal. These are
+    # evidence that a file existed, not recovered files: no bytes come from the
+    # journal, so they are counted and reported separately rather than added to
+    # files_recovered.
+    deleted_names_from_journal: List[dict] = field(default_factory=list)
 
     def recovery_rate_ppm(self) -> int:
         """Recovered bytes per million bytes scanned, in integer parts-per-million."""
@@ -262,17 +268,25 @@ def _recover_from_filesystem(
     warnings: List[str],
     counters: Dict[str, int],
     recovered_hashes: set,
-) -> List[CarvedFile]:
+) -> Tuple[List[CarvedFile], List[dict]]:
     """Recover deleted files from filesystem metadata.
 
     This is the highest-value path: the filesystem knows the real length, the
     real name and often the deletion timestamp. Results are emitted into the same
     budget so a large free-space sweep can never crowd them out.
+
+    Returns the recovered files and, separately, names recovered from the NTFS
+    change journal. The second list is not files: it is names and times for
+    objects whose content is not on the volume, and it is kept apart from the
+    first so a report cannot imply bytes were recovered from a name alone.
     """
     recovered: List[CarvedFile] = []
+    timeline: List[dict] = []
     norm_exts = {e.lower().lstrip(".") for e in extensions} if extensions else None
+    names_seen: Dict[str, int] = {}
 
     for part_fs, part_offset in parts:
+        journal = None
         try:
             if part_fs == "ntfs":
                 entries = scan_ntfs_deleted_records(
@@ -296,6 +310,7 @@ def _recover_from_filesystem(
                         f"record(s) were named but not restorable; see the recovery index.")
                 if unrestorable:
                     counters["structure_filtered"] += len(unrestorable)
+                journal = _read_journal_evidence(target_p, part_offset, warnings)
             elif part_fs == "ext4":
                 found = [(i.inode_num, f"inode{i.inode_num}", i.data, i.fragment_count,
                           part_offset + (i.extent_block_ranges[0][0] * 1024 if i.extent_block_ranges else 0),
@@ -317,7 +332,20 @@ def _recover_from_filesystem(
 
         counters["structure_candidates"] += len(found)
 
+        # Note every name the filesystem offers before any filtering, and before
+        # the journal is compared against them. A name the journal also knows
+        # about is corroborated by two independent structures even if this run
+        # went on to exclude the file by extension -- that exclusion is the
+        # operator's choice, not a fact about the volume.
+        for _key, _name, _data, _frag, _off, _path, _at in found:
+            if _name:
+                names_seen.setdefault(str(_name), 0)
+
+        if journal is not None:
+            timeline += _merge_journal_evidence(journal, names_seen, warnings)
+
         for key, name, data, frag_count, offset, orig_path, deleted_at in found:
+            orig_name = str(name)
             if not data:
                 continue
             ext = Path(str(name)).suffix.lower().lstrip(".") or ""
@@ -329,6 +357,7 @@ def _recover_from_filesystem(
             if norm_exts and ext not in norm_exts:
                 counters["structure_filtered"] += 1
                 continue
+
 
             digest = hashlib.sha256(data).hexdigest()
             if digest in recovered_hashes:
@@ -389,8 +418,10 @@ def _recover_from_filesystem(
                 original_path=orig_path,
                 deleted_at=deleted_at,
             ))
+            if orig_name:
+                names_seen.setdefault(orig_name, 0)
             counters["bytes_recovered"] += len(data)
-    return recovered
+    return recovered, timeline
 
 
 def _generic_signature(ext: str, data: bytes) -> FileSignature:
@@ -835,10 +866,12 @@ def carve_image(
     all_files: List[CarvedFile] = []
 
     # ---- 1. filesystem-native recovery (highest evidentiary value) ----
+    journal_timeline: List[dict] = []
     if policy.structure_recovery_enabled:
-        all_files += _recover_from_filesystem(
+        all_files, journal_timeline = _recover_from_filesystem(
             target_p, out_p, parts, extensions, budget, warnings, counters, recovered_hashes
         )
+
 
     # ---- 2. signature carving ----
     active = list(custom_signatures or []) + list(SIGNATURES)
@@ -981,6 +1014,7 @@ def carve_image(
         free_space=free_space.summary() if free_space is not None else None,
         allocated_candidates_skipped=counters.get("allocated_candidates_skipped", 0),
         allocated_bytes_skipped=counters.get("allocated_bytes_skipped", 0),
+        deleted_names_from_journal=journal_timeline,
     )
 
     index_data = {
@@ -999,6 +1033,7 @@ def carve_image(
         "candidate_bytes_discarded": counters["rejected_bytes"],
         "duplicates_suppressed": counters["duplicate"],
         "filtered_by_extension_filter": counters["filtered"],
+        "deleted_names_from_journal": journal_timeline,
         "allocation_aware_search": free_space is not None,
         "free_space": free_space.summary() if free_space is not None else None,
         "allocated_candidates_skipped": counters.get("allocated_candidates_skipped", 0),
@@ -1044,3 +1079,75 @@ def carve_image(
         warnings.append(f"Could not write recovery_index.json: {exc}")
 
     return summary
+
+
+# --------------------------------------------------------------------------- #
+# NTFS change journal as corroborating name evidence
+# --------------------------------------------------------------------------- #
+
+
+def _read_journal_evidence(target_p: Path, part_offset: int,
+                           warnings: List[str]) -> Optional[List]:
+    """Read the NTFS change journal, if this partition has one.
+
+    The journal is a separate kind of evidence from the MFT: it names files whose
+    records are gone, and dates the deletion. It is reported alongside the
+    recovered artifacts rather than written out, because a name is not a file --
+    but a name with a deletion time, and no other source, is often the only
+    evidence left that a document ever existed.
+    """
+    try:
+        records = read_usn_journal(target_p, partition_offset=part_offset,
+                                   warnings=warnings)
+    except Exception as exc:
+        warnings.append(f"NTFS change journal could not be read: {exc}")
+        return None
+    if not records:
+        return None
+    return build_timeline(records)
+
+
+def _merge_journal_evidence(timeline: List, names_seen: Dict[str, int],
+                            warnings: List[str]) -> List[dict]:
+    """Record which journal names are new, and how many corroborated the MFT.
+
+    A name that appears both in a deleted MFT record and in the journal is
+    corroborated by two independent on-disk structures, which is worth stating.
+    A name that appears only in the journal had its record reused or zeroed, and
+    that distinction is the whole reason the journal is read.
+    """
+    rows: List[dict] = []
+    for entry in timeline:
+        if not entry.name or entry.name in (".", ".."):
+            continue
+        if not entry.establishes_named_object:
+            continue
+        corroborated = entry.name in names_seen
+        names_seen.setdefault(entry.name, entry.event_count)
+        rows.append({
+            "name": entry.name,
+            "mft_entry": entry.mft_entry,
+            "parent_mft_entry": entry.parent_mft_entry,
+            "created_at": entry.created_at,
+            "deleted_at": entry.deleted_at,
+            "was_deleted": entry.was_deleted,
+            "renamed_from": entry.renamed_from,
+            "is_directory": entry.is_directory,
+            "event_count": entry.event_count,
+            "reasons": entry.reasons,
+            "last_usn": entry.last_usn,
+            "corroborated_by_mft": corroborated,
+            "content_recovered": False,
+        })
+    if rows:
+        matched = sum(1 for r in rows if r["corroborated_by_mft"])
+        only = len(rows) - matched
+        detail = (f"{matched} corroborated by an MFT record" if matched else "")
+        if only:
+            detail += (f"; {only} named by the journal alone" if detail else
+                       f"{only} named by the journal alone")
+        warnings.append(
+            f"NTFS change journal: {len(rows)} deleted name(s) recovered, {detail}. "
+            f"These are names and times only -- the content of a journal-named file "
+            f"is not itself in the journal, so no bytes are recovered from it.")
+    return rows
