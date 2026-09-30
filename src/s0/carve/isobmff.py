@@ -48,6 +48,9 @@ __all__ = [
     "is_fragmented",
     "remap_chunk_offsets",
     "chunk_extents",
+    "Reassembly",
+    "Fragment",
+    "reassemble_two_fragment",
     "CONTAINER_BOXES",
 ]
 
@@ -713,3 +716,183 @@ def _find_child(buf: bytes, start: int, end: int, box_type: bytes) -> Optional[B
     for bx in _iter_children(buf, start, end, box_type):
         return bx
     return None
+
+
+# --------------------------------------------------------------------------- #
+# Two-fragment reassembly
+# --------------------------------------------------------------------------- #
+
+@dataclass
+class Fragment:
+    """One physically contiguous piece of a reconstructed file.
+
+    ``file_offset`` is where these bytes belong inside the recovered file;
+    ``image_offset`` is where they actually are in the evidence. Keeping both is
+    what makes the reconstruction auditable: an examiner can be told exactly
+    which bytes of the image produced which bytes of the file, and what was
+    between them.
+    """
+
+    file_offset: int
+    image_offset: int
+    length: int
+    label: str
+
+
+@dataclass
+class Reassembly:
+    """A file rebuilt from fragments that were not adjacent in the image."""
+
+    payload: bytes
+    fragments: List[Fragment]
+    notes: List[str]
+
+    @property
+    def gap_bytes(self) -> int:
+        """Bytes of unrelated evidence *in the image* between the fragments.
+
+        Measured in image space, not file space. In the reconstructed file the
+        fragments are adjacent by construction -- that is the whole point -- so
+        a file-space measurement is always zero and says nothing.
+        """
+        if len(self.fragments) < 2:
+            return 0
+        f = sorted(self.fragments, key=lambda fr: fr.image_offset)
+        return max(0, f[-1].image_offset - (f[0].image_offset + f[0].length))
+
+
+def reassemble_two_fragment(source, start: int, table: SampleTable,
+                            image_size: int, search_limit: int) -> Optional[Reassembly]:
+    """Rebuild a camera-style fragmented MP4 from its two physical fragments.
+
+    The shape this handles is the one every camera card actually produces, and
+    the one PhotoRec's own documentation describes but leaves as a manual
+    ``cat file2_ftyp.mov file1_mdat.mov``:
+
+        image:  [ftyp][moov]  ......unrelated evidence......  [mdat][payload]
+        file:   [ftyp][moov][mdat][payload]
+
+    The two fragments were once adjacent, so **concatenating them reproduces the
+    original file exactly** and every ``stco``/``co64`` offset is already
+    correct. Nothing has to be rewritten, and no gap has to be filled with
+    invented bytes. That is what makes this preferable to the alternative of
+    padding the hole to keep the original offsets.
+
+    Not handled: fragmentation *within* the media, a split index fragment, or
+    three or more pieces. Those are real and unsolved; see the module docstring.
+
+    Returns ``None`` when the evidence does not fit this shape, so the caller
+    falls back to a contiguous carve unchanged.
+    """
+    if table.fragmented or not table.tracks:
+        return None
+    t = max(table.tracks, key=lambda tr: tr.sample_count)
+    if not t.chunk_offsets:
+        return None
+    media_len = t.media_end - t.media_start
+    if media_len <= 0:
+        return None
+
+    # The index fragment runs from the file start to the end of the last
+    # top-level box before the mdat. "Last box" is not necessarily the moov:
+    # ffmpeg's faststart muxer emits a `free` padding box between them, and
+    # skipping it would put the mdat anchor one box too early.
+    ftyp = moov = None
+    index_end = start
+    for box in _iter_top_level(source, start, min(image_size, start + (1 << 26))):
+        if box.type == b"mdat":
+            break
+        if box.type == b"ftyp":
+            ftyp = box
+        elif box.type == b"moov":
+            moov = box
+        index_end = box.start + box.size
+    if ftyp is None or moov is None or index_end <= start:
+        return None
+
+    # The decisive consistency check: the table must say the media begins
+    # immediately after the index, because that is what "two adjacent fragments
+    # that were once one file" means. If the media starts somewhere else inside
+    # the file, this is a different kind of damage and must not be guessed at.
+    if t.media_start != (index_end - start) + 8:
+        return None
+
+    head = source.read(start, index_end - start)
+    if len(head) < index_end - start:
+        return None
+
+    # Find the mdat box that belongs to this file: its declared payload length
+    # must be the media length the table predicts, so the box size must be
+    # exactly media_len + 8 (or +16 for a 64-bit extended size).
+    limit = min(search_limit, image_size)
+    probe = source.read_until(b"mdat", index_end, limit - index_end)
+    anchor = None
+    while probe != -1:
+        box_start = probe - 4
+        raw = source.read(box_start, 8)
+        if len(raw) == 8:
+            size = struct.unpack_from(">I", raw, 0)[0]
+            header = 8
+            if size == 1:
+                ext = source.read(box_start + 8, 8)
+                if len(ext) == 8:
+                    size = struct.unpack(">Q", ext)[0]
+                    header = 16
+            if size >= header and size - header == media_len and box_start + size <= image_size:
+                anchor = (box_start, size)
+                break
+        probe = source.read_until(b"mdat", probe + 4, limit - (probe + 4))
+    if anchor is None:
+        return None
+
+    box_start, size = anchor
+    if box_start == index_end:
+        # The mdat already follows the index: the file is contiguous and needs
+        # no reassembly. Saying so lets the caller skip the work entirely.
+        return None
+    body = source.read(box_start, size)
+    if len(body) != size:
+        return None
+
+    payload = head + body
+    fragments = [
+        Fragment(file_offset=0, image_offset=start,
+                 length=index_end - start, label="index (ftyp + moov)"),
+        Fragment(file_offset=index_end - start, image_offset=box_start,
+                 length=size, label="media (mdat)"),
+    ]
+    gap = box_start - index_end
+    notes = [
+        f"reassembled from 2 physically separate fragments: index at image offset "
+        f"{start} ({index_end - start} B) and media at image offset {box_start} "
+        f"({size} B), with {gap} B of unrelated evidence between them",
+        f"the mdat payload length matches the sample table exactly ({media_len} B), "
+        "so the two fragments were once adjacent and no offset rewrite is needed",
+        f"recovered original: track {t.track_id}, {t.sample_count} sample(s) in "
+        f"{len(t.chunk_offsets)} chunk(s)",
+    ]
+    return Reassembly(payload=payload, fragments=fragments, notes=notes)
+
+
+def _iter_top_level(source, start: int, end: int) -> Iterator["BoxHeader"]:
+    """Yield top-level boxes by walking sizes forward from ``start``."""
+    pos = start
+    while pos + 8 <= end:
+        head = source.read(pos, 8)
+        if len(head) < 8:
+            return
+        size = struct.unpack_from(">I", head, 0)[0]
+        btype = head[4:8]
+        header = 8
+        if size == 1:
+            ext = source.read(pos + 8, 8)
+            if len(ext) < 8:
+                return
+            size = struct.unpack(">Q", ext)[0]
+            header = 16
+        elif size == 0:
+            size = end - pos
+        if size < header or size >= _MAX_BOX_SIZE or pos + size > end:
+            return
+        yield BoxHeader(btype, pos, header, size)
+        pos += size

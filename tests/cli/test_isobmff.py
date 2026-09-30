@@ -687,7 +687,7 @@ class TestCarverIntegration:
         image = tmp_path / "img.raw"
         image.write_bytes(bytes(blob))
         files = _carve(image, tmp_path / "out")
-        assert [f for f in files if f.suffix in ("mp4", "mov", "m4v")] == []
+        assert [f for f in files if f.suffix in (".mp4", ".mov", ".m4v")] == []
 
 
 class TestSignatureModel:
@@ -721,3 +721,165 @@ class TestSignatureModel:
         meant a signature match with no correct validator behind it."""
         from s0.carve.signatures import SIGNATURES
         assert not [s for s in SIGNATURES if s.extension in ("mkv", "webm")]
+
+
+# --------------------------------------------------------------------------- #
+# Two-fragment reassembly
+# --------------------------------------------------------------------------- #
+
+def _split_at_mdat(data: bytes):
+    """Split a faststart MP4 into [ftyp][moov] and [mdat][payload]."""
+    at = data.index(b"mdat") - 4
+    return data[:at], data[at:]
+
+
+class _ImageSource:
+    """Minimal ByteSource-alike over a bytes image, for the reassembler."""
+
+    def __init__(self, data: bytes):
+        self._data = data
+        self.size = len(data)
+
+    def read(self, offset: int, length: int) -> bytes:
+        if offset < 0 or offset >= len(self._data):
+            return b""
+        return self._data[offset:offset + length]
+
+    def read_until(self, needle: bytes, start: int, limit: int) -> int:
+        idx = self._data.find(needle, start, start + limit)
+        return -1 if idx == -1 else idx
+
+    def rfind_near(self, needle: bytes, end: int, limit: int) -> int:
+        lo = max(0, end - limit)
+        idx = self._data.rfind(needle, lo, end)
+        return -1 if idx == -1 else idx
+
+
+@pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
+class TestTwoFragmentReassembly:
+    def _make_fragmented_image(self, tmp_path, filler=b"\xa5" * 4096, name="frag.mp4"):
+        src = _encode(tmp_path, name, "-movflags", "+faststart")
+        whole = src.read_bytes()
+        index_part, media_part = _split_at_mdat(whole)
+        image = filler + index_part + filler + media_part
+        return whole, index_part, media_part, image
+
+    def test_rebuilds_the_original_file_byte_for_byte(self, tmp_path):
+        whole, index_part, media_part, image = self._make_fragmented_image(tmp_path)
+        source = _ImageSource(image)
+        # The ftyp sits after the leading filler.
+        ftyp_at = image.index(b"ftyp") - 4
+
+        table = isobmff.parse_moov(whole, 0)
+        ok, why = table.validate(len(whole))
+        assert ok, why
+
+        r = isobmff.reassemble_two_fragment(source, ftyp_at, table,
+                                           len(image), len(image))
+        assert r is not None, "the two-fragment shape was not recognised"
+        assert r.payload == whole, "reassembled file differs from the original"
+        assert len(r.fragments) == 2
+        assert r.gap_bytes == 4096, r.gap_bytes
+
+    def test_records_where_every_byte_came_from(self, tmp_path):
+        whole, index_part, media_part, image = self._make_fragmented_image(tmp_path)
+        source = _ImageSource(image)
+        ftyp_at = image.index(b"ftyp") - 4
+        table = isobmff.parse_moov(whole, 0)
+        table.validate(len(whole))
+
+        r = isobmff.reassemble_two_fragment(source, ftyp_at, table, len(image), len(image))
+        assert r is not None
+        for fr in r.fragments:
+            assert fr.image_offset >= 0
+            assert fr.length > 0
+            # Each fragment's image bytes must be exactly what the file got.
+            assert r.payload[fr.file_offset:fr.file_offset + fr.length] \
+                == image[fr.image_offset:fr.image_offset + fr.length]
+
+    def test_a_contiguous_file_needs_no_reassembly(self, tmp_path):
+        """The normal case must not be disturbed."""
+        whole = _encode(tmp_path, "whole.mp4", "-movflags", "+faststart").read_bytes()
+        source = _ImageSource(whole)
+        table = isobmff.parse_moov(whole, 0)
+        table.validate(len(whole))
+        assert isobmff.reassemble_two_fragment(source, 0, table, len(whole), len(whole)) is None
+
+    def test_refuses_when_the_media_does_not_follow_the_index(self, tmp_path):
+        """Guessing here would be worse than not recovering.
+
+        If the table places the media somewhere other than immediately after the
+        index, the file is damaged in a way this function does not model.
+        """
+        whole = _encode(tmp_path, "odd.mp4", "-movflags", "+faststart").read_bytes()
+        table = isobmff.parse_moov(whole, 0)
+        table.validate(len(whole))
+        table.tracks[0].chunk_offsets = [v + 4096 for v in table.tracks[0].chunk_offsets]
+        image = b"\xa5" * 64 + whole
+        source = _ImageSource(image)
+        assert isobmff.reassemble_two_fragment(source, 64, table, len(image), len(image)) is None
+
+    def test_refuses_when_no_mdat_of_the_right_length_exists(self, tmp_path):
+        whole, index_part, media_part, image = self._make_fragmented_image(tmp_path)
+        ftyp_at = image.index(b"ftyp") - 4
+        # An image holding only the index fragment: there is no mdat to find.
+        source = _ImageSource(image[:ftyp_at] + index_part)
+        table = isobmff.parse_moov(whole, 0)
+        table.validate(len(whole))
+        assert isobmff.reassemble_two_fragment(source, ftyp_at, table,
+                                               source.size, source.size) is None
+
+    def test_refuses_a_fragmented_mp4(self, tmp_path):
+        moov = box(b"moov", box(b"mvex", box(b"trex", b"\0" * 24)) + box(b"trak", b""))
+        data = box(b"ftyp", b"isom" + b"\0" * 8) + moov
+        table = isobmff.parse_moov(data, 0)
+        assert isobmff.reassemble_two_fragment(_ImageSource(data), 0, table,
+                                               len(data), len(data)) is None
+
+
+@pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
+class TestReassemblyThroughTheCarver:
+    """The reassembler is useless unless the engine reaches it."""
+
+    def test_physically_split_mp4_is_recovered_from_the_image(self, tmp_path):
+        src = _encode(tmp_path, "split.mp4", "-movflags", "+faststart")
+        whole = src.read_bytes()
+        index_part, media_part = _split_at_mdat(whole)
+        filler = bytes([0xA5]) * 8192
+        image = filler + index_part + filler + media_part
+        img = tmp_path / "img.raw"
+        img.write_bytes(image)
+
+        files = _carve(img, tmp_path / "out")
+        mp4s = [f for f in files if f.suffix == ".mp4"]
+        assert len(mp4s) == 1, [f.name for f in files]
+        assert mp4s[0].read_bytes() == whole, \
+            "a physically split MP4 must be reassembled byte-exactly"
+
+    def test_the_recovery_report_shows_the_two_fragments(self, tmp_path):
+        import json
+        src = _encode(tmp_path, "split2.mp4", "-movflags", "+faststart")
+        whole = src.read_bytes()
+        index_part, media_part = _split_at_mdat(whole)
+        filler = bytes([0xA5]) * 4096
+        img = tmp_path / "img.raw"
+        img.write_bytes(filler + index_part + filler + media_part)
+
+        out = tmp_path / "out"
+        _carve(img, out)
+        rec = json.loads((out / "recovery_index.json").read_text())
+        assert rec["recovered_files"]
+        joined = " ".join(rec["recovered_files"][0]["heuristics"])
+        assert "reassembled from 2 physically separate fragments" in joined
+        assert "unrelated evidence between them" in joined
+
+    def test_a_contiguous_mp4_still_recovers_byte_exact(self, tmp_path):
+        """No regression on the ordinary path."""
+        src = _encode(tmp_path, "plain2.mp4", "-movflags", "+faststart")
+        whole = src.read_bytes()
+        img = tmp_path / "img.raw"
+        img.write_bytes(b"\x5a" * 4096 + whole + b"\x5a" * 4096)
+        files = _carve(img, tmp_path / "out")
+        mp4s = [f for f in files if f.suffix == ".mp4"]
+        assert len(mp4s) == 1
+        assert mp4s[0].read_bytes() == whole

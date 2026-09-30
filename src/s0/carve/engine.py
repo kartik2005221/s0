@@ -36,6 +36,7 @@ This engine fixes all of it:
 
 from __future__ import annotations
 
+import struct
 import hashlib
 import json
 import re
@@ -53,12 +54,11 @@ from .allocation import FreeSpaceMap, build_free_space
 from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
-from .fragmentation import reconstruct_bifragment_stream
 from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
 from .usn import build_timeline
 from .policy import CarveBudget, CarvePolicy
-from .scoring import calculate_shannon_entropy, score_carved_candidate
-from .signatures import SIGNATURES, FileSignature, get_signature_by_ext, signature_from_dict, sniff
+from .scoring import score_carved_candidate
+from .signatures import SIGNATURES, FileSignature, sniff
 
 # Recovery methods, in descending order of evidentiary value.
 METHOD_STRUCTURE = "filesystem_metadata"
@@ -735,6 +735,53 @@ def _scan_signatures(
     return carved
 
 
+#: Extensions whose container can be physically split across the image.
+_ISOBFMF_EXTENSIONS = frozenset({"mp4", "mov", "m4v", "heic", "avif"})
+
+
+#: How far past the index fragment to look for the media. A card that once held
+#: the file contiguously does not move the two fragments far apart, but this is a
+#: heuristic, not a proof, and it is reported when it binds.
+_REASSEMBLY_WINDOW = 256 * 1024 * 1024
+
+
+def _try_isobmff_reassembly(src: boundary.ByteSource, offset: int, max_size: int):
+    """Reassemble a physically fragmented ISO-BMFF file, if it is one.
+
+    Returns ``(payload, notes)`` or ``None``. ``None`` is returned for an
+    ordinary contiguous file, which is the common case and must not pay for the
+    search. Never raises: a carver that crashes on unexpected input is worse than
+    one that recovers less.
+    """
+    from s0.carve import isobmff
+
+    try:
+        moov = isobmff.find_box_in(src, offset, min(src.size, offset + max_size), b"moov")
+        if moov is None:
+            return None
+        table = isobmff.parse_moov(src.read(moov.start, moov.size), 0)
+        if table.fragmented or not table.tracks:
+            return None
+        t = max(table.tracks, key=lambda tr: tr.sample_count)
+        if not t.chunk_offsets or t.media_start <= 0:
+            return None
+
+        # Cheap, format-generic fragmentation test: an mdat box header must sit
+        # where the table says the media begins.
+        mdat_at = src.read(offset + t.media_start - 8, 8)
+        if len(mdat_at) == 8 and mdat_at[4:8] == b"mdat":
+            return None                       # contiguous; nothing to do
+
+        r = isobmff.reassemble_two_fragment(
+            src, offset, table, src.size,
+            min(src.size, offset + min(max_size, _REASSEMBLY_WINDOW)))
+    except (isobmff.BoxError, OSError, ValueError, struct.error):
+        return None
+    if r is None:
+        return None
+    return r.payload, r.notes
+
+
 def _carve_one(
     src: boundary.ByteSource,
     offset: int,
@@ -782,12 +829,24 @@ def _carve_one(
             RejectedCandidate(offset, ext, f"resolved {size} B is below the {sig.min_size} B minimum", "boundary"))
         return None
 
-    payload = src.read(offset, size)
-    if len(payload) < size:
-        counters["rejected"] += 1
-        counters["rejected_samples"].append(
-            RejectedCandidate(offset, ext, "file extends past end of target", "boundary"))
-        return None
+    payload = None
+    extra_notes: List[str] = []
+    if ext in _ISOBFMF_EXTENSIONS:
+        # A physically fragmented ISO-BMFF file is not detectable by its length:
+        # the index fragment plus whatever follows it adds up to the right size
+        # and fills with unrelated evidence, so a contiguous read looks fine.
+        # The test is whether the mdat header is where the sample table says the
+        # media begins. If it is not, the media is somewhere else on the device.
+        rebuilt = _try_isobmff_reassembly(src, offset, max_size)
+        if rebuilt is not None:
+            payload, extra_notes = rebuilt
+    if payload is None:
+        payload = src.read(offset, size)
+        if len(payload) < size:
+            counters["rejected"] += 1
+            counters["rejected_samples"].append(
+                RejectedCandidate(offset, ext, "file extends past end of target", "boundary"))
+            return None
 
     ok, reason = boundary.validate_structure(payload, ext)
     if not ok:
@@ -805,7 +864,10 @@ def _carve_one(
         sig, payload,
         has_valid_footer=(sig.footer is not None and sig.footer in payload),
         boundary_method=b.method,
-        boundary_notes=tuple(b.notes),
+        # Reassembly provenance is part of the evidence record: an examiner has
+        # to be able to see that the file was rebuilt from two fragments and how
+        # much unrelated evidence lay between them.
+        boundary_notes=tuple(b.notes) + tuple(extra_notes),
     )
     if score < min_confidence:
         counters["rejected"] += 1
