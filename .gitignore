@@ -42,3 +42,6 @@ verification-portal/tests/x*.pdf
 
 # Stray package downloads
 *.whl
+
+# Working plan: kept local and untracked by request
+docs/project/industry-plan.md
