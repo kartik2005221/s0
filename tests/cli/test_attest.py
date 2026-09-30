@@ -16,7 +16,6 @@ import pytest
 from s0.wipe import attest as A
 from s0.wipe.methods.nvme import parse_sanitize_log
 
-
 # --------------------------------------------------------------------------- #
 # The regression
 # --------------------------------------------------------------------------- #
