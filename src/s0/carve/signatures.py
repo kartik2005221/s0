@@ -187,6 +187,26 @@ SIGNATURES: List[FileSignature] = [
                   min_size=256, max_size=16 * _GB),
     FileSignature("MPEG Transport Stream", "ts", "video",
                   header=b"G", min_size=188, max_size=64 * _GB),
+    # Matroska and WebM share one 4-byte EBML magic, so one entry claims both
+    # extensions and the boundary walk reads the DocType to tell them apart. A
+    # 4-byte magic matters here: the DocType check does the real work, and a
+    # 2-byte prefilter on `\x1a\x45` would hand every such candidate to a walk
+    # that then reads 4 KiB to reject it.
+    # The DocType string sits in the EBML header, so `inbuilt` disambiguates the
+    # three extensions for the cost of one short compare, exactly as `AVI ` does
+    # for RIFF. Without it all three signatures match every EBML file and the
+    # first one in the table wins, so every WebM was being reported as `.mkv`.
+    # It doubles as a filter: magic-bearing noise with no DocType is now rejected
+    # in memory instead of costing a walk.
+    FileSignature("Matroska Video (EBML)", "mkv", "video",
+                  header=b"\x1a\x45\xdf\xa3", inbuilt=b"matroska",
+                  inbuilt_search_window=64, min_size=1024, max_size=64 * _GB),
+    FileSignature("WebM Video (EBML)", "webm", "video",
+                  header=b"\x1a\x45\xdf\xa3", inbuilt=b"webm",
+                  inbuilt_search_window=64, min_size=1024, max_size=64 * _GB),
+    FileSignature("Matroska Audio (EBML)", "mka", "audio",
+                  header=b"\x1a\x45\xdf\xa3", inbuilt=b"matroska",
+                  inbuilt_search_window=64, min_size=512, max_size=16 * _GB),
 
     # ---------------- executables & system ----------------
     FileSignature("ELF Executable", "elf", "executable",

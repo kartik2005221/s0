@@ -718,9 +718,27 @@ class TestSignatureModel:
 
     def test_matroska_is_not_claimed_as_mp4(self):
         """Matroska is EBML, not ISO-BMFF. Routing it through the MP4 walker
-        meant a signature match with no correct validator behind it."""
-        from s0.carve.signatures import SIGNATURES
-        assert not [s for s in SIGNATURES if s.extension in ("mkv", "webm")]
+        meant a signature match with no correct validator behind it.
+
+        Matroska now has its own signatures and its own boundary walk, so the
+        property to protect is narrower and more useful: the MP4 sniffer must
+        still not claim an EBML file, and the Matroska entries must not be
+        reachable through the MP4 rule.
+        """
+        from s0.carve.signatures import SIGNATURES, _SIGNATURES_BY_EXT, sniff
+        ebml = b"\x1a\x45\xdf\xa3"
+        # The MP4 sniffer keys on `ftyp`; EBML files have none, so a real
+        # Matroska header must not be reported as ISO-BMFF.
+        assert sniff(ebml + b"\xa3\x42\x86\x81\x01B\xf7\x81\x01" + b"\x00" * 64) is None
+        # And the extension must resolve to the Matroska boundary rule, not MP4's.
+        from s0.carve import boundary
+        assert boundary.has_boundary_rule("mkv")
+        assert boundary._BOUNDARY_RULES["mkv"] is boundary._BOUNDARY_RULES["webm"]
+        assert boundary._BOUNDARY_RULES["mkv"] is not boundary._BOUNDARY_RULES["mp4"]
+        # The entries exist, and are disambiguated by DocType rather than magic.
+        assert {s.extension for s in SIGNATURES} >= {"mkv", "webm"}
+        for ext, inbuilt in (("mkv", b"matroska"), ("webm", b"webm")):
+            assert _SIGNATURES_BY_EXT[ext][0].inbuilt == inbuilt
 
 
 # --------------------------------------------------------------------------- #

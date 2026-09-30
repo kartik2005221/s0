@@ -826,6 +826,37 @@ def _zip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     return Boundary(end, FOOTER_ANCHORED, notes)
 
 
+def _matroska_end(src: ByteSource, start: int, max_size: int) -> Boundary:
+    """Matroska/WebM: derive the end from the Segment, or from its clusters.
+
+    Unlike every other container here, Matroska has no total-length field, so
+    the end is a structural derivation. A muxer that knew the Segment's size
+    wrote it down; one that did not -- a streaming muxer, a growing recording --
+    left it unknown, and then the clusters' own sizes are the only evidence
+    available. Handling only the first case would recover nothing from a
+    fragmented recording, which is the case that matters most.
+
+    The walk reads element headers only, so the memory cost is independent of
+    how large the frames are.
+    """
+    limit = min(src.size, start + max_size)
+    if limit - start < 64:
+        return Boundary(None, UNDETERMINED, ["carve window too small for a Matroska header"])
+    try:
+        from . import matroska as _mk
+        end, notes, provenance = _mk.walk_end(src.read, start, limit)
+    except _mk.MatroskaError as exc:
+        return Boundary(None, UNDETERMINED, [f"Matroska walk failed: {exc}"])
+    if end is None:
+        return Boundary(None, UNDETERMINED, notes)
+    # The provenance comes from the walk itself. Inferring it from the note text
+    # would call a fragmented file "declared size" the moment a note happened to
+    # contain the word, which is the kind of small untruth that makes a report
+    # indefensible.
+    method = DECLARED_SIZE if provenance == _mk.DERIVED_FROM_DECLARED_SIZE else CONTAINER_WALK
+    return Boundary(end, method, notes)
+
+
 def _ogg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """Ogg: walk pages until the end-of-stream flag on a serial-consistent page."""
     limit = min(src.size, start + max_size)
@@ -1547,6 +1578,9 @@ _BOUNDARY_RULES: Dict[str, SignatureRule] = {
     "pdf": _pdf_end,
     "zip": _zip_end,
     "ogg": _ogg_end,
+    "mkv": _matroska_end,
+    "webm": _matroska_end,
+    "mka": _matroska_end,
     "flac": _flac_end,
     "mp4": _mp4_end,
     "mov": _mp4_end,
