@@ -13,6 +13,15 @@ EXT4_SUPERBLOCK_OFFSET = 1024
 EXT4_MAGIC = 0xEF53
 EXT4_EXTENT_HEADER_MAGIC = 0xF30A
 
+# s_journal_inum, at superblock offset 0xE0. The journal's inode is named here
+# rather than found by scanning: its superblock magic is a 32-bit constant that
+# occurs by chance in ordinary data, and a scanner that trusts it will confidently
+# read a journal out of a word of user data.
+EXT4_JOURNAL_INUM_OFFSET = 0xE0
+
+# Inodes 1-11 are reserved: bad blocks, root, lost+found, journal and friends.
+EXT4_RESERVED_INODES = 11
+
 
 @dataclass
 class Ext4Superblock:
@@ -26,6 +35,8 @@ class Ext4Superblock:
     first_data_block: int = 0
     desc_size: int = 32
     feature_incompat: int = 0
+    journal_inum: int = 8
+    magic_offset: int = 56
 
 
 @dataclass
@@ -69,6 +80,7 @@ def parse_ext4_superblock(
             desc_size = struct.unpack_from("<H", sb_data, 0xFE)[0]
             if not (feature_incompat & 0x80) or desc_size not in (32, 64):
                 desc_size = 32
+            journal_inum = struct.unpack_from("<I", sb_data, EXT4_JOURNAL_INUM_OFFSET)[0]
 
             return Ext4Superblock(
                 inodes_count=inodes_count,
@@ -81,6 +93,7 @@ def parse_ext4_superblock(
                 first_data_block=first_data_block,
                 desc_size=desc_size,
                 feature_incompat=feature_incompat,
+                journal_inum=journal_inum,
             )
     except Exception:
         return None
