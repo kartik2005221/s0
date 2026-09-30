@@ -387,6 +387,7 @@ def _recover_from_filesystem(
                 continue
 
 
+            start_at = offset if offset is not None else 0
             digest = hashlib.sha256(data).hexdigest()
             if digest in recovered_hashes:
                 counters["duplicate"] += 1
@@ -1329,6 +1330,15 @@ def carve_image(
                 "No forensic recovery manifest certificate was generated."
             )
 
+    # ---- 3b. drop findings nested inside another finding ----
+    # After both recovery paths, so the result does not depend on which
+    # of a nested pair happened to be found first.
+    all_files = drop_contained(all_files, counters, out_p)
+    if counters.get("contained"):
+        warnings.append(
+            f"{counters['contained']} candidate(s) lay inside an "
+            f"already-recovered extent and were not written a second time")
+
     # ---- 4. machine-readable index ----
     by_category: Dict[str, int] = {}
     for c in all_files:
@@ -1388,6 +1398,7 @@ def carve_image(
         "candidates_rejected": counters["rejected"],
         "candidate_bytes_discarded": counters["rejected_bytes"],
         "duplicates_suppressed": counters["duplicate"],
+        "contained_candidates_dropped": counters.get("contained", 0),
         "resumed_from_session": counters.get("resumed_from_session", 0),
 
         "filtered_by_extension_filter": counters["filtered"],
@@ -1449,6 +1460,70 @@ def carve_image(
 # --------------------------------------------------------------------------- #
 # NTFS change journal as corroborating name evidence
 # --------------------------------------------------------------------------- #
+
+
+def _is_contained(start: int, end: int, recovered) -> bool:
+    """True when ``[start, end)`` lies inside a range already recovered.
+
+    Two formats can nest, and then the inner one is found on its own: a JPEG
+    2000 file opens with a `ftyp` box naming the `jp2 ` brand, so the ISO-BMFF
+    walker reads a structurally valid box tree inside a file that has already
+    been recovered whole. The bytes are real and the box tree is valid, so
+    nothing is *wrong* -- but reporting them a second time as a separate file
+    puts the same bytes in the report twice under two names, and a count of
+    findings is a number an examiner will read.
+    """
+    for f in recovered:
+        low = f.offset if f.offset is not None else 0
+        if low <= start and end <= low + f.size_bytes:
+            return True
+    return False
+
+
+def drop_contained(all_files: List[CarvedFile], counters: Dict[str, int],
+                   out_p: Path) -> List[CarvedFile]:
+    """Remove findings whose bytes lie inside another finding's extent.
+
+    Two formats nest, and then the inner one is found on its own: a JPEG 2000
+    file opens with a `ftyp` box naming the `jp2 ` brand, so the ISO-BMFF walker
+    reads a structurally valid box tree inside a file that has already been
+    recovered whole. The bytes are real and the box tree is valid, so nothing is
+    *wrong* -- but reporting them again as a separate file puts the same bytes
+    in the report twice under two names, and a count of findings is a number an
+    examiner will read.
+
+    This has to be a post-pass rather than a check at write time. Which of the
+    two files is found first depends on scan order, and a check that consults
+    only what has already been written silently misses the inner file whenever
+    it happens to come first -- which is exactly the case that showed up.
+    """
+    spans = [(f.offset if f.offset is not None else 0, f.size_bytes, f)
+             for f in all_files if f.size_bytes > 0]
+    contained = set()
+    for i, (off_i, len_i, file_i) in enumerate(spans):
+        for j, (off_j, len_j, _file_j) in enumerate(spans):
+            if i == j or len_j <= 0:
+                continue
+            # Only drop the strictly smaller one, and only on an exact
+            # containment, so two files that merely overlap both survive.
+            if len_i < len_j and off_j <= off_i and off_i + len_i <= off_j + len_j:
+                contained.add(id(file_i))
+                break
+    if not contained:
+        return all_files
+    kept: List[CarvedFile] = []
+    for f in all_files:
+        if id(f) in contained:
+            counters["contained"] = counters.get("contained", 0) + 1
+            counters["rejected_bytes"] = counters.get("rejected_bytes", 0) + f.size_bytes
+            if f.recovered_path:
+                try:
+                    Path(f.recovered_path).unlink()
+                except OSError:
+                    pass
+            continue
+        kept.append(f)
+    return kept
 
 
 def _read_journal_evidence(target_p: Path, part_offset: int,

@@ -857,6 +857,37 @@ def _matroska_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     return Boundary(end, method, notes)
 
 
+def _containers_end(src: ByteSource, start: int, max_size: int, ext: str) -> Boundary:
+    """Size one of the container formats handled by :mod:`s0.carve.containers`.
+
+    Each of those formats had a signature and no way to establish a length, so
+    it was either carved to `max_size` -- emitting a file with unrelated evidence
+    glued to the end -- or refused outright. The resolver is handed the whole
+    carve window rather than a small read, because a structural walk may need to
+    reach past the first few kilobytes, but it only ever reads the bytes it
+    parses.
+    """
+    from . import containers
+
+    limit = min(src.size, start + max_size)
+    if limit - start < 32:
+        return Boundary(None, UNDETERMINED, ["carve window too small for a structural walk"])
+    try:
+        # Read once rather than seeking: these walks are sequential, and a
+        # ByteSource that re-seeks per field is measurably slower on a large
+        # window for no benefit.
+        window = src.read(start, limit - start)
+        end, notes = containers.resolve(ext, window, 0, len(window))
+    except containers.ResolveError as exc:
+        return Boundary(None, UNDETERMINED, [f"no defensible end for .{ext}: {exc}"])
+    except (struct.error, IndexError, ValueError, MemoryError) as exc:
+        return Boundary(None, UNDETERMINED, [f"structural walk for .{ext} failed: {exc}"])
+    method = DECOMPRESSED if ext in ("bz2", "xz", "lzma", "zst", "lz4") else CONTAINER_WALK
+    if end <= 0:
+        return Boundary(None, UNDETERMINED, [f"structural walk for .{ext} found no end"])
+    return Boundary(start + end, method, notes)
+
+
 def _ogg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """Ogg: walk pages until the end-of-stream flag on a serial-consistent page."""
     limit = min(src.size, start + max_size)
@@ -1577,6 +1608,18 @@ _BOUNDARY_RULES: Dict[str, SignatureRule] = {
     "gif": _gif_end,
     "pdf": _pdf_end,
     "zip": _zip_end,
+    "aiff": lambda src, start, mx, _e="aiff": _containers_end(src, start, mx, _e),
+    "mid": lambda src, start, mx, _e="mid": _containers_end(src, start, mx, _e),
+    "tiff": lambda src, start, mx, _e="tiff": _containers_end(src, start, mx, _e),
+    "jp2": lambda src, start, mx, _e="jp2": _containers_end(src, start, mx, _e),
+    "class": lambda src, start, mx, _e="class": _containers_end(src, start, mx, _e),
+    "rar": lambda src, start, mx, _e="rar": _containers_end(src, start, mx, _e),
+    "rtf": lambda src, start, mx, _e="rtf": _containers_end(src, start, mx, _e),
+    "dat": lambda src, start, mx, _e="dat": _containers_end(src, start, mx, _e),
+    "bz2": lambda src, start, mx, _e="bz2": _containers_end(src, start, mx, _e),
+    "xz": lambda src, start, mx, _e="xz": _containers_end(src, start, mx, _e),
+    "zst": lambda src, start, mx, _e="zst": _containers_end(src, start, mx, _e),
+    "lz4": lambda src, start, mx, _e="lz4": _containers_end(src, start, mx, _e),
     "ogg": _ogg_end,
     "mkv": _matroska_end,
     "webm": _matroska_end,
