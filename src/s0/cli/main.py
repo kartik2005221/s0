@@ -67,6 +67,7 @@ if threading.current_thread() is threading.main_thread():
         pass
 
 from s0 import certificate as cert_mod
+from s0 import platform
 from s0 import resources
 from s0.config import CONFIG
 from s0.terminal import EX_CANTCREAT, EX_CONFIG, EX_DATAERR, EX_FAILURE, \
@@ -230,7 +231,8 @@ def resolve_target(path: str) -> DevTarget:
                 pass
             return DevTarget(path=path, kind="block", capacity_bytes=sz, storage_type="UNKNOWN")
 
-    if sys.platform != "win32" and ((":" in path and len(path.strip()) <= 3) or path.startswith("\\\\.\\") or "physicaldrive" in path.lower()):
+    if sys.platform != "win32" and (platform.looks_like_windows_volume_letter(path)
+                                    or platform.is_windows_volume_path(path)):
         os_name = "macOS" if sys.platform == "darwin" else "Linux"
         tip_example = "/dev/disk2" if sys.platform == "darwin" else "/dev/sdb or /dev/nvme0n1"
         raise SafetyError(
@@ -250,11 +252,7 @@ def resolve_target(path: str) -> DevTarget:
         return DevTarget(path=rpath, kind="block", capacity_bytes=sz, storage_type="UNKNOWN")
 
     p = Path(path)
-    is_blk = False
-    try:
-        is_blk = p.is_block_device() or (sys.platform == "darwin" and p.is_char_device())
-    except Exception:
-        pass
+    is_blk = platform.is_block_device(p)
     if is_blk:
         for t in list_block_targets():
             if Path(t.path).resolve() == p.resolve():
@@ -569,7 +567,7 @@ def cmd_wipe(args) -> int:
         for tgt in targets:
             try:
                 p = Path(tgt)
-                if p.is_block_device() or (sys.platform == "darwin" and p.is_char_device()) or (sys.platform == "win32" and str(tgt).lower().startswith(("\\\\.\\", "//./"))):
+                if platform.is_block_device(p):
                     ui.error(f"'{tgt}' is a block storage device. Use '--target {tgt}' "
                              f"for whole-drive sanitization; '--targets' is strictly for "
                              f"files and directories.")
@@ -580,11 +578,7 @@ def cmd_wipe(args) -> int:
         args.targets = targets
     elif target_arg:
         t_path = Path(target_arg)
-        is_blk = False
-        try:
-            is_blk = t_path.is_block_device() or (sys.platform == "darwin" and t_path.is_char_device())
-        except Exception:
-            pass
+        is_blk = platform.is_block_device(t_path)
 
         if not is_blk:
             if t_path.is_dir():
@@ -1959,14 +1953,7 @@ def cmd_image(args) -> int:
         return EX_USAGE
 
     dst_p = Path(args.destination)
-    is_blk = False
-    try:
-        is_blk = dst_p.is_block_device() or (sys.platform == "darwin" and dst_p.is_char_device())
-    except OSError:
-        pass
-    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower()
-                                     or args.destination.startswith("\\\\.\\")):
-        is_blk = True
+    is_blk = platform.is_block_device(dst_p)
 
     if is_blk and not args.yes:
         ui.error(f"the destination '{args.destination}' is a PHYSICAL BLOCK DEVICE. "

@@ -36,7 +36,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
-from s0 import pdfgen, resources
+from s0 import pdfgen, platform, resources
 from s0.config import CONFIG
 from s0.temperature import read_temperature
 from s0.validation import validate_metadata_str
@@ -1087,10 +1087,10 @@ def start_image(req: ImageRequest) -> JSONResponse:
     dst_p = Path(req.destination)
     is_blk = False
     try:
-        is_blk = dst_p.is_block_device() or (_sys.platform == "darwin" and dst_p.is_char_device())
+        is_blk = platform.is_block_device(dst_p)
     except Exception:
         pass
-    if _sys.platform == "win32" and ("physicaldrive" in req.destination.lower() or req.destination.startswith("\\\\.\\")):
+    if _sys.platform == "win32" and platform.is_windows_volume_path(req.destination):
         is_blk = True
 
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():

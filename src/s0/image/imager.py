@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from s0 import certificate as cert_mod
+from s0 import platform as platform_mod
 from s0 import crypto as core_crypto
 from s0 import resources
 from s0.config import CONFIG
@@ -85,11 +86,7 @@ def _resolve_source_target(path: str) -> tuple[str, int, str]:
         return str(p.resolve()), p.stat().st_size, "image"
 
     # Check block device
-    is_blk = False
-    try:
-        is_blk = p.is_block_device() or (sys.platform == "darwin" and p.is_char_device())
-    except Exception:
-        pass
+    is_blk = platform_mod.is_block_device(p)
 
     if is_blk:
         sz = get_block_device_size(p)
@@ -132,13 +129,11 @@ def acquire_image(
     # Determine if destination is a physical block device (cloning mode) or image file
     is_clone = False
     try:
-        if dst_p.is_block_device() or (sys.platform == "darwin" and dst_p.is_char_device()):
+        if platform_mod.is_block_device(dst_p):
             is_clone = True
     except Exception:
         pass
 
-    if sys.platform == "win32" and ("physicaldrive" in options.destination.lower() or options.destination.startswith("\\\\.\\")):
-        is_clone = True
 
     if is_clone:
         # Check safety of destination device
@@ -368,7 +363,7 @@ def acquire_image(
             operator_id=options.operator,
             tool_name="s0-imager",
             tool_version=CONFIG.get("version", "2.4.4"),
-            platform="linux" if sys.platform.startswith("linux") else ("windows" if sys.platform == "win32" else "macos"),
+            platform=platform_mod.current(),
             device_id=f"drive-{hashlib.sha256(src_path.encode()).hexdigest()[:16]}",
             device_type="image_file" if src_kind == "image" else "internal_disk",
             storage_type="IMAGE_FILE" if src_kind == "image" else "HDD",
