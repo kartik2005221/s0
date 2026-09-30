@@ -1,1 +1,0 @@
-../install-portal/download_iso.sh

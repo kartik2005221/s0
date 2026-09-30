@@ -172,7 +172,7 @@ When internal or system drives cannot be unmounted within a running host OS:
 ### 3. Verification Portal ([s0-verify.pages.dev](https://s0-verify.pages.dev/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
 - Zero data ever leaves your browser.
-- Operates 100% offline — drag and drop `certificate.json` into `verification-portal/index.html`.
+- Operates 100% offline — drag and drop `certificate.json` into `portals/verify/index.html`.
 - Accredited authority public keys are pinned; untrusted keys trigger immediate visual warnings.
 
 ---
@@ -221,9 +221,9 @@ Full compliance details: [docs/compliance/nist-compliance.md](https://s0-docs.gi
 Execute the complete automated test suite locally:
 
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
 
-bash scripts/build_all.sh
+bash tools/build_all.sh
 ```
 
 ---

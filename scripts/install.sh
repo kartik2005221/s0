@@ -1,1 +1,0 @@
-../install-portal/install.sh

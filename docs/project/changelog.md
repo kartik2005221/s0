@@ -49,7 +49,7 @@ flowchart LR
 - **Standardized Bracketed CLI Output:** Unified command line outputs across all modules (`s0 wipe`, `s0 image`, `s0 carve`, `s0 verify`, `s0 audit`, `s0 plan`, `s0 live`, `s0 upgrade`) to standard bracketed `[s0 <cmd>]` layout.
 - **Zero-Dependency Live ISO Downloader:** Added `download_iso.sh` (Linux/macOS) and `download_iso.ps1` (Windows) hosted directly on the install portal for air-gapped bootstrapping.
 - **Portal & Website Synchronization:** Unified headers, footers, SVG logo brand assets, and favicon manifests across Web Dashboard, Install Portal, Verification Portal, and the official project website (`s0-site.pages.dev`).
-- **Comprehensive Release Tooling (`scripts/release.py`):** Enhanced release automation to synchronize 25 core files, configuration schemas, CLI engines, benchmark harnesses, and documentation suites automatically.
+- **Comprehensive Release Tooling (`tools/release.py`):** Enhanced release automation to synchronize 25 core files, configuration schemas, CLI engines, benchmark harnesses, and documentation suites automatically.
 
 ### Changed
 - **Audit Ledger Nomenclature Refinement:** Formally transitioned "blockchain" terminology to "hash-chained cryptographic audit ledger" throughout all user-facing documentation, CLI output, and internal comments, demoting the ledger to a supporting feature.
@@ -68,7 +68,7 @@ flowchart LR
 
 ### Added
 - **Dynamic Dark/Light Favicons:** Integrated custom dark and light favicons across Install Portal, Verification Portal, Web Dashboard, and GitBook documentation with real-time browser theme listeners (`prefers-color-scheme`).
-- **Unified Release Automation Tooling (`scripts/release.py`):** Added synchronized release script and automated test suite (`linux/cli/tests/test_release_script.py`) ensuring semver compliance and multi-file version synchronization.
+- **Unified Release Automation Tooling (`tools/release.py`):** Added synchronized release script and automated test suite (`tests/cli/test_release_script.py`) ensuring semver compliance and multi-file version synchronization.
 
 ### Changed
 - **Documentation Overhaul & Navigation:** Restored left navigation sidebar on the documentation home page (`tableOfContents.visible: true`), removed badge chips, normalized repetitive compliance terminology, transitioned "blockchain" to "hash-chained audit ledger", and updated all command outputs to match actual CLI outputs.
@@ -86,7 +86,7 @@ flowchart LR
 - **Shared Metadata Input Validation:** Unified input validation across CLI (`--operator`, `--operator-id`, `--organization`) and Web REST API via `s0.validation` to prevent control character injection, header splitting, and malformed audit metadata.
 
 ### Added
-- **Unaccredited Demo Key Transparency:** Added explicit visual warnings across the Web Verification Portal (`portal.js`, `verify.js`) and forensic scripts (`verify_cert.py`) when certificates are cryptographically valid but signed using the unaccredited testing key pair (`demo_issuer`).
+- **Unaccredited Demo Key Transparency:** Added explicit visual warnings across the Web Verification Portal (`portal.js`, `verify.js`) and forensic tools (`verify_cert.py`) when certificates are cryptographically valid but signed using the unaccredited testing key pair (`demo_issuer`).
 - **Device Sizing Fallback Warnings:** Added diagnostic warning logging when storage device capacity probes encounter zero-sized descriptors or non-standard sysfs entries in `devices.py`.
 
 ### Fixed
@@ -144,7 +144,7 @@ flowchart LR
 ### Security
 - **HIGH — Web Authentication Token Hardening:** Restricted `/run/s0/web_auth_token` permissions from `0644` to `0640` with group ownership assigned to the dedicated `s0-kiosk` security group, preventing unauthorized local processes from reading session tokens.
 - **HIGH — ISO Build Toolchain Integrity Verification:** Hardened `.github/workflows/build-iso.yml` to download Debian live-build packages over HTTPS and enforce strict SHA-256 checksum validation (`db5e5ae5925092066fee0e87e9e274af32c56f7b08db254377e248e95e07efae`) before installation.
-- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `linux/cli/s0/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
+- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `src/s0/s0/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
 - **MEDIUM — Windows NTFS Alternate Data Stream (ADS) Multi-Chunk Scrubbing:** Upgraded Windows ADS scrubbing in `windows/cli/s0_eraser.py` to zero out entire stream allocations in multi-chunk buffers regardless of size prior to stream unlinking.
 - **LOW — Central Configuration Discovery Path Alignment:** Added `/etc/s0/s0_config.json` to central `find_config_file()` discovery candidates in `s0.config`, ensuring live appliances and system-wide installations resolve global configuration without split-brain issues.
 
@@ -171,13 +171,13 @@ flowchart LR
 - **MEDIUM — QR Verification Portal URL Validation:** Enforced strict URL scheme and hostname sanitization on custom `portal_url` parameters in `pdfgen.py` and API request models, restricting redirection to HTTPS and local loopback.
 - **MEDIUM — Configuration Path Hijacking Remediation:** Removed `Path.cwd()` from `s0_config.json` candidate discovery list, preventing untrusted local directories from overriding cryptographic key paths and authority settings.
 - **LOW — Metadata Pipe & Delimiter Sanitization:** Enforced strict Pydantic model validation rejecting pipe (`|`) and markup characters across operator and organization metadata fields.
-- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `verification-portal/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
+- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `portals/verify/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
 
 ### Fixed
 - **Mobile Documentation Navigation & Back Button:** Overhauled the mobile drawer header and sub-menu navigation layout in `extra.css`. Fixed back button arrow alignment, eliminated duplicate text clipping and unnecessary "(Tap to return)" annotations, and restored clean horizontal centering for root branding.
-- **Monorepo Production Deployment:** Optimized deployment ignore rules at the repository root, ensuring automated git deployments correctly retain documentation sources and build scripts.
-- **Debian Live ISO Build Workflow (`build-iso.yml`):** Corrected recursive directory self-copy bug in `linux/iso/auto/build.sh` when staging the repository snapshot. Migrated CI runner to use Docker containerization via `scripts/build_iso.sh` for hermetic Debian Bookworm builds, added `permissions: contents: write`, and enabled automated attachment of `s0-live-amd64.hybrid.iso` to GitHub Releases.
-- **Web GUI Missing Import:** Added missing `import tempfile` in `web/app.py` for fallback key directory creation.
+- **Monorepo Production Deployment:** Optimized deployment ignore rules at the repository root, ensuring automated git deployments correctly retain documentation sources and build tools.
+- **Debian Live ISO Build Workflow (`build-iso.yml`):** Corrected recursive directory self-copy bug in `iso/auto/build.sh` when staging the repository snapshot. Migrated CI runner to use Docker containerization via `tools/build_iso.sh` for hermetic Debian Bookworm builds, added `permissions: contents: write`, and enabled automated attachment of `s0-live-amd64.hybrid.iso` to GitHub Releases.
+- **Web GUI Missing Import:** Added missing `import tempfile` in `src/s0/web/app.py` for fallback key directory creation.
 
 ### Changed
 - **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, test assertions, and documentation to `2.2.1`.
@@ -240,7 +240,7 @@ flowchart LR
 ### Added
 - **Production Documentation Suite:** Deployed complete technical documentation at [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) with GitBook Site Git Sync.
 - **Forensic Color Theme:** Integrated high-contrast forensic styling with customized code blocks, admonitions, and typography.
-- **Bare-Metal Bootable Live ISO (`linux/iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
+- **Bare-Metal Bootable Live ISO (`iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.
 - **One-Line Cross-Platform Installers & Uninstallers:** Added streamlined `install.sh`, `install.ps1`, `install.cmd`, `uninstall.sh`, and `uninstall.ps1` scripts with PATH registration and virtualenv bootstrapping.
 
@@ -252,7 +252,7 @@ flowchart LR
 ### Fixed
 - **Windows Startup Crash (`fcntl`):** Implemented lazy-import guards for POSIX-only `fcntl` calls in `blkdiscard.py`, resolving startup failures on Windows systems.
 - **Stored XSS Remediation:** Hardened the Web Dashboard audit ledger and Verification Portal against stored cross-site scripting by strictly sanitizing operator metadata, device serial numbers, and notes before DOM insertion.
-- **Portal Layout Stability:** Fixed flexbox layout blowout in `verification-portal/index.html` when rendering large multi-fragment certificate payloads.
+- **Portal Layout Stability:** Fixed flexbox layout blowout in `portals/verify/index.html` when rendering large multi-fragment certificate payloads.
 
 ---
 
@@ -263,7 +263,7 @@ flowchart LR
   - **Windows (`windows/`):** Win32 direct file I/O with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery and destruction, and ReFS CoW volume detection.
   - **macOS (`macos/`):** Darwin direct hardware cache synchronization via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) quarantine stripping, and APFS snapshot warnings.
 - **Removable Media & Partition Sanitization:** Added native USB flash drive and secondary partition wiping capabilities to Windows and macOS CLI utilities.
-- **FAT32 & exFAT Carving Engines (`linux/cli/s0/carver/`):**
+- **FAT32 & exFAT Carving Engines (`src/s0/s0/carver/`):**
   - **FAT32 (`fat_carver.py`):** BPB boot sector parsing, `0xE5` deleted directory entry scanning, and contiguous cluster recovery.
   - **exFAT (`exfat_carver.py`):** VBR parsing, 32-byte directory entry set reconstruction (`0x05`/`0x85`, `0x40`/`0xC0`, `0x41`/`0xC1`), and Cluster Heap allocation extraction.
 - **Fragmented Reconstruction Heuristics (`fragmentation.py`):** Implemented non-resident cluster runlist reassembly and bifragment stream recovery across cluster gaps.
@@ -310,10 +310,10 @@ flowchart LR
   - `s0 Canonical JSON v1` deterministic serializer (`canonical.py`) forbidding float values to eliminate multi-language formatting divergences.
   - Official certificate schema definition (`src/s0/data/cert_schema.json`).
   - High-resolution ReportLab PDF certificate generator with embedded optical QR codes (`pdfgen.py`).
-- **Static Verification Portal (`verification-portal/`):**
+- **Static Verification Portal (`portals/verify/`):**
   - Zero-backend, 100% client-side WebCrypto / TweetNaCl verification engine.
   - Drag-and-drop certificate JSON verification.
   - Pinned trusted public key registry (`keys.json`).
-- **Master Test Orchestrator (`scripts/build_all.sh`):**
+- **Master Test Orchestrator (`tools/build_all.sh`):**
   - Automated virtual environment setup and pytest execution across 120+ test cases.
   - Tamper matrix verification tests asserting signature rejection upon single-byte payload corruption.

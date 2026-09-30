@@ -1,8 +1,8 @@
 """Wipe-certificate build / validate / sign / verify.
 
 Schema: src/s0/data/cert_schema.json (v1.0.0). Canonicalization + signing contract:
-core/CANONICAL_JSON.md. Validation here is a hand-rolled mirror of the JSON
-Schema so the package stays dependency-light; core/tests keep it honest against
+docs/architecture/canonical-json.md. Validation here is a hand-rolled mirror of the JSON
+Schema so the package stays dependency-light; tests/core keep it honest against
 the schema file.
 """
 
@@ -56,7 +56,7 @@ NIST_CATEGORIES = {"Clear", "Purge", "Destroy", "N/A"}
 PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging",
             "cloning", "not_applicable"}
 
-# Permitted NIST tier per method — mirrors core/standards/nist_800_88_mapping.md §3.
+# Permitted NIST tier per method — mirrors docs/compliance/nist-800-88-mapping.md §3.
 # Enforced by validate() so a certificate cannot claim a tier its method never earned.
 # BLKDISCARD may claim Purge ONLY with deterministic-TRIM justification in notes
 # (validated as a notes-content check below).

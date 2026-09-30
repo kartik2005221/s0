@@ -134,10 +134,10 @@ To build the ISO, you need a machine with **root/sudo access** and an internet c
 | Debian 12 (Bookworm) | Recommended (Native) |
 | Debian 11 (Bullseye) | Supported |
 | Ubuntu 22.04 / 24.04 LTS | Supported |
-| Fedora 38 / 39 / 40+ | Supported via Podman or Docker (`scripts/build_iso.sh`) |
-| RHEL / CentOS Stream 9+ | Supported via Podman (`scripts/build_iso.sh`) |
-| Windows 10 & 11 | Supported via Docker Desktop or WSL2 (`scripts/build_iso.ps1`) |
-| macOS | Supported via Docker (`linux/iso/Dockerfile` or `scripts/build_iso.sh`) |
+| Fedora 38 / 39 / 40+ | Supported via Podman or Docker (`tools/build_iso.sh`) |
+| RHEL / CentOS Stream 9+ | Supported via Podman (`tools/build_iso.sh`) |
+| Windows 10 & 11 | Supported via Docker Desktop or WSL2 (`tools/build_iso.ps1`) |
+| macOS | Supported via Docker (`iso/Dockerfile` or `tools/build_iso.sh`) |
 | Debian-based VM | Supported |
 
 ### Install Required Toolchain
@@ -186,7 +186,7 @@ The build process downloads approximately 1 GB of Debian packages and requires *
 ## Directory Structure
 
 ```
-linux/iso/
+iso/
 ├── build.sh                                    # Top-level executable build wrapper
 ├── auto/
 │   └── build.sh                                # live-build invocation script (lb config)
@@ -212,7 +212,7 @@ linux/iso/
 
 ```bash
 git clone https://github.com/kartik2005221/s0.git
-cd s0/linux/iso
+cd s0/iso
 ```
 
 ### Step 2: Run the Build
@@ -237,7 +237,7 @@ The build script runs through five stages:
 ### Output Location
 
 ```text
-linux/iso/live-image-amd64.hybrid.iso
+iso/live-image-amd64.hybrid.iso
 ```
 
 This is a hybrid ISO that boots on both UEFI and Legacy BIOS systems.
@@ -248,12 +248,12 @@ This is a hybrid ISO that boots on both UEFI and Legacy BIOS systems.
 
 Fedora and RHEL use the RPM package format and do not carry Debian's `live-build` natively in `dnf`. However, you do **not** need a separate Debian workstation. S0 provides first-class support for Fedora using **Podman** (Fedora's default container engine) with automated SELinux volume relabeling.
 
-### Option 1: Automated Script (`scripts/build_iso.sh`)
+### Option 1: Automated Script (`tools/build_iso.sh`)
 
 Run the universal build orchestrator:
 
 ```bash
-./scripts/build_iso.sh
+./tools/build_iso.sh
 ```
 
 ### Option 2: Direct Podman Commands
@@ -261,7 +261,7 @@ Run the universal build orchestrator:
 If you prefer executing the container steps manually:
 
 ```bash
-podman build -t s0-live-builder -f linux/iso/Dockerfile linux/iso
+podman build -t s0-live-builder -f iso/Dockerfile iso
 
 podman run --rm --privileged -v "$PWD":/workspace:z s0-live-builder
 ```
@@ -293,15 +293,15 @@ Because Debian Live systems require Linux kernel features (`debootstrap`, `loset
 
 S0 provides automated solutions for Windows developers and field operators:
 
-### Option 1: Automated PowerShell Builder (`scripts/build_iso.ps1`)
+### Option 1: Automated PowerShell Builder (`tools/build_iso.ps1`)
 
 The script automatically detects if **Docker Desktop** or **WSL2** is running and executes the build inside an isolated Debian container:
 
 ```powershell
-.\scripts\build_iso.ps1
+.\tools\build_iso.ps1
 ```
 
-1. **If Docker Desktop is running:** Builds the container using `linux/iso/Dockerfile` in privileged mode and outputs `s0-live-amd64.hybrid.iso` to your project root.
+1. **If Docker Desktop is running:** Builds the container using `iso/Dockerfile` in privileged mode and outputs `s0-live-amd64.hybrid.iso` to your project root.
 2. **If WSL2 is installed:** Translates Windows paths and invokes Debian live-build inside your WSL environment.
 
 ### Option 2: Docker Desktop (Direct Command)
@@ -309,7 +309,7 @@ The script automatically detects if **Docker Desktop** or **WSL2** is running an
 If you prefer running Docker directly without PowerShell scripts:
 
 ```cmd
-docker build -t s0-live-builder -f linux/iso/Dockerfile linux/iso
+docker build -t s0-live-builder -f iso/Dockerfile iso
 docker run --rm --privileged -v "%cd%":/workspace s0-live-builder
 ```
 
@@ -501,7 +501,7 @@ Use `/dev/rdisk2` (raw device, not `/dev/disk2`) for significantly faster write 
 If a previous build failed due to network interruption or missing dependencies:
 
 ```bash
-cd linux/iso
+cd iso
 sudo lb clean --purge
 sudo ./build.sh
 ```

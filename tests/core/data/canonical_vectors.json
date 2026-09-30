@@ -1,0 +1,45 @@
+{
+  "$comment": "Golden vectors for s0 Canonical JSON v1 (docs/architecture/canonical-json.md). Each vector: input JSON value and the exact canonical string expected. ALL implementations of the spec (python/js/c#/kotlin) must reproduce these byte-for-byte.",
+  "vectors": [
+    {
+      "name": "empty_object",
+      "input": {},
+      "canonical": "{}"
+    },
+    {
+      "name": "empty_array",
+      "input": [],
+      "canonical": "[]"
+    },
+    {
+      "name": "key_sorting_recursive",
+      "input": {"b": 1, "a": {"d": 4, "c": 3}, "z": [{"y": 2, "x": 1}]},
+      "canonical": "{\"a\":{\"c\":3,\"d\":4},\"b\":1,\"z\":[{\"x\":1,\"y\":2}]}"
+    },
+    {
+      "name": "literals_and_integers",
+      "input": {"t": true, "f": false, "n": null, "zero": 0, "neg": -17, "big": 12345678901234567890},
+      "canonical": "{\"big\":12345678901234567890,\"f\":false,\"n\":null,\"neg\":-17,\"t\":true,\"zero\":0}"
+    },
+    {
+      "name": "string_escapes",
+      "input": {"q": "quote\" back\\slash", "ctl": "line\nbreak\ttab\u0001one"},
+      "canonical": "{\"ctl\":\"line\\nbreak\\ttab\\u0001one\",\"q\":\"quote\\\" back\\\\slash\"}"
+    },
+    {
+      "name": "non_ascii_literal_not_escaped",
+      "input": {"u": "é 漢 😀"},
+      "canonical": "{\"u\":\"é 漢 😀\"}"
+    },
+    {
+      "name": "array_order_preserved",
+      "input": {"list": ["b", "a", 3, false]},
+      "canonical": "{\"list\":[\"b\",\"a\",3,false]}"
+    },
+    {
+      "name": "code_point_sort_not_locale",
+      "input": {"Z": 1, "a": 2, "A": 3, "_": 4},
+      "canonical": "{\"A\":3,\"Z\":1,\"_\":4,\"a\":2}"
+    }
+  ]
+}

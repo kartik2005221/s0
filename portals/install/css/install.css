@@ -1,0 +1,424 @@
+@import url("tokens.css");
+
+/* ---------------------------------------------------------------------------
+   MIGRATION SHIM.
+
+   Every colour, font, spacing and focus value now comes from
+   shared/tokens.css (copied here by tools/sync_tokens.py). The names below
+   map this stylesheet's original vocabulary onto the shared semantic tokens so
+   the rest of the file did not have to be rewritten. New code must use the
+   semantic names directly; this block is a bridge, not an API.
+   --------------------------------------------------------------------------- */
+:root {
+  --bg-canvas:    var(--surface-canvas);
+  --bg-card:      var(--surface-raised);
+  --bg-card-hover:var(--surface-hover);
+  --bg-elevated:  var(--surface-overlay);
+  --text-muted:   var(--text-tertiary);
+  --primary:      var(--brand);
+  --primary-hover:var(--brand-hover);
+  --primary-glow: var(--brand-glow);
+  --success:      var(--status-ok);
+  --warning-bg:      var(--status-warn-bg);
+  --warning-border:  var(--status-warn-border);
+  --warning-text:    var(--status-warn);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: 'Rubik', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .theme-icon-moon { display: none; }
+    [data-theme="light"] .theme-icon-sun { display: none; }
+    [data-theme="light"] .theme-icon-moon { display: inline-block !important; }
+
+    header.site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--header-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      width: 100%;
+    }
+
+    .site-header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .site-logo-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+    }
+    .header-logo {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      object-fit: contain;
+    }
+    .site-logo-link:hover .site-logo-title {
+      color: var(--primary);
+    }
+
+    .site-logo-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(255, 101, 0, 0.12);
+      border: 1px solid rgba(255, 101, 0, 0.3);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .site-header-nav,
+    .site-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--border-focus);
+      background: var(--bg-card-hover);
+    }
+
+    .nav-github {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+    }
+    .nav-github:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .sys-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+    .dot-live {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse-green 2s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+
+    main {
+      flex: 1;
+      max-width: 1120px;
+      margin: 36px auto 60px;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .legal-card {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 36px;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .legal-icon {
+      color: var(--warning-text);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 32px 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--border-focus);
+      background: var(--bg-card-hover);
+    }
+
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .card h3 {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .platform-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .code-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.80rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      word-break: break-all;
+    }
+
+    .code-box span {
+      overflow-wrap: anywhere;
+    }
+
+    .copy-btn {
+      background: var(--btn-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .copy-btn.copied {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    /* Footer — With Expanded Documentation Links */
+    footer.site-footer,
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 56px 24px 36px;
+      background: var(--bg-canvas);
+      margin-top: 50px;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 36px;
+    }
+
+    .footer-brand {
+      max-width: 320px;
+    }
+
+    .footer-brand-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+
+    .footer-brand-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .footer-links-group {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    .footer-col h5 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-col a {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      transition: color 0.15s ease;
+      text-decoration: none;
+    }
+
+    .footer-col a:hover {
+      color: var(--primary);
+    }
+
+    .footer-bottom {
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-legal-notice {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .footer-top {
+        flex-direction: column;
+      }
+      .footer-links-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+    }

@@ -43,7 +43,7 @@ sudo s0 web --port 8669 --no-browser
 {% tabs %}
 {% tab title="Script Runner (Linux/MacOS)" %}
 ```bash
-sudo bash web/run.sh
+sudo bash src/s0/web/run.sh
 ```
 {% endtab %}
 {% tab title="Script Runner (Windows)" %}

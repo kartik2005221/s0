@@ -1,0 +1,1 @@
+../portals/install/install.cmd

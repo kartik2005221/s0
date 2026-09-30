@@ -11,7 +11,7 @@
 The s0 suite provides an automated bootstrap script that validates system prerequisites, provisions a virtual environment, installs platform dependencies, and runs the test suite:
 
 ```bash
-bash scripts/build_all.sh
+bash tools/build_all.sh
 ```
 
 ---
@@ -22,14 +22,14 @@ bash scripts/build_all.sh
 Execute the complete cross-platform test suite spanning core cryptographic invariants, CLI interfaces, web controllers, Win32/macOS drivers, and verification portal:
 
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
 ```
 
 ### Module 1: End-to-End Drive Wipe Forensic Demo
 Executes a full lifecycle test on a temporary 32 MiB synthetic loopback image (partitioning, random byte seeding, NIST overwrite, 64-block post-wipe readback verification, Ed25519 cert generation, and ledger insertion):
 
 ```bash
-S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh
+S0_DEMO_SIZE_MIB=32 bash tools/demo/e2e.sh
 ```
 
 ### Targeted File & Folder Erasure
@@ -109,7 +109,7 @@ Digital forensics and data security operations face two fundamental, conflicting
 
 ### Minute 1: Drive & File Sanitization (`s0 wipe`)
 - **Presenter:** *"Judges, let us demonstrate irreversible sanitization on sensitive files and storage media."*
-- **Action:** Run `s0 wipe --targets classified_intel.pdf` and `demo_e2e.sh`.
+- **Action:** Run `s0 wipe --targets classified_intel.pdf` and `tools/demo/e2e.sh`.
 - **Result:** File clusters overwritten, metadata zeroed, 64-block forensic scan verifies complete sanitization, and an Ed25519 signed certificate is generated.
 
 ### Minute 2: Module 2 (Advanced File Carving & Recovery)

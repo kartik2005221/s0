@@ -46,7 +46,7 @@ s0 --version
 ```bash
 git clone https://github.com/kartik2005221/s0.git
 cd s0
-bash scripts/build_all.sh
+bash tools/build_all.sh
 ```
 {% endtab %}
 {% endtabs %}
@@ -102,7 +102,7 @@ PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL 
 Image-file targets work too (no root needed): use --target /path/to/file.img
 ```
 
-For JSON output suitable for automated scripts:
+For JSON output suitable for automated tools:
 ```bash
 s0 list --output-format json
 ```
@@ -332,7 +332,7 @@ Output:
 ```
 
 ### 8.2 Air-Gapped Web Verification
-1. Double-click `verification-portal/index.html` on any offline computer.
+1. Double-click `portals/verify/index.html` on any offline computer.
 2. Drag and drop `certificate_a8f3b201.json`.
 3. The portal executes pure WebCrypto validation in browser memory and displays the verified green banner.
 

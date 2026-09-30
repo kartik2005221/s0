@@ -9,7 +9,7 @@ verified on actual Windows hardware.
 
 | Capability | Evidence |
 |---|---|
-| Overwrite wipe of files / folders | `windows/cli/tests/test_win_cli.py` + `linux/cli/tests/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| Overwrite wipe of files / folders | `windows/cli/tests/test_win_cli.py` + `tests/cli/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
 | Secondary partition wiping (`D:`, `E:`) | `test_win_cli.py::test_win_cli_wipe_partition_success`; volume lock & dismount via Win32 `FSCTL_DISMOUNT_VOLUME`, raw sector overwrite, sampled readback |
 | USB / Pen drive raw wiping (`\\.\PhysicalDriveX`) | `test_win_cli.py::test_win_cli_wipe_drive_main`; MBR/GPT and raw sector destruction, 32-sample verification |
 | Operating system drive safety guardrails | `test_win_cli.py::test_win_cli_wipe_safety_refusal`; hard rejection of active Windows `C:` volume and Disk 0 without force |
@@ -52,7 +52,7 @@ verified on actual Windows hardware.
 Due to active system file locks, the pagefile, and VSS shadows, wiping the primary `C:` drive of a Windows PC requires booting into an independent environment.
 
 - **Making Bootable USB on Windows:**
-  - Build ISO locally using Docker Desktop or WSL2: `.\scripts\build_iso.ps1`
+  - Build ISO locally using Docker Desktop or WSL2: `.\tools\build_iso.ps1`
   - Download verified release ISO: `irm https://s0-install.pages.dev/download-iso-ps1 | iex`
   - Write to USB using **Rufus** (select **"Write in DD Image mode"**) or **Ventoy**.
 - Detailed guide: [Live ISO Guide](../../guides/live-iso.md).

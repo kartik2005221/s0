@@ -14,7 +14,7 @@ covered by s0's MIT licence.
 
 | Field | Value |
 |---|---|
-| Files | `verification-portal/vendor/pdf.min.js`, `verification-portal/vendor/pdf.worker.min.js` |
+| Files | `portals/verify/vendor/pdf.min.js`, `portals/verify/vendor/pdf.worker.min.js` |
 | Version | 3.11.174 |
 | Upstream | https://github.com/mozilla/pdf.js |
 | Licence | **Apache License 2.0** |
@@ -30,7 +30,7 @@ ships a `NOTICE` file, its contents must be reproduced here verbatim.
 
 | Field | Value |
 |---|---|
-| Files | `verification-portal/vendor/jsqr.min.js` |
+| Files | `portals/verify/vendor/jsqr.min.js` |
 | Version | 1.4.0 |
 | Upstream | https://github.com/cozmo/jsQR |
 | Licence | **Apache License 2.0** |
@@ -40,7 +40,7 @@ ships a `NOTICE` file, its contents must be reproduced here verbatim.
 **Known upstream defect.** This build throws a `TypeError` from inside
 `locate()` when invoked with `inversionAttempts: "onlyInvert"`. s0 therefore
 never requests that mode and isolates every decode attempt in
-`verification-portal/js/portal.js` (`jsQRSafe`), so a decoder fault degrades to
+`portals/verify/js/portal.js` (`jsQRSafe`), so a decoder fault degrades to
 "no QR found" instead of failing verification. This is a caller-side
 mitigation, not a modification of the vendored file.
 
@@ -48,7 +48,7 @@ mitigation, not a modification of the vendored file.
 
 | Field | Value |
 |---|---|
-| Files | `verification-portal/vendor/crypto-bundle.js` |
+| Files | `portals/verify/vendor/crypto-bundle.js` |
 | Version | s0-internal |
 | Origin | Authored for s0. No upstream project identified. |
 | Licence | MIT, as part of s0 |
@@ -60,7 +60,7 @@ verification portal performs no network I/O. It is s0's own code.
 
 | Field | Value |
 |---|---|
-| Files | `verification-portal/fonts/rubik-*.woff2`, `install-portal/fonts/rubik-*.woff2` |
+| Files | `portals/verify/fonts/rubik-*.woff2`, `portals/install/fonts/rubik-*.woff2` |
 | Upstream | https://fonts.google.com/specimen/Rubik |
 | Licence | **SIL Open Font License 1.1** (SIL OFL) |
 | Licence text | https://openfontlicense.org/ |
@@ -74,7 +74,7 @@ fonts here are unmodified.
 
 | Field | Value |
 |---|---|
-| Files | `verification-portal/fonts/jetbrains-mono-*.woff2`, `install-portal/fonts/jetbrains-mono-*.woff2` |
+| Files | `portals/verify/fonts/jetbrains-mono-*.woff2`, `portals/install/fonts/jetbrains-mono-*.woff2` |
 | Upstream | https://www.jetbrains.com/lp/mono/ |
 | Licence | **SIL Open Font License 1.1** (SIL OFL) |
 | Licence text | https://openfontlicense.org/ |
@@ -84,9 +84,9 @@ fonts here are unmodified.
 
 ## Verifying the vendored tree
 
-`verification-portal/vendor/manifest.json` records the SHA-256, version, upstream
+`portals/verify/vendor/manifest.json` records the SHA-256, version, upstream
 URL, licence and modification state of every vendored file.
-`verification-portal/tests/test_portal_consistency.py` fails if a file is added,
+`tests/portal/test_portal_consistency.py` fails if a file is added,
 removed or modified without updating the manifest, and if any `<script
 src="vendor/...">` in the portal lacks a matching Subresource Integrity hash.
 
@@ -95,7 +95,7 @@ To re-vendor, update the manifest and the `integrity=` attributes together:
 ```bash
 python - <<'PY'
 import base64, hashlib, pathlib
-p = pathlib.Path("verification-portal/vendor/jsqr.min.js")
+p = pathlib.Path("portals/verify/vendor/jsqr.min.js")
 print("sha384-" + base64.b64encode(hashlib.sha384(p.read_bytes()).digest()).decode())
 PY
 ```

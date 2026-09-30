@@ -71,20 +71,31 @@ where = ["src"]
 include = ["s0*"]
 
 [tool.setuptools.package-data]
-# Resolved at runtime through s0.resources, never through filesystem arithmetic.
+# Resolved at runtime through s0.resources / the module's own directory, never
+# through filesystem arithmetic from an assumed install prefix.
 "s0.data" = ["*.json", "*.pem", "keys/*.pem"]
+"s0.web" = [
+    "static/*.html",
+    "static/*.ico",
+    "static/*.png",
+    "static/*.webmanifest",
+    "static/css/*",
+    "static/fonts/*",
+    "static/js/*",
+    "static/assets/**/*",
+]
 
 [tool.pytest.ini_options]
 # CI runs a bare `pytest`, so this list is the contract for what gets tested.
 # It must name every suite that exists in the tree; a missing entry silently
 # reduces coverage rather than failing.
 testpaths = [
-    "core/tests",
-    "linux/cli/tests",
-    "web/tests",
-    "windows/cli/tests",
-    "macos/cli/tests",
-    "verification-portal/tests",
+    "tests/core",
+    "tests/cli",
+    "tests/web",
+    "tests/portal",
+    "tests/platform_windows",
+    "tests/platform_macos",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 

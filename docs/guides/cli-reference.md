@@ -1448,7 +1448,7 @@ Execute the Debian Bookworm live-build pipeline natively on Linux to generate a 
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--out-dir` | Path | `linux/iso` | Destination directory for compiled `.hybrid.iso` image |
+| `--out-dir` | Path | `iso` | Destination directory for compiled `.hybrid.iso` image |
 
 {% hint style="info" %}
 **Platform Support**

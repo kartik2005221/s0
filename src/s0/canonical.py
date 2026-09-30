@@ -1,6 +1,6 @@
 """s0 Canonical JSON v1 — reference implementation.
 
-Contract: core/CANONICAL_JSON.md. Summary of the rules implemented here:
+Contract: docs/architecture/canonical-json.md. Summary of the rules implemented here:
 
   * UTF-8 output, no BOM
   * object keys sorted recursively by Unicode code point

@@ -57,7 +57,7 @@ If the verifier and signer disagree on a single byte of serialization, the signa
 
 ### The Seven Rules of s0 Canonical JSON v1
 
-Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`) and the static verification portal (`verification-portal/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `core/tests/data/canonical_vectors.json`.
+Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`) and the static verification portal (`portals/verify/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `tests/core/data/canonical_vectors.json`.
 
 Given a parsed JSON value, serialize as follows:
 
@@ -77,7 +77,7 @@ Schema v1 defines no float fields anywhere. All file sizes and capacities are in
 
 The reference implementation resides at `src/s0/canonical.py`.
 
-Tamper property: any change to any signed field — one byte, one key name, or whitespace inside a string value — changes the canonical payload and invalidates the signature. Re-serializing the same object with different key order produces identical bytes, so legitimate re-encoding never breaks verification. Both properties are enforced by automated tests: `core/tests/test_tamper.py` walks every leaf of a valid certificate, mutates each, and asserts failure.
+Tamper property: any change to any signed field — one byte, one key name, or whitespace inside a string value — changes the canonical payload and invalidates the signature. Re-serializing the same object with different key order produces identical bytes, so legitimate re-encoding never breaks verification. Both properties are enforced by automated tests: `tests/core/test_tamper.py` walks every leaf of a valid certificate, mutates each, and asserts failure.
 
 ---
 

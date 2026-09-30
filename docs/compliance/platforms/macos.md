@@ -9,7 +9,7 @@ verified on actual Apple hardware.
 
 | Capability | Evidence |
 |---|---|
-| Overwrite wipe of files / folders | `macos/cli/tests/test_mac_cli.py` + `linux/cli/tests/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| Overwrite wipe of files / folders | `macos/cli/tests/test_mac_cli.py` + `tests/cli/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
 | USB / Pen drive raw wiping (`/dev/rdiskX`) | `test_mac_cli.py::test_mac_cli_wipe_drive_main`; unmount via `diskutil`, character device raw overwrite, 32-sample verification |
 | Secondary partition wiping (`/dev/rdiskXsY`) | `test_mac_cli.py::test_mac_cli_wipe_partition_success`; volume unmount, raw block wipe, hardware cache flush |
 | Operating system drive safety guardrails | `test_mac_cli.py::test_mac_cli_wipe_safety_refusal`; hard rejection of macOS boot disk (`disk0`) and active `/` mounts without force |

@@ -33,7 +33,7 @@ class OverwriteMethod(WipeMethod):
     Default is ONE pass of zeros: per NIST SP 800-88 Rev.1 that satisfies Clear
     on modern media. Extra passes exist for organizational policy compliance,
     not added security — the CLI says this out loud instead of implying that
-    more passes buy safety (see core/standards/nist_800_88_mapping.md §4).
+    more passes buy safety (see docs/compliance/nist-800-88-mapping.md §4).
     """
 
     def __init__(self, passes: int = 1, pattern: str = "zero") -> None:

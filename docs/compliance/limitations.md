@@ -181,7 +181,7 @@ On heavily fragmented FAT32/exFAT volumes, recovered files may be truncated or c
 
 ## 6. Live ISO — Bare Metal Status
 
-The Live ISO build infrastructure (`linux/iso/`) is fully specified against `live-build` syntax, including:
+The Live ISO build infrastructure (`iso/`) is fully specified against `live-build` syntax, including:
 
 - Preseed configuration for unattended boot.
 - systemd unit files for privilege-separated web dashboard launch.

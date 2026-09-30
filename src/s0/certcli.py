@@ -1,7 +1,7 @@
 """Command-line entry points: s0-keygen / -sign / -verify / -cert-pdf.
 
 These are the out-of-band tools the issuing authority uses. The wipe CLI
-(linux/cli) imports the library directly; it does not shell out to these.
+(src/s0) imports the library directly; it does not shell out to these.
 """
 
 from __future__ import annotations

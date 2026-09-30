@@ -1,1 +1,0 @@
-../install-portal/uninstall.sh

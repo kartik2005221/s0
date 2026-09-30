@@ -381,7 +381,7 @@ def envelope(command: str, *, status: str, result: Any = None,
              args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Build the versioned machine-readable envelope every `--json` uses.
 
-    Invariants (see core/CANONICAL_JSON.md rule 5): integers only, absolute
+    Invariants (see docs/architecture/canonical-json.md rule 5): integers only, absolute
     paths, RFC 3339 UTC timestamps with a `Z` suffix.
     """
     from .config import CONFIG

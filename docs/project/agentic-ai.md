@@ -74,7 +74,7 @@ skills/s0-forensics/SKILL.md
 
 ### Skill Architecture & Bundled Resources
 
-The skill is modularized into specialized domain references, executable scripts, and evaluation test cases:
+The skill is modularized into specialized domain references, executable tools, and evaluation test cases:
 
 ```text
 skills/s0-forensics/
@@ -84,7 +84,7 @@ skills/s0-forensics/
 │   ├── device-safety-rules.md        # Mount guards, OS device paths, and HPA/DCO handling
 │   ├── carving-signatures.md         # Magic bytes, headers, footers & entropy scoring
 │   └── audit-and-crypto.md           # Canonical JSON v1, Ed25519 signing & hash chain formulas
-├── scripts/
+├── tools/
 │   └── verify_cert.py                # Standalone certificate verification helper
 └── evals/
     └── evals.json                    # Benchmark evaluation prompts & expected agent behavior

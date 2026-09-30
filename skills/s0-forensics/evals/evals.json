@@ -16,7 +16,7 @@
     {
       "id": 3,
       "prompt": "A client sent us a sanitization certificate certificate_98f12a34.json. How do I mathematically verify if this certificate is authentic or if someone tampered with the wiping dates?",
-      "expected_output": "The agent must recommend running s0 verify certificate_98f12a34.json with the authority public key or python skills/s0-forensics/scripts/verify_cert.py, explaining that Ed25519 signatures cover the canonical JSON payload and detect any single-byte alteration.",
+      "expected_output": "The agent must recommend running s0 verify certificate_98f12a34.json with the authority public key or python skills/s0-forensics/tools/verify_cert.py, explaining that Ed25519 signatures cover the canonical JSON payload and detect any single-byte alteration.",
       "files": []
     },
     {

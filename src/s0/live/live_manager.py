@@ -778,7 +778,7 @@ def cmd_live_build(args: argparse.Namespace) -> int:
         print("Tips:")
         print("  - To run s0 from a pendrive without compiling, use 's0 live download' and 's0 live flash'.")
         print("  - On macOS/Windows, you can build inside Docker or WSL2:")
-        print("      docker run --privileged -v $(pwd):/s0 -w /s0 debian:bookworm bash -c 'linux/iso/build.sh'")
+        print("      docker run --privileged -v $(pwd):/s0 -w /s0 debian:bookworm bash -c 'iso/build.sh'")
         return 1
 
     if hasattr(os, "geteuid") and os.geteuid() != 0:
@@ -786,7 +786,7 @@ def cmd_live_build(args: argparse.Namespace) -> int:
         print("    Run: sudo s0 live build", file=sys.stderr)
         return 1
 
-    build_script = Path(__file__).resolve().parents[3] / "linux" / "iso" / "build.sh"
+    build_script = _root / "iso" / "build.sh" if _root is not None else Path("iso/build.sh")
     if not build_script.is_file():
         print("[s0 live]  ERROR : build.sh not found in the s0 installation tree.", file=sys.stderr)
         print(f"    Expected location: {build_script}", file=sys.stderr)
@@ -847,5 +847,5 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
 
     # build
     b_p = sub.add_parser("build", help="build s0 Live ISO from source (Linux native or Docker/WSL2)")
-    b_p.add_argument("--out-dir", default="linux/iso", help="output destination directory")
+    b_p.add_argument("--out-dir", default="iso", help="output destination directory")
     b_p.set_defaults(func=cmd_live_build)

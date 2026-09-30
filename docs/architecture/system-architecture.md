@@ -13,9 +13,9 @@ s0 is organized around three vertical layers that cut across all four functional
 ```mermaid
 graph TB
     subgraph UI["Interface Layer"]
-        CLI["s0 CLI<br/><code>linux/cli/s0/main.py</code>"]
-        GUI["Web Dashboard<br/><code>web/</code> — FastAPI + Browser"]
-        ISO["Bare-Metal Live ISO<br/><code>linux/iso/</code> — Debian Live"]
+        CLI["s0 CLI<br/><code>src/s0/cli/main.py</code>"]
+        GUI["Web Dashboard<br/><code>src/s0/web/</code> — FastAPI + Browser"]
+        ISO["Bare-Metal Live ISO<br/><code>iso/</code> — Debian Live"]
     end
 
     subgraph MODULES["Functional Modules"]
@@ -32,7 +32,7 @@ graph TB
         PDF["PDF + QR Generator<br/><code>pdfgen.py</code>"]
     end
 
-    subgraph VERIFY["Verification Portal  <code>verification-portal/</code>"]
+    subgraph VERIFY["Verification Portal  <code>portals/verify/</code>"]
         VP_JS["Ed25519 Verifier<br/><code>verify.js</code> — TweetNaCl"]
         VP_KEYS["Key Pinning<br/><code>keys.json</code>"]
         VP_CRYPTO["Offline Crypto Bundle<br/><code>vendor/crypto-bundle.js</code>"]
@@ -60,42 +60,76 @@ graph TB
 
 ```
 s0/
-├── src/s0/          # Shared cryptographic core (Ed25519, Canonical JSON, PDF/QR)
-│   ├── canonical.py              #   Deterministic JSON serializer — signing contract
-│   ├── crypto.py                 #   Ed25519 key-pair management, sign, verify
-│   ├── certificate.py            #   Certificate construction and schema validation
-│   └── pdfgen.py                 #   ReportLab PDF with embedded QR code
+├── pyproject.toml               # The one distribution: name "s0", entry point s0
+├── s0_config.json               # Release single source of truth for the version
 │
-├── linux/cli/s0/             # Linux CLI — primary delivery vehicle
-│   ├── main.py                   #   Click entrypoint, subcommand dispatch
-│   ├── devices.py                #   Device enumeration (lsblk, sysfs, /proc)
-│   ├── wipe.py                   #   Module 1 orchestrator
-│   ├── methods/                  #   Module 1 hardware erasure backends
-│   │   ├── nvme.py               #     NVMe Sanitize + Format commands
-│   │   ├── ata.py                #     ATA Secure Erase (Enhanced + Normal)
-│   │   ├── blkdiscard.py         #     BLKDISCARD / TRIM / Unmap
-│   │   └── overwrite.py          #     Multi-pass overwrite engine
-│   ├── file_eraser.py            #   File/folder sanitization engine (routed via s0 wipe)
-│   ├── carver/                   #   Forensic file carving (5 engines)
-│   │   ├── engine.py             #     Dispatcher: routes to correct carver
-│   │   ├── signatures.py         #     Magic-byte signature table
-│   │   ├── ext4_carver.py        #     ext4 structure parser
-│   │   ├── ntfs_carver.py        #     NTFS $MFT parser
-│   │   ├── fat_carver.py         #     FAT32 BPB + deleted entry scanner
-│   │   ├── exfat_carver.py       #     exFAT VBR + cluster heap walker
-│   │   ├── fragmentation.py      #     Non-resident cluster run reassembly
-│   │   └── scoring.py            #     Multi-factor confidence scoring
-│   └── audit/                    #   Hash-chained audit ledger
+├── src/s0/                      # The single importable package
+│   ├── canonical.py             #   Deterministic JSON serializer — signing contract
+│   ├── crypto.py                #   Ed25519 key-pair management, sign, verify
+│   ├── certificate.py           #   Certificate construction and schema validation
+│   ├── pdfgen.py                #   ReportLab PDF with embedded QR code
+│   ├── config.py  resources.py  #   Config loader; importlib.resources asset access
+│   ├── terminal.py              #   sysexits codes, tables, output policy
+│   ├── data/                    #   Packaged data: demo keypair, cert schema
+│   │
+│   ├── cli/                     #   Argument parsing + command implementations
+│   │   ├── main.py              #     Subcommand dispatch
+│   │   ├── devices.py           #     Device enumeration (lsblk, sysfs, /proc)
+│   │   ├── file_eraser.py       #     File/folder sanitization engine
+│   │   └── ui.py                #     Output rendering
+│   │
+│   ├── carve/                   #   Forensic file carving
+│   │   ├── engine.py            #     Dispatcher: routes to correct carver
+│   │   ├── boundary.py          #     Per-format length resolution
+│   │   ├── signatures.py        #     Magic-byte signature table
+│   │   ├── policy.py            #     Output budget, per-category caps
+│   │   ├── scoring.py           #     Multi-factor confidence scoring
+│   │   ├── allocation.py        #     ext4/FAT32/exFAT/NTFS allocation maps
+│   │   ├── ext4_carver.py       #     ext4 structure parser
+│   │   ├── ntfs_carver.py       #     NTFS $MFT parser
+│   │   ├── mft.py  usn.py       #     $MFT run lists, $UsnJrnl journal
+│   │   ├── fat_carver.py        #     FAT32 BPB + deleted entry scanner
+│   │   ├── exfat_carver.py      #     exFAT VBR + cluster heap walker
+│   │   ├── jbd2.py              #     ext4 journal reader
+│   │   └── fragmentation.py     #     Non-resident cluster run reassembly
+│   │
+│   ├── wipe/                    #   Module 1 sanitization
+│   │   ├── planner.py           #     Method selection, verification, certificates
+│   │   └── methods/             #     Hardware erasure backends
+│   │       ├── nvme.py          #       NVMe Sanitize + Format commands
+│   │       ├── ata.py           #       ATA Secure Erase, HPA/DCO reporting
+│   │       ├── blkdiscard.py    #       BLKDISCARD / TRIM / Unmap
+│   │       ├── sanitize.py      #       External driver probes
+│   │       └── overwrite.py     #       Multi-pass overwrite engine
+│   │
+│   ├── image/                   #   Module 3 forensic acquisition
+│   ├── audit/                   #   Hash-chained audit ledger
+│   ├── live/                    #   Live-image download / device discovery
+│   └── web/                     #   Unified FastAPI web dashboard (4 tabs) + static assets
 │
-├── windows/                      #   Windows file/folder sanitizer (Win32 API, ADS scrubbing, ReFS)
-├── macos/                        #   macOS file/folder sanitizer (F_FULLFSYNC, xattr, APFS)
-├── web/                          #   Unified FastAPI web dashboard (4 tabs)
-├── linux/iso/                    #   Debian Live ISO build scripts
-└── verification-portal/          #   100% static Ed25519 verifier
-    ├── verify.js
-    ├── keys.json
-    └── vendor/crypto-bundle.js
+├── tests/                       # All pytest suites
+│   ├── core/  cli/  web/  portal/
+│   └── platform_windows/  platform_macos/
+│
+├── portals/install/             #   Static installation portal
+├── portals/verify/              #   100% static Ed25519 verifier
+│   ├── verify.js
+│   ├── keys.json
+│   └── vendor/crypto-bundle.js
+├── iso/                         #   Debian Live ISO build
+├── tools/                       #   Build, benchmark, release, demo orchestrators
+├── docs/  skills/  vendor/  shared/
+├── windows/                     #   Windows standalone eraser launcher
+└── macos/                       #   macOS standalone eraser launcher
 ```
+
+There is deliberately no directory named `linux/` containing cross-platform code,
+and no directory named `windows/` or `macos/` that is not that platform's own
+launcher. The installers reference the distribution by name (`pip install -e .`),
+never by directory name. See
+[`repository-layout.md`](repository-layout.md) for the rationale and the full
+old-to-new map.
+
 
 ---
 
@@ -467,7 +501,7 @@ $$
 {% hint style="success" %}
 **Interpreting Scores**
 - **≥ 85%** — High confidence. Header + footer + plausible size + entropy all consistent. Files at this threshold are typically complete and valid.
-- **60–84%** — Moderate confidence. Typically missing a footer (truncated file) or minor entropy anomaly. Content is likely recoverable but should be validated by format-specific tools.
+- **60–84%** — Moderate confidence. Typically missing a footer (truncated file) or minor entropy anomaly. Content is likely recoverable but should be validated by format-specific parsers.
 - **< 60%** — Low confidence. Only the header was found. Treat as a fragment or false positive.
 {% endhint %}
 
@@ -669,7 +703,7 @@ The QR code is generated with `qrcode` and embedded as a vector path in the Repo
 
 ---
 
-## Verification Portal (`verification-portal/`)
+## Verification Portal (`portals/verify/`)
 
 The verification portal is a **100% static website** — no server, no API, no cloud dependency. It can be opened directly from a USB drive in any modern browser with `file:///path/to/index.html`.
 

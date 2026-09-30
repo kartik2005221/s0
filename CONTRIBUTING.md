@@ -51,10 +51,10 @@ git clone https://github.com/kartik2005221/s0.git
 cd s0
 
 # Run automated development bootstrap and test orchestrator
-bash scripts/build_all.sh
+bash tools/build_all.sh
 ```
 
-*(On Windows, run `.\scripts\build_all.ps1` or `scripts\build_all.bat`).*
+*(On Windows, run `.\tools\build_all.ps1` or `tools\build_all.bat`).*
 
 ---
 
@@ -66,18 +66,18 @@ s0/
 │   ├── python/s0/           # Canonical JSON v1 serializer, Ed25519 signer
 │   ├── cert_schema.json          # s0-cert-v1.0.0 JSON Schema
 │   └── tests/                    # Cryptographic test vectors & tamper matrix
-├── linux/cli/s0/             # Master CLI binary and controller drivers
+├── src/s0/             # Master CLI binary and controller drivers
 │   ├── wipe/                     # Hardware erasure waterfalls & cluster overwrite
 │   ├── carver/                   # 5 recovery engines (signatures, ext4, NTFS, FAT)
 │   ├── imager/                   # Bit-stream disk acquisition & cloning
 │   └── audit/                    # SQLite SHA-256 hash-chained audit ledger
-├── web/                          # Local web dashboard console (FastAPI)
+├── src/s0/web/                          # Local web dashboard console (FastAPI)
 ├── windows/                      # Native Windows Win32 ctypes & ADS drivers
 ├── macos/                        # Native macOS Darwin APFS & F_FULLFSYNC drivers
 ├── docs/                 # GitBook documentation site (5 sections, 28 pages)
 ├── gitbook-docs.yaml             # GitBook site-wide Git Sync configuration
-├── verification-portal/          # Standalone client-side zero-trust verifier
-└── install-portal/               # Cross-platform installation scripts
+├── portals/verify/          # Standalone client-side zero-trust verifier
+└── portals/install/               # Cross-platform installation tools
 ```
 
 ---
@@ -88,24 +88,24 @@ Every pull request must pass all tests across the 5-layer QA pyramid:
 
 ```bash
 # Run the complete automated test suite
-.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
 
 # Run with test coverage
 .venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Invariants to Preserve:
-1. **Canonical JSON Golden Vectors:** `core/tests/test_canonical.py` validates byte-level serialization against `core/tests/data/canonical_vectors.json`. Never modify these golden vectors without formal architectural RFC.
-2. **The Tamper Matrix:** `core/tests/test_tamper.py` mutates every field, character, and delimiter in a valid certificate. Every single mutation must be detected and rejected by the verifier.
+1. **Canonical JSON Golden Vectors:** `tests/core/test_canonical.py` validates byte-level serialization against `tests/core/data/canonical_vectors.json`. Never modify these golden vectors without formal architectural RFC.
+2. **The Tamper Matrix:** `tests/core/test_tamper.py` mutates every field, character, and delimiter in a valid certificate. Every single mutation must be detected and rejected by the verifier.
 3. **No Floating-Point Discipline:** Schema v1 strictly forbids floats to prevent cross-language stringification divergence. All sizes are integer bytes; all durations are integer seconds.
-4. **End-to-End Forensic Demo:** Run `S0_DEMO_SIZE_MIB=32 bash linux/cli/demo_e2e.sh` to verify end-to-end wiping, 64-block sampling, and certificate issuance on synthetic images.
+4. **End-to-End Forensic Demo:** Run `S0_DEMO_SIZE_MIB=32 bash tools/demo/e2e.sh` to verify end-to-end wiping, 64-block sampling, and certificate issuance on synthetic images.
 
 ---
 
 ## 6. Extending s0
 
 ### Adding File Carving Signatures
-To add support for recovering a new file type, register its magic bytes in `linux/cli/s0/carver/signatures.py`:
+To add support for recovering a new file type, register its magic bytes in `src/s0/carve/signatures.py`:
 
 ```python
 BUILTIN_SIGNATURES["webp"] = FileSignature(
@@ -118,7 +118,7 @@ BUILTIN_SIGNATURES["webp"] = FileSignature(
 ```
 
 ### Adding Sanitization Drivers
-Sanitization methods inherit from `Method` in `linux/cli/s0/wipe/methods/base.py`:
+Sanitization methods inherit from `Method` in `src/s0/wipe/methods/base.py`:
 - Implement `probe(target)` returning applicability, NIST classification (Clear or Purge), and risks.
 - Implement `run(target, progress_cb)` returning `MethodResult`.
 - Register the method identifier in `src/s0/data/cert_schema.json`.
@@ -143,7 +143,7 @@ Before submitting your pull request, please verify:
 
 - [ ] Code follows PEP 8 conventions, includes strict type annotations (`from __future__ import annotations`), and docstrings.
 - [ ] All 190+ automated unit and integration tests pass (`.venv/bin/pytest`).
-- [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `verification-portal/verify.js` and `src/s0/`.
+- [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `portals/verify/verify.js` and `src/s0/`.
 - [ ] New CLI flags, methods, or limitations are documented in `docs/guides/cli-reference.md` and related guides.
 - [ ] Added documentation pages are registered in `docs/SUMMARY.md`.
-- [ ] `bash scripts/build_all.sh` completes cleanly with zero errors.
+- [ ] `bash tools/build_all.sh` completes cleanly with zero errors.

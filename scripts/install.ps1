@@ -1,1 +1,0 @@
-../install-portal/install.ps1

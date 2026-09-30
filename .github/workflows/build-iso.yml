@@ -85,8 +85,8 @@ jobs:
       - name: Build s0 Live ISO
         if: steps.check_iso.outputs.skip != 'true'
         run: |
-          chmod +x linux/iso/build.sh linux/iso/auto/build.sh
-          cd linux/iso
+          chmod +x iso/build.sh iso/auto/build.sh
+          cd iso
           sudo ./auto/build.sh
           ISO_TARGET="$GITHUB_WORKSPACE/${{ steps.meta.outputs.iso_name }}"
           sudo cp live-image-amd64.hybrid.iso "$ISO_TARGET"

@@ -30,7 +30,7 @@ s0/
 │       ├── crypto.py                   # Ed25519 key generation, sign & verify
 │       ├── certificate.py              # Certificate builder & validation logic
 │       └── pdfgen.py                   # ReportLab PDF generator with QR codes
-├── linux/cli/s0/                   # Linux & unified CLI suite
+├── src/s0/                   # Linux & unified CLI suite
 │   ├── main.py                         # Unified argument parser (all subcommands)
 │   ├── devices.py                      # Block device & raw image inventory
 │   ├── wipe.py                         # Module 1: Drive & media erasure orchestrator
@@ -57,10 +57,10 @@ s0/
 │       └── verify.py                   # Genesis-to-tip mathematical continuity auditor
 ├── windows/                            # Windows native file/folder sanitizer (Win32 FlushFileBuffers, ADS)
 ├── macos/                              # macOS native file/folder sanitizer (F_FULLFSYNC, xattr cleansing)
-├── web/                                # FastAPI unified web dashboard (4 forensic tabs)
-├── verification-portal/                # 100% client-side zero-backend static verifier
+├── src/s0/web/                                # FastAPI unified web dashboard (4 forensic tabs)
+├── portals/verify/                # 100% client-side zero-backend static verifier
 ├── docs/                               # GitBook technical documentation suite
-└── scripts/                            # Master build, test, and installer orchestrators
+└── tools/                            # Master build, test, and installer orchestrators
 ```
 
 ---
@@ -78,7 +78,7 @@ The fastest way to initialize the development environment and verify your toolch
 ```bash
 git clone https://github.com/kartik2005221/s0.git
 cd s0
-bash scripts/build_all.sh
+bash tools/build_all.sh
 ```
 
 `build_all.sh` will:
@@ -91,7 +91,7 @@ bash scripts/build_all.sh
 
 ## 4. How to Add a New File Carving Signature
 
-Adding support for a new file format to **Module 2 (File Carver)** requires adding an entry to `linux/cli/s0/carver/signatures.py`:
+Adding support for a new file format to **Module 2 (File Carver)** requires adding an entry to `src/s0/carve/signatures.py`:
 
 ```python
 from .signatures import FileSignature, SIGNATURES
@@ -112,7 +112,7 @@ SIGNATURES.append(
 ### Signature Guidelines:
 - Keep `min_size` realistic to eliminate false-positive micro-fragments.
 - For formats with variable footers, leave `footer=None` and ensure the size validator or entropy checker correctly scores the segment.
-- Add an automated test case in `linux/cli/tests/test_carver.py` with a synthetic test image containing the planted header.
+- Add an automated test case in `tests/cli/test_carver.py` with a synthetic test image containing the planted header.
 
 ---
 
@@ -156,15 +156,15 @@ Register your method in `s0/methods/__init__.py` and add its identifier to `src/
 Always ensure all test suites pass before submitting a pull request:
 
 ```bash
-.venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
+.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
 
 .venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Quality Invariants:
-1. **Canonical JSON Golden Vectors:** `core/tests/test_canonical.py` validates byte-level serialization against `core/tests/data/canonical_vectors.json`. Never alter these vectors without formal RFC review.
-2. **The Tamper Matrix:** `core/tests/test_tamper.py` systematically mutates every field, character, and delimiter in a valid certificate. Every single mutation must be caught and rejected by the verifier.
-3. **End-to-End Forensic Demo:** `bash linux/cli/demo_e2e.sh` creates a sparse test image, plants secret markers, executes sanitization, samples blocks, verifies 0 hits, and confirms certificate verification.
+1. **Canonical JSON Golden Vectors:** `tests/core/test_canonical.py` validates byte-level serialization against `tests/core/data/canonical_vectors.json`. Never alter these vectors without formal RFC review.
+2. **The Tamper Matrix:** `tests/core/test_tamper.py` systematically mutates every field, character, and delimiter in a valid certificate. Every single mutation must be caught and rejected by the verifier.
+3. **End-to-End Forensic Demo:** `bash tools/demo/e2e.sh` creates a sparse test image, plants secret markers, executes sanitization, samples blocks, verifies 0 hits, and confirms certificate verification.
 
 ---
 
@@ -185,6 +185,6 @@ When contributing to documentation:
 Before submitting your PR:
 - [ ] Code is formatted cleanly and includes type hints (`from __future__ import annotations`).
 - [ ] All 190+ automated tests pass (`pytest` runs 100% green).
-- [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `verification-portal/verify.js` and `src/s0/`.
+- [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `portals/verify/verify.js` and `src/s0/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
 - [ ] Any added pages are linked in `SUMMARY.md`.

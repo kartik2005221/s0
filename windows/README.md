@@ -55,7 +55,7 @@ Instead, operators boot from an **s0 Bare-Metal Live USB**:
    ```
    *Or build from source on Windows via Docker Desktop / WSL2:*
    ```powershell
-   .\scripts\build_iso.ps1
+   .\tools\build_iso.ps1
    ```
 
 2. **Flash to USB with Rufus:**

@@ -37,7 +37,7 @@ REPO_ROOT = _find_repo_root()
 core_python_dir = REPO_ROOT / "src"
 if core_python_dir.exists() and str(core_python_dir) not in sys.path:
     sys.path.insert(0, str(core_python_dir))
-cli_dir = REPO_ROOT / "linux" / "cli"
+cli_dir = REPO_ROOT / "src"
 if cli_dir.exists() and str(cli_dir) not in sys.path:
     sys.path.insert(0, str(cli_dir))
 

@@ -3,18 +3,18 @@
    ==========================================================================
 
    This file is canonical. It is copied verbatim into each surface that needs
-   it (install-portal/css/, verification-portal/css/, web/static/css/) because
+   it (portals/install/css/, portals/verify/css/, src/s0/web/static/css/) because
    every portal is a static site deployed from its own directory, and a
    build step would be a worse trade than three identical copies that a test
    holds in place.
 
    `tests/test_portal_consistency.py` fails if any copy drifts. Run
-   `python scripts/sync_tokens.py` after editing here.
+   `python tools/sync_tokens.py` after editing here.
 
    The three vocabularies this replaces:
 
-     install-portal      --bg-canvas  --bg-card  --primary   --text-muted
-     verification-portal --bg-canvas  --bg-card  --primary   --text-muted
+     portals/install      --bg-canvas  --bg-card  --primary   --text-muted
+     portals/verify --bg-canvas  --bg-card  --primary   --text-muted
      web dashboard       --bg-base    --bg-panel --accent-cyan --text-dim
 
    All three now read the semantic names below. A colour is chosen once, here,
