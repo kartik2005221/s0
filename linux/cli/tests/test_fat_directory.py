@@ -308,3 +308,62 @@ def test_checksum_is_rotation_not_addition():
     a = fd.short_name_checksum(b"ABCDEFGHIJK")
     b = fd.short_name_checksum(b"BCDEFGHIJKA")
     assert a != b
+
+
+# --------------------------------------------------------------------------- #
+# end-to-end: the scanner uses the reassembly
+# --------------------------------------------------------------------------- #
+
+
+def test_scanner_recovers_a_long_name_for_a_deleted_entry(tmp_path, monkeypatch):
+    """The reassembly has to be reached from scan_fat32_deleted_files, not just exist.
+
+    A unit test on the reassembler proves nothing if the carver still parses
+    entries one at a time, which is exactly how it behaved before.
+    """
+    from s0_cli.carver import fat_carver
+
+    boot_bytes = bytearray(512)
+    boot_bytes[0x03:0x0B] = b"FAT32   "
+    struct.pack_into("<H", boot_bytes, 0x0B, 512)      # bytes per sector
+    boot_bytes[0x0D] = 4                                # sectors per cluster (2 KiB)
+    struct.pack_into("<H", boot_bytes, 0x0E, 32)         # reserved sectors
+    boot_bytes[0x10] = 2                                 # FAT count
+    struct.pack_into("<H", boot_bytes, 0x11, 0)          # root entries (FAT32)
+    struct.pack_into("<H", boot_bytes, 0x13, 4096)       # total sectors 16
+    struct.pack_into("<I", boot_bytes, 0x24, 32)         # sectors per FAT
+    struct.pack_into("<I", boot_bytes, 0x2C, 3)          # root cluster
+    boot_bytes[0x1FE:0x200] = b"\x55\xaa"
+
+    cluster_bytes = 2048
+    short = deleted_name83("BUDGET~1", "XLS")
+    cluster = b"".join(long_name_for(short, "Quarterly Report FINAL.xlsx"))
+    cluster += deleted_short_entry(short, first_cluster=3, size=64)
+    cluster += bytes(cluster_bytes - len(cluster))
+
+    # The boot sector is the first sector *of the reserved region*, so the layout
+    # is reserved (32 sectors, boot included), then both FATs, then the data area
+    # where cluster 2 is the root directory and cluster 3 is the file's data.
+    image = tmp_path / "fat.img"
+    image.write_bytes(
+        bytes(boot_bytes)
+        + bytes(31 * 512)          # rest of the reserved region
+        + bytes(32 * 512)          # FAT #1
+        + bytes(32 * 512)          # FAT #2
+        + cluster
+        + bytes(cluster_bytes * 2)
+    )
+    # Mark cluster 3 as allocated so the data offset is inside the image.
+    fat_off = 32 * 512
+    data = bytearray(image.read_bytes())
+    struct.pack_into("<I", data, fat_off + 3 * 4, 0x0FFFFFFF)
+    image.write_bytes(bytes(data))
+
+    results = fat_carver.scan_fat32_deleted_files(str(image))
+    found = [r for r in results if r.is_deleted]
+    assert found, "no deleted entry was reported"
+    assert found[0].filename == "Quarterly Report FINAL.xlsx"
+    assert found[0].name_source.startswith("long filename")
+    # A deleted entry cannot be checksummed, and the report must say so.
+    assert found[0].name_verification == fd.VERIFY_ADJACENT
+    assert "adjacency" in found[0].name_source

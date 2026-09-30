@@ -94,7 +94,10 @@ def test_fat32_deleted_file_carving(tmp_path):
 
     f = deleted_files[0]
     assert f.is_deleted is True
-    assert "_EVIDENC.txt" in f.filename
+    # Case is preserved as stored on the volume; the previous reader folded the
+    # extension to lower case, which is a cosmetic rewrite of evidence.
+    assert f.filename == "_EVIDENC.TXT"
+    assert f.name_source == "8.3 name only"
     assert f.size_bytes == 51  # length of "CONFIDENTIAL FORENSIC INTELLIGENCE FROM USB STORAGE"
     assert b"CONFIDENTIAL FORENSIC INTELLIGENCE" in f.data
 

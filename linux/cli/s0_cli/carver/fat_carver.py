@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+from . import fat_directory as fat_dir
+
 
 FAT32_SIGNATURE = 0xAA55
 
@@ -40,6 +42,12 @@ class FatRecoveredFile:
     size_bytes: int
     is_deleted: bool
     data: Optional[bytes] = None
+    # How the filename was arrived at, and how far it can be relied on. A
+    # deleted entry's long name cannot be checksum-verified -- deletion overwrote
+    # the byte the fragments were hashed against -- so it is corroborated
+    # structurally and labelled as such rather than claimed as verified.
+    name_source: str = "8.3 name only"
+    name_verification: str = "none"
 
 
 def parse_fat32_boot_sector(
@@ -111,8 +119,15 @@ def scan_fat32_deleted_files(
     include_allocated: bool = False,
     max_scan_clusters: int = 2048,
     partition_offset: int = 0,
+    max_file_bytes: int = 100 * 1024 * 1024,
 ) -> List[FatRecoveredFile]:
-    """Traverse FAT32 directory clusters and carve deleted entries (0xE5 marker)."""
+    """Traverse FAT32 directory clusters and carve deleted entries (0xE5 marker).
+
+    A deleted entry keeps its 8.3 name with the first byte replaced by 0xE5, so
+    the long-name fragments that precede it are reassembled to recover the name a
+    user actually typed. How far that name can be trusted is carried on each
+    result; see fat_directory for why a deleted entry cannot be checksummed.
+    """
     boot = parse_fat32_boot_sector(image_path, partition_offset=partition_offset)
     if not boot:
         return []
@@ -143,58 +158,44 @@ def scan_fat32_deleted_files(
                 f.seek(clus_offset)
                 raw_cluster = f.read(boot.cluster_size)
 
-                # Parse 32-byte directory entries
-                for entry_idx in range(0, len(raw_cluster), 32):
-                    entry = raw_cluster[entry_idx : entry_idx + 32]
-                    if len(entry) < 32:
+                # Decode the whole cluster at once so the long-name fragments
+                # that sit before an 8.3 entry are still available when it is
+                # reached. Parsing entries in isolation -- as this did -- is what
+                # made every recovered name an 8.3 stub.
+                for named in fat_dir.name_entries(
+                        fat_dir.read_directory_cluster(raw_cluster, boot.cluster_size),
+                        include_free=True):
+                    entry = named.entry
+                    if entry.is_end_of_directory:
                         break
-
-                    first_byte = entry[0]
-                    if first_byte == 0x00:
-                        # End of directory
+                    if not entry.is_free and not include_allocated:
                         continue
 
-                    is_deleted = (first_byte == 0xE5)
-                    if not is_deleted and not include_allocated:
-                        continue
-
-                    attr = entry[11]
-                    # Skip LFN entries (attr == 0x0F) and subdirectories (attr & 0x10)
-                    if attr == 0x0F or (attr & 0x10) or (attr & 0x08):
-                        continue
-
-                    # Extract cluster pointers and file size
-                    clus_hi = struct.unpack_from("<H", entry, 20)[0]
-                    clus_lo = struct.unpack_from("<H", entry, 26)[0]
+                    clus_hi = struct.unpack_from("<H", entry.raw, 20)[0]
+                    clus_lo = struct.unpack_from("<H", entry.raw, 26)[0]
                     start_cluster = (clus_hi << 16) | clus_lo
-                    file_size = struct.unpack_from("<I", entry, 28)[0]
+                    file_size = struct.unpack_from("<I", entry.raw, 28)[0]
 
-                    if start_cluster < 2 or file_size == 0 or file_size > 100 * 1024 * 1024:
+                    if start_cluster < 2 or file_size == 0 or file_size > max_file_bytes:
                         continue
 
-                    # Extract 8.3 filename
-                    name_bytes = bytearray(entry[0:11])
-                    if is_deleted:
-                        name_bytes[0] = ord("_")
-                    
-                    name_part = name_bytes[0:8].decode("ascii", "replace").strip()
-                    ext_part = name_bytes[8:11].decode("ascii", "replace").strip().lower()
-                    filename = f"{name_part}.{ext_part}" if ext_part else name_part
-
-                    # Read file data from start_cluster
                     data_offset = cluster_to_byte_offset(boot, start_cluster)
-                    if data_offset + file_size <= f_size:
-                        f.seek(data_offset)
-                        file_data = f.read(file_size)
-                        recovered.append(
-                            FatRecoveredFile(
-                                first_cluster=start_cluster,
-                                filename=filename,
-                                size_bytes=file_size,
-                                is_deleted=is_deleted,
-                                data=file_data,
-                            )
+                    if data_offset + file_size > f_size:
+                        continue
+                    f.seek(data_offset)
+                    file_data = f.read(file_size)
+                    recovered.append(
+                        FatRecoveredFile(
+                            first_cluster=start_cluster,
+                            filename=named.name,
+                            size_bytes=file_size,
+                            is_deleted=entry.is_free,
+                            data=file_data,
+                            name_source=named.recovered.name_source,
+                            name_verification=named.recovered.verification,
                         )
+                    )
+
     except Exception:
         pass
 
