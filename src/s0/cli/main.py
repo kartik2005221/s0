@@ -48,6 +48,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import List, Optional
 
 _interrupted = threading.Event()
 
@@ -1268,12 +1269,24 @@ def cmd_carve(args) -> int:
             from s0.carve.policy import CarvePolicy as _CarvePolicy
             carve_policy = _CarvePolicy()
             carve_policy.use_free_space_only = False
+        known_hashes = None
+        if getattr(args, "hash_set", None):
+            from s0.carve.suppression import SuppressionError, load_hash_set
+            algos = [a.strip() for a in (args.hash_algorithms or "").split(",") if a.strip()]
+            try:
+                known_hashes = load_hash_set(args.hash_set, algorithms=algos or None)
+            except SuppressionError as exc:
+                ui.error(f"--hash-set unusable: {exc}")
+                return EX_DATAERR
+            ui.key("Known-file set", known_hashes.describe())
+
         summary = carve_image(
             args.target,
             args.out_dir,
             extensions=exts,
             custom_signatures=custom_sigs,
             min_confidence=args.min_confidence,
+            known_hashes=known_hashes,
             operator_id=args.operator,
             organization=args.organization,
             signing_key_path=key_path,
@@ -1312,6 +1325,35 @@ def cmd_carve(args) -> int:
         100.0 * summary.rejected_candidates / max(1, summary.total_candidates_found)
     )
 
+    # Bodyfiles, written before any format branch so that --format json produces
+    # the same artifacts as the text output. An artifact that only appears in one
+    # output format is an artifact nobody finds.
+    bodyfile_artifacts: List[Path] = []
+    bodyfile_rows: List[tuple] = []
+    if getattr(args, "bodyfile", None) or getattr(args, "gaps_bodyfile", None):
+        from s0.carve import bodyfile as bf
+        extents = summary.recovered_extents
+        scanned_to = summary.total_bytes_scanned
+        if getattr(args, "bodyfile", None):
+            rows, nbytes = bf.write_bodyfile(
+                args.bodyfile, extents,
+                comment=("s0 recovered-file bodyfile\n"
+                         f"target: {summary.target_path}\n"
+                         f"{len(extents)} merged range(s)"))
+            bodyfile_artifacts.append(Path(args.bodyfile))
+            bodyfile_rows.append(("Bodyfile (recovered)", args.bodyfile,
+                                  f"{rows} range(s), {human_bytes(nbytes)}"))
+        if getattr(args, "gaps_bodyfile", None):
+            gaps = bf.complement(extents, 0, max(0, scanned_to - 1))
+            rows, nbytes = bf.write_bodyfile(
+                args.gaps_bodyfile, gaps,
+                comment=("s0 searched-but-unrecovered ranges\n"
+                         f"target: {summary.target_path}\n"
+                         f"searched {scanned_to} byte(s); {len(gaps)} gap(s)"))
+            bodyfile_artifacts.append(Path(args.gaps_bodyfile))
+            bodyfile_rows.append(("Bodyfile (gaps)", args.gaps_bodyfile,
+                                  f"{rows} range(s), {human_bytes(nbytes)}"))
+
     if ui.policy.fmt in ("json", "csv"):
         ui.finish(
             result={
@@ -1333,6 +1375,11 @@ def cmd_carve(args) -> int:
                 "deleted_names_from_journal": summary.deleted_names_from_journal,
                 "allocated_candidates_skipped": summary.allocated_candidates_skipped,
                 "allocated_bytes_skipped": summary.allocated_bytes_skipped,
+                "candidates_prefiltered_in_memory": summary.candidates_prefiltered,
+                "suppressed_known_files": summary.suppressed_known,
+                "suppressed_known_bytes": summary.suppressed_known_bytes,
+                "suppression_note": summary.suppression_note,
+                "bodyfiles": [str(p) for p in bodyfile_artifacts],
                 "rejection_summary": [
                     {"reason": reason, "count": count}
                     for reason, count in summary.rejection_summary
@@ -1362,7 +1409,8 @@ def cmd_carve(args) -> int:
             },
             status="success",
             artifacts=[artifact(Path(args.out_dir) / "recovery_index.json",
-                                "recovery_index")],
+                                "recovery_index")]
+            + [artifact(p, "bodyfile") for p in bodyfile_artifacts],
         )
         return EX_OK
 
@@ -1470,6 +1518,16 @@ def cmd_carve(args) -> int:
         ui.note("")
         for w in summary.warnings:
             ui.warn(w)
+
+    if bodyfile_rows:
+        ui.note("")
+        for label, path, detail in bodyfile_rows:
+            ui.key(label, f"{path} ({detail})")
+
+    if summary.suppressed_known:
+        ui.note("")
+        ui.key("Known-file suppression",
+               f"{summary.suppressed_known} file(s) withheld: {summary.suppression_note}")
 
     ui.note("")
     ui.key("Recovery index", str(Path(args.out_dir) / "recovery_index.json"))
@@ -2377,6 +2435,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
+    crv.add_argument(
+        "--hash-set",
+        help="suppress files already known: a hash list (md5/sha1/sha256/sha512, "
+             "bare or NSRL-style) or a directory to hash in place",
+    )
+    crv.add_argument(
+        "--hash-algorithms",
+        help="comma-separated algorithms to keep from --hash-set (default: all found)",
+    )
+    crv.add_argument(
+        "--bodyfile",
+        help="write a bodyfile of the recovered byte ranges, for a second tool to "
+             "read the same bytes instead of the whole volume again",
+    )
+    crv.add_argument(
+        "--gaps-bodyfile",
+        help="write a bodyfile of the ranges that were searched but produced no "
+             "file. For fragmented recovery the holes are the finding.",
+    )
     crv.add_argument("--operator", "--operator-id", default=CONFIG.get("default_operator", "op-forensic"), help="operator identifier for manifest")
     crv.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="organization name for manifest")
     crv.add_argument("--key", "--signing-key", help="signing key path (default: demo issuer key)")

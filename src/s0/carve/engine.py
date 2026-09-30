@@ -57,6 +57,7 @@ from .fat_carver import scan_fat32_deleted_files
 from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
 from .usn import build_timeline
 from .policy import CarveBudget, CarvePolicy
+from . import bodyfile, suppression
 from .scoring import score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, sniff
 
@@ -158,6 +159,20 @@ class CarvingSessionSummary:
     # journal, so they are counted and reported separately rather than added to
     # files_recovered.
     deleted_names_from_journal: List[dict] = field(default_factory=list)
+    # (start, end) inclusive byte ranges of everything recovered, in the target.
+    # Written out as a bodyfile so another tool can be pointed at the same bytes
+    # instead of being asked to re-read the whole volume.
+    recovered_extents: List[Tuple[int, int]] = field(default_factory=list)
+    # Files held back because they matched a known-hash set. Counted and
+    # reported, never silently dropped: a tool whose report cannot account for
+    # what it withheld is a tool whose report cannot be relied on.
+    suppressed_known: int = 0
+    suppressed_known_bytes: int = 0
+    suppression_note: str = ""
+    # Candidates dropped by the in-memory prefilter before any I/O. The ratio
+    # against candidates_evaluated is the honest measure of how much work that
+    # saved, and an operator adding a signature needs to see it move.
+    candidates_prefiltered: int = 0
 
     def recovery_rate_ppm(self) -> int:
         """Recovered bytes per million bytes scanned, in integer parts-per-million."""
@@ -269,6 +284,7 @@ def _recover_from_filesystem(
     warnings: List[str],
     counters: Dict[str, int],
     recovered_hashes: set,
+    known_hashes: Optional["suppression.SuppressionSet"] = None,
 ) -> Tuple[List[CarvedFile], List[dict]]:
     """Recover deleted files from filesystem metadata.
 
@@ -364,6 +380,23 @@ def _recover_from_filesystem(
             if digest in recovered_hashes:
                 counters["duplicate"] += 1
                 continue
+
+            # A hash set has to work on this path too. Filesystem-native
+            # recovery is the one an examiner trusts most, so withholding
+            # known files only from signature carving would leave the bulk of a
+            # volume's findings untouched and the suppression would look like it
+            # worked. The digest is already in hand from the duplicate check.
+            if known_hashes is not None and len(known_hashes):
+                algo = known_hashes.match(data)
+                if algo is not None:
+                    counters["suppressed_known"] = counters.get("suppressed_known", 0) + 1
+                    counters["suppressed_bytes"] = (
+                        counters.get("suppressed_bytes", 0) + len(data))
+                    counters["rejected_samples"].append(RejectedCandidate(
+                        offset if offset is not None else 0, ext,
+                        f"matches a known {algo} digest in {known_hashes.source}",
+                        "known-file"))
+                    continue
 
             counters["structure_accepted"] += 1
             counters["candidates"] += 1
@@ -582,6 +615,7 @@ def _scan_signatures(
     progress_callback: Optional[Callable[[int, int, int], None]],
     total_size: int,
     free_space: Optional["FreeSpaceMap"] = None,
+    suppression: Optional["suppression.SuppressionSet"] = None,
 ) -> List[CarvedFile]:
     """Carve by signature, resolving every boundary through `.boundary`."""
     carved: List[CarvedFile] = []
@@ -713,6 +747,7 @@ def _scan_signatures(
                         src, offset, sig, extensions, min_confidence, budget,
                         counters, recovered_hashes, warnings,
                         allow_guess=id(sig) in custom_ids,
+                        suppression=suppression,
                     )
                     if result is None:
                         continue
@@ -926,6 +961,7 @@ def _carve_one(
     recovered_hashes: set,
     warnings: List[str],
     allow_guess: bool = False,
+    suppression: Optional["suppression.SuppressionSet"] = None,
 ) -> Optional[Tuple[bytes, boundary.Boundary, int, List[str]]]:
     """Resolve, validate, read and score one candidate. None == rejected."""
     ext = sig.extension
@@ -993,6 +1029,18 @@ def _carve_one(
         counters["duplicate"] += 1
         return None
 
+    if suppression is not None and len(suppression):
+        algo = suppression.match(payload)
+        if algo is not None:
+            # Validated, not guessed at, and already known to the examiner.
+            counters["suppressed_known"] = counters.get("suppressed_known", 0) + 1
+            counters["suppressed_bytes"] = (
+                counters.get("suppressed_bytes", 0) + len(payload))
+            counters["rejected_samples"].append(RejectedCandidate(
+                offset, ext, f"matches a known {algo} digest in {suppression.source}",
+                "known-file"))
+            return None
+
     score, heuristics = score_carved_candidate(
         sig, payload,
         has_valid_footer=(sig.footer is not None and sig.footer in payload),
@@ -1032,6 +1080,7 @@ def carve_image(
     progress_callback: Optional[Callable[[int, int, int], None]] = None,
     generate_certificate: bool = True,
     policy: Optional[CarvePolicy] = None,
+    known_hashes: Optional["suppression.SuppressionSet"] = None,
 ) -> CarvingSessionSummary:
     """Recover deleted and unallocated files from an image, image file or device.
 
@@ -1076,7 +1125,8 @@ def carve_image(
     journal_timeline: List[dict] = []
     if policy.structure_recovery_enabled:
         all_files, journal_timeline = _recover_from_filesystem(
-            target_p, out_p, parts, extensions, budget, warnings, counters, recovered_hashes
+            target_p, out_p, parts, extensions, budget, warnings, counters,
+            recovered_hashes, known_hashes,
         )
 
 
@@ -1104,7 +1154,7 @@ def carve_image(
                 carved = _scan_signatures(
                     src, target_p, out_p, active, custom_signatures, extensions, min_confidence,
                     budget, counters, recovered_hashes, warnings, all_files, progress_callback,
-                    total_size, free_space,
+                    total_size, free_space, known_hashes,
                 )
             scanned = counters.pop("bytes_scanned", 0)
             all_files += carved
@@ -1226,6 +1276,16 @@ def carve_image(
         allocated_candidates_skipped=counters.get("allocated_candidates_skipped", 0),
         allocated_bytes_skipped=counters.get("allocated_bytes_skipped", 0),
         deleted_names_from_journal=journal_timeline,
+        # Files recovered through the filesystem path carry their bytes in memory
+        # rather than as an image extent, so they have no range to contribute.
+        recovered_extents=bodyfile.normalise(
+            [(f.offset, f.offset + f.size_bytes - 1)
+             for f in all_files
+             if f.offset is not None and f.size_bytes]),
+        suppressed_known=counters.get("suppressed_known", 0),
+        suppressed_known_bytes=counters.get("suppressed_bytes", 0),
+        candidates_prefiltered=counters.get("prefiltered", 0),
+        suppression_note=(known_hashes.describe() if known_hashes is not None else ""),
     )
 
     index_data = {
@@ -1252,6 +1312,8 @@ def carve_image(
         # in-memory prefilter saved, and an operator tuning --min-confidence or
         # adding a signature needs to see it move.
         "candidates_prefiltered_in_memory": counters.get("prefiltered", 0),
+        "suppressed_known_files": counters.get("suppressed_known", 0),
+        "suppressed_known_bytes": counters.get("suppressed_bytes", 0),
         "allocated_bytes_skipped": counters.get("allocated_bytes_skipped", 0),
         "by_category": by_category,
         "by_recovery_method": by_method,

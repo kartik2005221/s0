@@ -111,5 +111,10 @@ ignore = [
     "E501",  # long lines are caught by the formatter, not the linter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, shell out to ffmpeg and the CLI, and build MD5/SHA-1 lists on
+# purpose: those are the things under test, not oversights.
+"tests/**" = ["S101", "S603", "S607", "S324"]
+
 [tool.bandit]
 exclude_dirs = ["tests", "vendor", "docs"]
