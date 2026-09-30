@@ -1389,6 +1389,10 @@ _TS_MIN_PACKETS = 16
 #: muxer emits and the only one a carver can rely on.
 _TS_PACKET = 188
 
+#: A real multiplex carries a handful of PIDs. Random headers produce as many as
+#: there are packets, so a cap separates the two without assuming uniformity.
+_TS_MAX_PIDS = 64
+
 
 def _ts_packet_header(hdr: bytes) -> Optional[Tuple[int, bool, int, int]]:
     """Parse the 4-byte MPEG-TS transport header, or return ``None`` if invalid.
@@ -1422,10 +1426,11 @@ def _ts_packet_header(hdr: bytes) -> Optional[Tuple[int, bool, int, int]]:
 
 
 def _ts_adaptation_length(src: ByteSource, pos: int) -> int:
-    """Bytes consumed by the adaptation field at ``pos``, or 0 when absent.
+    """Length of the adaptation field at ``pos``, or 0 when absent.
 
-    Adaptation fields are not always multiples of 188, so the walk has to step
-    by ``1 + adaptation_field_length`` to stay aligned.
+    Returned for validation only. It must fit inside the 188-byte packet; it
+    never changes the stride, because every transport packet is exactly 188
+    bytes regardless of what it carries.
     """
     head = src.read(pos + 4, 1)
     if not head:
@@ -1444,8 +1449,7 @@ def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """
     limit = min(src.size, start + max_size)
     packets = 0
-    pid: Optional[int] = None
-    pid_changes = 0
+    pids: set = set()
     pos = start
 
     while pos + _TS_PACKET <= limit:
@@ -1456,23 +1460,21 @@ def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             break
         this_pid, pusi, afc, _cc = parsed
 
-        if afc in (2, 3):                       # adaptation field present
+        if afc in (2, 3):
+            # The adaptation field lives *inside* the 188-byte packet:
+            # adaptation_field_length counts itself, so the packet size is
+            # unchanged. Walking by 188 + 1 + af_len skips into the middle of
+            # every stream that carries PCRs, which is most of them.
             af_len = _ts_adaptation_length(src, pos)
             if af_len > _TS_PACKET - 4:
                 break                           # adaptation field overruns the packet
-            if af_len:
-                pos += af_len
 
-        if pid is None:
-            pid = this_pid
-        elif this_pid != pid:
-            # One run is one elementary stream. A PID that changes part-way
-            # through means we are no longer walking a stream.
-            pid_changes += 1
-            if pid_changes > 2:
-                break
-        elif not pusi:
-            pass
+        # A transport stream file is a *multiplex*: one run carries the PAT, the
+        # PMT and every video and audio elementary stream, each with its own PID.
+        # Requiring one PID throughout rejected every real .ts file, because the
+        # PID changes within the first few packets. What distinguishes a stream
+        # from noise is the length of the run, not the uniformity of its PIDs.
+        pids.add(this_pid)
 
         packets += 1
         pos += _TS_PACKET
@@ -1484,10 +1486,11 @@ def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                         [f"only {packets} consecutive valid 188-byte TS packet(s); "
                          f"at least {_TS_MIN_PACKETS} are required before this is "
                          "distinguishable from coincidence"])
+    listed = ", ".join(f"0x{p:04X}" for p in sorted(pids)[:6])
     return Boundary(
         pos, SYNC_RUN,
-        [f"MPEG-TS: {packets} consecutive 188-byte packet(s) on PID 0x{(pid or 0):04X}"
-         + (f", {pid_changes} PID change(s)" if pid_changes else "")],
+        [f"MPEG-TS: {packets} consecutive 188-byte packet(s), every transport header "
+         f"valid, across {len(pids)} PID(s) ({listed})"],
     )
 
 
@@ -2126,19 +2129,22 @@ def _validate_mpegts(data: bytes) -> Tuple[bool, str]:
             return False, f"packet {off // _TS_PACKET} has an invalid transport header"
         pid, _pusi, afc, _cc = parsed
         if afc in (2, 3):
-            af_len = data[off + 4]
-            if af_len > _TS_PACKET - 4:
+            # Validated, not used to advance: a transport packet is always 188
+            # bytes and the adaptation field sits inside it.
+            if data[off + 4] > _TS_PACKET - 4:
                 return False, f"packet {off // _TS_PACKET} adaptation field overruns the packet"
-            off += 1 + af_len
         pids[pid] = pids.get(pid, 0) + 1
         off += _TS_PACKET
 
-    if len(pids) != 1:
-        return False, (f"{len(pids)} distinct PIDs in one run; a carved elementary "
-                       "stream must be a single PID")
-    pid, count = next(iter(pids.items()))
-    return True, (f"{count} aligned {_TS_PACKET}-byte packet(s), every transport header "
-                  f"valid, single PID 0x{pid:04X}")
+    # A .ts file is a multiplex, so several PIDs is the normal case, not a defect:
+    # PAT, PMT, and one per elementary stream. What is implausible is a run with
+    # an unbounded number of them, which is what random headers produce.
+    if len(pids) > _TS_MAX_PIDS:
+        return False, (f"{len(pids)} distinct PIDs in one run; a real multiplex has a "
+                       f"handful, so this is not a transport stream")
+    listed = ", ".join(f"0x{p:04X}" for p in sorted(pids)[:6])
+    return True, (f"{len(data) // _TS_PACKET} aligned {_TS_PACKET}-byte packet(s), every "
+                  f"transport header valid, {len(pids)} PID(s) ({listed})")
 
 
 def _validate_macho(data: bytes) -> Tuple[bool, str]:

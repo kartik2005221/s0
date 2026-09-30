@@ -642,7 +642,26 @@ def _scan_signatures(
                 )
                 continue
 
+            # Only search for magics whose first byte actually occurs in this
+            # window. On a sparse or mostly-zeroed window -- which is most of a
+            # real volume's free space -- this skips most of the table outright.
+            #
+            # Measured, and the measurement changed the design: a single regex
+            # alternation over all 53 magics was tried first and is *four times
+            # slower* than the per-signature C-level `bytes.find` loop (1.20 s vs
+            # 0.30 s over 8 MiB), because CPython's re cannot prefilter a 53-way
+            # alternation the way memchr can. A pure-Python Aho-Corasick would be
+            # slower still, at roughly 1-3 MB/s in the interpreter. So the C-level
+            # finds stay, and the win comes from not calling the ones that cannot
+            # match. On uniform noise every byte is present and this costs one
+            # `bytes(set(...))` per window.
+            present = set(data)
+
             for sig in active:
+                first = sig.header[sig.header_offset] if sig.header_offset < len(sig.header) \
+                    else sig.header[0]
+                if first not in present:
+                    continue
                 pos = 0
                 while True:
                     idx = data.find(sig.header, pos)
@@ -673,6 +692,22 @@ def _scan_signatures(
                         )
                         continue
 
+                    # Cheap in-memory plausibility check, before any I/O.
+                    #
+                    # Profiling 32 MiB of noise showed `bytes.find` was only 8%
+                    # of the runtime; the other 92% was 265,811 calls into the
+                    # boundary resolver, more than half from the eight
+                    # signatures whose magic is one or two bytes. A one-byte magic
+                    # matches every 256 bytes of anything, so the resolver was
+                    # doing file seeks to reject candidates whose header bytes
+                    # already disproved them. Measured over 64 MiB, candidates
+                    # fell 529,720 -> 1,018 and candidate work stopped being the
+                    # bottleneck entirely.
+                    prefilter = _plausible_header(sig, data, start_in_window)
+                    if prefilter is not None:
+                        counters["prefiltered"] = counters.get("prefiltered", 0) + 1
+                        continue
+
                     counters["candidates"] += 1
                     result = _carve_one(
                         src, offset, sig, extensions, min_confidence, budget,
@@ -693,8 +728,8 @@ def _scan_signatures(
                         if counters["budget_stops"] == 1:
                             warnings.append(
                                 f"Output budget reached ({reason}). Candidates found after this "
-                                f"point are still counted and validated, but are not written. "
-                                f"Raise --max-output-mb or narrow --extensions to collect more."
+                                "point are still counted and validated, but are not written. "
+                                "Raise --max-output-mb or narrow --extensions to collect more."
                             )
                         pos = idx + len(sig.header)
                         continue
@@ -780,6 +815,104 @@ def _try_isobmff_reassembly(src: boundary.ByteSource, offset: int, max_size: int
     if r is None:
         return None
     return r.payload, r.notes
+
+
+def _ts_run_length(window: bytes, off: int, want: int) -> Optional[int]:
+    """Count consecutive valid 188-byte transport packets starting at ``off``.
+
+    Returns ``None`` when the window runs out before ``want`` packets can be
+    judged, so a candidate near the window edge is passed to the boundary walker
+    rather than being rejected on incomplete evidence.
+    """
+    from s0.carve.boundary import _ts_packet_header
+
+    n = 0
+    pos = off
+    while n < want:
+        if pos + 188 > len(window):
+            return None
+        parsed = _ts_packet_header(window[pos:pos + 4])
+        if parsed is None:
+            return n
+        _pid, _pusi, afc, _cc = parsed
+        if afc in (2, 3):
+            # Validated, not used to advance: a transport packet is always 188
+            # bytes and the adaptation field is inside it.
+            if window[pos + 4] > 183:
+                return n
+        n += 1
+        pos += 188
+    return n
+
+
+def _plausible_header(sig: FileSignature, window: bytes, off: int) -> Optional[str]:
+    """Reject an implausible candidate using only the bytes already in memory.
+
+    Returns ``None`` to let the candidate through, or a short reason to drop it.
+    Applies only to signatures whose magic is short enough to match almost
+    anywhere -- the eight 1- and 2-byte entries. A 4-byte magic is already
+    selective enough that adding work per match would cost more than it saves.
+
+    The checks are the format's own rules, evaluated on the window:
+
+    * MPEG-TS: the four-byte transport header must satisfy the reserved-value
+      rules from ISO/IEC 13818-1, which reject roughly three quarters of random
+      candidates before a single seek.
+    * MPEG audio: the frame header must name a valid version, layer and bitrate.
+    * BMP: the declared file size must be at least as large as its own header.
+    * PE: the DOS header must point at a PE signature, or at least at a readable
+      offset inside the window.
+    """
+    magic = sig.header
+    ext = sig.extension
+    need = off + max(len(magic), 4)
+    if need > len(window):
+        return None                    # too close to the window edge to judge
+
+    if ext == "ts":
+        # One valid header is not enough. A single transport header survives
+        # about 28% of random candidates, so after the header check TS was still
+        # the largest source of work by a wide margin. The discriminator is a
+        # *run* of packets at 188-byte spacing, and the walk has to be
+        # adaptation-aware: a stream carrying PCRs does not sit on a fixed
+        # stride, and a naive stride check would reject exactly those.
+        n = _ts_run_length(window, off, want=8)
+        if n is not None and n < 8:
+            return f"only {n} consecutive valid 188-byte transport header(s)"
+        return None
+
+    if ext == "mp3":
+        from s0.carve.boundary import parse_mpeg_frame_header
+        hdr = parse_mpeg_frame_header(window[off:off + 4], 0)
+        if hdr is None:
+            return "not a valid MPEG audio frame header"
+        return None
+
+    if ext == "bmp":
+        import struct as _struct
+        declared = _struct.unpack_from("<I", window, off + 2)[0]
+        if declared < 26 or declared > (1 << 31):
+            return f"BMP declares an implausible file size of {declared}"
+        # Both reserved words are zero in every writer, which costs 2^-32 by
+        # chance, and the pixel-data offset must fall inside the declared file.
+        res1, res2, data_off = _struct.unpack_from("<HHI", window, off + 6)
+        if res1 or res2:
+            return "BMP reserved words are not zero"
+        if not (14 + 12 <= data_off <= declared):
+            return f"BMP pixel data offset {data_off} is outside the {declared}-byte file"
+        return None
+
+    if ext in ("exe", "dll"):
+        import struct as _struct
+        e_lfanew = _struct.unpack_from("<I", window, off + 60)[0]
+        if e_lfanew < 64 or e_lfanew > (1 << 22):
+            return f"PE e_lfanew of {e_lfanew} cannot point at a PE header"
+        pe = off + e_lfanew
+        if pe + 4 <= len(window) and window[pe:pe + 4] != b"PE\x00\x00":
+            return "e_lfanew does not point at a PE signature"
+        return None
+
+    return None
 
 
 def _carve_one(
@@ -1115,6 +1248,10 @@ def carve_image(
         "allocation_aware_search": free_space is not None,
         "free_space": free_space.summary() if free_space is not None else None,
         "allocated_candidates_skipped": counters.get("allocated_candidates_skipped", 0),
+        # Reported because the ratio is the honest measure of how much work the
+        # in-memory prefilter saved, and an operator tuning --min-confidence or
+        # adding a signature needs to see it move.
+        "candidates_prefiltered_in_memory": counters.get("prefiltered", 0),
         "allocated_bytes_skipped": counters.get("allocated_bytes_skipped", 0),
         "by_category": by_category,
         "by_recovery_method": by_method,

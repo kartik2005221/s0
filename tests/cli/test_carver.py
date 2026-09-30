@@ -457,23 +457,99 @@ def test_mpegts_rejects_a_short_sync_run_and_random_payloads():
     ok, why = boundary._validate_mpegts(short)
     assert not ok and "too short" in why
 
-    # A genuine single-PID run must still validate, and report a sync run rather
-    # than claiming a validated frame sequence: ISO/IEC 13818-1 has no end marker.
+    # A genuine run must still validate, and report a sync run rather than
+    # claiming a validated frame sequence: ISO/IEC 13818-1 has no end marker.
     good = _mpegts_packets(boundary._TS_MIN_PACKETS + 20)
     ok, why = boundary._validate_mpegts(good)
     assert ok, why
-    assert "single PID" in why
+    assert "PID(s)" in why
 
 
-def test_mpegts_mixed_pids_are_rejected():
-    """One carved run is one elementary stream; a PID change means it is noise."""
-    good = bytearray(_mpegts_packets(boundary._TS_MIN_PACKETS + 20, pid=0x0100))
-    # Flip the PID of the packet in the middle.
-    off = 188 * 10
-    good[off + 1] = (good[off + 1] & 0xE0) | ((0x0200 >> 8) & 0x1F)
-    good[off + 2] = 0x0200 & 0xFF
-    ok, why = boundary._validate_mpegts(bytes(good))
+def _mpegts_multiplexed(packets: int) -> bytes:
+    """A realistic multiplex: PAT, PMT, video and audio in one run.
+
+    A ``.ts`` file is not one elementary stream. Requiring a single PID
+    throughout rejected every real ``.ts`` file, because the PID changes within
+    the first few packets -- the original version of this test encoded that
+    wrong assumption and passed only because it used a single-PID fixture.
+    """
+    pids = (0x0000, 0x1000, 0x0100, 0x0200)
+    out = bytearray()
+    for i in range(packets):
+        pid = pids[i % len(pids)]
+        out += bytes([0x47, ((pid >> 8) & 0x1F), pid & 0xFF, (0x01 << 4) | (i & 0x0F)])
+        out += b"\x00" * 184
+    return bytes(out)
+
+
+def test_mpegts_multiplexed_streams_are_accepted():
+    data = _mpegts_multiplexed(boundary._TS_MIN_PACKETS + 40)
+    ok, why = boundary._validate_mpegts(data)
+    assert ok, why
+    assert "PID(s)" in why
+
+
+def test_mpegts_unbounded_pid_count_is_rejected():
+    """Random headers put a different PID in every packet; real ones do not."""
+    n = boundary._TS_MAX_PIDS + 20
+    out = bytearray()
+    for i in range(n):
+        pid = 0x0001 + i * 7
+        out += bytes([0x47, ((pid >> 8) & 0x1F), pid & 0xFF, (0x01 << 4) | (i & 0x0F)])
+        out += b"\x00" * 184
+    ok, why = boundary._validate_mpegts(bytes(out))
     assert not ok and "PID" in why
+
+
+def test_mpegts_adaptation_fields_do_not_move_the_stride(tmp_path):
+    """A transport packet is always 188 bytes, adaptation field or not.
+
+    Walking by ``188 + 1 + adaptation_field_length`` lands in the middle of every
+    stream that carries PCRs, which is most of them.
+    """
+    out = bytearray()
+    for i in range(64):
+        af_len = 7 if i % 2 else 0
+        afc = 3 if af_len else 1
+        pid = 0x0100
+        out += bytes([0x47, ((pid >> 8) & 0x1F), pid & 0xFF, (afc << 4) | (i & 0x0F)])
+        if af_len:
+            # adaptation_field_length counts itself, so the field is af_len
+            # bytes in total and the payload is whatever is left of the 188.
+            out += bytes([af_len]) + b"\x00" * (af_len - 1)
+        out += b"\x00" * (184 - af_len)
+    data = bytes(out)
+    assert len(data) == 64 * 188
+    path = tmp_path / "af.ts"
+    path.write_bytes(data)
+    with open(path, "rb") as fh:
+        b = boundary._mpegts_end(boundary.ByteSource(fh, len(data)), 0, 1 << 20)
+    assert b.end == len(data), "adaptation fields must not shift the packet stride"
+    ok, why = boundary._validate_mpegts(data)
+    assert ok, why
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not available")
+def test_a_real_ffmpeg_transport_stream_is_recovered(tmp_path):
+    """End to end: a real multiplexed stream must carve byte-exact."""
+    from s0.carve import carve_image
+    ffmpeg = shutil.which("ffmpeg")
+    src = tmp_path / "real.ts"
+    proc = subprocess.run(
+        [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc=size=160x120:rate=15:duration=2",
+         "-c:v", "mpeg2video", "-f", "mpegts", str(src)],
+        capture_output=True, text=True)
+    if proc.returncode != 0:
+        pytest.skip(proc.stderr[:200])
+    original = src.read_bytes()
+    image = tmp_path / "img.raw"
+    image.write_bytes(b"\x5a" * 4096 + original + b"\x5a" * 4096)
+    out = tmp_path / "out"
+    carve_image(image, out, generate_certificate=False)
+    files = [f for f in out.iterdir() if f.suffix == ".ts"]
+    assert len(files) == 1, sorted(f.name for f in out.iterdir())
+    assert files[0].read_bytes() == original
 
 
 def test_jpeg_sof_length_must_match_component_count():
@@ -889,3 +965,135 @@ class TestUniformRandomGate:
         data = _png_bytes(16, 16)
         ok, reason = boundary.validate_structure(data, "png")
         assert ok, reason
+
+
+class TestCandidatePrefilter:
+    """The in-memory prefilter, and the measurements that justify its thresholds.
+
+    Profiling 32 MiB of noise found 265,811 calls into the boundary resolver for
+    978 real candidates. Eight of the 59 signatures have a one- or two-byte
+    magic and so match almost everywhere; the resolver was doing file seeks to
+    reject candidates whose header bytes already disproved them.
+    """
+
+    def _sig(self, ext):
+        from s0.carve.signatures import SIGNATURES
+        return next(s for s in SIGNATURES if s.extension == ext)
+
+    def test_noise_matching_a_one_byte_magic_is_rejected_in_memory(self):
+        from s0.carve.engine import _plausible_header
+        sig = self._sig("ts")
+        window = bytes([0x47]) + os.urandom(64 * 1024)
+        # Force an invalid adaptation_field_control at +3 on the first packets.
+        window = bytearray(window)
+        for i in range(0, 8 * 188, 188):
+            window[i + 3] = 0x00            # AFC 0 is forbidden
+        window = bytes(window)
+        assert _plausible_header(sig, window, 0) is not None
+        assert "consecutive valid" in _plausible_header(sig, window, 0)
+
+    def test_a_real_transport_stream_passes_the_prefilter(self, tmp_path):
+        from s0.carve.engine import _plausible_header
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            pytest.skip("ffmpeg not available")
+        src = tmp_path / "r.ts"
+        proc = subprocess.run(
+            [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+             "-i", "testsrc=size=160x120:rate=15:duration=2",
+             "-c:v", "mpeg2video", "-f", "mpegts", str(src)],
+            capture_output=True, text=True)
+        if proc.returncode != 0:
+            pytest.skip(proc.stderr[:200])
+        data = src.read_bytes()
+        sig = self._sig("ts")
+        assert _plausible_header(sig, data, 0) is None, \
+            "a real multiplexed stream must not be prefiltered away"
+
+    @pytest.mark.parametrize("ext", ["avi", "mp4"])
+    def test_real_container_starts_pass(self, tmp_path, ext):
+        from s0.carve.engine import _plausible_header
+        sig = self._sig(ext)
+        if ext == "avi":
+            ffmpeg = shutil.which("ffmpeg")
+            if ffmpeg is None:
+                pytest.skip("ffmpeg not available")
+            src = tmp_path / "a.avi"
+            proc = subprocess.run(
+                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+                 "-i", "testsrc=size=160x120:rate=15:duration=2", "-c:v", "mpeg4",
+                 "-f", "avi", str(src)], capture_output=True, text=True)
+            if proc.returncode != 0:
+                pytest.skip(proc.stderr[:200])
+        else:
+            src = _png_bytes()          # placeholder, replaced below
+            src = tmp_path / "a.mp4"
+            ffmpeg = shutil.which("ffmpeg")
+            if ffmpeg is None:
+                pytest.skip("ffmpeg not available")
+            proc = subprocess.run(
+                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+                 "-i", "testsrc=size=160x120:rate=15:duration=2", "-c:v", "libx264",
+                 "-f", "mp4", str(src)], capture_output=True, text=True)
+            if proc.returncode != 0:
+                pytest.skip(proc.stderr[:200])
+        data = src.read_bytes()
+        i = data.find(sig.header, sig.header_offset)
+        assert i >= 0
+        assert _plausible_header(sig, data, i - sig.header_offset) is None
+
+    def test_bmp_with_a_plausible_size_but_nonsense_reserved_words_is_rejected(self):
+        import struct as _struct
+        from s0.carve.engine import _plausible_header
+        sig = self._sig("bmp")
+        window = bytearray(64)
+        window[0:2] = b"BM"
+        _struct.pack_into("<I", window, 2, 1000)      # declared size
+        _struct.pack_into("<HHI", window, 6, 0, 0, 54)   # data offset
+        window = bytes(window)
+        assert _plausible_header(sig, window, 0) is None
+        bad = bytearray(window)
+        _struct.pack_into("<H", bad, 6, 0x1234)       # non-zero reserved word
+        assert "reserved" in (_plausible_header(sig, bytes(bad), 0) or "")
+
+    def test_prefilter_near_the_window_edge_defers_to_the_boundary_walker(self):
+        """Incomplete evidence must not be treated as disproof."""
+        from s0.carve.engine import _plausible_header
+        sig = self._sig("ts")
+        assert _plausible_header(sig, b"G", 0) is None
+
+
+class TestScanThroughput:
+    """Throughput, recorded so a future change cannot silently undo it."""
+
+    def test_noise_scan_does_not_drown_in_candidates(self, tmp_path):
+        from s0.carve import carve_image
+        img = tmp_path / "noise.raw"
+        img.write_bytes(os.urandom(8 * 1024 * 1024))
+        out = tmp_path / "out"
+        summary = carve_image(img, out, generate_certificate=False)
+        # Before the prefilter this was ~66,000 candidates per 8 MiB.
+        assert summary.total_candidates_found < 500, \
+            f"{summary.total_candidates_found} candidates from 8 MiB of noise"
+
+    def test_a_sparse_window_skips_magics_that_cannot_match(self, tmp_path):
+        from s0.carve import carve_image
+        img = tmp_path / "sparse.raw"
+        with open(img, "wb") as f:
+            for _ in range(8):
+                f.write(b"\x00" * (1 << 20))
+            f.write(os.urandom(1024))
+        out = tmp_path / "out"
+        carve_image(img, out, generate_certificate=False)
+        assert [f for f in out.iterdir() if f.suffix != ".json"] == []
+
+    def test_a_real_file_is_still_found_in_a_sparse_image(self, tmp_path):
+        from s0.carve import carve_image
+        payload = _png_bytes(64, 64)
+        img = tmp_path / "sparse.raw"
+        img.write_bytes(b"\x00" * 4096 + payload + b"\x00" * 4096)
+        out = tmp_path / "out"
+        carve_image(img, out, generate_certificate=False)
+        pngs = [f for f in out.iterdir() if f.suffix == ".png"]
+        assert len(pngs) == 1
+        assert pngs[0].read_bytes() == payload
