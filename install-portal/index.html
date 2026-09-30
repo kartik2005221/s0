@@ -10,9 +10,7 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="fonts/fonts.css">
   <!-- Favicons and App Icons -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
@@ -49,6 +47,9 @@
   </div>
 </header>
 
+<!-- The outcome of a copy/flash operation is announced to assistive
+     technology, not merely painted on screen (WCAG 2.2 SC 4.1.3). -->
+<p id="installStatus" role="status" aria-live="polite" class="sr-only"></p>
 <main>
   <div class="hero">
     <h1>Install s0</h1>
@@ -293,7 +294,7 @@
 
     <div class="footer-bottom">
       <div class="footer-legal-notice">
-        ⚖ <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+        [!] <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
       </div>
       <div>
         Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License

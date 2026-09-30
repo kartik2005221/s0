@@ -1,106 +1,41 @@
+@import url("tokens.css");
+
+/* ---------------------------------------------------------------------------
+   MIGRATION SHIM. All colour, type, spacing, focus and motion values come from
+   shared/tokens.css (copied here by scripts/sync_tokens.py, verified by
+   tests/test_portal_consistency.py). The names below map this stylesheet's
+   original vocabulary onto the shared semantic tokens. New code must use the
+   semantic names directly.
+   --------------------------------------------------------------------------- */
 :root {
-  --bg-canvas: #000000;
-  --bg-card: #070D18;
-  --bg-card-hover: #0D1929;
-  --bg-elevated: #0F1F35;
-  --border-subtle: #142338;
-  --border-focus: #FF6500;
-  --text-primary: #FFFFFF;
-  --text-secondary: #CBD5E1;
-  --text-muted: #94A3B8;
-  
-  --primary: #FF6500;
-  --primary-hover: #FF8533;
-  --primary-glow: rgba(255, 101, 0, 0.25);
-  
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.12);
-  --success-border: rgba(16, 185, 129, 0.35);
-  --success-glow: rgba(16, 185, 129, 0.25);
-  
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.12);
-  --danger-border: rgba(239, 68, 68, 0.35);
-  --danger-glow: rgba(239, 68, 68, 0.25);
-  
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --warning-border: rgba(245, 158, 11, 0.35);
-  
-  --info: #3b82f6;
-  --info-bg: rgba(59, 130, 246, 0.12);
-  --info-border: rgba(59, 130, 246, 0.35);
-  
-  --code-bg: #04070D;
-  --header-bg: rgba(0, 0, 0, 0.88);
-  --btn-bg: #1e293b;
-  --btn-bg-hover: #27354a;
-  --btn-border: #334155;
-  --btn-text: #FFFFFF;
-  --font-mono: "JetBrains Mono", monospace;
-  --font-sans: "Rubik", sans-serif;
-}
-
-[data-theme="light"] {
-  --bg-canvas: #F8FAFC;
-  --bg-card: #FFFFFF;
-  --bg-card-hover: #F1F5F9;
-  --bg-elevated: #F1F5F9;
-  --border-subtle: #E2E8F0;
-  --border-focus: #E65100;
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
-  
-  --primary: #E65100;
-  --primary-hover: #FF6D00;
-  --primary-glow: rgba(230, 81, 0, 0.20);
-  
-  --success: #059669;
-  --success-bg: rgba(5, 150, 105, 0.10);
-  --success-border: rgba(5, 150, 105, 0.30);
-  --success-glow: rgba(5, 150, 105, 0.15);
-  
-  --danger: #DC2626;
-  --danger-bg: rgba(220, 38, 38, 0.10);
-  --danger-border: rgba(220, 38, 38, 0.30);
-  --danger-glow: rgba(220, 38, 38, 0.15);
-  
-  --warning: #D97706;
-  --warning-bg: rgba(217, 119, 6, 0.10);
-  --warning-border: rgba(217, 119, 6, 0.30);
-  
-  --info: #2563EB;
-  --info-bg: rgba(37, 99, 235, 0.10);
-  --info-border: rgba(37, 99, 235, 0.30);
-  
-  --code-bg: #F1F5F9;
-  --header-bg: rgba(255, 255, 255, 0.92);
-  --btn-bg: #E2E8F0;
-  --btn-bg-hover: #CBD5E1;
-  --btn-border: #CBD5E1;
-  --btn-text: #0F172A;
-}
-
-[data-theme="light"] body {
-  background-color: var(--bg-canvas);
-  background-image: none;
-}
-
-[data-theme="light"] .card {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-}
-
-.theme-icon-moon {
-  display: none;
-}
-
-[data-theme="light"] .theme-icon-sun {
-  display: none;
-}
-
-[data-theme="light"] .theme-icon-moon {
-  display: inline-block !important;
+  --bg-canvas:    var(--surface-canvas);
+  --bg-card:      var(--surface-raised);
+  --bg-card-hover:var(--surface-hover);
+  --bg-elevated:  var(--surface-overlay);
+  --text-muted:   var(--text-tertiary);
+  --primary:      var(--brand);
+  --primary-hover:var(--brand-hover);
+  --primary-glow: var(--brand-glow);
+  --success:        var(--status-ok);
+  --success-bg:     var(--status-ok-bg);
+  --success-border: var(--status-ok-border);
+  --success-glow:   var(--status-ok-bg);
+  --danger:        var(--status-danger);
+  --danger-bg:     var(--status-danger-bg);
+  --danger-border: var(--status-danger-border);
+  --danger-glow:   var(--status-danger-bg);
+  --warning:        var(--status-warn);
+  --warning-bg:     var(--status-warn-bg);
+  --warning-border: var(--status-warn-border);
+  --info:        var(--status-info);
+  --info-bg:     var(--status-info-bg);
+  --info-border: var(--status-info-border);
+  --code-bg:     var(--surface-sunken);
+  --code-text:   var(--code-text);
+  --btn-bg:      var(--surface-inset);
+  --btn-bg-hover:var(--surface-hover);
+  --btn-border:  var(--border-strong);
+  --btn-text:    var(--text-primary);
 }
 
 *, *::before, *::after {

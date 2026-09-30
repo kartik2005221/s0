@@ -52,7 +52,7 @@
   <!-- Sudo Privilege Warning Banner -->
   <div id="sudoWarningBanner" class="sudo-warning-banner" style="display: none;">
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span class="warning-icon">⚠️</span>
+      <span class="warning-icon">[!]</span>
       <div class="warning-content">
         <strong>Limited User Mode:</strong> s0 web was launched without root/administrator privileges. Direct block device wiping and physical disk acquisition are disabled. For full forensic operations, run: <span class="warning-cmd">sudo s0 web</span>
       </div>
@@ -102,7 +102,7 @@
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label for="driveSelect" style="margin-bottom: 0;">Target Storage Media:</label>
-            <span class="temp-badge normal" id="driveTempBadge" style="display: none;">🌡️ --°C</span>
+            <span class="temp-badge normal" id="driveTempBadge" style="display: none;">[T] --°C</span>
           </div>
           <select id="driveSelect" onchange="onDriveSelected()">
             <option value="">Scanning devices...</option>
@@ -149,7 +149,7 @@
 
         <!-- Advanced Options Collapsible -->
         <details class="advanced-panel" style="margin-top: 14px;">
-          <summary>⚙ Advanced Options &amp; Verification Policy</summary>
+          <summary>[*] Advanced Options &amp; Verification Policy</summary>
           <div class="advanced-content">
             <label class="toggle-card" style="margin-bottom: 0;">
               <input type="checkbox" id="drivePdfToggle" checked>
@@ -209,7 +209,8 @@
         <div class="panel-header">
           <div style="display: flex; align-items: center; gap: 10px;">
             <h2 class="panel-title">Execution Console &amp; Certificate Manifest</h2>
-            <span class="badge badge-dim" id="driveStatusBadge">STATUS: IDLE</span>
+            <span class="badge badge-dim" id="driveStatusBadge"
+                  role="status" aria-live="polite">STATUS: IDLE</span>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="clearLog('driveLog')">Clear</button>
         </div>
@@ -299,7 +300,7 @@
 
         <!-- Advanced Options Collapsible -->
         <details class="advanced-panel" style="margin-top: 14px;">
-          <summary>⚙ Advanced Options &amp; Verification Policy</summary>
+          <summary>[*] Advanced Options &amp; Verification Policy</summary>
           <div class="advanced-content">
             <label class="toggle-card" style="margin-bottom: 0;">
               <input type="checkbox" id="filePdfToggle" checked>
@@ -427,7 +428,7 @@
 
         <!-- Custom File Signatures Collapsible -->
         <details class="advanced-panel" id="customSigDetails" style="margin-top: 10px;">
-          <summary>➕ Custom File Signatures (Magic Bytes Header / Footer)</summary>
+          <summary>[+] Custom File Signatures (Magic Bytes Header / Footer)</summary>
           <div class="advanced-content">
             <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px;">
               Carve proprietary or unsupported file formats by defining raw hexadecimal magic bytes (e.g. Header: <code>FF D8 FF</code>, Footer: <code>FF D9</code>).
@@ -472,7 +473,7 @@
 
         <!-- Advanced Options Collapsible -->
         <details class="advanced-panel" style="margin-top: 14px;">
-          <summary>⚙ Advanced Forensic Signing Options</summary>
+          <summary>[*] Advanced Forensic Signing Options</summary>
           <div class="advanced-content">
             <div class="form-group" style="margin-bottom: 0;">
               <label for="carveKeyPath">Custom Ed25519 Signing Key (Optional):</label>
@@ -625,7 +626,7 @@
 
         <!-- Advanced Options Collapsible -->
         <details class="advanced-panel" style="margin-top: 14px;">
-          <summary>⚙ Advanced Acquisition &amp; Signing Options</summary>
+          <summary>[*] Advanced Acquisition &amp; Signing Options</summary>
           <div class="advanced-content">
             <div class="form-group" style="margin-bottom: 0;">
               <label for="imageOutDir">Custom Manifest Output Directory (Optional):</label>
@@ -858,7 +859,7 @@
 
     <div class="footer-bottom">
       <div class="footer-legal-notice">
-        ⚖ <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+        [!] <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
       </div>
       <div>
         Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License

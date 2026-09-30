@@ -1,65 +1,38 @@
+@import url("tokens.css");
+
+/* ---------------------------------------------------------------------------
+   MIGRATION SHIM. All colour, type, spacing, focus and motion values come from
+   shared/tokens.css (copied here by scripts/sync_tokens.py, verified by
+   tests/test_portal_consistency.py). The names below map this stylesheet's
+   original vocabulary onto the shared semantic tokens, including
+   --accent-cyan, which was never cyan. New code must use the semantic names.
+   --------------------------------------------------------------------------- */
 :root {
-  --bg-base: #000000;
-  --bg-surface: #070D18;
-  --bg-panel: #0B1626;
-  --bg-elevated: #0F1F35;
-  --bg-input: #04070D;
-  --bg-terminal: #000000;
-
-  --border: #142338;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-hover: #1E3E62;
-  --border-focus: #FF6500;
-
-  --text-main: #FFFFFF;
-  --text-muted: #CBD5E1;
-  --text-dim: #94A3B8;
-
-  --accent-cyan: #FF6500;
-  --accent-cyan-hover: #FF8533;
-  --accent-cyan-glow: rgba(255, 101, 0, 0.25);
-  --accent-blue: #3b82f6;
-  --accent-emerald: #10b981;
-  --accent-crimson: #ef4444;
-  --accent-red: #ef4444;
-  --accent-amber: #f59e0b;
-  --accent-purple: #8b5cf6;
-
-  --header-bg: rgba(0, 0, 0, 0.88);
-  --font-mono: "JetBrains Mono", monospace;
-  --font-sans: "Rubik", sans-serif;
+  --bg-base:       var(--surface-canvas);
+  --bg-surface:    var(--surface-raised);
+  --bg-panel:      var(--surface-inset);
+  --bg-elevated:   var(--surface-overlay);
+  --bg-input:      var(--surface-inset);
+  --bg-terminal:   var(--surface-sunken);
+  --bg-code:       var(--surface-sunken);
+  --border:        var(--border-default);
+  --border-subtle: var(--border-subtle);
+  --border-hover:  var(--border-hover);
+  --text-muted:    var(--text-tertiary);
+  --text-dim:      var(--text-tertiary);
+  --text-bright:   var(--text-primary);
+  --accent-cyan:        var(--brand);
+  --accent-cyan-hover:  var(--brand-hover);
+  --accent-cyan-glow:   var(--brand-glow);
+  --accent-emerald:     var(--status-ok);
+  --accent-amber:       var(--status-warn);
+  --accent-red:         var(--status-danger);
+  --accent-blue:        var(--status-info);
+  --accent-crimson:     var(--status-danger);
+  --accent-purple:      var(--status-info);
 }
-
-[data-theme="light"] {
-  --bg-base: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-panel: #FFFFFF;
-  --bg-elevated: #F1F5F9;
-  --bg-input: #F8FAFC;
-  --bg-terminal: #0F172A;
-
-  --border: #E2E8F0;
-  --border-subtle: #E2E8F0;
-  --border-hover: #CBD5E1;
-  --border-focus: #E65100;
-
-  --text-main: #0F172A;
-  --text-muted: #334155;
-  --text-dim: #64748B;
-
-  --accent-cyan: #E65100;
-  --accent-cyan-hover: #FF6D00;
-  --accent-cyan-glow: rgba(230, 81, 0, 0.20);
-  --accent-blue: #2563EB;
-  --accent-emerald: #059669;
-  --accent-crimson: #DC2626;
-  --accent-red: #DC2626;
-  --accent-amber: #D97706;
-  --accent-purple: #7C3AED;
-
-  --header-bg: rgba(255, 255, 255, 0.92);
-}
-
+/* The light theme lives in shared/tokens.css. Only the handful of
+   component-level overrides that genuinely differ between themes stay here. */
 [data-theme="light"] body {
   background-color: var(--bg-base);
   background-image: none;

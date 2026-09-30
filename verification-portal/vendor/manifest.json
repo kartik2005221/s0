@@ -1,0 +1,51 @@
+{
+  "schema": "s0.vendor-manifest/1",
+  "purpose": "Pins every vendored file so re-vendoring cannot silently change what ships.",
+  "attribution": "See THIRD_PARTY_NOTICES.md at the repository root.",
+  "files": [
+    {
+      "path": "vendor/pdf.min.js",
+      "sha256": "5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946",
+      "size_bytes": 320004,
+      "component": "pdf.js",
+      "version": "3.11.174",
+      "source_url": "https://github.com/mozilla/pdf.js",
+      "license": "Apache-2.0",
+      "modified": false,
+      "note": "Used to render the s0 PDF certificate so the embedded QR can be decoded offline."
+    },
+    {
+      "path": "vendor/pdf.worker.min.js",
+      "sha256": "feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b",
+      "size_bytes": 1087212,
+      "component": "pdf.js",
+      "version": "3.11.174",
+      "source_url": "https://github.com/mozilla/pdf.js",
+      "license": "Apache-2.0",
+      "modified": false,
+      "note": "pdf.js worker; required by worker-src in the portal CSP."
+    },
+    {
+      "path": "vendor/jsqr.min.js",
+      "sha256": "32214c74ee92d37de6d88276987690d996ce757668e82ca1709dba5e0be9fcce",
+      "size_bytes": 130594,
+      "component": "jsQR",
+      "version": "1.4.0",
+      "source_url": "https://github.com/cozmo/jsQR",
+      "license": "Apache-2.0",
+      "modified": false,
+      "note": "QR decoding. Note: the onlyInvert mode throws in this build; s0 never requests it and isolates every decode attempt."
+    },
+    {
+      "path": "vendor/crypto-bundle.js",
+      "sha256": "d4218becbb61df6f44d982d76653e7600e998924b13f0c8eca7f03f0e31c40ed",
+      "size_bytes": 40540,
+      "component": "s0 crypto-bundle",
+      "version": "internal",
+      "source_url": "s0 (no upstream)",
+      "license": "MIT",
+      "modified": true,
+      "note": "s0-authored WebCrypto SHA-512/Ed25519 helper so verification needs no network."
+    }
+  ]
+}
