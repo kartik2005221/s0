@@ -112,9 +112,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert, shell out to ffmpeg and the CLI, and build MD5/SHA-1 lists on
-# purpose: those are the things under test, not oversights.
-"tests/**" = ["S101", "S603", "S607", "S324"]
+# Tests assert, shell out to ffmpeg and the CLI, build MD5/SHA-1 lists on
+# purpose, and shuffle fixtures with a seeded PRNG: those are the things under
+# test, not oversights.
+"tests/**" = ["S101", "S603", "S607", "S324", "S311"]
 
 [tool.bandit]
 exclude_dirs = ["tests", "vendor", "docs"]

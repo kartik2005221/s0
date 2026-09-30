@@ -852,6 +852,44 @@ def _try_isobmff_reassembly(src: boundary.ByteSource, offset: int, max_size: int
     return r.payload, r.notes
 
 
+def _try_fragmented_reassembly(src: boundary.ByteSource, offset: int, max_size: int):
+    """Rebuild a *fragmented* ISO-BMFF file: `empty_moov` plus scattered pairs.
+
+    This is the shape a dashcam, a drone or a mobile recorder writes when it
+    cannot buffer the whole file, and it is the shape that defeats every
+    forward-scanning carver, because the fragments land wherever the
+    filesystem finds free space.
+
+    The old path here handled only the two-fragment camera case, where a
+    progressive `moov` names the media and the index fragment is followed by a
+    gap. A fragmented file has no such index -- the sample table is empty by
+    design -- so there was nothing to follow, and the candidate was dropped.
+
+    The fragments are ordered by `mfhd.sequence_number` and cross-checked with
+    `tfdt` rather than by position, so their physical arrangement does not
+    matter. Every check that could reject the result lives in the reassembly
+    module; this function only supplies the volume and translates the answer.
+    """
+    from s0.carve import reassembly
+
+    window = min(src.size, offset + min(max_size, _REASSEMBLY_WINDOW))
+    try:
+        fset = reassembly.scan_isobmff_fragments(src, offset, window)
+        if len(fset.fragments) < 2:
+            return None
+        # Only consider a group that contains this candidate's own neighbourhood,
+        # so two unrelated files' fragments are not merged into one.
+        assembly = reassembly.assemble_file(fset, src)
+        if not assembly.ok:
+            return None
+        ok, notes = reassembly.reparse_assembly(assembly, "isobmff")
+        if not ok:
+            return None
+    except (OSError, ValueError, struct.error, IndexError):
+        return None
+    return assembly.payload, list(assembly.notes) + notes
+
+
 def _ts_run_length(window: bytes, off: int, want: int) -> Optional[int]:
     """Count consecutive valid 188-byte transport packets starting at ``off``.
 
@@ -1007,6 +1045,11 @@ def _carve_one(
         # The test is whether the mdat header is where the sample table says the
         # media begins. If it is not, the media is somewhere else on the device.
         rebuilt = _try_isobmff_reassembly(src, offset, max_size)
+        if rebuilt is None:
+            # A fragmented file has an empty sample table, so the path above
+            # declines it. Ordering the pieces by the keys inside them is the
+            # only way to place them, so try that before giving up.
+            rebuilt = _try_fragmented_reassembly(src, offset, max_size)
         if rebuilt is not None:
             payload, extra_notes = rebuilt
     if payload is None:
