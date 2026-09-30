@@ -68,6 +68,10 @@ if threading.current_thread() is threading.main_thread():
 
 from s0_core import certificate as cert_mod
 from s0_core.config import CONFIG
+from s0_core.terminal import EX_CONFIG, EX_DATAERR, EX_INTERRUPTED, EX_NOINPUT, \
+    EX_NOPERM, EX_OK, EX_TEMPFAIL, EX_USAGE
+from s0_cli.ui import (UI, Column, add_global_arguments, human_bytes, human_int,
+                       policy_from_args)
 from s0_core.progress import ProgressBar
 
 from . import __version__, __version_str__
@@ -159,20 +163,29 @@ _S0_ASCII = r"""
 """
 
 
-def _print_banner() -> None:
-    """Show ASCII banner only on interactive TTY, bare s0, or s0 --help."""
-    if not sys.stdout.isatty():
+def _print_banner(policy=None) -> None:
+    """Show the ASCII banner only on an interactive TTY, for bare `s0` or `--help`.
+
+    It is chrome, so it goes to stderr: `s0 list | tee report.txt` must not have
+    a logo baked into the middle of the evidence record.
+    """
+    if policy is not None:
+        if policy.quiet or policy.fmt != "text" or not policy.err_is_tty:
+            return
+    elif not sys.stderr.isatty():
         return
-    cyan = "\033[1;36m"
+    out = policy.err_stream if policy is not None else sys.stderr
+    cyan = "\033[1;36m" if (policy is None or policy.use_color) else ""
     bold = "\033[1m"
     dim = "\033[2m"
     link = "\033[4;36m"
     reset = "\033[0m"
     for line in _S0_ASCII.strip("\n").split("\n"):
-        print(f"{cyan}{line}{reset}")
+        out.write(f"{cyan}{line}{reset}\n")
     ver = CONFIG.get("version", __version__)
-    print(f"{bold}  Sector Zero (s0){reset} v{ver}")
-    print(f"  {dim}@kartik2005221{reset}  {link}https://github.com/kartik2005221/s0{reset}\n")
+    out.write(f"{bold}  Sector Zero (s0){reset} v{ver}\n")
+    out.write(f"  {dim}@kartik2005221{reset}  {link}https://github.com/kartik2005221/s0{reset}\n\n")
+    out.flush()
 
 
 _LEGAL_NOTICE = (
@@ -185,10 +198,12 @@ _LEGAL_NOTICE = (
 
 
 def _print_legal_notice() -> None:
+    """Print the legal notice once per process, to stderr, never into piped data."""
     if os.environ.get("S0_LEGAL_NOTICE_SHOWN"):
         return
     os.environ["S0_LEGAL_NOTICE_SHOWN"] = "1"
     sys.stderr.write(_LEGAL_NOTICE)
+    sys.stderr.flush()
 
 
 def resolve_target(path: str) -> DevTarget:
@@ -303,6 +318,8 @@ def _print_plan(
 
 
 def cmd_list(args) -> int:
+    """Inventory of block-device and image-file sanitization targets."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "list")
     targets = list_block_targets()
     mounted = set()
     try:
@@ -311,42 +328,68 @@ def cmd_list(args) -> int:
     except OSError:
         pass
 
-    if getattr(args, "output_format", "text") == "json":
-        data = [
-            {
-                "path": t.path,
-                "kind": t.kind,
-                "storage_type": t.storage_type,
-                "capacity_bytes": t.capacity_bytes,
-                "model": t.model,
-                "serial": t.serial,
-                "mounted": any(m.startswith(t.path) for m in mounted),
-                "os_drive": is_os_device(t.path),
-            }
-            for t in targets
-        ]
-        print(json.dumps(data, indent=2))
-        return 0
+    rows = [
+        {
+            "path": t.path,
+            "kind": t.kind,
+            "storage_type": t.storage_type,
+            "capacity_bytes": t.capacity_bytes,
+            "model": t.model,
+            "serial": t.serial,
+            "mounted": any(m.startswith(t.path) for m in mounted),
+            "os_drive": is_os_device(t.path),
+        }
+        for t in targets
+    ]
 
-    if not targets:
-        print("(no block devices found)")
-        return 0
-    print("[s0 list]  Inventorying attached block devices and forensic images...\n")
-    path_w = max(14, max(len(t.path) for t in targets))
-    print(
-        f"{'PATH':<{path_w}} {'TYPE':<7} {'STORAGE':<10} {'CAPACITY':>12}  "
-        f"{'MODEL':<24} {'SERIAL':<16} {'MOUNTED?':<9} OS_DRIVE?"
+    if ui.policy.fmt == "json":
+        ui.finish(result={"targets": rows, "target_count": len(rows),
+                          "note": "Image-file targets work too: use --target /path/to/file.img"})
+        return EX_OK
+    if ui.policy.fmt == "csv":
+        ui.line("path,kind,storage_type,capacity_bytes,model,serial,mounted,os_drive")
+        for r in rows:
+            ui.line(",".join([
+                r["path"], r["kind"], r["storage_type"], str(r["capacity_bytes"]),
+                r["model"] or "", r["serial"] or "",
+                "yes" if r["mounted"] else "no", "yes" if r["os_drive"] else "no",
+            ]))
+        return EX_OK
+
+    if not rows:
+        ui.note("(no block devices found)")
+        ui.note("Image-file targets work too (no root needed): --target /path/to/file.img")
+        return EX_OK
+
+    ui.note("Inventory of attached block devices and forensic image targets")
+    ui.table(
+        [
+            Column("PATH", max_width=28),
+            Column("TYPE"),
+            Column("STORAGE"),
+            Column("CAPACITY", align="r"),
+            Column("MODEL", max_width=24),
+            Column("SERIAL", max_width=18),
+            Column("MOUNTED", align="r"),
+            Column("OS DRIVE", align="r"),
+        ],
+        [
+            [
+                r["path"], r["kind"], r["storage_type"], human_bytes(r["capacity_bytes"]),
+                r["model"] or "—", r["serial"] or "—",
+                "YES" if r["mounted"] else "-",
+                "YES [OS]" if r["os_drive"] else "-",
+            ]
+            for r in rows
+        ],
     )
-    for t in targets:
-        cap = f"{t.capacity_bytes / 2**30:.1f} GiB"
-        is_mounted = "YES" if any(m.startswith(t.path) for m in mounted) else "-"
-        is_os = "YES [OS]" if is_os_device(t.path) else "-"
-        print(
-            f"{t.path:<{path_w}} {t.kind:<7} {t.storage_type:<10} {cap:>12}  "
-            f"{(t.model or '—')[:24]:<24} {(t.serial or '—')[:16]:<16} {is_mounted:<9} {is_os}"
-        )
-    print("\nImage-file targets work too (no root needed): use --target /path/to/file.img")
-    return 0
+    ui.note("")
+    ui.key("Targets", human_int(len(rows)))
+    ui.key("Operating system", human_int(sum(1 for r in rows if r["os_drive"])))
+    ui.key("Currently mounted", human_int(sum(1 for r in rows if r["mounted"])))
+    ui.note("")
+    ui.note("Image-file targets work too (no root needed): use --target /path/to/file.img")
+    return EX_OK
 
 
 def cmd_plan(args) -> int:
@@ -996,27 +1039,26 @@ def cmd_erase_files(args) -> int:
 
 
 def cmd_carve(args) -> int:
+    """Recover deleted and unallocated files from an image, image file or device."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "carve")
     _print_legal_notice()
     if not _validate_cli_metadata(args):
-        return 2
-    print(f"==> S0 Module 2: Advanced File Carving & Recovery")
+        return EX_USAGE
+    ui.note("S0 - Forensic File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
     _warn_if_demo_key(key_path)
     if key_path is None and not getattr(args, "no_certificate", False):
-        print(
-            "error: no issuer signing key found.\n"
-            "S0 requires a valid Ed25519 signing key to issue forensic manifest certificates.\n"
-            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
-            file=sys.stderr,
-        )
-        return 2
+        ui.error("no issuer signing key found. s0 requires a valid Ed25519 signing key to "
+                "issue forensic manifest certificates. Specify --key <path>, or pass "
+                "--no-certificate to explicitly run without compliance certification.")
+        return EX_CONFIG
 
     if getattr(args, "no_certificate", False):
         print("WARNING: --no-certificate specified. No forensic recovery manifest will be issued.", file=sys.stderr)
 
-    print(f"Target Media: {args.target}")
-    print(f"Output Dir  : {args.out_dir}")
+    ui.key("Target media", str(args.target))
+    ui.key("Output directory", str(args.out_dir))
 
     target_path = Path(args.target)
     target_size = 0
@@ -1067,8 +1109,8 @@ def cmd_carve(args) -> int:
             custom_sigs = [signature_from_dict(d) for d in raw_data]
             print(f"Loaded {len(custom_sigs)} custom forensic signature(s): {', '.join(s.name for s in custom_sigs)}")
         except Exception as err:
-            print(f"error: failed to parse custom signatures from '{args.custom_sig}': {err}", file=sys.stderr)
-            return 2
+            ui.error(f"failed to parse custom signatures from '{args.custom_sig}': {err}")
+            return EX_DATAERR
 
     try:
         summary = carve_image(
@@ -1088,74 +1130,150 @@ def cmd_carve(args) -> int:
     except KeyboardInterrupt:
         if bar:
             bar.finish(extra="CANCELLED")
-        print("\n⚠  File carving interrupted by user (Ctrl+C).", file=sys.stderr)
-        return 130
+        ui.warn("File carving interrupted by the operator (Ctrl+C); "
+                "the recovery index written so far is still valid.")
+        return EX_INTERRUPTED
+    except FileNotFoundError as exc:
+        if bar:
+            bar.finish(extra="FAILED")
+        ui.error(str(exc))
+        return EX_NOINPUT
+    except PermissionError as exc:
+        if bar:
+            bar.finish(extra="DENIED")
+        ui.error(f"permission denied: {exc}")
+        return EX_NOPERM
+    except OSError as exc:
+        if bar:
+            bar.finish(extra="FAILED")
+        ui.error(f"I/O error: {exc}")
+        return EX_IOERR
 
     from s0_cli.carver.boundary import BOUNDARY_LABELS
 
-    print(f"\n[s0 carve]  Bytes Scanned    : {summary.total_bytes_scanned}")
-    print(f"[s0 carve]  Candidates Seen  : {summary.total_candidates_found}")
-    print(f"[s0 carve]  Files Recovered  : {summary.files_recovered} "
-          f"({summary.bytes_recovered} bytes)")
-    print(f"[s0 carve]  Candidates Rejected: {summary.rejected_candidates}")
-    if summary.output_budget_bytes:
-        print(f"[s0 carve]  Output Written   : {summary.output_budget_bytes} bytes")
-    if summary.budget_stop_reason:
-        print(f"[s0 carve]  Budget Stopped   : {summary.budget_stop_reason}")
+    ranked = sorted(summary.carved_files, key=lambda c: (-c.confidence_score, -c.size_bytes))
+    rejected_pct = (
+        100.0 * summary.rejected_candidates / max(1, summary.total_candidates_found)
+    )
 
-    if summary.files_recovered:
-        # Highest confidence first, so a genuine recovery is never buried under
-        # a long tail of weak candidates the way discovery order used to do it.
-        ranked = sorted(summary.carved_files,
-                        key=lambda c: (-c.confidence_score, -c.size_bytes))
-        method = "RECOVERY"
-        print(f"\n{'RECOVERY':<13} {'EXT':<7} {'SIZE':>11}  {'CONF':>5}  "
-              f"{'END OF FILE':<18} {'ORIGINAL NAME':<22} SHA256")
-        print("-" * 108)
-        for c in ranked[:25]:
-            name = (c.original_name or "-")[:22]
-            print(f"{c.recovery_method:<13} {c.extension:<7} {c.size_bytes:>11,}  "
-                  f"{c.confidence_score:>4}%  {BOUNDARY_LABELS.get(c.boundary_method, c.boundary_method):<18} "
-                  f"{name:<22} {c.sha256[:16]}")
-        if len(ranked) > 25:
-            print(f"... and {len(ranked) - 25} more (see recovery_index.json)")
-        print("-" * 108)
-        cats = ", ".join(f"{k}={v}" for k, v in sorted(summary.by_category.items()))
-        print(f"By category: {cats}")
-        if summary.by_method:
-            print("By method  : " + ", ".join(f"{k}={v}" for k, v in sorted(summary.by_method.items())))
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(
+            result={
+                "target_path": summary.target_path,
+                "source_filesystem": summary.source_filesystem,
+                "total_bytes_scanned": summary.total_bytes_scanned,
+                "candidates_seen": summary.total_candidates_found,
+                "candidates_rejected": summary.rejected_candidates,
+                "candidates_rejected_percent": int(rejected_pct * 100),
+                "files_recovered": summary.files_recovered,
+                "bytes_recovered": summary.bytes_recovered,
+                "recovery_rate_ppm": summary.recovery_rate_ppm(),
+                "output_budget_bytes": summary.output_budget_bytes,
+                "budget_stop_reason": summary.budget_stop_reason,
+                "by_category": summary.by_category,
+                "by_recovery_method": summary.by_method,
+                "rejection_summary": [
+                    {"reason": reason, "count": count}
+                    for reason, count in summary.rejection_summary
+                ],
+                "recovered_files": [
+                    {
+                        "file_id": c.file_id,
+                        "filename": c.filename,
+                        "extension": c.extension,
+                        "category": c.category,
+                        "offset": c.offset,
+                        "size_bytes": c.size_bytes,
+                        "sha256": c.sha256,
+                        "confidence_score": c.confidence_score,
+                        "recovery_method": c.recovery_method,
+                        "boundary_method": c.boundary_method,
+                        "is_fragmented": c.is_fragmented,
+                        "fragment_count": c.fragment_count,
+                        "original_name": c.original_name,
+                        "original_path": c.original_path,
+                        "deleted_at": c.deleted_at,
+                        "recovered_path": c.recovered_path,
+                        "heuristics": c.heuristics,
+                    }
+                    for c in ranked
+                ],
+            },
+            status="success",
+            artifacts=[artifact(Path(args.out_dir) / "recovery_index.json",
+                                "recovery_index")],
+        )
+        return EX_OK
+
+    ui.heading("Recovery summary")
+    ui.key("Bytes scanned", human_bytes(summary.total_bytes_scanned))
+    ui.key("Candidates seen", human_int(summary.total_candidates_found))
+    ui.key("Candidates rejected", f"{human_int(summary.rejected_candidates)} ({rejected_pct:.1f}%)")
+    ui.key("Files recovered", f"{summary.files_recovered} ({human_bytes(summary.bytes_recovered)})")
+    ui.key("Output written", human_bytes(summary.output_budget_bytes))
+    if summary.budget_stop_reason:
+        ui.key("Budget stopped", summary.budget_stop_reason)
+    ui.key("Source filesystem", summary.source_filesystem.upper())
+    ui.note("")
+
+    if ranked:
+        # Highest confidence first: a genuine recovery must never sit below a
+        # long tail of weak candidates, which is what discovery order used to do.
+        ui.table(
+            [
+                Column("RECOVERY", max_width=18),
+                Column("EXT", max_width=8),
+                Column("SIZE", align="r"),
+                Column("CONF", align="r"),
+                Column("END OF FILE", max_width=26),
+                Column("ORIGINAL NAME", max_width=26),
+                Column("SHA256", max_width=18),
+            ],
+            [
+                [
+                    c.recovery_method, c.extension, human_int(c.size_bytes),
+                    f"{c.confidence_score}%",
+                    BOUNDARY_LABELS.get(c.boundary_method, c.boundary_method),
+                    c.original_name or "—", c.sha256[:16],
+                ]
+                for c in ranked
+            ],
+            max_rows=25,
+        )
+        ui.note("")
+        ui.key("By category", ", ".join(f"{k}={v}" for k, v in sorted(summary.by_category.items())))
+        ui.key("By method", ", ".join(f"{k}={v}" for k, v in sorted(summary.by_method.items())))
     else:
-        print("\n  No file passed both boundary resolution and structural validation.")
-        if summary.rejected_samples:
-            top: dict = {}
-            for r in summary.rejected_samples:
-                top[r.reason] = top.get(r.reason, 0) + 1
-            print("  Most common rejection reasons:")
-            for reason, n in sorted(top.items(), key=lambda kv: -kv[1])[:5]:
-                print(f"    {n:>7}  {reason}")
+        ui.note(ui.status("warn", "no file passed both boundary resolution and "
+                                  "structural validation"))
+        if summary.rejection_summary:
+            ui.note("")
+            ui.note("Most common rejection reasons:")
+            for reason, count in summary.rejection_summary[:5]:
+                ui.note(f"  {human_int(count):>9}  {reason}")
 
     if summary.warnings:
-        print()
+        ui.note("")
         for w in summary.warnings:
-            print(f"  ! {w}")
+            ui.warn(w)
 
-    idx_file = Path(args.out_dir) / "recovery_index.json"
-    if idx_file.exists():
-        print(f"\n[s0 carve]  Recovery Index   : {idx_file}")
+    ui.note("")
+    ui.key("Recovery index", str(Path(args.out_dir) / "recovery_index.json"))
 
+    blk = None
     if summary.manifest_certificate:
         try:
             blk = record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key_path)
             print(f"[s0 carve]  Audit Ledger     : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
         except Exception as exc:
-            print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
+            ui.warn(f"failed to record the event in the audit ledger: {exc}")
 
         out_dir = Path(args.out_dir)
         cert_p = (
             out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
         )
         cert_p.write_text(json.dumps(summary.manifest_certificate, indent=2) + "\n")
-        print(f"[s0 carve]  Manifest File    : {cert_p}")
+        ui.key("Signed manifest", str(cert_p))
 
         if not getattr(args, "no_pdf", False):
             try:
@@ -1168,11 +1286,13 @@ def cmd_carve(args) -> int:
                 qr_p = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(summary.manifest_certificate, qr_p)
-                print(f"[s0 carve]  PDF Certificate  : {pdf_p}")
-            except Exception:
-                pass
+                ui.key("PDF certificate", str(pdf_p))
+            except Exception as exc:
+                ui.warn(f"could not render the PDF certificate: {exc}")
 
-    return 0
+    if blk is not None:
+        ui.key("Audit ledger", f"block #{blk.block_index} ({blk.block_hash[:16]})")
+    return EX_OK
 
 
 # --------------------------------------------------------------------------- #
@@ -1181,92 +1301,168 @@ def cmd_carve(args) -> int:
 
 
 def cmd_audit(args) -> int:
-    if args.audit_action == "list":
-        blocks = list_audit_blocks(limit=args.limit)
-        print(f"[s0 audit]  Ledger        : Hash-Chained Cryptographic Audit Ledger ({len(blocks)} blocks)")
-        print(
-            f"{'IDX':<5} {'TIMESTAMP':<20} {'OPERATION':<14} {'OPERATOR':<14} {'TARGET_ID':<20} {'BLOCK_HASH':<16}"
-        )
-        for b in blocks:
-            print(
-                f"{b.block_index:<5} {b.timestamp[:19]:<20} {b.operation_type:<14} {b.operator_id:<14} {b.target_id[:20]:<20} {b.block_hash[:16]}..."
-            )
-        return 0
+    """Hash-chained audit ledger: list blocks, or verify chain integrity."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "audit")
+    action = args.audit_action
 
-    elif args.audit_action == "verify":
-        print("[s0 audit]  Auditing hash-chained cryptographic ledger...")
+    if action == "list":
+        blocks = list_audit_blocks(limit=args.limit)
+        if ui.policy.fmt in ("json", "csv"):
+            ui.finish(result={"block_count": len(blocks), "blocks": [
+                {
+                    "block_index": b.block_index,
+                    "timestamp": b.timestamp,
+                    "operation_type": b.operation_type,
+                    "operator_id": b.operator_id,
+                    "target_id": b.target_id,
+                    "block_hash": b.block_hash,
+                    "prev_hash": getattr(b, "prev_hash", None),
+                } for b in blocks
+            ]})
+            return EX_OK
+        ui.heading(f"Hash-chained cryptographic audit ledger ({human_int(len(blocks))} blocks)")
+        ui.table(
+            [Column("IDX", align="r"), Column("TIMESTAMP", max_width=22),
+             Column("OPERATION", max_width=16), Column("OPERATOR", max_width=16),
+             Column("TARGET", max_width=24), Column("BLOCK HASH", max_width=20)],
+            [[b.block_index, b.timestamp, b.operation_type, b.operator_id,
+              b.target_id, b.block_hash[:16] + "..."] for b in blocks],
+        )
+        return EX_OK
+
+    if action == "verify":
         trusted_keys = None
         if getattr(args, "key", None):
             from s0_core.crypto import load_public_pem
-
             trusted_keys = [load_public_pem(args.key)]
+
         report = verify_audit_ledger(trusted_public_keys=trusted_keys)
-        if report.is_valid:
-            if getattr(report, "is_demo_signed", False):
-                print("[s0 audit]  Chain Status  : WARN : VALID & CONTINUOUS — UNACCREDITED DEMO KEY")
-                if getattr(report, "demo_key_warning", None):
-                    print(f"               {report.demo_key_warning}")
-            else:
-                print("[s0 audit]  Chain Status  : OK : VALID & CONTINUOUS")
+        reason = report.reason or ""
+
+        if report.is_valid and getattr(report, "is_demo_signed", False):
+            state, label = "warn", "VALID & CONTINUOUS - SIGNED WITH UNACCREDITED DEMO KEY"
+        elif report.is_valid:
+            state, label = "ok", "VALID & CONTINUOUS"
+        elif "not in the trusted key set" in reason or "unknown issuer key" in reason:
+            state, label = "warn", "UNVERIFIABLE - SIGNING KEY NOT IN THE TRUST SET"
         else:
-            reason = report.reason or ""
-            if "not in the trusted key set" in reason or "unknown issuer key" in reason:
-                print("[s0 audit]  Chain Status  : WARN : UNVERIFIABLE — SIGNING KEY NOT IN TRUST SET")
-            else:
-                print("[s0 audit]  Chain Status  : ERROR : BROKEN / TAMPER DETECTED")
-        print(f"[s0 audit]  Blocks Tested : {report.total_blocks_verified}")
-        print(f"[s0 audit]  Details       : {report.reason}")
-        return 0 if report.is_valid else 1
+            state, label = "error", "CHAIN INTEGRITY FAILURE"
 
-    return 0
+        if ui.policy.fmt in ("json", "csv"):
+            ui.finish(
+                result={
+                    "is_valid": report.is_valid,
+                    "is_demo_signed": getattr(report, "is_demo_signed", False),
+                    "total_blocks_verified": report.total_blocks_verified,
+                    "status_label": label,
+                    "reason": reason,
+                    "demo_key_warning": getattr(report, "demo_key_warning", None),
+                },
+                status="success" if report.is_valid else "failure",
+            )
+            return EX_OK if report.is_valid else EX_FAILURE
 
+        ui.heading("Auditing the hash-chained cryptographic ledger")
+        ui.key("Chain status", ui.status(state, label))
+        ui.key("Blocks tested", human_int(report.total_blocks_verified))
+        ui.key("Details", reason or "-")
+        if state == "warn" and getattr(report, "demo_key_warning", None):
+            ui.note("")
+            ui.warn(report.demo_key_warning)
+        return EX_OK if report.is_valid else EX_FAILURE
 
-# --------------------------------------------------------------------------- #
-# Zero-Trust Verification & Key Generation
-# --------------------------------------------------------------------------- #
+    return EX_USAGE
 
 
 def cmd_verify(args) -> int:
+    """Verify a signed certificate offline against a trusted public key."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "verify")
     cert_path = Path(args.certificate)
     if not cert_path.is_file():
-        print(f"error: certificate file {args.certificate} does not exist", file=sys.stderr)
-        return 2
+        ui.error(f"certificate file {args.certificate} does not exist")
+        return EX_NOINPUT
+    if cert_path.stat().st_size > 8 * 1024 * 1024:
+        ui.error(f"certificate file {args.certificate} is implausibly large for a certificate")
+        return EX_DATAERR
 
     try:
         cert_data = json.loads(cert_path.read_text(encoding="utf-8"))
     except Exception as exc:
-        print(f"error: invalid certificate JSON: {exc}", file=sys.stderr)
-        return 2
+        ui.error(f"invalid certificate JSON: {exc}")
+        return EX_DATAERR
+    if not isinstance(cert_data, dict):
+        ui.error("certificate must be a JSON object")
+        return EX_DATAERR
 
+    from s0_core.crypto import load_public_pem
     pub_keys = []
     if args.key:
-        p = Path(args.key)
-        if not p.is_file():
-            print(f"error: public key file {args.key} does not exist", file=sys.stderr)
-            return 2
-        from s0_core.crypto import load_public_pem
-        pub_keys.append(load_public_pem(p))
+        key_path = Path(args.key)
+        if not key_path.is_file():
+            ui.error(f"public key file {args.key} does not exist")
+            return EX_NOINPUT
+        pub_keys.append(load_public_pem(key_path))
     else:
-        # Load demo public key if present
         demo_pub = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
         if demo_pub.is_file():
-            from s0_core.crypto import load_public_pem
             pub_keys.append(load_public_pem(demo_pub))
+    if not pub_keys:
+        ui.error("no trusted public key available; pass --key <issuer_public.pem>")
+        return EX_CONFIG
 
     from s0_core.certificate import verify_certificate
     ok, reason = verify_certificate(cert_data, pub_keys)
+    demo = (cert_data.get("signature", {}).get("public_key_fingerprint")
+            == "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06")
+
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(
+            result={
+                "ok": ok,
+                "reason": reason,
+                "cert_uuid": cert_data.get("cert_uuid"),
+                "result_status": cert_data.get("result", {}).get("status"),
+                "nist_category": cert_data.get("wipe", {}).get("nist_category"),
+                "method": cert_data.get("wipe", {}).get("method"),
+                "device_id": cert_data.get("device", {}).get("device_id"),
+                "organization": cert_data.get("issuer", {}).get("organization"),
+                "operator_id": cert_data.get("issuer", {}).get("operator_id"),
+                "public_key_fingerprint": cert_data.get("signature", {}).get("public_key_fingerprint"),
+                "unaccredited_demo_key": demo,
+            },
+            status="success" if ok else "failure",
+        )
+        return EX_OK if ok else EX_FAILURE
+
     if ok:
-        print("[s0 verify]  Status       : OK : CERTIFICATE AUTHENTIC & VERIFIED")
-        print(f"[s0 verify]  UUID         : {cert_data.get('cert_uuid')}")
-        print(f"[s0 verify]  Result       : {cert_data.get('result', {}).get('status')}")
-        print(f"[s0 verify]  NIST Tier    : {cert_data.get('wipe', {}).get('nist_category')}")
-        print(f"[s0 verify]  Device       : {cert_data.get('device', {}).get('device_id')}")
-        print(f"[s0 verify]  Issuer       : {cert_data.get('issuer', {}).get('organization')}")
-        print(f"[s0 verify]  Fingerprint  : {cert_data.get('signature', {}).get('public_key_fingerprint')}")
-        return 0
+        state = "warn" if demo else "ok"
+        label = ("AUTHENTIC - but signed with an unaccredited demonstration key"
+                 if demo else "AUTHENTIC & CRYPTOGRAPHICALLY VERIFIED")
+        ui.heading("Offline certificate verification")
+        ui.key("Status", ui.status(state, label))
+        if demo:
+            ui.warn("demo-key signatures must not be used for legal chain of custody "
+                    "or regulatory compliance")
     else:
-        print(f"[s0 verify]  Status       : ERROR : CERTIFICATE VERIFICATION FAILED: {reason}", file=sys.stderr)
-        return 1
+        ui.heading("Offline certificate verification")
+        ui.key("Status", ui.status("error", "VERIFICATION FAILED"))
+        ui.key("Reason", reason)
+
+    ui.key("Certificate UUID", cert_data.get("cert_uuid", "-"))
+    ui.key("Issued at", cert_data.get("issued_at", "-"))
+    ui.key("Issuer", f"{cert_data.get('issuer', {}).get('organization', '-')} / "
+                     f"{cert_data.get('issuer', {}).get('operator_id', '-')}")
+    ui.key("Tool", f"{cert_data.get('tool', {}).get('name', '-')} "
+                   f"v{cert_data.get('tool', {}).get('version', '-')}")
+    ui.key("Method", f"{cert_data.get('wipe', {}).get('method', '-')} "
+                     f"({cert_data.get('wipe', {}).get('nist_category', '-')})")
+    ui.key("Device", cert_data.get("device", {}).get("device_id", "-"))
+    ui.key("Result", cert_data.get("result", {}).get("status", "-"))
+    ui.key("Key fingerprint", cert_data.get("signature", {}).get("public_key_fingerprint", "-"))
+    if not ok:
+        ui.note("")
+        ui.key("Reason", reason)
+    return EX_OK if ok else EX_FAILURE
 
 
 def cmd_keygen(args) -> int:
@@ -1743,6 +1939,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog="⚖ LEGAL: Only operate on storage media you own or have explicit written authorization to process.",
     )
     p.add_argument("--version", action="version", version=f"s0 {__version_str__}")
+    add_global_arguments(p)
     sub = p.add_subparsers(dest="command", required=True)
 
     # 1. Drive Eraser Subcommands
@@ -1905,22 +2102,67 @@ def build_parser() -> argparse.ArgumentParser:
         from s0_cli.live_manager import register_live_parser
         register_live_parser(sub)
 
+    _attach_global_arguments(p)
     return p
 
 
-def main(argv=None) -> int:
-    try:
-        raw_args = sys.argv[1:] if argv is None else list(argv)
-        is_suppressed = any(flag in raw_args for flag in ("--quiet", "-q", "--json"))
-        if not is_suppressed and sys.stdout.isatty():
-            if not raw_args or raw_args in (["--help"], ["-h"]):
-                _print_banner()
+def _attach_global_arguments(root: argparse.ArgumentParser) -> None:
+    """Give every subcommand the same global output flags.
 
-        args = build_parser().parse_args(argv)
-        return args.func(args)
+    Without this, `--quiet` or `--json` would work on `carve` and silently do
+    nothing on `wipe`, which is exactly the kind of inconsistency that makes a
+    tool impossible to script. Applied as a post-pass so subparsers registered
+    dynamically (the `live` group) are covered too.
+    """
+    def walk(parser: argparse.ArgumentParser) -> None:
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                for child in action.choices.values():
+                    add_global_arguments(child)
+                    walk(child)
+
+    walk(root)
+
+
+def main(argv=None) -> int:
+    """Entry point.
+
+    Contract enforced here, once, for every subcommand:
+
+    * the global output flags are resolved before any command runs;
+    * the banner is chrome and is suppressed off-TTY, under ``--quiet`` and
+      under a structured output format;
+    * the resolved :class:`UI` is attached to ``args`` so no command has to
+      re-derive presentation settings;
+    * ``KeyboardInterrupt`` maps to 130 and argparse's own failure to
+      ``EX_USAGE`` (64) rather than a bare 2.
+    """
+    raw_args = sys.argv[1:] if argv is None else list(argv)
+    try:
+        parser = build_parser()
+        args = parser.parse_args(argv)
+
+        policy = policy_from_args(args)
+        args.ui = UI(policy, command=getattr(args, "command", "s0"))
+        args.policy = policy
+
+        if not raw_args or raw_args in (["--help"], ["-h"]):
+            _print_banner(policy)
+
+        code = args.func(args)
+        return int(code) if code is not None else EX_OK
     except KeyboardInterrupt:
-        print("\n\n⚠  Operation cancelled by user (Ctrl+C).", file=sys.stderr)
-        return 130
+        sys.stderr.write("\n\n!  Operation cancelled by the operator (Ctrl+C).\n")
+        return EX_INTERRUPTED
+    except SystemExit as exc:
+        code = exc.code
+        if code is None:
+            return EX_OK
+        if isinstance(code, int):
+            # argparse exits 2 for a usage error; sysexits says 64.
+            return EX_USAGE if code == 2 else code
+        sys.stderr.write(f"{code}\n")
+        return EX_USAGE
 
 
 if __name__ == "__main__":

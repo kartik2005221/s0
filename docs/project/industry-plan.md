@@ -88,15 +88,23 @@ Three compounding root causes:
 
 ## 1. Implementation phases
 
-### Phase 0 — Defect repair (P0)
-| ID | Work | File(s) |
-|---|---|---|
-| 0.1 | Rewrite boundary resolution: per-format `calculate_size`, structural validators, frame-sequence validation | `carver/signatures.py`, `carver/boundary.py` (new) |
-| 0.2 | Output budget, per-category caps, ranked + categorised report, "bytes wasted" accounting | `carver/engine.py` |
-| 0.3 | Streaming carve that can exceed one chunk (fix the 2 MiB footer ceiling) | `carver/engine.py` |
-| 0.4 | Portal: multi-page PDF scan, safe jsQR wrapper, always-reachable text fallback | `verification-portal/js/portal.js` |
-| 0.5 | Dashboard: server-side token injection into `index.html` | `web/app.py` |
-| 0.6 | Certificate field correctness (`storage_type`, verification sample fields, no emoji in PDF) | `core/python/s0_core/pdfgen.py`, `file_eraser.py` |
+### Phase 0 — Defect repair (P0) — **DONE**
+
+| ID | Work | File(s) | Status |
+|---|---|---|---|
+| 0.1 | Per-format boundary resolution, structural validation gate, codec frame sequences | `carver/boundary.py` (new), `carver/signatures.py` | ✅ `b0d9a87` |
+| 0.2 | Output budget, per-category caps, ranked report, rejection accounting | `carver/policy.py` (new), `carver/engine.py`, `carver/scoring.py` | ✅ `b0d9a87` |
+| 0.3 | Streaming carve that is not bounded by the read window | `carver/boundary.py::ByteSource` | ✅ `b0d9a87` |
+| 0.4 | Portal: multi-page PDF scan, safe jsQR wrapper, reachable text fallback | `verification-portal/js/portal.js` | ✅ `c610ed1` |
+| 0.5 | Dashboard: server-side token injection into `index.html` | `web/app.py` | ✅ `c610ed1` |
+| 0.6 | Certificate accuracy (`storage_type`, verification fields, no emoji, payload-sized QR) | `s0_core/pdfgen.py`, `s0_core/certificate.py`, `file_eraser.py` | ✅ `c610ed1` |
+
+**Verification of 0.1–0.3** — 128 MiB image, 11 payloads produced by real encoders:
+11/11 recovered byte-exact, 0 false positives, 1,062,199 candidates rejected.
+Two unrelated random 20 MiB blobs: 0 recoveries (previously 33 identical junk
+files each). A 64 MiB image produced 3.5 KB of output where it previously produced
+194 MB — 3× the size of its own input.
+
 
 ### Phase 1 — Unified CLI contract (P1)
 `sysexits`-based exit codes · `--format text|json|csv` on every subcommand · stdout=data /
@@ -135,6 +143,58 @@ Single-source version · `importlib.resources` package data (fixes a latent inst
 CI matrix + ruff/mypy/bandit/pip-audit/CodeQL/actionlint/shellcheck/hadolint/SBOM ·
 `SECURITY.md`, `CODEOWNERS`, `.editorconfig`, `.gitattributes`, pre-commit, dependabot ·
 Keep-a-Changelog `CHANGELOG.md`.
+
+### Phase 7 — Repository layout (P1, blocking for onboarding)
+
+The directory names lie about what the code is, and they actively mislead anyone
+new to the repo — including the packaging.
+
+Observed today:
+
+* `linux/cli/` holds **`s0_cli`**, the cross-platform CLI package. `main.py` and
+  `devices.py` both branch on `sys.platform == "win32"` / `"darwin"`.
+* `windows/cli/` and `macos/` contain only a **standalone single-file eraser**
+  (`s0.bat` launches `s0_eraser.py` and nothing else). They are not the Windows
+  and macOS implementations of s0; they are optional convenience wrappers.
+* Both `install-portal/install.ps1` and `install.sh` run
+  `pip install -e core\python` and `pip install -e linux\cli`, so the *Windows
+  installer installs the package called "linux"*. The `s0` console-script entry
+  point is `s0_cli.main:main`.
+* A Windows operator reading `windows/` reasonably concludes it holds the
+  Windows implementation.
+
+Target layout — one distribution, honest names, platform code where it belongs:
+
+```
+src/s0/                     # the single importable package (was core/python + linux/cli)
+  __init__.py               # __version__ via importlib.metadata
+  canonical.py crypto.py certificate.py pdfgen.py config.py progress.py temperature.py
+  validation.py cli.py
+  cli/                      # argument parsing + command implementations
+  carve/                    # boundary, engine, scoring, signatures, policy, fs carvers
+  wipe/                     # methods/ (ata, nvme, scsi, overwrite, blkdiscard), planner
+  image/ audit/ live/
+  platform/                 # linux.py, windows.py, macos.py — the sys.platform branches
+  web/                      # FastAPI app + static assets (was web/)
+  data/                     # demo keys, cert schema  (importlib.resources)
+portals/site/ portals/install/ portals/verify/    # the three static Cloudflare portals
+iso/                        # live-image build (was linux/iso/)
+tools/                      # build_all, benchmark, release (was scripts/)
+docs/  tests/
+pyproject.toml
+```
+
+Requirements for this phase:
+1. One installable distribution named `s0`; `s0 = s0.cli.main:main`.
+2. No directory named `linux/` containing cross-platform code, and no directory
+   named `windows/` that is not the Windows implementation.
+3. Installers reference package *names*, never directory names.
+4. `python -c "import s0"` works from a clean pip install with no `sys.path` help
+   and no relative-path lookups — which is why `carver/engine.py`'s
+   `parents[4] / "core" / "keys"` walk must become `importlib.resources`.
+5. A `docs/architecture/repository-layout.md` explaining the map, because a
+   forensic tool that cannot be navigated is not auditable.
+
 
 ---
 

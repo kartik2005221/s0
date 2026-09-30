@@ -10,6 +10,7 @@ Features:
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 import time
@@ -49,12 +50,26 @@ class ProgressBar:
         operation: str = "s0",
         stream=None,
         min_interval: float = 0.2,
+        disable: bool = False,
+        unicode: bool | None = None,
+        color: bool | None = None,
     ):
         self.total = max(int(total_bytes), 1)
         self.operation = operation
         self.stream = stream or sys.stderr
         self.is_tty = hasattr(self.stream, "isatty") and self.stream.isatty()
         self.min_interval = min_interval
+        # --quiet, --format json, and non-TTY all suppress the bar entirely.
+        # A forensic tool that scribbles redraws into a CI log is unusable.
+        self.disabled = bool(disable)
+        if unicode is None:
+            enc = (getattr(self.stream, "encoding", None) or "").lower()
+            unicode = self.is_tty and ("utf" in enc or os.environ.get("S0_FORCE_UNICODE") == "1")
+        self.unicode = bool(unicode)
+        self.color = bool(color) if color is not None else self.is_tty
+        self.block_full = "\u2588" if self.unicode else "#"
+        self.block_empty = "\u2591" if self.unicode else "."
+        self.bar_width = 20
 
         self._start_time = time.monotonic()
         self._last_draw = 0.0
@@ -63,6 +78,8 @@ class ProgressBar:
         self._finished = False
 
     def update(self, current_bytes: int, extra: str = "") -> None:
+        if self.disabled:
+            return
         self._current = min(max(int(current_bytes), 0), self.total)
         self._extra = extra
         now = time.monotonic()
@@ -72,7 +89,7 @@ class ProgressBar:
         self._draw()
 
     def finish(self, extra: str = "") -> None:
-        if self._finished:
+        if self.disabled or self._finished:
             return
         self._current = self.total
         if extra:
@@ -91,8 +108,8 @@ class ProgressBar:
         pct = (self._current / self.total) * 100.0
         speed = self._current / elapsed
 
-        filled = int(self.BAR_WIDTH * min(pct, 100.0) / 100.0)
-        bar = self.BLOCK_FULL * filled + self.BLOCK_EMPTY * (self.BAR_WIDTH - filled)
+        filled = int(self.bar_width * min(pct, 100.0) / 100.0)
+        bar = self.block_full * filled + self.block_empty * (self.bar_width - filled)
 
         if self._finished or pct >= 100.0:
             eta_str = f"Done in {_fmt_time(elapsed)}"
