@@ -42,6 +42,9 @@ _BOUNDARY_WEIGHT = {
     boundary.FRAME_VALIDATED: 25,
     boundary.DECOMPRESSED: 23,
     boundary.FOOTER_ANCHORED: 18,
+    # A sync run bounds the data, but no standard declares where the stream
+    # ends, so it is weaker evidence than a frame sequence or a container walk.
+    boundary.SYNC_RUN: 12,
     boundary.MAX_SIZE_FALLBACK: 8,
     boundary.UNDETERMINED: 0,
 }
@@ -52,6 +55,7 @@ _BOUNDARY_LABEL = {
     boundary.FRAME_VALIDATED: "a validated codec frame sequence",
     boundary.DECOMPRESSED: "the end of the decoded stream",
     boundary.FOOTER_ANCHORED: "a matching format terminator",
+    boundary.SYNC_RUN: "a continuous packet sync run with no declared end",
     boundary.MAX_SIZE_FALLBACK: "a heuristic guess (see note)",
 }
 

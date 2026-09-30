@@ -66,6 +66,10 @@ FRAME_VALIDATED = "frame_sequence"
 DECOMPRESSED = "decompress_to_end"
 UNDETERMINED = "undetermined"
 MAX_SIZE_FALLBACK = "max_size_fallback"
+#: Used only by MPEG-TS. A continuous packet sync run genuinely bounds the data,
+#: but nothing in ISO/IEC 13818-1 declares where the stream ends, so this scores
+#: below a real frame-sequence or container walk.
+SYNC_RUN = "continuous_sync_run"
 
 # Short human labels for the CLI and the recovery report.
 BOUNDARY_LABELS = {
@@ -76,6 +80,7 @@ BOUNDARY_LABELS = {
     DECOMPRESSED: "decompressed",
     MAX_SIZE_FALLBACK: "declared max_size (heuristic)",
     UNDETERMINED: "unresolved",
+    SYNC_RUN: "continuous sync run",
 }
 
 _MAX_READ = 256 * 1024 * 1024
@@ -488,6 +493,40 @@ def _png_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                                           else "PNG candidate has no IHDR chunk"])
 
 
+def _dqt_length_is_exact(body: bytes) -> bool:
+    """True if a DQT payload is an exact concatenation of 64- and 128-byte tables.
+
+    Each table is one Pq/Tq byte followed by 64 values (8-bit) or 128 values
+    (16-bit), so the segment payload must consume in steps of 65 or 129.
+    """
+    i = 0
+    n = len(body)
+    while i < n:
+        pq = body[i] >> 4
+        if pq > 1:
+            return False
+        i += 1 + (128 if pq else 64)
+    return i == n
+
+
+def _dht_length_is_plausible(body: bytes) -> bool:
+    """True if a DHT payload is an exact concatenation of well-formed tables.
+
+    Each table is one Tc/Th byte, then 16 code-length counts, then that many
+    symbols. A decoder that cannot walk the counts exactly is not a DHT.
+    """
+    i = 0
+    n = len(body)
+    while i < n:
+        if i + 17 > n:
+            return False
+        total = sum(body[i + 1:i + 17])
+        if total == 0 or total > 256:
+            return False
+        i += 17 + total
+    return i == n
+
+
 def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """JPEG: marker-segment walk to EOI.
 
@@ -496,6 +535,18 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     is usually not the end of the image. The walk therefore reads each segment
     header and skips exactly the number of bytes the segment declares, then scans
     the entropy-coded payload with the ``FF 00`` / ``FF D0..D7`` rules applied.
+
+    Three further gates exist because a run of random bytes will happily contain
+    a plausible-looking sequence of ``FF xx`` markers and an eventual ``FF D9``.
+    Without them this walk once turned 1.2 MB of noise into a 93%-confidence JPEG:
+
+    * **SOF length must match its component count.** For a baseline/progressive
+      frame header the segment length is exactly ``8 + 3 * components``. Random
+      bytes satisfy that relation about once in 32,768.
+    * **DQT table sizes must be exact.** Each quantisation table is 65 or 129
+      bytes after its Pq/Tq byte, so the declared length must decompose cleanly.
+    * **A DQT and a DHT must both appear before SOS.** Without them the image is
+      undecodable, so it is not a file.
     """
     limit = min(src.size, start + max_size)
     if src.read(start, 2) != b"\xff\xd8":
@@ -504,6 +555,8 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     pos = start + 2
     saw_sof = False
     saw_sos = False
+    saw_dqt = False
+    saw_dht = False
     segments = 0
     sof_dims: Optional[Tuple[int, int]] = None
 
@@ -512,9 +565,9 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         # a single corrupt length field makes the walk wander through megabytes
         # of unrelated data and "find" an EOI far outside the image.
         segments += 1
-        if segments > 64:
+        if segments > 32:
             return Boundary(None, UNDETERMINED,
-                            [f"more than 64 header segments before SOS: the length fields "
+                            [f"more than 32 header segments before SOS: the length fields "
                              f"are not describing a JPEG"])
         marker = src.read_until(b"\xff", pos, min(limit - pos, 1 << 24))
         if marker == -1:
@@ -553,6 +606,11 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             return Boundary(None, UNDETERMINED,
                             [f"JPEG segment 0xFF{m:02X} declares an implausible length {length}"])
         if m == 0xDA:                            # SOS: entropy-coded data follows
+            if not saw_dqt or not saw_dht:
+                missing = [n for n, seen in (("DQT", saw_dqt), ("DHT", saw_dht)) if not seen]
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG enters a scan with no {' and no '.join(missing)} "
+                                 "segment: the image would be undecodable"])
             saw_sos = True
             pos = marker + 2 + length
             nxt = _skip_entropy(src, pos, limit)
@@ -561,10 +619,39 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                                 ["JPEG entropy-coded scan runs past the carve window"])
             pos = nxt
             continue
-        if 0xC0 <= m <= 0xCF and m not in (0xC4, 0xC8, 0xCC):
-            body = src.read(after + 2, 5)
-            if len(body) == 5:
-                sof_dims = (_be16(body, 3), _be16(body, 1))
+        if m == 0xDB:                            # DQT: quantisation table(s)
+            body = src.read(after, length)        # body[0:2] is the segment length
+            if len(body) < 3 or not _dqt_length_is_exact(body[2:]):
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG DQT declares length {length}, which is not an exact "
+                                 "sum of 65- and 129-byte tables"])
+            saw_dqt = True
+        elif m == 0xC4:                          # DHT: Huffman table(s)
+            if not _dht_length_is_plausible(src.read(after, length)[2:]):
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG DHT declares length {length}, which does not "
+                                 "describe a well-formed Huffman table"])
+            saw_dht = True
+        elif 0xC0 <= m <= 0xCF and m not in (0xC8, 0xCC):
+            # `body` starts at the segment's own 2-byte length field:
+            #   [0:2] length, [2] precision, [3:5] height, [5:7] width, [7] components
+            body = src.read(after, length)
+            if len(body) < 8:
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG SOF segment 0xFF{m:02X} is truncated at {length} bytes"])
+            n_comp = body[7]
+            if length != 8 + 3 * n_comp:
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG SOF segment 0xFF{m:02X} declares {n_comp} component(s) "
+                                 f"but a length of {length}, not {8 + 3 * n_comp}"])
+            if n_comp == 0 or n_comp > 4:
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG SOF declares an impossible component count {n_comp}"])
+            height, width = _be16(body, 3), _be16(body, 5)
+            if not (0 < width <= 20_000 and 0 < height <= 20_000):
+                return Boundary(None, UNDETERMINED,
+                                [f"JPEG SOF declares implausible dimensions {width}x{height}"])
+            sof_dims = (width, height)
             saw_sof = True
         pos = marker + 2 + length
 
@@ -1172,38 +1259,115 @@ def _mpeg_audio_end(src: ByteSource, start: int, max_size: int, id3_version: Opt
     return Boundary(end, FRAME_VALIDATED, notes)
 
 
+#: A real elementary stream is dozens of packets long. Four was the old
+#: threshold, and four 0x47 bytes at 188-byte spacing is reachable in noise.
+_TS_MIN_PACKETS = 16
+
+#: Transport packet size, ISO/IEC 13818-1 clause 2.4.3.1. 192 (with M2TS-style
+#: 4-byte prefixes) and 204 are the other legal values; 188 is what every real
+#: muxer emits and the only one a carver can rely on.
+_TS_PACKET = 188
+
+
+def _ts_packet_header(hdr: bytes) -> Optional[Tuple[int, bool, int, int]]:
+    """Parse the 4-byte MPEG-TS transport header, or return ``None`` if invalid.
+
+    Returns ``(pid, payload_unit_start, adaptation_field_control,
+    continuity_counter)``.
+
+    The rejection rules are the ones the standard actually defines. They look
+    fussy, but they are the entire basis for telling a transport stream from
+    random bytes: 0x47 alone occurs every 256 bytes, whereas a header that also
+    satisfies the reserved-value rules occurs roughly once in 900.
+
+    Rejected:
+      * transport_error_indicator set (bit 7 of byte 1) -- the packet is flagged
+        corrupt by the sender, so it is not evidence of a stream;
+      * transport_scrambling_control == 1 (reserved by the standard);
+      * adaptation_field_control == 0 (explicitly forbidden by the standard);
+      * an adaptation field that does not fit inside the packet.
+    """
+    if len(hdr) < 4 or hdr[0] != 0x47:
+        return None
+    tei = bool(hdr[1] & 0x80)
+    pusi = bool(hdr[1] & 0x40)
+    pid = ((hdr[1] & 0x1F) << 8) | hdr[2]
+    scrambling = (hdr[3] >> 6) & 0x03
+    afc = (hdr[3] >> 4) & 0x03
+    cc = hdr[3] & 0x0F
+    if tei or scrambling == 1 or afc == 0:
+        return None
+    return pid, pusi, afc, cc
+
+
+def _ts_adaptation_length(src: ByteSource, pos: int) -> int:
+    """Bytes consumed by the adaptation field at ``pos``, or 0 when absent.
+
+    Adaptation fields are not always multiples of 188, so the walk has to step
+    by ``1 + adaptation_field_length`` to stay aligned.
+    """
+    head = src.read(pos + 4, 1)
+    if not head:
+        return 0
+    return 1 + head[0]
+
+
 def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
-    """MPEG-TS: fixed 188-byte packets, each starting with the 0x47 sync byte."""
+    """MPEG-TS: a continuous run of 188-byte packets, each starting with 0x47.
+
+    Returns SYNC_RUN, not FRAME_VALIDATED. ISO/IEC 13818-1 defines no
+    end-of-stream marker, so the last packet before the sync breaks is a
+    convention, not a fact the format states. Reporting that as a validated
+    frame sequence is how a 752-byte run of random bytes once came out of this
+    carver at 100% confidence.
+    """
     limit = min(src.size, start + max_size)
     packets = 0
-    pid = None
+    pid: Optional[int] = None
+    pid_changes = 0
     pos = start
-    while pos + 188 <= limit:
+
+    while pos + _TS_PACKET <= limit:
         if src.read(pos, 1) != b"\x47":
             break
-        head = src.read(pos + 1, 3)
-        if len(head) < 3:
+        parsed = _ts_packet_header(src.read(pos, 4))
+        if parsed is None:
             break
-        this_pid = ((head[0] & 0x1F) << 8) | head[1]
-        pusi = bool(head[2] & 0x40)
-        afc = (head[3] >> 4) & 0x03 if len(head) > 3 else 0
-        step = 188
-        if afc in (1, 3):                      # payload present -> adapt next
-            af_len = src.read(pos + 4, 1)
+        this_pid, pusi, afc, _cc = parsed
+
+        if afc in (2, 3):                       # adaptation field present
+            af_len = _ts_adaptation_length(src, pos)
+            if af_len > _TS_PACKET - 4:
+                break                           # adaptation field overruns the packet
             if af_len:
-                step += 1 + af_len[0]
+                pos += af_len
+
         if pid is None:
             pid = this_pid
-        elif this_pid == pid and pusi:
+        elif this_pid != pid:
+            # One run is one elementary stream. A PID that changes part-way
+            # through means we are no longer walking a stream.
+            pid_changes += 1
+            if pid_changes > 2:
+                break
+        elif not pusi:
             pass
+
         packets += 1
-        pos += step
+        pos += _TS_PACKET
         if packets > 200_000:
             break
-    if packets < 4:
-        return Boundary(None, UNDETERMINED, [f"only {packets} consecutive 188-byte TS packet(s)"])
-    return Boundary(pos, FRAME_VALIDATED,
-                    [f"MPEG-TS: {packets} consecutive 188-byte packet(s) on PID 0x{(pid or 0):04x}"])
+
+    if packets < _TS_MIN_PACKETS:
+        return Boundary(None, UNDETERMINED,
+                        [f"only {packets} consecutive valid 188-byte TS packet(s); "
+                         f"at least {_TS_MIN_PACKETS} are required before this is "
+                         "distinguishable from coincidence"])
+    return Boundary(
+        pos, SYNC_RUN,
+        [f"MPEG-TS: {packets} consecutive 188-byte packet(s) on PID 0x{(pid or 0):04X}"
+         + (f", {pid_changes} PID change(s)" if pid_changes else "")],
+    )
 
 
 def _macho_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -1756,16 +1920,34 @@ def _validate_tar(data: bytes) -> Tuple[bool, str]:
 
 
 def _validate_mpegts(data: bytes) -> Tuple[bool, str]:
-    if len(data) < 188 * 4:
-        return False, "fewer than four 188-byte MPEG-TS packets"
-    if len(data) % 188:
-        return False, f"length {len(data)} is not a multiple of 188"
-    if data[0] != 0x47 or data[188] != 0x47:
-        return False, "188-byte packet boundaries do not align to the 0x47 sync byte"
-    pids = set()
-    for off in range(0, min(len(data), 188 * 4096), 188):
-        pids.add(((data[off + 1] & 0x1F) << 8) | data[off + 2])
-    return True, f"{len(data) // 188} aligned 188-byte packet(s) across {len(pids)} PID(s)"
+    if len(data) < _TS_PACKET * _TS_MIN_PACKETS:
+        return False, (f"fewer than {_TS_MIN_PACKETS} 188-byte MPEG-TS packets, "
+                       "which is too short to distinguish from coincidence")
+    if len(data) % _TS_PACKET:
+        return False, f"length {len(data)} is not a multiple of {_TS_PACKET}"
+
+    # Reuse the walk's parser so the two gates cannot drift apart.
+    pids: Dict[int, int] = {}
+    off = 0
+    while off + _TS_PACKET <= len(data):
+        parsed = _ts_packet_header(data[off:off + 4])
+        if parsed is None:
+            return False, f"packet {off // _TS_PACKET} has an invalid transport header"
+        pid, _pusi, afc, _cc = parsed
+        if afc in (2, 3):
+            af_len = data[off + 4]
+            if af_len > _TS_PACKET - 4:
+                return False, f"packet {off // _TS_PACKET} adaptation field overruns the packet"
+            off += 1 + af_len
+        pids[pid] = pids.get(pid, 0) + 1
+        off += _TS_PACKET
+
+    if len(pids) != 1:
+        return False, (f"{len(pids)} distinct PIDs in one run; a carved elementary "
+                       "stream must be a single PID")
+    pid, count = next(iter(pids.items()))
+    return True, (f"{count} aligned {_TS_PACKET}-byte packet(s), every transport header "
+                  f"valid, single PID 0x{pid:04X}")
 
 
 def _validate_macho(data: bytes) -> Tuple[bool, str]:

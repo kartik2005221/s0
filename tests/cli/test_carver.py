@@ -9,10 +9,13 @@ correctly rejects a malformed object must have tests that feed it malformed
 objects and say so.
 """
 
+import contextlib
 import gzip
 import hashlib
 import io
 import os
+import random
+import tempfile
 import sqlite3
 import struct
 import tarfile
@@ -22,6 +25,7 @@ import zlib
 from pathlib import Path
 
 import pytest
+from s0 import resources
 
 from s0.carve import calculate_shannon_entropy, carve_image, score_carved_candidate
 from s0.carve import boundary, signatures
@@ -358,11 +362,160 @@ def test_carve_recovers_every_planted_file_and_no_others(tmp_path):
     assert all(c.confidence_score >= 60 for c in summary.carved_files)
 
 
+@contextlib.contextmanager
+def _tmp_bytes(data: bytes):
+    """Write bytes to a temp file and yield its path."""
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "blob.bin"
+        p.write_bytes(data)
+        yield p
+
+
+def _resolve_boundary(fn, path: Path):
+    """Run a boundary function against a file, the way the engine does."""
+    size = path.stat().st_size
+    with open(path, "rb") as fh:
+        return fn(boundary.ByteSource(fh, size), 0, size)
+
+
+#: Fixed seed for the noise fixture. The test asserts that a carver emits
+#: nothing from unrelated data, so the input must be reproducible: with
+#: ``os.urandom`` the test was a coin flip, and it lost roughly one run in forty
+#: before the MPEG-TS and JPEG structural gates were tightened.
+_NOISE_SEED = 0x5EED_C0DE
+
+
+def _pseudo_noise(nbytes: int, seed: int = _NOISE_SEED) -> bytes:
+    """Deterministic high-entropy filler, indistinguishable from /dev/urandom."""
+    rng = random.Random(seed)
+    return rng.randbytes(nbytes)
+
+
+def _mpegts_packets(count: int, pid: int = 0x0100, payload: bytes = b"\x00" * 184) -> bytes:
+    """A well-formed MPEG-TS run: 188-byte packets, one PID, AFC=1, CC counting."""
+    out = bytearray()
+    for i in range(count):
+        hdr = bytes([
+            0x47,
+            ((pid >> 8) & 0x1F),          # TEI=0, PUSI, priority=0
+            pid & 0xFF,
+            (0x01 << 4) | (i & 0x0F),     # scrambling=0, AFC=1 (payload only), CC
+        ])
+        out += hdr + payload
+    return bytes(out)
+
+
+def test_mpegts_transport_header_rules():
+    """The reserved/invalid header values the standard forbids must be rejected.
+
+    A transport header that merely starts with 0x47 is worthless as evidence: in
+    8 MiB of noise the 0x47 sync byte alone occurs every 256 bytes. These are the
+    rules that make a 0x47 run distinguishable from coincidence.
+    """
+    def hdr(tei=0, pusi=0, scrambling=0, afc=1, cc=0):
+        return bytes([0x47, (tei << 7) | (pusi << 6) | 0x00, 0x00,
+                      (scrambling << 6) | (afc << 4) | cc])
+
+    assert boundary._ts_packet_header(hdr()) is not None
+    assert boundary._ts_packet_header(hdr(tei=1)) is None, "transport_error_indicator"
+    assert boundary._ts_packet_header(hdr(afc=0)) is None, "adaptation_field_control 0 is forbidden"
+    assert boundary._ts_packet_header(hdr(scrambling=1)) is None, "scrambling_control 1 is reserved"
+    assert boundary._ts_packet_header(b"\x48" + hdr()[1:]) is None, "sync byte must be 0x47"
+
+
+def test_mpegts_rejects_a_short_sync_run_and_random_payloads():
+    """Four 0x47 bytes at 188-byte spacing is not a stream; noise headers are not either."""
+    # A run of 0x47s with no valid transport headers anywhere.
+    junk = bytearray(b"\x47" * (188 * 16))
+    for i in range(0, len(junk), 188):
+        junk[i + 3] = 0x00          # AFC = 0, which the standard forbids
+    ok, why = boundary._validate_mpegts(bytes(junk))
+    assert not ok
+    assert "transport header" in why or "PID" in why
+
+    # Fewer than the minimum packet count must not validate.
+    short = _mpegts_packets(boundary._TS_MIN_PACKETS - 1)
+    ok, why = boundary._validate_mpegts(short)
+    assert not ok and "too short" in why
+
+    # A genuine single-PID run must still validate, and report a sync run rather
+    # than claiming a validated frame sequence: ISO/IEC 13818-1 has no end marker.
+    good = _mpegts_packets(boundary._TS_MIN_PACKETS + 20)
+    ok, why = boundary._validate_mpegts(good)
+    assert ok, why
+    assert "single PID" in why
+
+
+def test_mpegts_mixed_pids_are_rejected():
+    """One carved run is one elementary stream; a PID change means it is noise."""
+    good = bytearray(_mpegts_packets(boundary._TS_MIN_PACKETS + 20, pid=0x0100))
+    # Flip the PID of the packet in the middle.
+    off = 188 * 10
+    good[off + 1] = (good[off + 1] & 0xE0) | ((0x0200 >> 8) & 0x1F)
+    good[off + 2] = 0x0200 & 0xFF
+    ok, why = boundary._validate_mpegts(bytes(good))
+    assert not ok and "PID" in why
+
+
+def test_jpeg_sof_length_must_match_component_count():
+    """A SOF whose declared length contradicts its component count is not a JPEG.
+
+    This is the check that removed a 1.2 MB false positive: 8 MiB of noise
+    contains plenty of plausible FF-marker runs, but it satisfies
+    ``length == 8 + 3 * components`` about once in 32,768.
+    """
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 64), (10, 120, 200)).save(buf, format="JPEG", quality=85)
+    jpg = bytearray(buf.getvalue())
+
+    # Find SOF0 and lie about the component count.
+    i = jpg.index(b"\xff\xc0")
+    original = jpg[i + 9]
+    jpg[i + 9] = 1                      # claims 1 component but length says 17
+    with _tmp_bytes(bytes(jpg)) as path:
+        bnd = _resolve_boundary(boundary._jpeg_end, path)
+    assert bnd.method == boundary.UNDETERMINED
+    assert "component" in bnd.notes[0]
+
+    jpg[i + 9] = original
+    with _tmp_bytes(bytes(jpg)) as path:
+        bnd = _resolve_boundary(boundary._jpeg_end, path)
+    assert bnd.method == boundary.FOOTER_ANCHORED, bnd.notes
+
+
+def test_jpeg_without_dqt_and_dht_is_rejected():
+    """A scan with no quantisation or Huffman table is undecodable, so not a file."""
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("L", (64, 64), 128).save(buf, format="JPEG", quality=85)
+    jpg = buf.getvalue()
+    dqt = jpg.index(b"\xff\xdb")
+    ln = int.from_bytes(jpg[dqt + 2:dqt + 4], "big")
+    stripped = jpg[:dqt] + jpg[dqt + 2 + ln:]      # delete the DQT segment
+    with _tmp_bytes(stripped) as path:
+        bnd = _resolve_boundary(boundary._jpeg_end, path)
+    assert bnd.method == boundary.UNDETERMINED
+    assert "undecodable" in bnd.notes[0]
+
+
+def test_dqt_and_dht_length_helpers():
+    assert boundary._dqt_length_is_exact(bytes([0x00]) + bytes(64))       # 8-bit table
+    assert boundary._dqt_length_is_exact(bytes([0x10]) + bytes(128))      # 16-bit table
+    assert boundary._dqt_length_is_exact((bytes([0x00]) + bytes(64)) * 2)   # two tables
+    assert not boundary._dqt_length_is_exact(bytes([0x00]) + bytes(63))   # short table
+    assert not boundary._dqt_length_is_exact(bytes([0x20]) + bytes(64))   # Pq=2 invalid
+    counts = bytes([0] * 15 + [1])
+    assert boundary._dht_length_is_plausible(bytes([0x00]) + counts + b"\x00")
+    assert not boundary._dht_length_is_plausible(bytes([0x00]) + counts)   # truncated
+    assert not boundary._dht_length_is_plausible(bytes([0x00]) + bytes(16))  # zero symbols
+
+
 def test_carve_emits_nothing_for_pure_noise(tmp_path):
     """The regression that matters: unrelated data must yield nothing, and the
     output must never exceed the input."""
     path = tmp_path / "noise.raw"
-    path.write_bytes(os.urandom(8 * 1024 * 1024))
+    path.write_bytes(_pseudo_noise(8 * 1024 * 1024))
     out = tmp_path / "out"
     summary = carve_image(path, out, generate_certificate=False)
     assert summary.files_recovered == 0
@@ -429,7 +582,7 @@ def test_carve_issues_a_verifiable_manifest_certificate(tmp_path):
     cert = summary.manifest_certificate
     assert cert is not None
     assert cert["signature"]["public_key_fingerprint"] == DEMO_KEY_FINGERPRINT
-    pub = Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
+    pub = resources.demo_public_key()
     ok, reason = verify_certificate(cert, [load_public_pem(pub)])
     assert ok, reason
     assert cert["wipe"]["method"] == "FORENSIC_CARVING"
