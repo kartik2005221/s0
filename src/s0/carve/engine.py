@@ -594,7 +594,10 @@ def _scan_signatures(
     max_inbuilt_window = max(
         (s.inbuilt_search_window for s in active if s.inbuilt), default=0
     )
-    window_needed = max((len(s.header) for s in active), default=1) + max_inbuilt_window
+    # A signature whose magic sits at header_offset needs that many leading bytes
+    # available, or the first candidate in a window is invisible.
+    window_needed = max((s.header_offset + len(s.header) for s in active), default=1) \
+        + max_inbuilt_window
 
     custom_ids = {id(s) for s in custom_signatures or ()}
     carry = b""
@@ -646,7 +649,15 @@ def _scan_signatures(
                     if idx == -1:
                         break
                     pos = idx + 1
-                    offset = data_start + idx
+                    # A signature may declare that its magic sits a fixed
+                    # distance into the file: ISO-BMFF puts `ftyp` after a
+                    # 4-byte box size whose value varies per file. The candidate
+                    # then starts earlier than the match, and that earlier offset
+                    # is what everything downstream must use.
+                    start_in_window = idx - sig.header_offset
+                    if start_in_window < 0:
+                        continue
+                    offset = data_start + start_in_window
                     if offset < searched_upto:
                         continue    # seen in a previous window's overlap
 

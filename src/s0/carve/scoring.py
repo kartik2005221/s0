@@ -131,10 +131,11 @@ def score_carved_candidate(
     ext = sig.extension.lower().lstrip(".")
 
     # 1. Identity (40) -- assumed: the caller gated on structural validation.
-    if data.startswith(sig.header):
+    if data[sig.header_offset:sig.header_offset + len(sig.header)] == sig.header:
         score += 40
-        heuristics.append("Magic header confirmed and the payload parses as a structurally "
-                          f"valid {sig.name} (+40)")
+        where = "" if sig.header_offset == 0 else f" at offset {sig.header_offset}"
+        heuristics.append(f"Magic header confirmed{where} and the payload parses as a "
+                          f"structurally valid {sig.name} (+40)")
 
     # 2. Boundary confidence (25)
     weight = _BOUNDARY_WEIGHT.get(boundary_method, 0)

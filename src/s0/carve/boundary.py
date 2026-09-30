@@ -889,7 +889,6 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         if len(head) < 8:
             return None
         size = _be32(head, 0)
-        ftype = _ascii(head, 4, 4)
         header = 8
         if size == 1:
             ext = src.read(pos + 8, 8)
@@ -939,7 +938,96 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     end = _sanity(end, start + 12, limit)
     if end is None:
         return Boundary(None, UNDETERMINED, ["MP4 atom walk did not terminate"])
+
+    # The atom walk is the floor. When a populated sample table survives, it is
+    # strictly better evidence, because it says where the media actually ends
+    # rather than where the outermost box header claims.
+    #
+    # This is not a rare case. A camera writes mdat with a placeholder size and
+    # patches it when recording stops, so an interrupted recording leaves a
+    # zeroed or stale size field. Walking the tree then yields a file that is
+    # either truncated at the placeholder or padded out to the next box.
+    table_end, notes = _mp4_table_end(src, start, end, limit)
+    if table_end is not None:
+        return Boundary(table_end, DECLARED_SIZE, notes)
+
     return Boundary(end, CONTAINER_WALK, ["MP4 atom tree walked to its last top-level box"])
+
+
+def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
+                   limit: int) -> Tuple[Optional[int], List[str]]:
+    """Resolve an MP4's true media end from its sample table, if one survives.
+
+    Returns ``(end, notes)``. ``end`` is ``None`` when the table is absent,
+    fragmented or fails validation, in which case the caller falls back to the
+    atom walk -- and the notes say why, so a rejected table is visible in the
+    report rather than silently ignored.
+
+    Offsets in ``stco``/``co64`` are absolute *within the file*, so what they
+    yield is relative to ``start``, not to the image.
+    """
+    from s0.carve import isobmff
+
+    # Search the whole available range, not just up to the atom walk's end: a
+    # stale mdat size field is precisely the case this function exists for, and
+    # the walk stops short of the moov when the mdat claims to be smaller than
+    # it is. The top-level loop bails on the first implausible size, so a bogus
+    # candidate costs one seek.
+    moov = isobmff.find_box_in(src, start, limit, b"moov")
+    if moov is None:
+        return None, []
+    try:
+        moov_bytes = src.read(moov.start, moov.size)
+        table = isobmff.parse_moov(moov_bytes, 0)
+    except (isobmff.BoxError, OSError):
+        return None, []
+
+    # Validate against the bytes that are actually there, not against the atom
+    # walk's end. The walk is the thing being second-guessed.
+    span = src.size - start
+    if table.fragmented:
+        return None, ["moov declares Movie Fragments: its sample tables are empty "
+                      "by specification, so no index is available"]
+    ok, why = table.validate(span)
+    if not ok:
+        return None, ["sample table rejected: " + why[0]]
+
+    t = max(table.tracks, key=lambda tr: tr.sample_count)
+    if t.media_end <= 0 or start + t.media_end > limit:
+        return None, [f"sample table implies a media end at {t.media_end} from the "
+                      f"file start, which does not fit inside the carve window"]
+
+    # The table says where the *media* ends, which is not always where the
+    # *file* ends. In a non-faststart file the layout is [ftyp][mdat][moov]: the
+    # last sample finishes before the index begins, and cutting the carve at the
+    # media end throws the moov away. A file with no index does not decode, so
+    # that would replace a recoverable file with a broken one.
+    moov_end = (moov.start - start) + moov.size
+    index_inside_media = moov_end <= t.media_end
+    if index_inside_media:
+        end = start + t.media_end
+        tail = f"the sample table ends at {t.media_end}"
+    else:
+        end = max(walk_end, start + moov_end)
+        tail = (f"the sample table ends at {t.media_end}, but the index runs to "
+                f"{moov_end}, so the carve extends to {end - start} to keep the moov")
+
+    notes = [
+        f"sample table accounts for the media exactly: {t.sample_count} sample(s) in "
+        f"{len(t.chunk_offsets)} chunk(s) on track {t.track_id}, "
+        f"{'64-bit' if t.offsets_are_64bit else '32-bit'} offset table",
+        f"atom walk alone would have ended at {walk_end - start} bytes; {tail}",
+    ]
+    # A declared mdat size that overruns the last sample is the truncated-recording
+    # case. Say so, because it is the reason the table is consulted at all.
+    mdat = isobmff.find_box_in(src, start, walk_end, b"mdat")
+    if mdat is not None:
+        declared_end = (mdat.start - start) + mdat.size
+        if declared_end > t.media_end + 16:
+            notes.append(f"mdat declares {declared_end} bytes but the samples end at "
+                         f"{t.media_end}: {declared_end - t.media_end} trailing byte(s) "
+                         "are not part of any sample")
+    return end, notes
 
 
 def _sqlite_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -1426,8 +1514,6 @@ _BOUNDARY_RULES: Dict[str, SignatureRule] = {
     "flac": _flac_end,
     "mp4": _mp4_end,
     "mov": _mp4_end,
-    "mkv": _mp4_end,
-    "webm": _mp4_end,
     "sqlite": _sqlite_end,
     "pcap": _pcap_end,
     "pcapng": _pcapng_end,
@@ -1479,8 +1565,9 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
             # A custom signature that declares its own terminator can still be
             # sized exactly, which is what scalpel-style signature databases do.
             if sig.footer is not None:
-                found = src.read_until(sig.footer, offset + len(sig.header),
-                                       max(0, max_size - len(sig.header)))
+                head_len = sig.header_offset + len(sig.header)
+                found = src.read_until(sig.footer, offset + head_len,
+                                       max(0, max_size - head_len))
                 if found != -1:
                     return Boundary(
                         found + len(sig.footer), FOOTER_ANCHORED,
@@ -1548,7 +1635,7 @@ def validate_structure(data: bytes, ext: str) -> Tuple[bool, str]:
         return _validate_7z(data)
     if ext == "ogg":
         return _validate_ogg(data)
-    if ext in ("mp4", "mov", "mkv", "webm", "m4v"):
+    if ext in ("mp4", "mov", "m4v"):
         return _validate_mp4(data)
     if ext == "flac":
         return _validate_flac(data)
@@ -1848,7 +1935,26 @@ def _validate_mp4(data: bytes) -> Tuple[bool, str]:
     compat = []
     for o in range(16, min(len(data), 16 + _be32(data, 0) - 8), 4):
         compat.append(_ascii(data, o, 4).decode("latin-1"))
-    return True, f"ISO-BMFF ftyp major brand {major!r}, compatible with {', '.join(compat[:4]) or 'n/a'}"
+    note = (f"ISO-BMFF ftyp major brand {major!r}, "
+            f"compatible with {', '.join(compat[:4]) or 'n/a'}")
+
+    # A populated, internally consistent sample table is far stronger evidence
+    # than a brand string, which is 8 bytes that occur by chance. Prefer it, and
+    # report a rejected table rather than silently ignoring it.
+    from s0.carve import isobmff
+    try:
+        if isobmff.is_fragmented(data):
+            return True, note + "; moov declares Movie Fragments, so no sample index"
+        table = isobmff.parse_moov(data, 0)
+    except isobmff.BoxError:
+        return True, note + "; no readable moov box"
+    ok, why = table.validate(len(data))
+    if not ok:
+        return False, note + "; sample table rejected -- " + why[0]
+    t = max(table.tracks, key=lambda tr: tr.sample_count)
+    return True, (note + f"; sample table verified: track {t.track_id} has "
+                  f"{t.sample_count} sample(s) in {len(t.chunk_offsets)} chunk(s), "
+                  f"media {t.media_start}..{t.media_end}")
 
 
 def _validate_flac(data: bytes) -> Tuple[bool, str]:

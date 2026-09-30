@@ -31,6 +31,16 @@ class FileSignature:
     extension: str
     category: str
     header: bytes
+    #: Where ``header`` sits relative to the *start of the file*. Zero for the
+    #: usual case where the magic is the first thing in the file.
+    #:
+    #: Needed for ISO-BMFF, where every file opens with a 4-byte box size whose
+    #: value depends on how many compatible brands the writer emitted: 0x18 for
+    #: one brand, 0x20 for four, and so on. Hardcoding a size yields a table
+    #: that matches the files its author happened to test with and nothing else
+    #: -- which is how every ISO-BMFF signature here came to be pinned to 0x18
+    #: while ffmpeg writes 0x20, and real MP4s were never even candidates.
+    header_offset: int = 0
     footer: Optional[bytes] = None
     footer_offset_from_end: int = 0
     min_size: int = 64
@@ -67,10 +77,12 @@ SIGNATURES: List[FileSignature] = [
                   header=b"MM\x00*", min_size=32, max_size=512 * _MB),
     FileSignature("BigTIFF Image (Motorola)", "tiff", "image",
                   header=b"MM\x00+", min_size=32, max_size=_GB),
-    FileSignature("HEIF / AVIF Image", "heic", "image",
-                  header=b"\x00\x00\x00\x18ftypheic", min_size=64, max_size=512 * _MB),
-    FileSignature("HEIF / AVIF Image (mif1)", "heic", "image",
-                  header=b"\x00\x00\x00\x18ftypmif1", min_size=64, max_size=512 * _MB),
+    FileSignature("HEIF / AVIF Image (heic brand)", "heic", "image",
+              header=b"ftypheic", header_offset=4, min_size=64, max_size=512 * _MB),
+    FileSignature("HEIF / AVIF Image (mif1 brand)", "heic", "image",
+              header=b"ftypmif1", header_offset=4, min_size=64, max_size=512 * _MB),
+    FileSignature("HEIF / AVIF Image (avif brand)", "avif", "image",
+              header=b"ftypavif", header_offset=4, min_size=64, max_size=512 * _MB),
     FileSignature("JPEG 2000 Image", "jp2", "image",
                   header=b"\x00\x00\x00\x0cjP  \r\n\x87\n", min_size=64, max_size=512 * _MB),
 
@@ -161,10 +173,12 @@ SIGNATURES: List[FileSignature] = [
                   header=b"\xe3", min_size=1024, max_size=256 * _MB),
 
     # ---------------- video ----------------
-    FileSignature("MP4 / QuickTime Container", "mp4", "video",
-                  header=b"\x00\x00\x00\x18ftyp", min_size=128, max_size=16 * _GB),
-    FileSignature("MP4 / QuickTime Container (isom)", "mp4", "video",
-                  header=b"\x00\x00\x00\x18ftypisom", min_size=128, max_size=16 * _GB),
+    FileSignature("MP4 / QuickTime / ISO-BMFF Container", "mp4", "video",
+              # The ftyp box size varies with the compatible-brand list, so only
+              # the box type is matched here; the boundary walker and the sample
+              # table do the real work. See FileSignature.header_offset.
+              header=b"ftyp", header_offset=4,
+              min_size=128, max_size=16 * _GB),
     FileSignature("MPEG Transport Stream", "ts", "video",
                   header=b"G", min_size=188, max_size=64 * _GB),
 
@@ -276,6 +290,8 @@ def supported_extensions() -> List[str]:
 
 
 # Longest header first, so a PNG (8-byte magic) wins over a bare MZ.
+# Longest magic first: the more bytes a signature pins down, the fewer
+# candidates reach the (more expensive) structural validation.
 _SNIFF_ORDER = sorted(SIGNATURES, key=lambda s: -len(s.header))
 
 
@@ -290,7 +306,7 @@ def sniff(data: bytes) -> Optional[FileSignature]:
     if not data:
         return None
     for sig in _SNIFF_ORDER:
-        if data.startswith(sig.header):
+        if data[sig.header_offset:sig.header_offset + len(sig.header)] == sig.header:
             if sig.inbuilt is not None:
                 window = data[: max(sig.inbuilt_search_window, len(sig.inbuilt))]
                 if sig.inbuilt not in window:
