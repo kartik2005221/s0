@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from s0_cli.main import cmd_wipe, cmd_carve, cmd_image, cmd_erase_files, _validate_cli_metadata
+from s0_core.terminal import EX_USAGE
 
 
 def test_validate_cli_metadata_valid():
@@ -39,6 +40,6 @@ def test_cmd_wipe_rejects_bad_operator(capsys):
         yes=True,
     )
     rc = cmd_wipe(args)
-    assert rc == 2
+    assert rc == EX_USAGE
     err = capsys.readouterr().err
-    assert "error: invalid --operator" in err
+    assert "invalid --operator" in err

@@ -70,6 +70,7 @@ from s0_core import certificate as cert_mod
 from s0_core.config import CONFIG
 from s0_core.terminal import EX_CONFIG, EX_DATAERR, EX_INTERRUPTED, EX_NOINPUT, \
     EX_NOPERM, EX_OK, EX_TEMPFAIL, EX_USAGE
+from s0_core.terminal import OutputPolicy
 from s0_cli.ui import (UI, Column, add_global_arguments, human_bytes, human_int,
                        policy_from_args)
 from s0_core.progress import ProgressBar
@@ -266,50 +267,56 @@ def resolve_target(path: str) -> DevTarget:
 _resolve_target = resolve_target
 
 
-def _print_plan(
-    target: DevTarget, candidate, alternatives, warnings: list[str], hpa_dco: dict | None
-) -> None:
+def _print_plan(ui, target: DevTarget, candidate, alternatives,
+                warnings: list[str], hpa_dco: dict | None) -> None:
+    """Render the dry-run plan through the shared presentation layer."""
     m = candidate.method
-    gib = target.capacity_bytes / (1024**3)
-    size_str = f"{gib:.1f} GiB" if gib >= 1 else (f"{target.capacity_bytes / (1024**2):.1f} MiB" if target.capacity_bytes >= 1024**2 else f"{target.capacity_bytes} B")
-    print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
+    ui.heading("Sanitization plan (dry run)")
+    ui.key("Target", f"{target.path} ({target.kind}, {target.storage_type}, "
+                     f"{human_bytes(target.capacity_bytes)})")
     if m is None:
-        print("[s0 plan]  Method        : NONE AVAILABLE")
-        print(f"[s0 plan]  Reason        : {candidate.reason}")
+        ui.key("Method", "NONE AVAILABLE")
+        ui.key("Reason", candidate.reason)
         return
     plan: Plan = m.plan(target)
-    print(f"[s0 plan]  Method        : {plan.method_id}")
-    print(f"[s0 plan]  NIST Category : {plan.nist_category}")
-    print(f"[s0 plan]  Summary       : {plan.summary}")
-    if plan.method_id.startswith("ATA_SECURE_ERASE") or "NVME" in plan.method_id:
-        print("[s0 plan]  Firmware Note : Firmware-level Purge methods are simulated/fixture-tested;")
-        print("                         real-world behavior varies across vendors. Verify device support.")
+    ui.key("Method", plan.method_id)
+    ui.key("NIST category", plan.nist_category)
+    ui.key("Summary", plan.summary)
+    if plan.method_id.startswith(("ATA_", "NVME_", "SCSI_")):
+        ui.warn("Firmware-level Purge methods are constructed to ACS-4 / NVMe / SBC and "
+                "are fixture-tested here, but real-world behaviour varies by vendor and "
+                "firmware revision. Verify device support before relying on it.")
     if plan.commands:
-        print("[s0 plan]  Commands      :")
+        ui.note("")
+        ui.key("Commands", "")
         for c in plan.commands:
-            print(f"[s0 plan]    - {c}")
-    all_warnings = warnings + plan.warnings
+            ui.note(f"    {c}")
+    all_warnings = list(warnings) + list(plan.warnings)
     if all_warnings:
-        print("[s0 plan]  Warnings      :")
+        ui.note("")
+        ui.key("Warnings", "")
         for w in all_warnings:
-            print(f"[s0 plan]    ! {w}")
+            ui.warn(w)
     if alternatives:
-        print("[s0 plan]  Alternatives  :")
+        ui.note("")
+        ui.key("Alternatives", "")
         for a in alternatives:
-            state = "available" if a.available else "unavailable"
-            print(f"[s0 plan]    - [{state}] {a.reason}")
-    if hpa_dco and (
-        hpa_dco.get("hpa_present") or hpa_dco.get("dco_present") or hpa_dco.get("note")
-    ):
-        print("[s0 plan]  HPA/DCO       :")
-        hpa_status = "Detected" if hpa_dco.get("hpa_present") else ("None" if hpa_dco.get("hpa_present") is False else "Unknown")
-        dco_status = "Detected" if hpa_dco.get("dco_present") else ("None" if hpa_dco.get("dco_present") is False else "Unknown")
-        print(f"[s0 plan]    HPA Present : {hpa_status}")
-        print(f"[s0 plan]    DCO Present : {dco_status}")
+            state = ui.status("ok" if a.available else "skip", "available" if a.available else "unavailable")
+            ui.note(f"    {state} {a.reason}")
+    if hpa_dco and (hpa_dco.get("hpa_present") or hpa_dco.get("dco_present")
+                    or hpa_dco.get("note")):
+        ui.note("")
+        ui.key("HPA / DCO", "")
+        ui.key("  HPA present",
+               "Detected" if hpa_dco.get("hpa_present") else
+               ("None" if hpa_dco.get("hpa_present") is False else "Unknown"))
+        ui.key("  DCO present",
+               "Detected" if hpa_dco.get("dco_present") else
+               ("None" if hpa_dco.get("dco_present") is False else "Unknown"))
         if hpa_dco.get("note"):
-            print(f"[s0 plan]    Note        : {hpa_dco['note']}")
+            ui.key("  Note", hpa_dco["note"])
         if hpa_dco.get("restore_command"):
-            print(f"[s0 plan]    Action      : remove BEFORE wiping: {hpa_dco['restore_command']}")
+            ui.key("  Action", f"remove BEFORE wiping: {hpa_dco['restore_command']}")
 
 
 # --------------------------------------------------------------------------- #
@@ -393,45 +400,42 @@ def cmd_list(args) -> int:
 
 
 def cmd_plan(args) -> int:
+    """Dry run: show exactly what `s0 wipe` would do, and nothing else.
+
+    Also the place where s0 interrogates the device and prints the sanitization
+    method ladder, so an operator can see whether the tier they need is actually
+    attainable on this medium before committing to it.
+    """
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "plan")
     if not getattr(args, "target", None):
-        print("error: the following arguments are required: --target", file=sys.stderr)
-        return 2
+        ui.error("the following arguments are required: --target")
+        return EX_USAGE
 
     try:
         target = _resolve_target(args.target)
-    except (FileNotFoundError, SafetyError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 2
+    except FileNotFoundError:
+        ui.error(f"target not found: {args.target}")
+        return EX_NOINPUT
+    except SafetyError as exc:
+        ui.error(str(exc))
+        return EX_NOPERM
 
     if target.capacity_bytes <= 0:
-        print(f"error: target {target.path} has zero or unreadable capacity.", file=sys.stderr)
-        return 2
+        ui.error(f"target {target.path} has zero or unreadable capacity")
+        return EX_DATAERR
 
-    if sys.platform == "win32" and target.kind == "block":
-        gib = target.capacity_bytes / (1024**3)
-        size_str = f"{gib:.1f} GiB" if gib >= 1 else f"{target.capacity_bytes / (1024**2):.1f} MiB"
-        print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
-        print(f"[s0 plan]  Method        : OVERWRITE_ZERO_1PASS")
-        print(f"[s0 plan]  NIST Category : Clear")
-        print(f"[s0 plan]  Summary       : Windows raw volume/drive overwriting with volume lock and dismount")
-        print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
-        return 0
-
-    if sys.platform == "darwin" and target.kind == "block":
-        gib = target.capacity_bytes / (1024**3)
-        size_str = f"{gib:.1f} GiB" if gib >= 1 else f"{target.capacity_bytes / (1024**2):.1f} MiB"
-        print(f"[s0 plan]  Target        : {target.path} ({target.kind}, {target.storage_type}, {size_str})")
-        print(f"[s0 plan]  Method        : OVERWRITE_ZERO_1PASS")
-        print(f"[s0 plan]  NIST Category : Clear")
-        print(f"[s0 plan]  Summary       : macOS raw character device (/dev/rdisk) overwriting with fcntl(F_FULLFSYNC)")
-        print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
-        return 0
+    # Interrogate the medium. Read-only: IDENTIFY-style reads and sysfs only.
+    from s0_cli.methods.capabilities import probe_capabilities, plan_ladder
+    caps = probe_capabilities(target.path, kind=target.kind)
+    requested = getattr(args, "require_tier", None) or (
+        "Purge" if getattr(args, "firmware", False) else "Clear")
+    ladder = plan_ladder(caps, requested)
 
     try:
         warnings = check_safety(target, force=args.force)
     except SafetyError as exc:
-        print(f"REFUSED: {exc}", file=sys.stderr)
-        return 2
+        ui.error(f"REFUSED: {exc}")
+        warnings = [str(exc)]
 
     candidate, alternatives = select_method(
         target,
@@ -443,27 +447,113 @@ def cmd_plan(args) -> int:
     hpa_dco = None
     if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
         hpa_dco = hpa_dco_report(target)
-    _print_plan(target, candidate, alternatives, warnings, hpa_dco)
-    print("\n[s0 plan]  DRY RUN — nothing was written. Run `s0 wipe` when satisfied.")
-    return 0
+
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(result={
+            "target": {
+                "path": target.path, "kind": target.kind,
+                "capacity_bytes": target.capacity_bytes,
+                "storage_type": target.storage_type,
+                "model": target.model, "serial": target.serial,
+            },
+            "selected_method": candidate.method_id,
+            "selected_nist_category": candidate.nist_category,
+            "summary": candidate.summary,
+            "capabilities": {
+                "probed": caps.probed,
+                "probe_method": caps.probe_method,
+                "transport": caps.transport,
+                "best_available_tier": caps.best_tier(),
+                "notes": caps.notes,
+                "errors": caps.errors,
+            },
+            "requested_tier": ladder["requested_tier"],
+            "satisfiable": ladder["satisfiable"],
+            "refusal_reason": ladder["refusal_reason"],
+            "ladder": ladder["ladder"],
+            "warnings": list(warnings) + list(candidate.warnings),
+            "alternatives": [
+                {"method": m.method_id, "tier": m.nist_category, "available": m.available}
+                for m in (alternatives or [])
+            ],
+        })
+        return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
+
+    _print_plan(ui, target, candidate, alternatives, warnings, hpa_dco)
+
+    ui.heading("Sanitization capability probe")
+    for line in caps.summary_lines():
+        ui.key(line.split(":")[0], line.split(":", 1)[1].strip() if ":" in line else line)
+    for n in caps.notes:
+        ui.warn(n)
+    for e in caps.errors:
+        ui.warn(e)
+
+    ui.heading("Method ladder (best available first)")
+    ui.table(
+        [Column("TIER", max_width=22), Column("METHOD", max_width=30),
+         Column("MECHANISM", max_width=68)],
+        [[e["tier"], e["method"], e["mechanism"]] for e in ladder["ladder"]],
+    )
+    ui.note("")
+    if ladder["satisfiable"]:
+        ui.key("Requested tier", f"{requested} - achievable on this device")
+    else:
+        ui.key("Requested tier", f"{requested} - NOT ACHIEVABLE")
+        ui.note("")
+        ui.error(ladder["refusal_reason"])
+
+    ui.note("")
+    ui.note("DRY RUN - nothing was written. Run `s0 wipe` when satisfied.")
+    return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
 
 
 def cmd_wipe(args) -> int:
+    """Sanitize a drive, image, file or folder, verify, and issue a certificate.
+
+    Refuses to silently downgrade: if the operator asserts a tier with
+    ``--require-tier`` and the device cannot achieve it, s0 stops and says why.
+    Passing ``--allow-downgrade`` converts that refusal into an explicit,
+    signed, recorded decision -- never a silent one.
+    """
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "wipe")
     _print_legal_notice()
     if not _validate_cli_metadata(args):
-        return 2
+        return EX_USAGE
 
     pattern = getattr(args, "pattern", "zero")
     if pattern not in ("zero", "random"):
-        print(f"error: invalid --pattern '{pattern}'. Supported patterns: zero, random", file=sys.stderr)
-        return 2
+        ui.error(f"invalid --pattern '{pattern}'. Supported patterns: zero, random")
+        return EX_DATAERR
 
     targets = getattr(args, "targets", None)
     target_arg = getattr(args, "target", None)
 
     if not targets and not target_arg:
-        print("error: one of --target or --targets is required", file=sys.stderr)
-        return 2
+        ui.error("one of --target or --targets is required")
+        return EX_USAGE
+
+    # --- tier gate, before anything is opened for writing ---
+    require_tier = getattr(args, "require_tier", None)
+    if getattr(args, "firmware", False):
+        require_tier = "Purge"
+    if require_tier:
+        from s0_cli.methods.capabilities import probe_capabilities, plan_ladder
+        try:
+            probe_target = _resolve_target(target_arg or targets[0])
+        except (FileNotFoundError, SafetyError) as exc:
+            ui.error(str(exc))
+            return EX_NOINPUT
+        caps = probe_capabilities(probe_target.path, kind=probe_target.kind)
+        ladder = plan_ladder(caps, require_tier)
+        if not ladder["satisfiable"]:
+            if not getattr(args, "allow_downgrade", False):
+                ui.error(ladder["refusal_reason"])
+                return EX_TEMPFAIL
+            ui.warn("PROCEEDING AS AN EXPLICIT DOWNGRADE: "
+                    + str(ladder["refusal_reason"]))
+            ui.warn("the downgrade is recorded on the certificate; the resulting "
+                    f"claim is {ladder['best_available_tier']}, not {require_tier}.")
 
     is_file_mode = False
     if targets:
@@ -471,11 +561,10 @@ def cmd_wipe(args) -> int:
             try:
                 p = Path(tgt)
                 if p.is_block_device() or (sys.platform == "darwin" and p.is_char_device()) or (sys.platform == "win32" and str(tgt).lower().startswith(("\\\\.\\", "//./"))):
-                    print(
-                        f"error: '{tgt}' is a block storage device. Use '--target {tgt}' for whole-drive sanitization. '--targets' is strictly for files and directories.",
-                        file=sys.stderr,
-                    )
-                    return 2
+                    ui.error(f"'{tgt}' is a block storage device. Use '--target {tgt}' "
+                             f"for whole-drive sanitization; '--targets' is strictly for "
+                             f"files and directories.")
+                    return EX_USAGE
             except Exception:
                 pass
         is_file_mode = True
@@ -1983,10 +2072,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     pln = sub.add_parser("plan", parents=[common], help="dry-run: show what would happen")
+    pln.add_argument("--require-tier", choices=("Clear", "Purge", "Destroy"), default=None,
+                     help="assert the minimum sanitization tier the medium must support; "
+                          "s0 refuses when the device cannot achieve it")
+    pln.add_argument("--firmware", action="store_true",
+                     help="shortcut for --require-tier Purge: only firmware-mediated "
+                          "Purge methods satisfy this request")
+    pln.add_argument("--json", action="store_true", help="shorthand for --format json")
+    pln.add_argument("--output-format", choices=("text", "json"), default=None,
+                     help=argparse.SUPPRESS)
     pln.set_defaults(func=cmd_plan)
 
     wp = sub.add_parser("wipe", parents=[common], help="wipe drive, file(s), or folder(s), verify, issue signed certificate")
     wp.add_argument("--targets", "-t", nargs="+", help="multiple target files or directories to sanitize")
+    wp.add_argument("--require-tier", choices=("Clear", "Purge", "Destroy"), default=None,
+                    help="refuse to run unless the device can achieve this tier. "
+                         "s0 will not silently downgrade: without this flag the "
+                         "selected method is always reported, whatever it is")
+    wp.add_argument("--allow-downgrade", action="store_true",
+                    help="if --require-tier cannot be met, proceed with the best "
+                         "available method and record the downgrade on the certificate")
+    wp.add_argument("--sanitize", choices=("block-erase", "crypto-erase", "overwrite"),
+                    default=None,
+                    help="force a specific firmware sanitize action (ATA 0xB4 / "
+                         "NVMe 0x84 / SCSI 0x48) instead of the automatic choice")
+    wp.add_argument("--sanitize-passes", type=int, default=1,
+                    help="pass count for --sanitize overwrite (1-255; 0 is refused "
+                         "because the specification reads 0 as SIXTEEN passes)")
     wp.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
     wp.add_argument("--key", "--signing-key", help="issuer private key PEM (default: demo issuer key)")
     wp.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")

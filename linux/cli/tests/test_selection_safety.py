@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from s0_core.terminal import EX_USAGE
+
 import s0_cli.wipe as wipe_mod
 from s0_cli.devices import SafetyError, Target, check_safety, device_id_for
 from s0_cli.methods.overwrite import OverwriteMethod
@@ -224,7 +226,9 @@ def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
     )
     monkeypatch.setattr(Path, "is_block_device", lambda self: True)
     rc = main_mod.cmd_wipe(args)
-    assert rc == 2
+    # sysexits: passing a block device to --targets is a usage error (64),
+    # not a generic failure (1) or argparse's 2.
+    assert rc == EX_USAGE
     captured = capsys.readouterr()
     assert "is a block storage device" in captured.err
 
