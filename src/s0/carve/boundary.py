@@ -413,14 +413,22 @@ def _riff_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     if len(head) < 12:
         return Boundary(None, UNDETERMINED, ["RIFF header truncated"])
     declared = _le32(head, 4)
+    is_avi = src.read(start + 8, 4) == b"AVI "
+
     if declared == 0xFFFFFFFF:
         # Streamed RIFF: the size field is advisory, so walk the chunk list.
-        return _riff_walk(src, start, start + 12, max_size, depth=0)
+        b = _riff_walk(src, start, start + 12, max_size, depth=0)
+        if is_avi and b.resolved:
+            b.notes.extend(_avi_index_notes(src, start, b.end))
+        return b
     size = declared + 8
     end = _sanity(start + size, start + 12, start + max_size)
     if end is None:
         return Boundary(None, UNDETERMINED, [f"RIFF declared size {declared} outside carve bounds"])
-    return Boundary(end, DECLARED_SIZE, [f"RIFF declares {declared} bytes of chunks"])
+    notes = [f"RIFF declares {declared} bytes of chunks"]
+    if is_avi:
+        notes.extend(_avi_index_notes(src, start, end))
+    return Boundary(end, DECLARED_SIZE, notes)
 
 
 def _riff_walk(src: ByteSource, start: int, pos: int, max_size: int, depth: int) -> Boundary:
@@ -444,6 +452,31 @@ def _riff_walk(src: ByteSource, start: int, pos: int, max_size: int, depth: int)
     if end is None:
         return Boundary(None, UNDETERMINED, ["RIFF chunk walk did not terminate"])
     return Boundary(end, CONTAINER_WALK, ["RIFF chunk list terminated cleanly"])
+
+
+def _avi_index_notes(src: "ByteSource", start: int, end: int) -> List[str]:
+    """Report the AVI chunk index, and the extent it implies.
+
+    The index is not decoration: it is what makes an AVI a structurally
+    justified recovery rather than a magic-byte match, and for a fragmented file
+    it is the only thing that says where the chunks actually are.
+    """
+    from s0.carve import riff
+
+    try:
+        payload = src.read(start, min(end - start, 256 * 1024 * 1024))
+        idx = riff.find_avi_index(payload)
+    except (riff.RiffError, ValueError, IndexError, OSError):
+        return ["no readable AVI chunk index"]
+    if idx is None:
+        return ["no readable AVI chunk index"]
+    first, last = idx.media_extent()
+    base = "file-absolute" if idx.base_is_absolute else "movi-relative"
+    return [
+        f"AVI index resolved: {len(idx.entries)} chunk(s), {idx.keyframes} keyframe(s)",
+        idx.resolution,
+        f"index places the media between {first} and {last} of the file",
+    ]
 
 
 def _riff_is_webp(head: bytes) -> bool:
@@ -1637,6 +1670,8 @@ def validate_structure(data: bytes, ext: str) -> Tuple[bool, str]:
         return _validate_ogg(data)
     if ext in ("mp4", "mov", "m4v"):
         return _validate_mp4(data)
+    if ext == "avi":
+        return _validate_avi(data)
     if ext == "flac":
         return _validate_flac(data)
     if ext == "pcap":
@@ -1926,6 +1961,48 @@ def _validate_ogg(data: bytes) -> Tuple[bool, str]:
     if 27 + nsegs > len(data):
         return False, "Ogg segment table is truncated"
     return True, f"Ogg page, {nsegs} segment(s), body {sum(data[27:27 + nsegs])} bytes"
+
+
+def _validate_avi(data: bytes) -> Tuple[bool, str]:
+    """An AVI is only as trustworthy as its chunk index.
+
+    The RIFF size field alone is 4 bytes that a random file can satisfy, and a
+    container walk on a fragmented file stops at the first hole. ``idx1`` and the
+    OpenDML super-index are self-describing: every row names its own FOURCC and
+    size, so resolving the index against the data is a real structural check, not
+    a magic-byte match.
+    """
+    from s0.carve import riff
+
+    if _ascii(data, 0, 4) != b"RIFF":
+        return False, "missing RIFF fourcc"
+    if _ascii(data, 8, 4) != b"AVI ":
+        return False, f"RIFF list type is {_ascii(data, 8, 4)!r}, not 'AVI '"
+
+    try:
+        idx = riff.find_avi_index(data)
+    except (riff.RiffError, ValueError, IndexError):
+        return False, "AVI chunk chain is malformed"
+    if idx is None:
+        return False, ("no resolvable chunk index: neither idx1 nor an OpenDML indx "
+                       "points at its own chunks")
+
+    hits = sum(1 for e in idx.entries
+               if _ascii(data, idx.extent(e)[0], 4) == e.chunk_id)
+    total = len(idx.entries)
+    if total == 0:
+        return False, "AVI chunk index is empty"
+    if hits * 10 < total * 9:
+        return False, (f"AVI index only resolves {hits} of {total} chunk(s) onto "
+                       "their own FOURCC")
+
+    first, last = idx.media_extent()
+    if last > len(data):
+        return False, (f"AVI index places the last chunk at {last}, past the "
+                       f"{len(data)}-byte file end")
+    base = "file-absolute" if idx.base_is_absolute else "movi-relative"
+    return True, (f"AVI index resolved: {total} chunk(s) ({idx.keyframes} keyframe(s)), "
+                  f"{base} offset base at {idx.base}, media {first}..{last}")
 
 
 def _validate_mp4(data: bytes) -> Tuple[bool, str]:

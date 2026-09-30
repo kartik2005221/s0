@@ -179,6 +179,12 @@ SIGNATURES: List[FileSignature] = [
               # table do the real work. See FileSignature.header_offset.
               header=b"ftyp", header_offset=4,
               min_size=128, max_size=16 * _GB),
+    # `RIFF` alone is shared with WAV and WebP; the list type fourcc at offset 8
+    # is what makes it an AVI. The inbuilt prefilter runs before the boundary
+    # walk, so the shared magic costs one 16-byte compare.
+    FileSignature("AVI Video (RIFF)", "avi", "video",
+                  header=b"RIFF", inbuilt=b"AVI ", inbuilt_search_window=16,
+                  min_size=256, max_size=16 * _GB),
     FileSignature("MPEG Transport Stream", "ts", "video",
                   header=b"G", min_size=188, max_size=64 * _GB),
 
