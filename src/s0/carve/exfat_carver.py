@@ -52,6 +52,11 @@ class ExFatRecoveredFile:
     fragment_count: int = 1
     create_time: int = 0
     modify_time: int = 0
+    #: How far this name can be trusted. exFAT has no LFN checksum to bind a
+    #: name to anything, and no parent pointer, so a name from a deleted entry
+    #: is always structural evidence only. Stating that on the record is the
+    #: difference between a name and a claim.
+    name_source: str = "deleted-directory-entry"
 
 
 def parse_exfat_boot_sector(

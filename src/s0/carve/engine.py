@@ -51,13 +51,14 @@ from s0.config import CONFIG
 
 from . import boundary
 from .allocation import FreeSpaceMap, build_free_space
+from . import provenance
 from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
 from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
 from .usn import build_timeline
 from .policy import CarveBudget, CarvePolicy
-from . import bodyfile, suppression
+from . import bodyfile, session, suppression
 from .scoring import score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, sniff
 
@@ -117,6 +118,10 @@ class CarvedFile:
     original_name: Optional[str] = None
     original_path: Optional[str] = None
     deleted_at: Optional[str] = None
+    #: What supports ``original_name``, and whether a path was recovered at all.
+    #: Set for filesystem-native recoveries. Left ``None`` for signature
+    #: carving, which has no metadata and must not appear to have any.
+    provenance: Optional[dict] = None
 
 
 @dataclass
@@ -173,6 +178,12 @@ class CarvingSessionSummary:
     # against candidates_evaluated is the honest measure of how much work that
     # saved, and an operator adding a signature needs to see it move.
     candidates_prefiltered: int = 0
+    #: Extents a resumed session had already recorded. A resumed candidate is
+    #: counted under ``duplicates_suppressed`` rather than in a field of its own:
+    #: the digest set is the one mechanism both carving paths consult, and a
+    #: second counter would have to be incremented in both of them to stay
+    #: accurate. One number that is true beats two where one is always zero.
+    resumed_from_session: int = 0
 
     def recovery_rate_ppm(self) -> int:
         """Recovered bytes per million bytes scanned, in integer parts-per-million."""
@@ -415,6 +426,13 @@ def _recover_from_filesystem(
             if frag_count > 1:
                 heuristics.append(f"Reassembled from {frag_count} fragment runs")
 
+            # 3g/3h: say what supports the name, and say when there is no path.
+            # A report that prints a bare filename implies less than one that
+            # prints a path, and printing neither leaves the reader unable to
+            # tell a verified name from an unverifiable one.
+            prov = provenance.for_filesystem(part_fs, path=orig_path)
+            heuristics.append(prov.describe())
+
             category = ident.category
             allowed, reason = budget.admit(category, ext, len(data))
             if not allowed:
@@ -451,6 +469,7 @@ def _recover_from_filesystem(
                 original_name=str(name),
                 original_path=orig_path,
                 deleted_at=deleted_at,
+                provenance=prov.as_dict(),
             ))
             if orig_name:
                 names_seen.setdefault(orig_name, 0)
@@ -1124,12 +1143,20 @@ def carve_image(
     generate_certificate: bool = True,
     policy: Optional[CarvePolicy] = None,
     known_hashes: Optional["suppression.SuppressionSet"] = None,
+    resume: Optional["session.CarveSession"] = None,
 ) -> CarvingSessionSummary:
     """Recover deleted and unallocated files from an image, image file or device.
 
     Filesystem-native recovery runs first, then signature carving. Every emitted
     artifact has an independently resolved boundary and a validated structure;
     candidates that fail either test are counted and reported, never written.
+
+    `resume` supplies a prior run's state. Offsets it already recovered are
+    counted and skipped rather than carved again, and the summary says how many
+    were skipped. The skip applies to the *output*, never to the evidence: a
+    session records what was found last time, so the bytes are still re-read, and
+    a file the session names that is no longer in the output directory is
+    reported rather than assumed done.
     """
     target_p = Path(target_path).resolve()
     out_p = Path(output_dir).resolve()
@@ -1163,6 +1190,20 @@ def carve_image(
     warnings: List[str] = []
     recovered_hashes: set = set()
     all_files: List[CarvedFile] = []
+    if resume is not None:
+        resume.check_against(target_p)
+        # A resumed candidate is a duplicate of what the previous run already
+        # wrote, so it is seeded into the duplicate set rather than threaded
+        # through every carving path as a separate flag. Both paths already
+        # consult that set, and one mechanism cannot be forgotten in one of them
+        # -- which is exactly how a resume flag ends up applied to the signature
+        # carver and not the filesystem one.
+        prior = {e.sha256 for e in resume.entries if e.sha256}
+        recovered_hashes.update(prior)
+        counters["resumed_from_session"] = len(resume.entries)
+        for note in session.describe_resume(resume, out_dir=out_p,
+                                           skipped=len(prior)):
+            warnings.append(note)
 
     # ---- 1. filesystem-native recovery (highest evidentiary value) ----
     journal_timeline: List[dict] = []
@@ -1328,6 +1369,7 @@ def carve_image(
         suppressed_known=counters.get("suppressed_known", 0),
         suppressed_known_bytes=counters.get("suppressed_bytes", 0),
         candidates_prefiltered=counters.get("prefiltered", 0),
+        resumed_from_session=counters.get("resumed_from_session", 0),
         suppression_note=(known_hashes.describe() if known_hashes is not None else ""),
     )
 
@@ -1346,6 +1388,8 @@ def carve_image(
         "candidates_rejected": counters["rejected"],
         "candidate_bytes_discarded": counters["rejected_bytes"],
         "duplicates_suppressed": counters["duplicate"],
+        "resumed_from_session": counters.get("resumed_from_session", 0),
+
         "filtered_by_extension_filter": counters["filtered"],
         "deleted_names_from_journal": journal_timeline,
         "allocation_aware_search": free_space is not None,
@@ -1377,6 +1421,7 @@ def carve_image(
                 "original_name": c.original_name,
                 "original_path": c.original_path,
                 "deleted_at": c.deleted_at,
+                "name_provenance": c.provenance,
                 "heuristics": c.heuristics,
             }
             for c in all_files

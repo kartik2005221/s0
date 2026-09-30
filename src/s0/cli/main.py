@@ -1280,6 +1280,16 @@ def cmd_carve(args) -> int:
                 return EX_DATAERR
             ui.key("Known-file set", known_hashes.describe())
 
+        resume = None
+        if getattr(args, "session", None):
+            from s0.carve import session as _session
+            try:
+                resume = _session.CarveSession.read(args.session)
+            except _session.SessionError as exc:
+                ui.error(f"--session unusable: {exc}")
+                return EX_DATAERR
+            ui.key("Resuming from", f"{args.session} ({len(resume.entries)} extent(s) recorded)")
+
         summary = carve_image(
             args.target,
             args.out_dir,
@@ -1287,6 +1297,7 @@ def cmd_carve(args) -> int:
             custom_signatures=custom_sigs,
             min_confidence=args.min_confidence,
             known_hashes=known_hashes,
+            resume=resume,
             operator_id=args.operator,
             organization=args.organization,
             signing_key_path=key_path,
@@ -1302,6 +1313,16 @@ def cmd_carve(args) -> int:
         ui.warn("File carving interrupted by the operator (Ctrl+C); "
                 "the recovery index written so far is still valid.")
         return EX_INTERRUPTED
+    except Exception as exc:
+        # A session that names a different image is an operator error, not a
+        # crash. The library raises so a programmatic caller cannot ignore it;
+        # here it has to become a message and a non-zero exit, because a
+        # traceback tells the examiner nothing about what to do next.
+        from s0.carve import session as _session_mod
+        if isinstance(exc, _session_mod.SessionError):
+            ui.error(str(exc))
+            return EX_DATAERR
+        raise
     except FileNotFoundError as exc:
         if bar:
             bar.finish(extra="FAILED")
@@ -1324,6 +1345,21 @@ def cmd_carve(args) -> int:
     rejected_pct = (
         100.0 * summary.rejected_candidates / max(1, summary.total_candidates_found)
     )
+
+    if getattr(args, "write_session", None):
+        from s0.carve import session as _session
+        try:
+            written = _session.CarveSession(
+                target_path=summary.target_path,
+                target_size=summary.total_bytes_scanned or 0,
+                fingerprint=_session.CarveSession.compute_fingerprint(Path(args.target)),
+            ).merge(summary.carved_files, out_dir=Path(args.out_dir)).write(
+                Path(args.write_session))
+            ui.key("Session written", f"{written} ({len(summary.carved_files)} extent(s))")
+        except (OSError, _session.SessionError, ValueError) as exc:
+            # A session that cannot be written is worth saying out loud: it
+            # means the next run of a long carve starts from nothing.
+            ui.warn(f"could not write the session file: {exc}")
 
     # Bodyfiles, written before any format branch so that --format json produces
     # the same artifacts as the text output. An artifact that only appears in one
@@ -1376,6 +1412,8 @@ def cmd_carve(args) -> int:
                 "allocated_candidates_skipped": summary.allocated_candidates_skipped,
                 "allocated_bytes_skipped": summary.allocated_bytes_skipped,
                 "candidates_prefiltered_in_memory": summary.candidates_prefiltered,
+                "resumed_from_session": summary.resumed_from_session,
+
                 "suppressed_known_files": summary.suppressed_known,
                 "suppressed_known_bytes": summary.suppressed_known_bytes,
                 "suppression_note": summary.suppression_note,
@@ -1400,6 +1438,7 @@ def cmd_carve(args) -> int:
                         "fragment_count": c.fragment_count,
                         "original_name": c.original_name,
                         "original_path": c.original_path,
+                        "name_provenance": c.provenance,
                         "deleted_at": c.deleted_at,
                         "recovered_path": c.recovered_path,
                         "heuristics": c.heuristics,
@@ -2435,6 +2474,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
     crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
+    crv.add_argument(
+        "--session",
+        help="resume from a session file written by an earlier run: extents it "
+             "already recovered are not carved again (refused if the image has "
+             "changed since)",
+    )
+    crv.add_argument(
+        "--write-session",
+        help="write a session file recording this run's recovered extents, so an "
+             "interrupted carve can be resumed",
+    )
     crv.add_argument(
         "--hash-set",
         help="suppress files already known: a hash list (md5/sha1/sha256/sha512, "
