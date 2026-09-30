@@ -17,7 +17,9 @@ import os
 import random
 import tempfile
 import sqlite3
+import shutil
 import struct
+import subprocess
 import tarfile
 import wave
 import zipfile
@@ -251,7 +253,24 @@ def test_mp3_frame_chain_rejects_a_lone_sync_word():
     return 30-odd 2 MiB junk files for every target."""
     ok, reason = boundary.validate_structure(b"\xff\xfb" + os.urandom(200_000), "mp3")
     assert not ok
-    assert "consecutive" in reason
+    assert reason
+    # Two independent gates reject this: the MPEG frame chain, and the
+    # uniform-random entropy profile. Either is a correct answer, so accept
+    # both and let the next test pin the frame chain specifically.
+    assert ("consecutive" in reason
+            or "maximum entropy" in reason), reason
+
+
+def test_mp3_frame_chain_rejects_a_non_random_lone_sync_word():
+    """The frame chain must still do its job when the entropy gate cannot.
+
+    A low-entropy tail has no uniform block profile, so the entropy gate stays
+    quiet and the frame chain is the only thing that can reject this. If the
+    frame-chain check ever regressed, this test would catch it.
+    """
+    ok, reason = boundary.validate_structure(b"\xff\xfb" + b"\x11\x22\x33\x44" * 50_000, "mp3")
+    assert not ok
+    assert "consecutive" in reason, reason
 
 
 def test_mp3_frame_chain_accepts_a_real_frame_sequence(tmp_path):
@@ -775,3 +794,98 @@ def test_unknown_filesystem_searches_everything_and_says_so(tmp_path):
     assert s.free_space is None
     assert any("whole volume" in w or "not a recognised filesystem" in w
                for w in s.warnings), s.warnings
+
+
+class TestUniformRandomGate:
+    """The universal pre-gate: no file format is uniformly random throughout.
+
+    Thresholds are not guesses. Over 60 samples of random data at 8 KiB, 32 KiB
+    and 256 KiB the block-entropy standard deviation never exceeded 0.027; over
+    real output from nine encoder/format combinations the lowest was 0.137. The
+    gate sits at 0.08, between the two.
+    """
+
+    def test_uniform_noise_is_rejected(self):
+        from s0.carve import scoring
+        for size in (8 * 1024, 64 * 1024, 512 * 1024):
+            data = os.urandom(size)
+            complaint = scoring.uniform_random_complaint(data)
+            assert complaint is not None, f"{size} bytes of noise was not rejected"
+            assert "maximum entropy" in complaint
+
+    def test_the_pattern_that_caused_the_original_false_positives_is_caught(self):
+        """752 bytes of noise scored 100% as an MPEG-TS before this gate.
+
+        A magic byte plus uniform random data is the exact shape this rejects,
+        and it is worth keeping as a named regression because the boundary
+        walker will never catch it on its own.
+        """
+        payload = b"G" + os.urandom(64 * 1024)
+        from s0.carve import scoring
+        assert scoring.uniform_random_complaint(payload) is not None
+
+    def test_a_repetitive_real_file_is_not_caught(self):
+        """Low spread alone is not evidence of noise.
+
+        A solid-colour image or a file of zeroes also has a flat entropy
+        profile. Rejecting those would be a catastrophic false positive, which
+        is why the gate also requires the mean to be near-maximal.
+        """
+        from s0.carve import scoring
+        for data in (b"\x00" * 64 * 1024,
+                     b"\xff" * 64 * 1024,
+                     b"A" * 200_000,
+                     b"the quick brown fox jumps over the lazy dog. " * 3000):
+            assert scoring.uniform_random_complaint(data) is None, \
+                "a low-entropy payload is not noise"
+
+    def test_a_deterministic_maximally_uniform_pattern_is_also_rejected(self):
+        """The gate does not care that the noise is predictable.
+
+        ``bytes(range(256))`` repeated is not a file either, and it has a
+        perfectly flat entropy profile, so the same rule must catch it. Whether
+        the bytes are unpredictable is irrelevant; whether they are uniformly
+        distributed is not.
+        """
+        from s0.carve import scoring
+        complaint = scoring.uniform_random_complaint(bytes(range(256)) * 256)
+        assert complaint is not None
+        assert "maximum entropy" in complaint
+
+    def test_a_real_encoded_file_is_not_caught(self, tmp_path):
+        from s0.carve import scoring
+        ffmpeg = shutil.which("ffmpeg")
+        if ffmpeg is None:
+            pytest.skip("ffmpeg not available")
+        for codec, fmt, ext in (("mpeg4", "avi", "avi"), ("libx264", "mp4", "mp4"),
+                                ("libx264", "matroska", "mkv"), ("ffv1", "avi", "avi")):
+            out = tmp_path / f"r{len(list(tmp_path.iterdir()))}.{ext}"
+            proc = subprocess.run(
+                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+                 "-i", "testsrc=size=320x240:rate=25:duration=4",
+                 "-c:v", codec, "-f", fmt, str(out)],
+                capture_output=True, text=True)
+            if proc.returncode != 0 or not out.is_file():
+                continue
+            data = out.read_bytes()
+            assert scoring.uniform_random_complaint(data) is None, \
+                f"{codec}/{fmt} was wrongly called noise"
+
+    def test_payloads_too_small_to_judge_are_not_complained_about(self):
+        from s0.carve import scoring
+        for size in (16, 512, 4096, 8191):
+            assert scoring.uniform_random_complaint(os.urandom(size)) is None
+
+    def test_the_gate_is_applied_before_the_format_specific_check(self):
+        """A bare magic byte plus noise must not reach the format validator."""
+        from s0.carve import boundary
+        ok, reason = boundary.validate_structure(b"RIFF" + os.urandom(32 * 1024), "avi")
+        assert not ok
+        assert "maximum entropy" in reason
+
+    def test_solid_containers_still_validate(self):
+        """A deliberately tiny but real PNG must not be caught by the gate."""
+        from s0.carve import boundary
+        data = _png_bytes(16, 16)
+        ok, reason = boundary.validate_structure(data, "png")
+        assert ok, reason

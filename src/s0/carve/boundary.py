@@ -1642,6 +1642,14 @@ def validate_structure(data: bytes, ext: str) -> Tuple[bool, str]:
     if n < 16:
         return False, "too short to contain any complete structure"
 
+    # Universal gate, before any format-specific check. Random bytes satisfy a
+    # structural check often enough to matter, and no file format is uniformly
+    # random throughout, so this can only ever reject noise.
+    from s0.carve import scoring as _scoring
+    complaint = _scoring.uniform_random_complaint(data)
+    if complaint is not None:
+        return False, complaint
+
     if ext == "jpg" or ext == "jpeg":
         return _validate_jpeg(data)
     if ext == "png":
