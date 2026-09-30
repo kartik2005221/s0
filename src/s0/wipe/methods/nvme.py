@@ -139,14 +139,37 @@ class NvmeMethod(WipeMethod):
 
 
 def parse_sanitize_log(out: str) -> dict:
-    """Parse `nvme sanitize-log` human output into status flags."""
+    """Parse `nvme sanitize-log` human output into status flags.
+
+    The SSTAT field is decoded by :mod:`s0.wipe.attest`, which is the single
+    place the field layout is written down. This function used to test the raw
+    value as a bit set -- ``completed = bits & 0x2``, ``failed = bits & 0x4`` --
+    which is not what the field means. Bits 3:0 are a status code, so that
+    decoder read a *successfully completed* sanitize (0x0001) as not completed
+    and a *failed* one (0x0003) as completed and not failed: a device that
+    refused to erase was attested as erased. There is now one decoder, and it
+    is the tested one.
+    """
+    from s0.wipe import attest
+
     state: dict = {"progress_pct": None, "completed": False, "failed": False}
     m = re.search(r"\[SPROG\]:\s*(\d+)%", out)
     if m:
         state["progress_pct"] = int(m.group(1))
-    sstat = re.search(r"\[SSTAT\]:\s*0x([0-9a-f]+)", out, re.I)
-    if sstat:
-        bits = int(sstat.group(1), 16)
-        state["completed"] = bool(bits & 0x2)   # Sanitize Completed (NVMe 1.4 §5.14.1.3)
-        state["failed"] = bool(bits & 0x4)      # Sanitize Failed
+    m = re.search(r"\[SSTAT\]:\s*0x([0-9a-fA-F]+)", out)
+    if m:
+        sstat = int(m.group(1), 16)
+        status = sstat & 0xF
+        state["status_code"] = status
+        state["status_known"] = status in attest.SSTAT_STATUS_TEXT
+        state["completed"] = status == attest.SSTAT_COMPLETE_SUCCESS
+        state["failed"] = status == attest.SSTAT_COMPLETED_FAILED
+        state["in_progress"] = status == attest.SSTAT_IN_PROGRESS
+        state["never_sanitized"] = status == attest.SSTAT_NEVER_SANITIZED
+        # Global Data Erased is the controller's own statement that nothing has
+        # been written since the last successful sanitize. It was not decoded
+        # here at all, which is the strongest evidence the specification offers.
+        state["global_data_erased"] = bool((sstat >> 8) & 0x1)
+        state["media_verification_canceled"] = bool((sstat >> 9) & 0x1)
+        state["sstat_raw"] = f"0x{sstat:04x}"
     return state

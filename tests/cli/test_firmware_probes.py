@@ -190,12 +190,36 @@ NVME_DEV = Target(path="/dev/nvme0n1", kind="block", capacity_bytes=1024**3,
 
 
 def test_parse_sanitize_log_states():
-    running = parse_sanitize_log("[SPROG]: 37%\n[SSTAT]: 0x0\n")
-    assert running == {"progress_pct": 37, "completed": False, "failed": False}
-    done = parse_sanitize_log("[SPROG]: 100%\n[SSTAT]: 0x2\n")
+    """SSTAT bits 3:0 are a status *code*, not a set of flags.
+
+    The values here changed, and that is the point. This test previously read
+    `0x0` as "running", `0x2` as "completed" and `0x6` as "failed" -- so a
+    sanitize that was still in progress (0x2) was asserted complete, and 0x6
+    is not a defined status code at all. The test was pinning the misreading
+    rather than the specification.
+    """
+    never = parse_sanitize_log("[SSTAT]: 0x0\n")
+    assert never["never_sanitized"] and not never["completed"] and not never["failed"]
+
+    running = parse_sanitize_log("[SPROG]: 37%\n[SSTAT]: 0x2\n")
+    assert running["in_progress"] and running["progress_pct"] == 37
+    assert not running["completed"], "a sanitize in progress is not complete"
+
+    done = parse_sanitize_log("[SPROG]: 100%\n[SSTAT]: 0x1\n")
     assert done["completed"] and done["progress_pct"] == 100
-    failed = parse_sanitize_log("[SSTAT]: 0x6\n")
-    assert failed["failed"] is True
+    assert not done["failed"]
+
+    failed = parse_sanitize_log("[SSTAT]: 0x3\n")
+    assert failed["failed"] and not failed["completed"]
+
+    # Global Data Erased is the controller's own statement that nothing has
+    # been written since the last successful sanitize. It was not read at all.
+    gde = parse_sanitize_log("[SSTAT]: 0x0101\n")
+    assert gde["completed"] and gde["global_data_erased"] is True
+
+    unknown = parse_sanitize_log("[SSTAT]: 0x6\n")
+    assert unknown["status_known"] is False
+    assert not unknown["completed"] and not unknown["failed"]
 
 
 def test_nvme_plan_commands_follow_spec():
