@@ -758,15 +758,36 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
             if proc.returncode == 0:
                 if out.strip():
                     parsed = json.loads(out.strip())
-                    result.update(parsed)
-                    cert_p = parsed.get("certificate") or parsed.get("certificate_path")
-                    pdf_p = parsed.get("pdf") or parsed.get("pdf_path")
+                    # s0 CLI --json emits a versioned envelope
+                    # (s0.<command>/1) with the payload under "result" and
+                    # artifacts under "artifacts". Older builds emitted a flat
+                    # object; both shapes are accepted so a mixed-version host
+                    # still drives the dashboard.
+                    body = parsed.get("result", parsed) if isinstance(parsed, dict) else parsed
+                    result.update(body)
+                    artifacts = parsed.get("artifacts", []) if isinstance(parsed, dict) else []
+                    by_kind = {a.get("kind"): a.get("path") for a in artifacts
+                               if isinstance(a, dict)}
+                    cert_p = (by_kind.get("certificate")
+                              or body.get("certificate")
+                              or body.get("certificate_path"))
+                    pdf_p = (by_kind.get("pdf_certificate")
+                             or body.get("pdf")
+                             or body.get("pdf_path"))
+                    qr_p = by_kind.get("qr_code")
                     if cert_p:
                         result["cert_filename"] = Path(cert_p).name
                         result["certificate_path"] = str(cert_p)
+                        result["certificate"] = str(cert_p)   # legacy alias
                     if pdf_p:
                         result["pdf_filename"] = Path(pdf_p).name
                         result["pdf_path"] = str(pdf_p)
+                        result["pdf"] = str(pdf_p)           # legacy alias
+                    if qr_p:
+                        result["qr_filename"] = Path(qr_p).name
+                    if isinstance(parsed, dict) and parsed.get("status") == "failure":
+                        result["returncode"] = 1
+                        result["error"] = "wipe completed with a failure status"
             else:
                 result["stdout_tail"] = out.strip()[-2000:]
                 result["error"] = f"Wipe command exited with code {proc.returncode}"

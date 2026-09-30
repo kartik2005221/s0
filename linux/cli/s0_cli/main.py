@@ -68,11 +68,12 @@ if threading.current_thread() is threading.main_thread():
 
 from s0_core import certificate as cert_mod
 from s0_core.config import CONFIG
-from s0_core.terminal import EX_CONFIG, EX_DATAERR, EX_INTERRUPTED, EX_NOINPUT, \
-    EX_NOPERM, EX_OK, EX_TEMPFAIL, EX_USAGE
+from s0_core.terminal import EX_CANTCREAT, EX_CONFIG, EX_DATAERR, EX_FAILURE, \
+    EX_INTERRUPTED, EX_IOERR, EX_NOINPUT, EX_NOPERM, EX_OK, EX_SOFTWARE, \
+    EX_TEMPFAIL, EX_USAGE
 from s0_core.terminal import OutputPolicy
-from s0_cli.ui import (UI, Column, add_global_arguments, human_bytes, human_int,
-                       policy_from_args)
+from s0_cli.ui import (UI, Column, add_global_arguments, artifact, human_bytes,
+                       human_int, policy_from_args)
 from s0_core.progress import ProgressBar
 
 from . import __version__, __version_str__
@@ -448,6 +449,8 @@ def cmd_plan(args) -> int:
     if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
         hpa_dco = hpa_dco_report(target)
 
+    selected_plan = candidate.method.plan(target) if candidate.method else None
+
     if ui.policy.fmt in ("json", "csv"):
         ui.finish(result={
             "target": {
@@ -456,9 +459,9 @@ def cmd_plan(args) -> int:
                 "storage_type": target.storage_type,
                 "model": target.model, "serial": target.serial,
             },
-            "selected_method": candidate.method_id,
-            "selected_nist_category": candidate.nist_category,
-            "summary": candidate.summary,
+            "selected_method": selected_plan.method_id if selected_plan else None,
+            "selected_nist_category": selected_plan.nist_category if selected_plan else None,
+            "summary": selected_plan.summary if selected_plan else candidate.reason,
             "capabilities": {
                 "probed": caps.probed,
                 "probe_method": caps.probe_method,
@@ -471,10 +474,15 @@ def cmd_plan(args) -> int:
             "satisfiable": ladder["satisfiable"],
             "refusal_reason": ladder["refusal_reason"],
             "ladder": ladder["ladder"],
-            "warnings": list(warnings) + list(candidate.warnings),
+            "warnings": list(warnings) + list(selected_plan.warnings if selected_plan else []),
             "alternatives": [
-                {"method": m.method_id, "tier": m.nist_category, "available": m.available}
-                for m in (alternatives or [])
+                {
+                    "method": alt.method.method_id if alt.method else None,
+                    "tier": alt.method.nist_category if alt.method else None,
+                    "available": alt.available,
+                    "reason": alt.reason,
+                }
+                for alt in (alternatives or [])
             ],
         })
         return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
@@ -808,8 +816,8 @@ def cmd_wipe(args) -> int:
                     f"Pass --force to proceed anyway."
                 )
                 if not args.force:
-                    print(f"REFUSED: {hpa_msg}", file=sys.stderr)
-                    return 2
+                    ui.error(hpa_msg)
+                    return EX_NOPERM
                 warnings.append(hpa_msg)
             elif (hpa_present or dco_present) and not is_fw:
                 hpa_msg = (
@@ -818,26 +826,31 @@ def cmd_wipe(args) -> int:
                     f"Overwrite-based sanitization ({plan.method_id}) cannot reach hidden sectors beyond visible capacity."
                 )
                 if not args.force:
-                    print(
-                        f"REFUSED: {hpa_msg}\n  Remove HPA/DCO using '{hpa_dco.get('restore_command')}' or pass --force to proceed anyway.",
-                        file=sys.stderr,
-                    )
-                    return 2
+                    ui.error(hpa_msg)
+                    ui.note(f"  Remove the hidden area with "
+                            f"'{hpa_dco.get('restore_command')}', or pass --force to "
+                            f"accept a wipe that cannot reach those sectors.")
+                    return EX_NOPERM
                 warnings.append(hpa_msg)
 
     if not args.yes:
-        _print_plan(target, candidate, alternatives, warnings, hpa_dco)
-        if "ATA_SECURE_ERASE" in plan.method_id or "NVME" in plan.method_id:
-            print("\n⚠  NOTICE: Firmware-level Purge methods (ATA/NVMe) are simulated/fixture-tested;", file=sys.stderr)
-            print("   real-world behavior varies across vendors. Verify device support prior to production use.", file=sys.stderr)
-        answer = input(
-            f"\nType '{target.path}' to confirm permanent erasure ({plan.method_id}, NIST {plan.nist_category}): "
-        )
+        _print_plan(ui, target, candidate, alternatives, warnings, hpa_dco)
+        if plan.method_id.startswith(("ATA_", "NVME_", "SCSI_")):
+            ui.warn("Firmware-level Purge methods are constructed to ACS-4 / NVMe / SBC "
+                    "and fixture-tested here, but real-world behaviour varies by vendor "
+                    "and firmware revision. Verify device support before relying on it.")
+        try:
+            answer = input(
+                f"\nType '{target.path}' to confirm permanent erasure "
+                f"({plan.method_id}, NIST {plan.nist_category}): ")
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
         if answer.strip() != str(target.path):
-            print("aborted — nothing was written", file=sys.stderr)
-            return 2
+            ui.note("Aborted - nothing was written.")
+            return EX_OK
     else:
-        sys.stderr.write(f"[s0 wipe plan] target={target.path} method={plan.method_id} tier={plan.nist_category}\n")
+        ui.note(f"[s0 wipe plan] target={target.path} method={plan.method_id} "
+                f"tier={plan.nist_category}")
 
     planted = None
     pre_samples = None
@@ -905,8 +918,7 @@ def cmd_wipe(args) -> int:
             return
 
         # Fallback for milestone / step lines
-        if not getattr(args, "json", False):
-            print(f"[{time.monotonic() - t_start:8.1f}s] {msg}", file=sys.stderr)
+        ui.note(f"[{time.monotonic() - t_start:8.1f}s] {msg}")
 
     progress(f"wiping {target.display} with {plan.method_id} (NIST {plan.nist_category})")
     try:
@@ -914,12 +926,13 @@ def cmd_wipe(args) -> int:
         temp = read_temperature(target.path)
         temp_str = f"Temp: {temp}°C" if temp is not None else ""
         bar.finish(extra=temp_str)
-        if not getattr(args, "json", False):
-            print("[s0 wipe] Sanitization pass complete. Buffers flushed to disk.", file=sys.stderr)
+        ui.note("Sanitization pass complete; buffers flushed to disk.")
     except KeyboardInterrupt:
         bar.finish(extra="CANCELLED")
-        print("\n⚠  Wipe interrupted by user (Ctrl+C). Target may be partially overwritten.", file=sys.stderr)
-        return 130
+        ui.error("WIPE INTERRUPTED (Ctrl+C). The target may be partially overwritten "
+                 "and must not be released. Re-run s0 wipe to completion, or escalate "
+                 "to a physical destruction method.")
+        return EX_INTERRUPTED
     end_time = _now()
 
     verif, _post = verify_wipe(
@@ -939,8 +952,8 @@ def cmd_wipe(args) -> int:
     key_path = default_issuer_key(args.key)
     _warn_if_demo_key(key_path)
     if key_path is None:
-        print("error: no issuer signing key found.", file=sys.stderr)
-        return 2
+        ui.error("no issuer signing key found")
+        return EX_CONFIG
 
     cert = make_certificate(
         target,
@@ -957,12 +970,14 @@ def cmd_wipe(args) -> int:
     )
 
     # Record in local hash-chained audit ledger
+    blk = None
+    ledger_error = None
     try:
         blk = record_audit_event(cert, operation_type="DRIVE_ERASE", private_key=key_path)
-        if not getattr(args, "json", False):
-            print(f"[s0 wipe]  Audit Ledger  : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
     except Exception as exc:
-        print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
+        ledger_error = str(exc)
+        ui.warn(f"the sanitization completed but could NOT be recorded in the audit "
+                f"ledger: {exc}. The certificate exists; the chain of custody has a gap.")
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -987,26 +1002,63 @@ def cmd_wipe(args) -> int:
         pdfgen.write_qr_file(cert, out_dir / f"certificate_{cert['cert_uuid'][:8]}.qr.png")
 
     ok = result.status == "success" and verif.get("all_samples_match_wipe_pattern") is True
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "status": cert["result"]["status"],
-                    "verified": verif.get("all_samples_match_wipe_pattern"),
-                    "certificate": str(cert_json),
-                    "pdf": str(pdf_path) if pdf_path else None,
-                    "cert_uuid": cert["cert_uuid"],
-                },
-                indent=2,
-            )
+    sampled = verif.get("samples_checked", 0)
+    state = "ok" if ok else "error"
+
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(
+            result={
+                "target": target.path,
+                "method": cert["wipe"]["method"],
+                "nist_category": cert["wipe"]["nist_category"],
+                "passes": cert["wipe"].get("passes"),
+                "pattern": cert["wipe"].get("pattern"),
+                "bytes_processed": cert["wipe"]["bytes_processed"],
+                "status": cert["result"]["status"],
+                "verified": verif.get("all_samples_match_wipe_pattern"),
+                "samples_checked": sampled,
+                "sample_bytes_each": verif.get("sample_bytes_each"),
+                "planted_pattern_hits_after": verif.get("planted_pattern_hits_after"),
+                "cert_uuid": cert["cert_uuid"],
+                "warnings": warnings,
+            },
+            status="success" if ok else "failure",
+            errors=([{"code": "E_VERIFICATION", "message": e} for e in result.errors]
+                    + ([{"code": "E_LEDGER", "message": ledger_error}] if ledger_error else [])),
+            artifacts=[a for a in (
+                artifact(cert_json, "certificate", cert["signature"].get("signed_payload_hash")),
+                artifact(pdf_path, "pdf_certificate") if pdf_path else None,
+                artifact(out_dir / f"certificate_{cert['cert_uuid'][:8]}.qr.png", "qr_code"),
+            ) if a],
+            audit=({"block_index": blk.block_index, "block_hash": blk.block_hash,
+                    "prev_hash": getattr(blk, "prev_hash", None)} if blk else None),
+            signature=cert["signature"],
         )
-    else:
-        print(f"\n[s0 wipe]  Result        : {cert['result']['status']}")
-        print(f"[s0 wipe]  Verification  : {json.dumps(verif)}")
-        print(f"[s0 wipe]  Certificate   : {cert_json}")
-        if pdf_path:
-            print(f"[s0 wipe]  PDF           : {pdf_path}")
-    return 0 if ok else 1
+        return EX_OK if ok else 1
+
+    ui.heading("Sanitization result")
+    ui.key("Result", ui.status(state, cert["result"]["status"].upper()))
+    ui.key("Method", f"{cert['wipe']['method']} (NIST {cert['wipe']['nist_category']})")
+    ui.key("Bytes processed", human_bytes(cert["wipe"]["bytes_processed"]))
+    ui.key("Verification", f"{sampled} read-back sample"
+                           f"{'' if sampled == 1 else 's'}"
+                           f" - {'all match the wipe pattern' if verif.get('all_samples_match_wipe_pattern') else 'MISMATCH'}")
+    if verif.get("planted_pattern_hits_after") is not None:
+        ui.key("Planted markers", f"{verif['planted_pattern_hits_after']} hit(s) after sanitization")
+    ui.key("Certificate", str(cert_json))
+    if pdf_path:
+        ui.key("PDF certificate", str(pdf_path))
+    if blk:
+        ui.key("Audit ledger", f"block #{blk.block_index} ({blk.block_hash[:16]})")
+    for w in warnings:
+        ui.warn(w)
+    for e in result.errors:
+        ui.error(e)
+    ui.note("")
+    if not ok:
+        ui.error("sanitization did not complete cleanly: the certificate records the "
+                 "failure and must not be presented as a completed wipe.")
+    return EX_OK if ok else 1
 
 
 # --------------------------------------------------------------------------- #
@@ -1555,21 +1607,48 @@ def cmd_verify(args) -> int:
 
 
 def cmd_keygen(args) -> int:
+    """Generate an Ed25519 signing keypair for an issuing authority or operator."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "keygen")
     from s0_core import crypto
     out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        ui.error(f"cannot create output directory {out_dir}: {exc}")
+        return EX_CANTCREAT
+
     priv = crypto.generate_private_key()
     pub = priv.public_key()
     priv_p = out_dir / f"{args.name}_private.pem"
     pub_p = out_dir / f"{args.name}_public.pem"
-    crypto.write_private_pem(priv, priv_p)
-    crypto.write_public_pem(pub, pub_p)
+    try:
+        crypto.write_private_pem(priv, priv_p)
+        crypto.write_public_pem(pub, pub_p)
+        os.chmod(priv_p, 0o600)          # a private key must not be group/world readable
+    except OSError as exc:
+        ui.error(f"cannot write the keypair: {exc}")
+        return EX_CANTCREAT
+
     fp = crypto.public_key_fingerprint(pub)
-    print("[s0 keygen]  Generated Ed25519 Keypair :")
-    print(f"[s0 keygen]    Private Key : {priv_p} (Keep secret & offline!)")
-    print(f"[s0 keygen]    Public Key  : {pub_p}")
-    print(f"[s0 keygen]    Fingerprint : {fp}")
-    return 0
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(result={
+            "algorithm": "Ed25519",
+            "private_key_path": str(priv_p.resolve()),
+            "public_key_path": str(pub_p.resolve()),
+            "fingerprint": fp,
+        }, artifacts=[artifact(priv_p, "private_key"), artifact(pub_p, "public_key")])
+        return EX_OK
+
+    ui.heading("Generated Ed25519 signing keypair")
+    ui.key("Algorithm", "Ed25519 (RFC 8032)")
+    ui.key("Private key", f"{priv_p}  <- keep secret and offline")
+    ui.key("Public key", str(pub_p))
+    ui.key("Fingerprint", fp)
+    ui.note("")
+    ui.note("The private key is written with mode 0600. It is the root of trust for "
+            "every certificate this authority will ever issue: anyone holding it can "
+            "forge certificates that verify. Back it up offline and never commit it.")
+    return EX_OK
 
 
 # --------------------------------------------------------------------------- #
@@ -1577,12 +1656,34 @@ def cmd_keygen(args) -> int:
 # --------------------------------------------------------------------------- #
 
 
+def get_upgrade_branch(args) -> str:
+    """Which upstream branch to track.
+
+    The installed checkout's own branch is the right answer, not a hard-coded
+    `master`: a contributor working on a feature branch who runs `s0 upgrade`
+    should not have their work silently fast-forwarded onto the release line.
+    """
+    explicit = getattr(args, "branch", None)
+    if explicit:
+        return explicit
+    env = os.environ.get("S0_UPGRADE_BRANCH")
+    if env:
+        return env
+    try:
+        cur = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            text=True, timeout=10).strip()
+        if cur and cur != "HEAD":
+            return cur
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "master"
+
+
 def cmd_upgrade(args) -> int:
-    """Upgrade S0 installation to the latest version."""
-    print("╔══════════════════════════════════════════════════════════════════╗")
-    print("║      S0 (Sector Zero) — Suite Upgrade & Maintenance Tool         ║")
-    print("╚══════════════════════════════════════════════════════════════════╝")
-    print()
+    """Upgrade the s0 installation to the latest published version."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "upgrade")
+    ui.banner("S0 — Suite Upgrade & Maintenance")
 
     repo_dir = None
     env_dir = os.environ.get("S0_INSTALL_DIR")
@@ -1600,66 +1701,73 @@ def cmd_upgrade(args) -> int:
                     break
 
     if not repo_dir:
-        print("[s0 upgrade]  ERROR : Could not locate S0 git installation repository.", file=sys.stderr)
-        print("To install or upgrade S0, run:")
+        ui.error("could not locate the s0 installation repository")
+        ui.note("To install or upgrade s0, run:")
         if sys.platform == "win32":
-            print("  irm https://s0-install.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
-            print("  # Inspect s0-upgrade.ps1 before running, then run:")
-            print("  powershell -ExecutionPolicy Bypass -File .\\s0-upgrade.ps1")
+            ui.note("  irm https://s0-install.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
+            ui.note("  # Inspect s0-upgrade.ps1 before running, then:")
+            ui.note("  powershell -ExecutionPolicy Bypass -File .\\s0-upgrade.ps1")
         else:
-            print("  curl -fsSL https://s0-install.pages.dev/upgrade-sh -o s0-upgrade.sh")
-            print("  # Inspect s0-upgrade.sh before running, then run:")
-            print("  bash s0-upgrade.sh")
+            ui.note("  curl -fsSL https://s0-install.pages.dev/upgrade-sh -o s0-upgrade.sh")
+            ui.note("  # Inspect s0-upgrade.sh before running, then:")
+            ui.note("  bash s0-upgrade.sh")
         return 1
 
-    print(f"[s0 upgrade]  Found S0 installation at: {repo_dir}")
+    ui.key("Installation", str(repo_dir))
     try:
         cur_hash = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_dir), text=True
         ).strip()
-        print(f"[s0 upgrade]  Current commit: {cur_hash}")
-        print("[s0 upgrade]  Pulling latest changes from GitHub origin/master...")
-        subprocess.check_call(["git", "fetch", "origin", "master", "-q"], cwd=str(repo_dir))
+        ui.key("Current commit", cur_hash)
+        branch = get_upgrade_branch(args)
+        ui.note(f"Fetching origin/{branch}...")
+        subprocess.check_call(["git", "fetch", "origin", branch, "-q"], cwd=str(repo_dir))
         latest_hash = subprocess.check_output(
-            ["git", "rev-parse", "--short", "origin/master"], cwd=str(repo_dir), text=True
+            ["git", "rev-parse", "--short", f"origin/{branch}"], cwd=str(repo_dir), text=True
         ).strip()
 
         if cur_hash == latest_hash and not getattr(args, "force", False):
-            print(f"[s0 upgrade]  OK : S0 is already up-to-date at commit {cur_hash}.")
+            ui.key("Source", f"already up to date at commit {cur_hash}")
         else:
-            subprocess.check_call(["git", "pull", "--ff-only", "origin", "master", "-q"], cwd=str(repo_dir))
-            print(f"[s0 upgrade]  OK : Source updated: {cur_hash} → {latest_hash}")
+            subprocess.check_call(
+                ["git", "pull", "--ff-only", "origin", get_upgrade_branch(args), "-q"],
+                cwd=str(repo_dir))
+            ui.key("Source", f"updated {cur_hash} -> {latest_hash}")
 
         py_bin = sys.executable
-        print("[s0 upgrade]  Refreshing dependencies...")
+        ui.note("Refreshing dependencies...")
         subprocess.check_call([py_bin, "-m", "pip", "install", "--upgrade", "pip", "-q"])
-        subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "core" / "python"), "-q"])
-        subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / "linux" / "cli"), "-q"])
-        subprocess.check_call([py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
-        print("[s0 upgrade]  OK : Dependencies refreshed.")
+        for pkg in ("core/python", "linux/cli"):
+            subprocess.check_call(
+                [py_bin, "-m", "pip", "install", "-e", str(repo_dir / pkg), "-q"])
+        subprocess.check_call(
+            [py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
+        ui.key("Dependencies", "refreshed")
 
-        ver = subprocess.check_output([py_bin, "-m", "s0_cli.main", "--version"], text=True).strip()
-        print()
-        print(f"[s0 upgrade]  OK : S0 upgraded successfully to {ver} ({latest_hash})")
-        return 0
+        ver = subprocess.check_output(
+            [py_bin, "-m", "s0_cli.main", "--version"], text=True).strip()
+        ui.note("")
+        ui.key("Result", ui.status("ok", f"s0 upgraded to {ver} ({latest_hash})"))
+        return EX_OK
+    except subprocess.CalledProcessError as exc:
+        ui.error(f"upgrade failed while running {exc.cmd[0]}: {exc}")
+        return EX_SOFTWARE
     except Exception as exc:
-        print(f"[s0 upgrade]  ERROR : Upgrade failed: {exc}", file=sys.stderr)
-        return 1
+        ui.error(f"upgrade failed: {exc}")
+        return EX_SOFTWARE
 
 
 def cmd_uninstall(args) -> int:
-    """Safely uninstall S0 from the system."""
-    print("╔══════════════════════════════════════════════════════════════════╗")
-    print("║      S0 (Sector Zero) — Uninstallation Tool                      ║")
-    print("╚══════════════════════════════════════════════════════════════════╝")
-    print()
+    """Safely uninstall s0, preserving the audit ledger and issued certificates."""
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "uninstall")
+    ui.banner("S0 — Uninstallation")
 
     if sys.platform == "win32":
-        print("[s0 uninstall]  On Windows, run the official uninstallation script:")
-        print("    curl -fsSL https://s0-install.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
-        print("    # Inspect s0-uninstall.ps1 before running, then run:")
-        print("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
-        return 0
+        ui.heading("On Windows, use the official uninstallation script")
+        ui.note("    curl -fsSL https://s0-install.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
+        ui.note("    # Inspect s0-uninstall.ps1 before running, then:")
+        ui.note("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
+        return EX_OK
 
     repo_dir = None
     env_dir = os.environ.get("S0_INSTALL_DIR")
@@ -1677,19 +1785,21 @@ def cmd_uninstall(args) -> int:
                     break
 
     if not repo_dir:
-        print("[s0 uninstall]  ERROR : Could not locate S0 installation directory.", file=sys.stderr)
-        print("To manually uninstall S0, download and run the script:")
-        print("  curl -fsSL https://s0-install.pages.dev/uninstall-sh -o s0-uninstall.sh")
-        print("  # Inspect s0-uninstall.sh before running, then run:")
-        print("  bash s0-uninstall.sh")
+        ui.error("could not locate the s0 installation directory")
+        ui.note("To uninstall s0 manually, download and run the script:")
+        ui.note("  curl -fsSL https://s0-install.pages.dev/uninstall-sh -o s0-uninstall.sh")
+        ui.note("  # Inspect s0-uninstall.sh before running, then:")
+        ui.note("  bash s0-uninstall.sh")
+        return EX_NOINPUT
         return 1
 
-    print(f"[s0 uninstall]  Target S0 directory: {repo_dir}")
+    ui.key("Target directory", str(repo_dir))
     audit_db = Path.home() / ".s0" / "s0_audit.db"
     purge_all = getattr(args, "purge_all", False) or getattr(args, "purge", False)
     if audit_db.is_file():
         if purge_all:
-            print("[s0 uninstall]  Purging audit ledger as requested (--purge-all specified).")
+            ui.warn("PURGING the audit ledger as requested (--purge-all). This is "
+                    "irreversible: every historical chain-of-custody record is destroyed.")
         else:
             import time as _time
             timestamp = _time.strftime("%Y%m%d_%H%M%S")
@@ -1698,50 +1808,56 @@ def cmd_uninstall(args) -> int:
                 shutil.copy2(audit_db, bak_dest)
                 legacy_dest = Path.home() / "s0_audit.db.bak"
                 shutil.copy2(audit_db, legacy_dest)
-                print(f"[s0 uninstall]  Audit ledger safely preserved at: {bak_dest}")
-                print("                (Use --purge-all if you intentionally wish to destroy the audit log.)")
+                ui.key("Audit ledger", f"preserved at {bak_dest}")
+                ui.note("    (use --purge-all only to destroy the audit log deliberately)")
             except Exception as exc:
-                print(f"[s0 uninstall]  WARN : Could not back up audit ledger: {exc}", file=sys.stderr)
+                ui.warn(f"could not back up the audit ledger: {exc}")
 
     if not getattr(args, "yes", False):
+        ui.warn("This removes the s0 installation from this system. Issued "
+                "certificates are NOT revoked by uninstalling.")
         try:
             confirm = input("Are you sure you want to uninstall s0? [y/N]: ").strip().lower()
         except (KeyboardInterrupt, EOFError):
-            print("\nAborted.")
-            return 1
+            ui.note("")
+            ui.note("Aborted.")
+            return EX_INTERRUPTED
         if confirm != "y":
-            print("Uninstallation cancelled.")
-            return 0
+            ui.note("Uninstallation cancelled.")
+            return EX_OK
 
-    print("[s0 uninstall]  Removing symlinks...")
-    symlink_candidates = [
-        Path.home() / ".local" / "bin" / "s0",
-        Path.home() / "bin" / "s0",
-        Path("/usr/local/bin/s0"),
-    ]
-    for sym in symlink_candidates:
+    ui.note("Removing command symlinks...")
+    removed = 0
+    for sym in (Path.home() / ".local" / "bin" / "s0",
+                Path.home() / "bin" / "s0",
+                Path("/usr/local/bin/s0")):
         if sym.is_symlink() or sym.exists():
             try:
                 sym.unlink()
-                print(f"[s0 uninstall]  OK : Removed symlink: {sym}")
-            except Exception as exc:
-                print(f"[s0 uninstall]  WARN : Could not remove {sym}: {exc}", file=sys.stderr)
+                removed += 1
+            except OSError as exc:
+                ui.warn(f"could not remove {sym}: {exc}")
+    ui.key("Symlinks removed", human_int(removed))
 
-    # If repo_dir strictly resolves to ~/.s0, remove it safely
+    # Only ever delete a directory that is exactly ~/.s0. A development checkout
+    # or a custom install path is left alone: uninstalling a tool must not
+    # destroy the user's source tree.
     home_s0 = (Path.home() / ".s0").resolve()
     if repo_dir.resolve() == home_s0:
-        print(f"[s0 uninstall]  Removing installation directory: {repo_dir}...")
+        ui.note(f"Removing installation directory: {repo_dir}")
         try:
             shutil.rmtree(repo_dir, ignore_errors=True)
-            print("[s0 uninstall]  OK : Directory removed.")
-        except Exception as exc:
-            print(f"[s0 uninstall]  ERROR : Error removing directory: {exc}", file=sys.stderr)
+            ui.key("Installation", ui.status("ok", "removed"))
+        except OSError as exc:
+            ui.error(f"could not remove the installation directory: {exc}")
+            return EX_CANTCREAT
     else:
-        print(f"[s0 uninstall]  Notice: {repo_dir} is a development checkout or custom repository; files preserved.")
+        ui.warn(f"{repo_dir} is a development checkout or a custom install path; "
+                f"its files were preserved. Remove it by hand if that is what you want.")
 
-    print()
-    print("[s0 uninstall]  OK : S0 uninstalled successfully.")
-    return 0
+    ui.note("")
+    ui.key("Result", ui.status("ok", "s0 uninstalled"))
+    return EX_OK
 
 
 # --------------------------------------------------------------------------- #
@@ -1750,57 +1866,57 @@ def cmd_uninstall(args) -> int:
 
 
 def cmd_image(args) -> int:
-    """Forensic bit-stream disk acquisition and device cloning."""
+    """Forensic bit-stream acquisition and device-to-device cloning.
+
+    Also serves `s0 clone`; the two are the same code path with different
+    confirmation semantics.
+    """
+    ui = getattr(args, "ui", None) or UI(OutputPolicy(), "image")
     from .imager import ImagingOptions, acquire_image
 
     _print_legal_notice()
     if not _validate_cli_metadata(args):
-        return 2
-    print("╔══════════════════════════════════════════════════════════════════╗")
-    print("║      S0 (Sector Zero) — Forensic Disk Imager & Bit-Stream Copy  ║")
-    print("╚══════════════════════════════════════════════════════════════════╝")
-    print()
+        return EX_USAGE
 
     dst_p = Path(args.destination)
     is_blk = False
     try:
         is_blk = dst_p.is_block_device() or (sys.platform == "darwin" and dst_p.is_char_device())
-    except Exception:
+    except OSError:
         pass
-    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower() or args.destination.startswith("\\\\.\\")):
+    if sys.platform == "win32" and ("physicaldrive" in args.destination.lower()
+                                     or args.destination.startswith("\\\\.\\")):
         is_blk = True
 
     if is_blk and not args.yes:
-        print(f"⚠️  WARNING: Target destination '{args.destination}' is a PHYSICAL BLOCK DEVICE!")
-        print("   Writing will OVERWRITE all existing partition tables, filesystems, and data.")
+        ui.error(f"the destination '{args.destination}' is a PHYSICAL BLOCK DEVICE. "
+                 f"Writing will destroy all existing partition tables, filesystems and data.")
         try:
-            conf = input(f"Type '{args.destination}' to confirm clone to {args.destination}: ").strip()
-        except EOFError:
+            conf = input(f"Type '{args.destination}' to confirm clone to "
+                         f"{args.destination}: ").strip()
+        except (EOFError, KeyboardInterrupt):
             conf = ""
         if conf != str(args.destination):
-            print("Aborted by operator.")
-            return 1
+            ui.note("Aborted by the operator.")
+            return EX_OK
 
-    bar = ProgressBar(total_bytes=1, operation="Forensic Acquisition")
+    bar = ui.progress(1, operation="Forensic Acquisition")
 
     def _progress(bytes_copied, total_bytes, speed, bad_sectors):
         if bar.total <= 1 and total_bytes > 0:
             bar.total = total_bytes
         extra = f"{speed:.1f} MB/s"
         if bad_sectors > 0:
-            extra += f" | Bad Sectors: {bad_sectors}"
+            extra += f" | bad sectors: {bad_sectors}"
         bar.update(bytes_copied, extra=extra)
 
     key_path = default_issuer_key(getattr(args, "key", None))
     _warn_if_demo_key(key_path)
     if key_path is None and not getattr(args, "no_certificate", False):
-        print(
-            "error: no issuer signing key found.\n"
-            "S0 requires a valid Ed25519 signing key to issue forensic acquisition certificates.\n"
-            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
-            file=sys.stderr,
-        )
-        return 2
+        ui.error("no issuer signing key found. s0 requires a valid Ed25519 signing key "
+                 "to issue forensic acquisition certificates. Specify --key <path>, or "
+                 "pass --no-certificate to run without compliance certification.")
+        return EX_CONFIG
 
     options = ImagingOptions(
         source=args.source,
@@ -1815,67 +1931,122 @@ def cmd_image(args) -> int:
         force=getattr(args, "force", False),
     )
 
-    print(f"[s0 image]  Source          : {args.source}")
-    print(f"[s0 image]  Destination     : {args.destination}")
-    print(f"[s0 image]  Block Size      : {args.block_size:,} bytes")
-    print(f"[s0 image]  Fault Tol.      : {'Enabled (Zero-fill bad blocks)' if not args.no_recovery else 'Disabled (Abort on error)'}")
-    print()
+    ui.key("Source", str(args.source))
+    ui.key("Destination", str(args.destination))
+    ui.key("Block size", human_bytes(args.block_size))
+    ui.key("Fault tolerance",
+           "enabled (zero-fill unreadable blocks)" if not args.no_recovery
+           else "disabled (abort on the first I/O error)")
+    ui.note("")
 
     try:
         result = acquire_image(options, progress_callback=_progress)
         bar.finish()
+    except SafetyError as exc:
+        bar.finish(extra="REFUSED")
+        ui.error(f"refused: {exc}")
+        return EX_NOPERM
     except KeyboardInterrupt:
         bar.finish(extra="CANCELLED")
-        print("\n⚠  Imaging cancelled by user (Ctrl+C). Target may be incomplete.", file=sys.stderr)
-        return 130
-    print()
+        ui.error("acquisition cancelled by the operator (Ctrl+C). The destination "
+                 "image is INCOMPLETE and must not be used as evidence.")
+        return EX_INTERRUPTED
+    except FileNotFoundError as exc:
+        bar.finish(extra="FAILED")
+        ui.error(str(exc))
+        return EX_NOINPUT
+    except PermissionError as exc:
+        bar.finish(extra="DENIED")
+        ui.error(f"permission denied: {exc}")
+        return EX_NOPERM
+    except OSError as exc:
+        bar.finish(extra="FAILED")
+        ui.error(f"I/O error: {exc}")
+        return EX_IOERR
 
     if result.error:
-        print(f"[s0 image]  Status          : ERROR : ACQUISITION FAILED: {result.error}", file=sys.stderr)
-        return 1
+        bar.finish(extra="FAILED")
+        ui.error(f"acquisition failed: {result.error}")
+        return EX_IOERR
 
-    if result.bad_sectors_count > 0:
-        print(f"[s0 image]  Status          : WARN : ACQUISITION COMPLETED WITH ERRORS ({result.bad_sectors_count} bad sectors zero-filled)")
-    else:
-        print("[s0 image]  Status          : OK : FORENSIC ACQUISITION COMPLETED")
-
-    print(f"[s0 image]  Operation       : {'Drive Clone' if result.is_clone else 'Raw Bit-Stream Image'}")
-    print(f"[s0 image]  Bytes Acquired  : {result.bytes_copied:,} bytes ({result.bytes_copied / (1024**3):.2f} GB)")
-    print(f"[s0 image]  Duration        : {result.duration_seconds:.2f} seconds ({result.speed_mbps:.1f} MB/s)")
-    print(f"[s0 image]  Bad Sectors     : {result.bad_sectors_count}")
     hash_label = "Image SHA-256" if result.bad_sectors_count > 0 else "Source SHA-256"
-    print(f"[s0 image]  {hash_label:<16}: {result.source_sha256}")
-    print(f"[s0 image]  Source MD5      : {result.source_md5}")
+    status = ("partial" if result.bad_sectors_count > 0 else "success")
+
+    if ui.policy.fmt in ("json", "csv"):
+        ui.finish(
+            result={
+                "operation": "clone" if result.is_clone else "image",
+                "status": status,
+                "source": str(args.source),
+                "destination": str(args.destination),
+                "bytes_copied": result.bytes_copied,
+                "bad_sectors": result.bad_sectors_count,
+                "duration_seconds": int(result.duration_seconds),
+                "speed_mbps": int(result.speed_mbps),
+                "source_sha256": result.source_sha256,
+                "source_md5": result.source_md5,
+                "block_size": args.block_size,
+                "fault_tolerance": not args.no_recovery,
+                "manifest_path": result.manifest_path,
+                "cert_uuid": (result.manifest_certificate or {}).get("cert_uuid"),
+                "audit_ledger_recorded": bool(getattr(result, "audit_ledger_recorded", False)),
+            },
+            status=status,
+            errors=([{"code": "E_BAD_SECTORS",
+                      "message": f"{result.bad_sectors_count} unreadable blocks were "
+                                 f"zero-filled; the destination is not a faithful copy",
+                      "context": {"count": result.bad_sectors_count}}]
+                    if result.bad_sectors_count else None),
+            artifacts=[a for a in (
+                artifact(result.manifest_path, "acquisition_manifest") if result.manifest_path else None,
+            ) if a],
+        )
+        return EX_OK if status == "success" else 1
+
+    ui.heading("Acquisition result")
+    if result.bad_sectors_count > 0:
+        ui.key("Status", ui.status("warn", f"COMPLETED WITH ERRORS - "
+                                            f"{result.bad_sectors_count} unreadable blocks "
+                                            f"were zero-filled"))
+        ui.warn("the destination is NOT a faithful copy of the source. NIST SP 800-86 "
+                "treats an acquisition with substituted content as a different artifact; "
+                "record the substituted ranges before offering this image as evidence.")
+    else:
+        ui.key("Status", ui.status("ok", "FORENSIC ACQUISITION COMPLETED"))
+    ui.key("Operation", "Drive Clone" if result.is_clone else "Raw bit-stream image")
+    ui.key("Bytes acquired", f"{human_int(result.bytes_copied)} "
+                             f"({human_bytes(result.bytes_copied)})")
+    ui.key("Duration", f"{result.duration_seconds:.1f} s at {result.speed_mbps:.1f} MB/s")
+    ui.key("Bad sectors", human_int(result.bad_sectors_count))
+    ui.key(hash_label, result.source_sha256)
+    ui.key("Source MD5", result.source_md5)
     if result.manifest_path:
-        print(f"[s0 image]  Manifest File   : {result.manifest_path}")
+        ui.key("Manifest file", str(result.manifest_path))
     if result.manifest_certificate:
-        if getattr(result, "audit_ledger_recorded", False):
-            print(f"[s0 image]  Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed & Appended to Audit Ledger)")
-        else:
-            err_suffix = f": {result.audit_ledger_error}" if getattr(result, "audit_ledger_error", None) else ""
-            print(f"[s0 image]  Certificate     : {result.manifest_certificate.get('cert_uuid')} (Signed, WARNING: Audit Ledger write failed{err_suffix})")
+        recorded = bool(getattr(result, "audit_ledger_recorded", False))
+        ui.key("Certificate", f"{result.manifest_certificate.get('cert_uuid')} "
+                              f"({'signed and appended to the audit ledger' if recorded else 'signed, NOT recorded in the audit ledger'})")
+        if not recorded and getattr(result, "audit_ledger_error", None):
+            ui.warn(f"audit ledger write failed: {result.audit_ledger_error}")
         if not getattr(args, "no_pdf", False):
             try:
                 from s0_core import pdfgen
                 out_dir_p = Path(args.out_dir)
-                qr_url_tpl = getattr(args, "qr_url_template", "https://s0-verify.pages.dev/?cert={cert_uuid}")
+                qr_url_tpl = getattr(args, "qr_url_template",
+                                    "https://s0-verify.pages.dev/?cert={cert_uuid}")
                 portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
                 if portal_url_val and "{cert_uuid}" not in portal_url_val:
                     qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
-                pdf_p = out_dir_p / f"certificate_{result.manifest_certificate['cert_uuid'][:8]}.pdf"
-                qr_p = out_dir_p / f"certificate_{result.manifest_certificate['cert_uuid'][:8]}.qr.png"
+                stem = result.manifest_certificate["cert_uuid"][:8]
+                pdf_p = out_dir_p / f"certificate_{stem}.pdf"
+                qr_p = out_dir_p / f"certificate_{stem}.qr.png"
                 pdfgen.generate_pdf(result.manifest_certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(result.manifest_certificate, qr_p)
-                print(f"[s0 image]  PDF Certificate : {pdf_p}")
+                ui.key("PDF certificate", str(pdf_p))
             except Exception as exc:
-                print(f"[s0 image]  WARN : PDF generation warning: {exc}", file=sys.stderr)
-    print()
-    return 0
-
-
-# --------------------------------------------------------------------------- #
-# Module 8: Web Dashboard Launcher
-# --------------------------------------------------------------------------- #
+                ui.warn(f"PDF generation failed: {exc}")
+    ui.note("")
+    return EX_OK if status == "success" else 1
 
 
 def cmd_web(args) -> int:
@@ -2173,6 +2344,7 @@ def build_parser() -> argparse.ArgumentParser:
     # 6. Upgrade Subcommand
     upg = sub.add_parser("upgrade", help="upgrade S0 suite to the latest version from GitHub")
     upg.add_argument("--force", action="store_true", help="force re-installation of dependencies even if up to date")
+    upg.add_argument("--branch", help="upstream branch to track (default: this checkout's own branch)")
     upg.set_defaults(func=cmd_upgrade)
 
     # 7. Uninstall Subcommand

@@ -293,3 +293,66 @@ def test_no_emoji_in_machine_readable_output(monkeypatch):
     code, out, _ = run_cli(["list", "--json"], monkeypatch)
     emoji = re.compile("[\U0001F300-\U0001FAFF☀-➿⬀-⯿️]")
     assert not emoji.search(out)
+
+
+# --------------------------------------------------------------------------- #
+# 8. every command actually implements the envelope
+# --------------------------------------------------------------------------- #
+
+# Minimal argv for each command that can run without hardware or a key file.
+SMOKE = {
+    "list": ["list"],
+    "plan": ["plan", "--target", "{image}", "--force"],
+    "audit list": ["audit", "list", "--limit", "2"],
+    "audit verify": ["audit", "verify"],
+    "keygen": ["keygen", "--out-dir", "{out}", "--name", "contract"],
+    "carve": ["carve", "--target", "{image}", "--out-dir", "{out}",
+              "--no-certificate", "--extensions", "png"],
+    "verify": ["verify", "{cert}"],
+    "wipe": ["wipe", "--target", "{image}", "--out-dir", "{out}", "--yes",
+             "--no-certificate"],
+    "image": ["image", "--source", "{image}", "--destination", "{dest}",
+              "--out-dir", "{out}", "--no-certificate"],
+}
+
+
+def _make_fixtures(tmp_path):
+    from PIL import Image
+    import io as _io
+    img = tmp_path / "target.img"
+    img.write_bytes(b"\x00" * 4096)
+    cert = tmp_path / "cert.json"
+    cert.write_text("{}")
+    out = tmp_path / "out"
+    out.mkdir()
+    return {"image": str(img), "out": str(out), "cert": str(cert),
+            "dest": str(tmp_path / "dest.img")}
+
+
+@pytest.mark.parametrize("name", sorted(SMOKE))
+def test_every_command_emits_a_clean_envelope(name, tmp_path, monkeypatch):
+    """A command that crashes when asked for JSON is a command nobody can
+    automate. This walks the whole runnable surface."""
+    fx = _make_fixtures(tmp_path)
+    argv = []
+    for tok in SMOKE[name]:
+        argv.append(fx[tok[1:-1]] if tok.startswith("{") and tok.endswith("}") else tok)
+
+    out, err = io.StringIO(), io.StringIO()
+    monkeypatch.setattr(sys, "stdout", out)
+    monkeypatch.setattr(sys, "stderr", err)
+    try:
+        main(argv)
+    except SystemExit as exc:
+        # argparse exiting non-zero is a legitimate refusal (e.g. missing
+        # hardware); what must never happen is an unhandled traceback.
+        assert "Traceback" not in err.getvalue(), err.getvalue()[-2000:]
+
+    assert "Traceback" not in err.getvalue(), (
+        f"s0 {name} --json raised an unhandled exception:\n{err.getvalue()[-2000:]}")
+
+    if out.getvalue().strip():
+        doc = json.loads(out.getvalue())
+        assert doc["schema"] == f"s0.{name.split()[0]}/1"
+        assert doc["status"] in ("success", "failure", "partial", "aborted", "refused")
+        assert isinstance(doc["result"], (dict, list))

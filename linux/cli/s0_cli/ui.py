@@ -138,6 +138,9 @@ class UI:
     def note(self, text: str = "") -> None:
         self.policy.err(text)
 
+    def banner(self, title: str) -> None:
+        self.policy.banner(title)
+
     def heading(self, text: str) -> None:
         self.policy.err("")
         self.policy.err(self.policy.paint("info", text))
