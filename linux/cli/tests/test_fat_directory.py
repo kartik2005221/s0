@@ -15,7 +15,7 @@ import struct
 
 import pytest
 
-from s0_cli.carver import fat_directory as fd
+from s0.carve import fat_directory as fd
 
 
 # --------------------------------------------------------------------------- #
@@ -321,7 +321,7 @@ def test_scanner_recovers_a_long_name_for_a_deleted_entry(tmp_path, monkeypatch)
     A unit test on the reassembler proves nothing if the carver still parses
     entries one at a time, which is exactly how it behaved before.
     """
-    from s0_cli.carver import fat_carver
+    from s0.carve import fat_carver
 
     boot_bytes = bytearray(512)
     boot_bytes[0x03:0x0B] = b"FAT32   "

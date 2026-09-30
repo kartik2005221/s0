@@ -105,8 +105,8 @@ The ISO uses a deliberate privilege separation model:
 │                                               ▼                          │
 │ [Daemon Space — Loopback Root: 'root']                                  │
 │   s0-web.service (Uvicorn / FastAPI)                                    │
-│   ├── s0_cli (Device discovery, partition unmounting)                   │
-│   ├── s0_core (Canonical JSON v1, Ed25519 signing, PDF generation)      │
+│   ├── s0 (Device discovery, partition unmounting)                   │
+│   ├── s0 (Canonical JSON v1, Ed25519 signing, PDF generation)      │
 │   └── Kernel Block & Firmware Access:                                   │
 │       ├── ioctl(BLKDISCARD) ────────────────► Raw SSD Discard           │
 │       ├── hdparm --security-erase ──────────► ATA Controller Purge      │

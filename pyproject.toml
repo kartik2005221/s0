@@ -1,0 +1,104 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s0"
+version = "2.4.4"
+description = "S0 (Sector Zero) — unified forensic sanitization, acquisition and file-recovery suite"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sector Zero" }]
+keywords = [
+    "digital-forensics",
+    "file-carving",
+    "media-sanitization",
+    "chain-of-custody",
+    "nist-800-88",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Legal Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: System :: Archiving",
+    "Topic :: System :: Filesystems",
+]
+dependencies = [
+    "cryptography>=42.0.0",
+    "reportlab>=4.0.0",
+    "qrcode[pil]>=7.4.2",
+    "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+web = ["fastapi>=0.110.0", "uvicorn>=0.28.0", "starlette>=0.36.0"]
+test = ["pytest>=8.0.0", "httpx>=0.27.0"]
+dev = ["ruff>=0.5", "mypy>=1.10", "bandit>=1.7", "pip-audit>=2.7"]
+
+[project.urls]
+Homepage = "https://github.com/kartik2005221/s0"
+Documentation = "https://s0-docs.gitbook.io/"
+"Verification Portal" = "https://s0-verify.pages.dev/"
+"Install Portal" = "https://s0-install.pages.dev/"
+
+[project.scripts]
+# The operator-facing entry point.
+s0 = "s0.cli.main:main"
+# Certificate-authority helpers, kept as separate commands because an issuing
+# authority runs them out-of-band on its own machine, never on an evidence host.
+s0-keygen = "s0.certcli:keygen_main"
+s0-sign = "s0.certcli:sign_main"
+s0-verify = "s0.certcli:verify_main"
+s0-cert-pdf = "s0.certcli:pdf_main"
+
+[tool.setuptools]
+# One distribution, one importable package. There is deliberately no second
+# distribution and no directory named after a platform.
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["s0*"]
+
+[tool.setuptools.package-data]
+# Resolved at runtime through s0.resources, never through filesystem arithmetic.
+"s0.data" = ["*.json", "*.pem", "keys/*.pem"]
+
+[tool.pytest.ini_options]
+# CI runs a bare `pytest`, so this list is the contract for what gets tested.
+# It must name every suite that exists in the tree; a missing entry silently
+# reduces coverage rather than failing.
+testpaths = [
+    "core/tests",
+    "linux/cli/tests",
+    "web/tests",
+    "windows/cli/tests",
+    "macos/cli/tests",
+    "verification-portal/tests",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "S"]
+ignore = [
+    "S101",  # assert is used deliberately in tests and internal invariants
+    "E501",  # long lines are caught by the formatter, not the linter
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "vendor", "docs"]

@@ -15,7 +15,7 @@ sys.path.insert(0, str(REPO / "linux" / "cli"))
 
 from fastapi.testclient import TestClient  # noqa: E402
 import app as gui_app  # noqa: E402
-from s0_cli.audit import init_audit_db  # noqa: E402
+from s0.audit import init_audit_db  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -23,9 +23,9 @@ def isolate_test_audit_db(tmp_path, monkeypatch):
     test_db = tmp_path / "test_gui_audit.db"
     init_audit_db(test_db)
     monkeypatch.setenv("S0_AUDIT_DB", str(test_db))
-    monkeypatch.setattr("s0_cli.audit.db.DEFAULT_AUDIT_DB", test_db)
-    monkeypatch.setattr("s0_cli.audit.DEFAULT_AUDIT_DB", test_db)
-    monkeypatch.setattr("s0_cli.audit.verify.DEFAULT_AUDIT_DB", test_db)
+    monkeypatch.setattr("s0.audit.db.DEFAULT_AUDIT_DB", test_db)
+    monkeypatch.setattr("s0.audit.DEFAULT_AUDIT_DB", test_db)
+    monkeypatch.setattr("s0.audit.verify.DEFAULT_AUDIT_DB", test_db)
     return test_db
 
 
@@ -130,10 +130,10 @@ def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_
         time.sleep(0.5)
     assert result is not None and result["returncode"] == 0, f"wipe job failed: {result}"
 
-    from s0_core import certificate, crypto
+    from s0 import certificate, crypto
 
     cert = json.loads(Path(result["certificate"]).read_text())
-    key = crypto.load_public_pem(REPO / "core" / "keys" / "demo_issuer_public.pem")
+    key = crypto.load_public_pem(REPO / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
     ok, reason = certificate.verify_certificate(cert, [key])
     assert ok, reason
     assert result.get("cert_filename") is not None

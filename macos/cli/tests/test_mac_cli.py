@@ -20,8 +20,8 @@ from macos.cli import (
     macos_full_fsync,
 )
 from macos.cli.s0_eraser import main as mac_main
-from s0_core import certificate as cert_mod
-from s0_core import crypto as core_crypto
+from s0 import certificate as cert_mod
+from s0 import crypto as core_crypto
 
 
 def test_mac_cli_single_file_erase(tmp_path: Path):
@@ -60,7 +60,7 @@ def test_mac_cli_batch_certificate(tmp_path: Path):
     assert cert["signature"]["algorithm"] == "Ed25519"
 
     # Verify certificate
-    pub_key_path = REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem"
+    pub_key_path = REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     pub_key = core_crypto.load_public_pem(pub_key_path)
     ok, reason = cert_mod.verify_certificate(cert, [pub_key])
     assert ok, reason
@@ -150,7 +150,7 @@ def test_mac_cli_wipe_partition_success(tmp_path: Path):
     assert cert is not None
     assert cert["tool"]["platform"] == "macos"
     assert cert["signature"]["algorithm"] == "Ed25519"
-    pub_key = core_crypto.load_public_pem(REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem")
+    pub_key = core_crypto.load_public_pem(REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
     ok, reason = cert_mod.verify_certificate(cert, [pub_key])
     assert ok, reason
 
@@ -263,7 +263,7 @@ def test_mac_cli_flag_aliases(monkeypatch, tmp_path: Path):
     target = tmp_path / "alias_mac_test.txt"
     target.write_bytes(b"MAC FLAG ALIAS TEST")
     out_dir = tmp_path / "alias_mac_out"
-    key_file = REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+    key_file = REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem"
 
     monkeypatch.setattr(
         sys,

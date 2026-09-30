@@ -14,12 +14,12 @@ from pathlib import Path
 
 # Resolve repository root
 repo_root = Path(__file__).resolve().parents[3]
-core_py = repo_root / "core" / "python"
+core_py = repo_root / "src"
 if core_py.is_dir():
     sys.path.insert(0, str(core_py))
 
 try:
-    from s0_core import certificate, crypto
+    from s0 import certificate, crypto
 except ImportError:
     certificate = None
     crypto = None
@@ -28,7 +28,7 @@ except ImportError:
 def find_default_public_key() -> Path | None:
     """Find demo or authority public key in repository."""
     candidates = [
-        repo_root / "core" / "keys" / "demo_issuer_public.pem",
+        repo_root / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem",
         Path.home() / ".s0" / "keys" / "authority_public.pem",
         Path("/etc/s0/authority_public.pem"),
     ]

@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import pytest
 
-from s0_cli.methods import capabilities as cap
-from s0_cli.methods import sanitize as san
-from s0_cli.methods.capabilities import DeviceCapabilities, Tiers, plan_ladder
+from s0.wipe.methods import capabilities as cap
+from s0.wipe.methods import sanitize as san
+from s0.wipe.methods.capabilities import DeviceCapabilities, Tiers, plan_ladder
 
 
 # --------------------------------------------------------------------------- #
@@ -152,7 +152,7 @@ def test_nvme_overwrite_refuses_pass_count_zero():
 def test_ata_block_erase_reports_the_exact_cdb():
     out = san.ata_sanitize_block_erase("/dev/sdX")
     assert "0xB4" in out.command and "0x0012" in out.command
-    from s0_core.certificate import METHOD_TIERS
+    from s0.certificate import METHOD_TIERS
     assert METHOD_TIERS[out.method_id] == {"Purge"}
 
 
@@ -161,7 +161,7 @@ def test_nvme_crypto_erase_uses_opcode_0x84():
     assert "0x84" in out.command
     assert out.method_id == "NVME_SANITIZE_CRYPTO_ERASE"
     assert out.tier == Tiers.CRYPTOGRAPHIC_ERASE
-    from s0_core.certificate import METHOD_TIERS
+    from s0.certificate import METHOD_TIERS
     assert METHOD_TIERS[out.method_id] == {"Purge"}
 
 
@@ -199,7 +199,7 @@ def test_ata_overwrite_passes_zero_and_nvme_owpass_zero_are_the_same_trap():
 
 def test_every_purge_capable_method_is_registered_in_the_certificate_schema():
     """A method the engine can run must be a method a certificate may name."""
-    from s0_core.certificate import METHOD_TIERS, WIPE_METHODS
+    from s0.certificate import METHOD_TIERS, WIPE_METHODS
     for method_id, _tier, _mech in DeviceCapabilities(
             path="/dev/sdX", probed=True,
             ata_sanitize_block_erase=True, ata_sanitize_crypto_scramble=True,

@@ -3,7 +3,7 @@
 > **Standard Identifier:** `s0-cert-v1.0.0`  
 > **Signature Algorithm:** Pure Ed25519 (RFC 8032)  
 > **Payload Serialization:** s0 Canonical JSON v1 (Deterministic UTF-8)  
-> **Schema Definition:** [`core/cert_schema.json`](https://github.com/kartik2005221/s0/blob/master/core/cert_schema.json)
+> **Schema Definition:** [`src/s0/data/cert_schema.json`](https://github.com/kartik2005221/s0/blob/master/src/s0/data/cert_schema.json)
 
 ---
 
@@ -57,7 +57,7 @@ If the verifier and signer disagree on a single byte of serialization, the signa
 
 ### The Seven Rules of s0 Canonical JSON v1
 
-Every component that signs or verifies an s0 certificate — the Python core (`core/python/s0_core/canonical.py`) and the static verification portal (`verification-portal/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `core/tests/data/canonical_vectors.json`.
+Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`) and the static verification portal (`verification-portal/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `core/tests/data/canonical_vectors.json`.
 
 Given a parsed JSON value, serialize as follows:
 
@@ -75,7 +75,7 @@ Schema v1 defines no float fields anywhere. All file sizes and capacities are in
 
 ### Reference Implementation & Test Invariants
 
-The reference implementation resides at `core/python/s0_core/canonical.py`.
+The reference implementation resides at `src/s0/canonical.py`.
 
 Tamper property: any change to any signed field — one byte, one key name, or whitespace inside a string value — changes the canonical payload and invalidates the signature. Re-serializing the same object with different key order produces identical bytes, so legitimate re-encoding never breaks verification. Both properties are enforced by automated tests: `core/tests/test_tamper.py` walks every leaf of a valid certificate, mutates each, and asserts failure.
 
@@ -83,7 +83,7 @@ Tamper property: any change to any signed field — one byte, one key name, or w
 
 ## 3. Annotated JSON Schema Reference
 
-Every certificate validates strictly against `core/cert_schema.json`.
+Every certificate validates strictly against `src/s0/data/cert_schema.json`.
 
 ```json
 {
@@ -212,7 +212,7 @@ Below is an authentic certificate issued following an NVMe Purge operation:
 import hashlib
 import json
 from base64 import urlsafe_b64encode
-from s0_core.canonical import canonicalize
+from s0.canonical import canonicalize
 
 cert_dict = { ... }  # full certificate object
 cert_payload = {k: v for k, v in cert_dict.items() if k != "signature"}

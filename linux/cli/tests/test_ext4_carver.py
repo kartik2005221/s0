@@ -5,14 +5,14 @@ import struct
 from pathlib import Path
 
 import pytest
-from s0_cli.carver import (
+from s0.carve import (
     carve_image,
     detect_filesystem,
     parse_ext4_superblock,
     scan_ext4_deleted_inodes,
 )
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 
 def build_synthetic_ext4_image(image_path: Path, payload: bytes) -> None:
@@ -113,7 +113,7 @@ def test_ext4_deleted_inode_carving(tmp_path: Path):
     assert summary.manifest_certificate["wipe"]["nist_category"] == "N/A"
 
     repo_root = Path(__file__).resolve().parents[3]
-    pub_key_path = repo_root / "core" / "keys" / "demo_issuer_public.pem"
+    pub_key_path = repo_root / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     if pub_key_path.exists():
         pub = load_public_pem(pub_key_path)
         ok, reason = verify_certificate(summary.manifest_certificate, [pub])

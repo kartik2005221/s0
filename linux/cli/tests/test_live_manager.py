@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from s0_cli.live_manager import (
+from s0.live.live_manager import (
     _format_size,
     cmd_live_build,
     cmd_live_devices,
@@ -43,7 +43,7 @@ def test_register_live_parser():
 
 
 def test_cmd_live_devices_empty():
-    with patch("s0_cli.live_manager.get_removable_usb_devices", return_value=[]):
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]):
         args = argparse.Namespace(json=False)
         assert cmd_live_devices(args) == 0
 
@@ -61,7 +61,7 @@ def test_cmd_live_devices_with_mocked_drives(capsys):
             "platform": "linux",
         }
     ]
-    with patch("s0_cli.live_manager.get_removable_usb_devices", return_value=mock_devs):
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=mock_devs):
         args = argparse.Namespace(json=False)
         assert cmd_live_devices(args) == 0
         captured = capsys.readouterr()
@@ -84,7 +84,7 @@ def test_cmd_live_flash_safety_refusal(tmp_path, capsys):
     fake_iso.write_bytes(b"\x00" * (101 * 1024 * 1024))  # 101 MB
 
     # Target drive that is not a removable USB device
-    with patch("s0_cli.live_manager.get_removable_usb_devices", return_value=[]):
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]):
         args = argparse.Namespace(
             target="/dev/sda",  # internal OS disk
             iso=str(fake_iso),
@@ -99,7 +99,7 @@ def test_cmd_live_flash_safety_refusal(tmp_path, capsys):
 
 
 def test_cmd_live_download_redirect_decline_exits_nonzero(tmp_path, monkeypatch, capsys):
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     rel_latest = {"tag_name": "v2.4.1", "assets": []}
     rel_older = {
@@ -113,7 +113,7 @@ def test_cmd_live_download_redirect_decline_exits_nonzero(tmp_path, monkeypatch,
         ],
     }
 
-    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel_latest), \
+    with patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest), \
          patch("urllib.request.urlopen") as mock_url:
         mock_resp = MagicMock()
         mock_resp.read.return_value = json.dumps([rel_latest, rel_older]).encode("utf-8")
@@ -132,7 +132,7 @@ def test_cmd_live_download_redirect_decline_exits_nonzero(tmp_path, monkeypatch,
 
 
 def test_cmd_live_download_non_interactive_fails_without_allow_older(tmp_path, monkeypatch, capsys):
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     rel_latest = {"tag_name": "v2.4.1", "assets": []}
     rel_older = {
@@ -146,7 +146,7 @@ def test_cmd_live_download_non_interactive_fails_without_allow_older(tmp_path, m
         ],
     }
 
-    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel_latest), \
+    with patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest), \
          patch("urllib.request.urlopen") as mock_url:
         mock_resp = MagicMock()
         mock_resp.read.return_value = json.dumps([rel_latest, rel_older]).encode("utf-8")
@@ -164,7 +164,7 @@ def test_cmd_live_download_non_interactive_fails_without_allow_older(tmp_path, m
 
 def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, capsys):
     import hashlib
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"MOCK_BOOTABLE_ISO_BYTES_V240"
     iso_sha = hashlib.sha256(iso_bytes).hexdigest()
@@ -204,7 +204,7 @@ def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, ca
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    with patch("s0_cli.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
+    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
          patch("urllib.request.urlopen", side_effect=fake_urlopen):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
@@ -222,7 +222,7 @@ def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, ca
 
 def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatch, capsys):
     import hashlib
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"MOCK_BOOTABLE_ISO_NON_INTERACTIVE"
     iso_sha = hashlib.sha256(iso_bytes).hexdigest()
@@ -261,7 +261,7 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
 
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
 
-    with patch("s0_cli.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
+    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
          patch("urllib.request.urlopen", side_effect=fake_urlopen):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=True)
         rc = cmd_live_download(args)
@@ -278,7 +278,7 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
 
 def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path, monkeypatch, capsys):
     import hashlib
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"ACTUAL_DOWNLOADED_ISO_CONTENT"
     tampered_sha = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -318,7 +318,7 @@ def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    with patch("s0_cli.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
+    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
          patch("urllib.request.urlopen", side_effect=fake_urlopen):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
@@ -334,7 +334,7 @@ def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path
 def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, monkeypatch):
     """Ensure GITHUB_TOKEN is not included in download headers for release assets (Bug #3)."""
     import hashlib
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"ISO_CONTENT"
     iso_sha = hashlib.sha256(iso_bytes).hexdigest()
@@ -369,7 +369,7 @@ def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, 
             return io.BytesIO(iso_bytes)
         return io.BytesIO(b"")
 
-    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel), \
+    with patch("s0.live.live_manager._fetch_github_release", return_value=rel), \
          patch("urllib.request.urlopen", side_effect=fake_urlopen):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
@@ -382,7 +382,7 @@ def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, 
 
 
 def test_cmd_live_download_missing_checksum_fails_closed(tmp_path, monkeypatch, capsys):
-    from s0_cli.live_manager import cmd_live_download
+    from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"ISO_CONTENT_WITHOUT_CHECKSUM"
 
@@ -402,7 +402,7 @@ def test_cmd_live_download_missing_checksum_fails_closed(tmp_path, monkeypatch, 
     def fake_urlopen(req, *args, **kwargs):
         return io.BytesIO(iso_bytes)
 
-    with patch("s0_cli.live_manager._fetch_github_release", return_value=rel), \
+    with patch("s0.live.live_manager._fetch_github_release", return_value=rel), \
          patch("urllib.request.urlopen", side_effect=fake_urlopen):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)

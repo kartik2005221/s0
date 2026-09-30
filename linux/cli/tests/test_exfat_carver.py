@@ -4,8 +4,8 @@ import struct
 from pathlib import Path
 
 import pytest
-from s0_cli.carver.engine import carve_image, detect_filesystem, detect_partitions
-from s0_cli.carver.exfat_carver import (
+from s0.carve.engine import carve_image, detect_filesystem, detect_partitions
+from s0.carve.exfat_carver import (
     ENTRY_TYPE_FILE_DELETED,
     ENTRY_TYPE_NAME_DELETED,
     ENTRY_TYPE_STREAM_DELETED,

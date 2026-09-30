@@ -15,7 +15,7 @@ from macos.s0_eraser import (
     erase_folder_macos,
     erase_single_file_macos,
 )
-from s0_cli.file_eraser import (
+from s0.cli.file_eraser import (
     detect_cow_and_filesystem,
     erase_batch,
     erase_folder,
@@ -23,8 +23,8 @@ from s0_cli.file_eraser import (
     platform_cleanse_attributes,
     platform_sync,
 )
-from s0_core import certificate as cert_mod
-from s0_core import crypto as core_crypto
+from s0 import certificate as cert_mod
+from s0 import crypto as core_crypto
 from windows.s0_eraser import (
     WIN32_FIND_STREAM_DATA,
     enumerate_ntfs_streams_win32,
@@ -165,7 +165,7 @@ def test_windows_batch_signed_certificate(tmp_path: Path):
     assert signed_cert["result"]["status"] == "success"
 
     # Cryptographic verification against pinned public key
-    pub_key_path = REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem"
+    pub_key_path = REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     pub_key = core_crypto.load_public_pem(pub_key_path)
     ok, reason = cert_mod.verify_certificate(signed_cert, [pub_key])
     assert ok, f"Certificate verification failed: {reason}"
@@ -200,7 +200,7 @@ def test_macos_batch_signed_certificate(tmp_path: Path):
     assert signed_cert["result"]["status"] == "success"
 
     # Cryptographic verification against pinned public key
-    pub_key_path = REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem"
+    pub_key_path = REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     pub_key = core_crypto.load_public_pem(pub_key_path)
     ok, reason = cert_mod.verify_certificate(signed_cert, [pub_key])
     assert ok, f"Certificate verification failed: {reason}"
@@ -325,13 +325,13 @@ def test_macos_cli_main(monkeypatch, tmp_path: Path):
 
 def test_cmd_wipe_cross_platform_import_failure_graceful_exit(monkeypatch, capsys):
     """Bug #1: Missing windows/macos packages must exit with code 2 and user-friendly error, not unhandled traceback."""
-    from s0_cli.main import main
+    from s0.cli.main import main
 
     monkeypatch.setattr(sys, "platform", "win32")
 
     # Mock _resolve_target to return a block target
-    from s0_cli.devices import Target as DevTarget
-    monkeypatch.setattr("s0_cli.main._resolve_target", lambda path: DevTarget(path=path, kind="block", capacity_bytes=1000000))
+    from s0.cli.devices import Target as DevTarget
+    monkeypatch.setattr("s0.cli.main._resolve_target", lambda path: DevTarget(path=path, kind="block", capacity_bytes=1000000))
 
     # Temporarily remove windows from sys.modules and make import fail
     import builtins

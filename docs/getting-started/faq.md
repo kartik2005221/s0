@@ -47,7 +47,7 @@ Yes. s0 is licensed under the permissive **MIT License**. It can be deployed acr
 The common myth that 7-pass or 35-pass (Gutmann) overwriting is required originated in the 1990s when hard disk tracks were wide enough for magnetic residue analysis. On modern high-density magnetic and solid-state media, single-pass zeroing satisfies the **NIST Clear** tier.
 
 ### Why does s0 refuse to wipe my current drive?
-s0 includes rigorous **safety interlocks** (`linux/cli/s0_cli/devices.py`). It examines `/proc/mounts`, kernel boot parameters, and volume layouts to prevent an operator from accidentally wiping the active root filesystem (`/`), boot partition (`/boot`), or critical system drives. 
+s0 includes rigorous **safety interlocks** (`linux/cli/s0/devices.py`). It examines `/proc/mounts`, kernel boot parameters, and volume layouts to prevent an operator from accidentally wiping the active root filesystem (`/`), boot partition (`/boot`), or critical system drives. 
 
 To sanitize an internal boot drive, boot the computer into the [s0 Bare-Metal Live ISO](../guides/live-iso.md), where all internal drives remain unmounted.
 
@@ -75,7 +75,7 @@ s0 inspects `/proc/mounts` on Linux and volume attributes on Windows/macOS. When
 - **Structure-Based Carving (ext4 & NTFS):** Directs the scan to filesystem metadata tables (such as the NTFS Master File Table `$MFT` or ext4 Inode Tables). It parses deleted records, extracts non-resident cluster runlists, and jumps directly to the target file clusters. A 1 TB drive can be indexed and carved in **under 15 seconds**.
 
 ### What does the forensic confidence score (0–100%) mean?
-Every carved artifact is evaluated by `linux/cli/s0_cli/carver/scoring.py` across four objective criteria:
+Every carved artifact is evaluated by `linux/cli/s0/carver/scoring.py` across four objective criteria:
 1. **Magic Header Match (30 points):** Verified starting byte signature.
 2. **Footer / Terminator Match (30 points):** Verified EOF boundary pattern.
 3. **Size Plausibility (20 points):** File length falls within standard format bounds.

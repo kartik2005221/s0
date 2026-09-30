@@ -5,15 +5,15 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from s0_cli.audit import (
+from s0.audit import (
     init_audit_db,
     record_audit_event,
     list_audit_blocks,
     verify_audit_ledger,
 )
-from s0_cli.audit.db import compute_block_hash
-from s0_core.certificate import build_certificate, sign_certificate
-from s0_core.crypto import load_private_pem, load_public_pem
+from s0.audit.db import compute_block_hash
+from s0.certificate import build_certificate, sign_certificate
+from s0.crypto import load_private_pem, load_public_pem
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def test_audit_db(tmp_path):
 
 @pytest.fixture
 def sample_cert():
-    priv = load_private_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem")
+    priv = load_private_pem(Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem")
     cert = build_certificate(
         organization="Audit Test Lab",
         operator_id="op-test-1",
@@ -74,7 +74,7 @@ def test_append_audit_events_and_verify_chain(test_audit_db, sample_cert):
     blocks = list_audit_blocks(test_audit_db)
     assert len(blocks) == 4  # Genesis + 3 events
 
-    pub = load_public_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem")
+    pub = load_public_pem(Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
     report = verify_audit_ledger(test_audit_db, trusted_public_keys=[pub])
     assert report.is_valid is True
     assert report.total_blocks_verified == 4
@@ -114,8 +114,8 @@ def test_detect_broken_chain_hash_link(test_audit_db, sample_cert):
 
 def test_detect_block_deletion_and_rehash(test_audit_db, sample_cert):
     """Verify that deleting an intermediate block and recomputing block_hash is detected by block signatures."""
-    priv = load_private_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_private.pem")
-    pub = load_public_pem(Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem")
+    priv = load_private_pem(Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem")
+    pub = load_public_pem(Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
 
     # Record two valid, signed blocks
     b1 = record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db, private_key=priv)

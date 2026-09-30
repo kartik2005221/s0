@@ -29,12 +29,12 @@ from typing import Callable, List, Optional
 # Ensure core library is accessible
 def _find_repo_root() -> Path:
     for p in Path(__file__).resolve().parents:
-        if (p / "core" / "keys").exists():
+        if (p / "src" / "s0" / "data" / "keys").exists():
             return p
     return Path(__file__).resolve().parents[1]
 
 REPO_ROOT = _find_repo_root()
-core_python_dir = REPO_ROOT / "core" / "python"
+core_python_dir = REPO_ROOT / "src"
 if core_python_dir.exists() and str(core_python_dir) not in sys.path:
     sys.path.insert(0, str(core_python_dir))
 cli_dir = REPO_ROOT / "linux" / "cli"
@@ -42,12 +42,12 @@ if cli_dir.exists() and str(cli_dir) not in sys.path:
     sys.path.insert(0, str(cli_dir))
 
 try:
-    from s0_core import certificate as cert_mod
-    from s0_core import crypto as core_crypto
-    from s0_core.progress import ProgressBar
-    from s0_core.temperature import read_temperature
-    from s0_core import pdfgen
-    from s0_core.config import CONFIG
+    from s0 import certificate as cert_mod
+    from s0 import crypto as core_crypto
+    from s0.progress import ProgressBar
+    from s0.temperature import read_temperature
+    from s0 import pdfgen
+    from s0.config import CONFIG
 except ImportError:
     cert_mod = None
     core_crypto = None
@@ -459,7 +459,7 @@ def erase_batch_macos(
         key_file = (
             Path(signing_key_path)
             if signing_key_path
-            else REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+            else REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem"
         )
         if cert_mod and core_crypto and key_file.exists():
             method_name = "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
@@ -873,7 +873,7 @@ def wipe_drive_or_partition_macos(
         key_file = (
             Path(signing_key_path)
             if signing_key_path
-            else REPO_ROOT / "core" / "keys" / "demo_issuer_private.pem"
+            else REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem"
         )
         if cert_mod and core_crypto and key_file.exists():
             method_name = "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
@@ -921,7 +921,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
     if raw_args and raw_args[0] in subcommands:
         try:
-            from s0_cli.main import main as unified_main
+            from s0.cli.main import main as unified_main
             return unified_main(raw_args)
         except Exception as exc:
             print(f"[-] Error executing '{raw_args[0]}' on macOS: {exc}", file=sys.stderr)

@@ -59,7 +59,7 @@ For large drives, whole-disk wipes and carving scans take time. The agent must c
 Following any operation, the agent must automatically verify the resulting cryptographic certificate:
 
 ```bash
-s0 verify ./certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
+s0 verify ./certificate_8f21bc90.json --key src/s0/data/keys/demo_issuer_public.pem
 ```
 
 ---

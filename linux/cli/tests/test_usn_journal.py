@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from s0_cli.carver import usn
-from s0_cli.carver.usn import (
+from s0.carve import usn
+from s0.carve.usn import (
     REASON_FILE_CREATE,
     REASON_FILE_DELETE,
     REASON_RENAME_NEW,

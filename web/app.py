@@ -33,25 +33,25 @@ from typing import Any, Dict, List, Optional
 
 REPO = Path(__file__).resolve().parents[1]
 _sys.path.insert(0, str(REPO / "linux" / "cli"))
-_sys.path.insert(0, str(REPO / "core" / "python"))
+_sys.path.insert(0, str(REPO / "src"))
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
-from s0_core.config import CONFIG  # noqa: E402
-from s0_core import pdfgen  # noqa: E402
-from s0_core.temperature import read_temperature  # noqa: E402
-from s0_core.validation import validate_metadata_str  # noqa: E402
-from s0_cli.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
-from s0_cli.audit.verify import get_default_trusted_keys  # noqa: E402
-from s0_cli.carver import carve_image  # noqa: E402
-from s0_cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
-from s0_cli.file_eraser import erase_batch  # noqa: E402
-from s0_cli.imager import ImagingOptions, acquire_image  # noqa: E402
-from s0_cli.methods.ata import hpa_dco_report  # noqa: E402
-from s0_cli.wipe import select_method  # noqa: E402
+from s0.config import CONFIG  # noqa: E402
+from s0 import pdfgen  # noqa: E402
+from s0.temperature import read_temperature  # noqa: E402
+from s0.validation import validate_metadata_str  # noqa: E402
+from s0.audit import list_audit_blocks, verify_audit_ledger, record_audit_event  # noqa: E402
+from s0.audit.verify import get_default_trusted_keys  # noqa: E402
+from s0.carve import carve_image  # noqa: E402
+from s0.cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets  # noqa: E402
+from s0.cli.file_eraser import erase_batch  # noqa: E402
+from s0.image.imager import ImagingOptions, acquire_image  # noqa: E402
+from s0.wipe.methods.ata import hpa_dco_report  # noqa: E402
+from s0.wipe.planner import select_method  # noqa: E402
 
 VENV_BIN = REPO / ".venv" / "bin"
 
@@ -63,7 +63,7 @@ def _get_s0_cmd() -> list[str]:
     which_s0 = shutil.which("s0")
     if which_s0:
         return [which_s0]
-    return [_sys.executable, "-m", "s0_cli.main"]
+    return [_sys.executable, "-m", "s0.cli.main"]
 
 
 IMAGE_DIRS = [
@@ -224,7 +224,7 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Opti
     Returns (key_path, is_demo_key). Custom pasted keys are securely saved into
     ~/.s0/keys/ (isolated from deliverables/evidence out_dir).
     """
-    from s0_core.crypto import is_demo_key
+    from s0.crypto import is_demo_key
 
     if key_data and key_data.strip():
         keys_dir = _get_secure_keys_dir()
@@ -248,7 +248,7 @@ def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Opti
             raise HTTPException(400, f"Specified signing key not found: {key_path}")
         return kp, is_demo_key(kp)
 
-    default_key_rel = CONFIG.get("default_key_path", "core/keys/demo_issuer_private.pem")
+    default_key_rel = CONFIG.get("default_key_path", "src/s0/data/keys/demo_issuer_private.pem")
     default_key = (REPO / default_key_rel).resolve()
     if default_key.exists():
         return default_key, True
@@ -985,7 +985,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
             custom_sigs = None
             if req.custom_signatures:
-                from s0_cli.carver.signatures import signature_from_dict
+                from s0.carve.signatures import signature_from_dict
                 custom_sigs = []
                 for cs in req.custom_signatures:
                     try:

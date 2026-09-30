@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from s0_core.terminal import EX_USAGE
+from s0.terminal import EX_USAGE
 
-import s0_cli.wipe as wipe_mod
-from s0_cli.devices import SafetyError, Target, check_safety, device_id_for
-from s0_cli.methods.overwrite import OverwriteMethod
-from s0_cli.wipe import select_method
+import s0.wipe.planner as wipe_mod
+from s0.cli.devices import SafetyError, Target, check_safety, device_id_for
+from s0.wipe.methods.overwrite import OverwriteMethod
+from s0.wipe.planner import select_method
 
 IMG = Target(path="/tmp/x.img", kind="image", capacity_bytes=2**20,
              storage_type="IMAGE_FILE")
@@ -125,21 +125,21 @@ def block_dev(tmp_path):
 
 
 def test_refuses_mounted_device_without_force(block_dev, monkeypatch):
-    monkeypatch.setattr("s0_cli.devices._mounted_paths",
+    monkeypatch.setattr("s0.cli.devices._mounted_paths",
                         lambda: {block_dev.path + "1"})
     with pytest.raises(SafetyError, match="mounted filesystems"):
         check_safety(block_dev, force=False)
 
 
 def test_force_downgrades_mount_refusal_to_warning(block_dev, monkeypatch):
-    monkeypatch.setattr("s0_cli.devices._mounted_paths",
+    monkeypatch.setattr("s0.cli.devices._mounted_paths",
                         lambda: {block_dev.path + "1"})
     warnings = check_safety(block_dev, force=True)
     assert any("WITH MOUNTED FILESYSTEMS" in w for w in warnings)
 
 
 def test_refuses_running_root_filesystem(block_dev, monkeypatch):
-    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
 
     class FakeProc:
         returncode = 0
@@ -164,7 +164,7 @@ def test_device_id_prefers_serial_then_hash():
 
 
 def test_root_disk_protection_falls_back_to_proc_mounts(block_dev, monkeypatch):
-    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
     # findmnt fails
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("findmnt not found")))
     # /proc/mounts returns block_dev.path as root
@@ -183,9 +183,9 @@ def test_root_disk_protection_falls_back_to_proc_mounts(block_dev, monkeypatch):
 
 
 def test_root_disk_protection_fails_closed_when_indeterminate(block_dev, monkeypatch):
-    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
     # Both findmnt and /proc/mounts fail to resolve
-    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: None)
+    monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: None)
     with pytest.raises(SafetyError, match="Cannot verify whether"):
         check_safety(block_dev, force=False)
 
@@ -194,16 +194,16 @@ def test_root_disk_protection_fails_closed_when_indeterminate(block_dev, monkeyp
 
 
 def test_is_os_device_detection(monkeypatch):
-    from s0_cli.devices import is_os_device
-    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: "/dev/sda2")
+    from s0.cli.devices import is_os_device
+    monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: "/dev/sda2")
     assert is_os_device("/dev/sda2") is True
     assert is_os_device("/dev/sda") is True
     assert is_os_device("/dev/sdb") is False
     assert is_os_device("") is False
 
     # Fedora LUKS encrypted root test (mapper device backed by nvme partition)
-    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: "/dev/mapper/luks-fedora-root")
-    monkeypatch.setattr("s0_cli.devices._get_underlying_devices", lambda src: {"/dev/mapper/luks-fedora-root", "/dev/nvme0n1p3"})
+    monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: "/dev/mapper/luks-fedora-root")
+    monkeypatch.setattr("s0.cli.devices._get_underlying_devices", lambda src: {"/dev/mapper/luks-fedora-root", "/dev/nvme0n1p3"})
     assert is_os_device("/dev/mapper/luks-fedora-root") is True
     assert is_os_device("/dev/nvme0n1p3") is True
     assert is_os_device("/dev/nvme0n1") is True
@@ -213,7 +213,7 @@ def test_is_os_device_detection(monkeypatch):
 def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
     from types import SimpleNamespace
     from pathlib import Path
-    import s0_cli.main as main_mod
+    import s0.cli.main as main_mod
 
     args = SimpleNamespace(
         targets=["/dev/sdb"],

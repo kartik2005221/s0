@@ -52,7 +52,7 @@ graph TD
 
 | Test File | Subsystem | Invariants & Test Objectives |
 |---|---|---|
-| `core/tests/test_canonical.py` | Cryptographic Core | Asserts that `s0_core.canonical` generates byte-exact output matching RFC-inspired golden test vectors in `canonical_vectors.json`. Asserts rejection of floating-point numbers. |
+| `core/tests/test_canonical.py` | Cryptographic Core | Asserts that `s0.canonical` generates byte-exact output matching RFC-inspired golden test vectors in `canonical_vectors.json`. Asserts rejection of floating-point numbers. |
 | `core/tests/test_crypto.py` | Cryptographic Core | Tests Ed25519 keypair generation, PEM serialization/deserialization, SHA-256 fingerprint derivation, and signature validation roundtrips. |
 | `core/tests/test_tamper.py` | Cryptographic Core | **The Tamper Matrix:** Recursively traverses every key and value in a valid certificate, mutates each character individually, and asserts that `verify_certificate()` rejects 100% of mutations. |
 | `core/tests/test_pdf.py` | Certificate Rendering | Validates ReportLab PDF document compilation, table geometry, font fallbacks, and optical QR code matrix rendering. |

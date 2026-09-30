@@ -55,7 +55,7 @@ is the least code to maintain on an offline image.
 - The signing private key is NEVER in the image. Certificates produced by the
   station are signed by whatever issuer key the operator provisions onto the
   boot media themselves (`/opt/s0/keys/issuer_private.pem`), which they
-  create out-of-band per core/keys/README.md. Without provisioning, wipes run
+  create out-of-band per src/s0/data/keys/README.md. Without provisioning, wipes run
   but certificate issuance fails loudly rather than silently self-signing.
 - Wipes target only explicit operator-selected devices; the root filesystem is
   protected by the CLI's safety refusals (check_safety), same as everywhere.

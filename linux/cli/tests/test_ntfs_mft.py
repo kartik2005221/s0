@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from s0_cli.carver import mft
-from s0_cli.carver import usn
-from s0_cli.carver.ntfs_carver import (
+from s0.carve import mft
+from s0.carve import usn
+from s0.carve.ntfs_carver import (
     parse_ntfs_boot_sector,
     read_usn_journal,
     scan_ntfs_deleted_records,
@@ -410,20 +410,20 @@ def test_nt_time_rejects_sentinel_values():
 
 def test_run_list_decodes_multi_byte_length_and_delta():
     """A run larger than 255 clusters does not fit in the header's low nibble."""
-    from s0_cli.carver.allocation import decode_run_list_raw
+    from s0.carve.allocation import decode_run_list_raw
     # header 0x22: 2-byte length, 2-byte delta. 0x1000 clusters, delta 0x4000.
     assert decode_run_list_raw(bytes([0x22, 0x00, 0x10, 0x00, 0x40])) == [(0x4000, 0x1000)]
 
 
 def test_run_list_delta_accumulates_and_can_be_negative():
-    from s0_cli.carver.allocation import decode_run_list_raw
+    from s0.carve.allocation import decode_run_list_raw
     # Two runs whose deltas are -0x10 and +0x20 relative to the running LCN.
     runs = decode_run_list_raw(bytes([0x11, 0x04, 0xF0, 0x11, 0x08, 0x20]))
     assert runs == [(0xFFFFFFFFFFFFFFF0 - (1 << 64), 4), (0x10, 8)]
 
 
 def test_run_list_marks_sparse_runs():
-    from s0_cli.carver.allocation import decode_run_list_raw
+    from s0.carve.allocation import decode_run_list_raw
     # header 0x01: a length of 1 byte and no delta, i.e. a hole reading as zeros.
     # header 0x21: a 1-byte length and a 2-byte delta.
     assert decode_run_list_raw(bytes([0x01, 0x08, 0x21, 0x04, 0x10, 0x00])) == \
@@ -431,7 +431,7 @@ def test_run_list_marks_sparse_runs():
 
 
 def test_run_list_stops_when_a_run_would_overrun_the_attribute():
-    from s0_cli.carver.allocation import decode_run_list_raw
+    from s0.carve.allocation import decode_run_list_raw
     # 0x21 promises a 2-byte delta but only one byte is left, so the run is
     # truncated rather than read off the end of the attribute.
     assert decode_run_list_raw(bytes([0x01, 0x08, 0x21, 0x04, 0x10])) == [(-1, 8)]
@@ -757,7 +757,7 @@ def test_journal_reports_no_records_on_a_volume_without_one(tmp_path):
 
 
 def test_journal_timeline_reports_deletions_newest_first(tmp_path):
-    from s0_cli.carver.usn import build_timeline, summarize
+    from s0.carve.usn import build_timeline, summarize
     img = _journal_volume(tmp_path, [
         _usn("older.bin", 0x1000, 1_700_000_000.0, 0x200, 0x31, 5),
         _usn("newest.bin", 0x4000, 1_760_000_000.0, 0x200, 0x32, 5),
@@ -774,7 +774,7 @@ def test_journal_names_survive_when_the_mft_record_is_gone(tmp_path):
     A file deleted, its MFT record reused, its clusters reused again: no MFT
     evidence remains, but the journal still names it and dates the deletion.
     """
-    from s0_cli.carver.usn import build_timeline
+    from s0.carve.usn import build_timeline
     img = _journal_volume(tmp_path, [
         _usn("gone-forever.docx", 0x1000, 1_760_003_600.0, 0x200, 0x99, 5),
     ])
@@ -784,7 +784,7 @@ def test_journal_names_survive_when_the_mft_record_is_gone(tmp_path):
     assert entries[0].was_deleted
     assert entries[0].deleted_at == pytest.approx(1_760_003_600, abs=1)
     # Nothing in the MFT refers to it, which is the point.
-    from s0_cli.carver.ntfs_carver import scan_ntfs_deleted_records
+    from s0.carve.ntfs_carver import scan_ntfs_deleted_records
     assert all(e.name != "gone-forever.docx" for e in scan_ntfs_deleted_records(img))
 
 
@@ -801,8 +801,8 @@ def test_session_reports_journal_names_separately_from_recovered_files(tmp_path)
     files_recovered would inflate the headline number with rows no bytes behind
     them, which is the kind of thing that makes a recovery report untrustworthy.
     """
-    from s0_cli.carver import carve_image
-    from s0_cli.carver.policy import CarvePolicy
+    from s0.carve import carve_image
+    from s0.carve.policy import CarvePolicy
 
     img = _journal_volume(tmp_path, [
         _usn("report.docx", 0x1000, 1_760_000_000.0, 0x100, 0x61, 5),
@@ -826,8 +826,8 @@ def test_session_reports_journal_names_separately_from_recovered_files(tmp_path)
 
 def test_journal_name_corroborated_by_an_mft_record_is_flagged(tmp_path):
     """A name in both the MFT and the journal is confirmed twice over."""
-    from s0_cli.carver import carve_image
-    from s0_cli.carver.policy import CarvePolicy
+    from s0.carve import carve_image
+    from s0.carve.policy import CarvePolicy
 
     b = MftBuilder()
     b.records[5] = b.record(
@@ -875,8 +875,8 @@ def test_journal_name_corroborated_by_an_mft_record_is_flagged(tmp_path):
 
 
 def test_volume_without_a_journal_says_so_rather_than_failing(tmp_path):
-    from s0_cli.carver import carve_image
-    from s0_cli.carver.policy import CarvePolicy
+    from s0.carve import carve_image
+    from s0.carve.policy import CarvePolicy
 
     b = MftBuilder()
     b.records[5] = b.record(5, is_dir=True,
@@ -892,7 +892,7 @@ def test_volume_without_a_journal_says_so_rather_than_failing(tmp_path):
 def test_cli_output_and_json_report_journal_names(tmp_path, capsys):
     """The names have to reach the operator, in both output formats."""
     import json
-    from s0_cli.main import main
+    from s0.cli.main import main
 
     img = _journal_volume(tmp_path, [
         _usn("quarterly.xlsx", 0x1000, 1_760_000_000.0, 0x100, 0x71, 5),

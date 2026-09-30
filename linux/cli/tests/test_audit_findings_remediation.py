@@ -15,30 +15,30 @@ import struct
 from pathlib import Path
 
 import pytest
-from s0_cli.carver.engine import (
+from s0.carve.engine import (
     carve_image,
     detect_filesystem,
     detect_partitions,
 )
-from s0_cli.carver.ext4_carver import (
+from s0.carve.ext4_carver import (
     scan_ext4_deleted_inodes,
 )
-from s0_cli.carver.ntfs_carver import (
+from s0.carve.ntfs_carver import (
     ATTR_DATA,
     ATTR_END_MARKER,
     MFT_RECORD_MAGIC,
     parse_mft_record_bytes,
 )
-from s0_cli.carver.scoring import (
+from s0.carve.scoring import (
     score_carved_candidate,
 )
-from s0_cli.carver import boundary
-from s0_cli.carver.signatures import get_signature_by_ext
-from s0_cli.devices import (
+from s0.carve import boundary
+from s0.carve.signatures import get_signature_by_ext
+from s0.cli.devices import (
     Target,
     _is_dev_or_subpartition,
 )
-from s0_cli.wipe import verify_wipe
+from s0.wipe.planner import verify_wipe
 
 
 def test_partition_mount_matching_no_false_positive():
@@ -255,7 +255,7 @@ def test_scoring_flags_effectively_constant_data():
 
 def test_random_wipe_verification_entropy(tmp_path: Path):
     import os
-    from s0_cli.wipe import sample_offsets
+    from s0.wipe.planner import sample_offsets
 
     # Create file with random bytes
     rand_file = tmp_path / "random.img"
@@ -289,7 +289,7 @@ def test_random_wipe_verification_entropy(tmp_path: Path):
 
 
 def test_csprng_sample_offsets():
-    from s0_cli.wipe import sample_offsets
+    from s0.wipe.planner import sample_offsets
 
     # Small device branch (total_sectors <= count * 2)
     offs_small = sample_offsets(capacity=4096, sector_size=512, count=4)
@@ -303,7 +303,7 @@ def test_csprng_sample_offsets():
 
 
 def test_mount_octal_unescaping():
-    from s0_cli.devices import _unescape_mount_field
+    from s0.cli.devices import _unescape_mount_field
 
     assert _unescape_mount_field(r"/media/My\040Drive/disk\040image") == "/media/My Drive/disk image"
     assert _unescape_mount_field(r"/mnt/test\011tab\012newline") == "/mnt/test\ttab\nnewline"
@@ -311,7 +311,7 @@ def test_mount_octal_unescaping():
 
 
 def test_partition_boundary_matching():
-    from s0_cli.devices import _is_partition, _is_dev_or_subpartition
+    from s0.cli.devices import _is_partition, _is_dev_or_subpartition
 
     assert _is_partition("sda") is False
     assert _is_partition("sda1") is True
@@ -332,14 +332,14 @@ def test_partition_boundary_matching():
 
 def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
     import shutil
-    from s0_cli.main import cmd_wipe
+    from s0.cli.main import cmd_wipe
     import argparse
 
     monkeypatch.setattr(shutil, "which", lambda cmd: None)
-    monkeypatch.setattr("s0_cli.main._resolve_target", lambda path: Target(path="/dev/sde", kind="block", capacity_bytes=100*1024*1024, sector_size=512, storage_type="HDD"))
-    monkeypatch.setattr("s0_cli.main.check_safety", lambda target, force=False: [])
-    monkeypatch.setattr("s0_cli.devices._get_root_mount_source", lambda: None)
-    monkeypatch.setattr("s0_cli.devices._mounted_paths", lambda: set())
+    monkeypatch.setattr("s0.cli.main._resolve_target", lambda path: Target(path="/dev/sde", kind="block", capacity_bytes=100*1024*1024, sector_size=512, storage_type="HDD"))
+    monkeypatch.setattr("s0.cli.main.check_safety", lambda target, force=False: [])
+    monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: None)
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
 
     args = argparse.Namespace(
         target="/dev/sde",

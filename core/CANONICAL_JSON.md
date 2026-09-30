@@ -1,6 +1,6 @@
 # s0 Canonical JSON v1
 
-Every component that signs or verifies an s0 certificate — the Python core (`core/python/s0_core/canonical.py`)
+Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`)
 and the static verification portal (`verification-portal/verify.js`) — MUST produce byte-identical canonical
 form for the same logical object. This document is the contract. Each implementation is tested against the
 golden vectors in `core/tests/data/canonical_vectors.json` and against certificates produced by the reference
@@ -32,7 +32,7 @@ Given a parsed JSON value, serialize as follows:
 6. **Literals.** `true`, `false`, `null`.
 7. **Arrays.** Order preserved as-is (arrays are ordered by design).
 
-Reference implementation: `core/python/s0_core/canonical.py`.
+Reference implementation: `src/s0/canonical.py`.
 
 ## Signing scheme
 

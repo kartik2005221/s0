@@ -2,7 +2,7 @@
 
 import pytest
 
-from s0_core import crypto
+from s0 import crypto
 
 
 def test_sign_verify_roundtrip(keys):

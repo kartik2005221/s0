@@ -81,10 +81,8 @@ if (-not (Test-Path $VenvPython)) {
 try {
     & $VenvPython -m pip install --upgrade pip -q
     if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed with exit code $LASTEXITCODE" }
-    & $VenvPython -m pip install -e core\python -q
-    if ($LASTEXITCODE -ne 0) { throw "core package install failed with exit code $LASTEXITCODE" }
-    & $VenvPython -m pip install -e linux\cli -q
-    if ($LASTEXITCODE -ne 0) { throw "CLI package install failed with exit code $LASTEXITCODE" }
+    & $VenvPython -m pip install -e . -q
+    if ($LASTEXITCODE -ne 0) { throw "s0 distribution install failed with exit code $LASTEXITCODE" }
     & $VenvPython -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q
     if ($LASTEXITCODE -ne 0) { throw "dependencies install failed with exit code $LASTEXITCODE" }
     Write-Ok; Write-Info "dependencies refreshed"

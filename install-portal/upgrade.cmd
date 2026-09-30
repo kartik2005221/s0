@@ -64,14 +64,9 @@ if %ERRORLEVEL% neq 0 (
     echo   [ERROR] pip upgrade failed.
     exit /b 1
 )
-"%VENV_PYTHON%" -m pip install -e core\python -q
+"%VENV_PYTHON%" -m pip install -e . -q
 if %ERRORLEVEL% neq 0 (
-    echo   [ERROR] Failed to upgrade core package.
-    exit /b 1
-)
-"%VENV_PYTHON%" -m pip install -e linux\cli -q
-if %ERRORLEVEL% neq 0 (
-    echo   [ERROR] Failed to upgrade CLI package.
+    echo   [ERROR] Failed to upgrade the s0 distribution.
     exit /b 1
 )
 "%VENV_PYTHON%" -m pip install reportlab qrcode pillow fastapi uvicorn[standard] -q

@@ -3,7 +3,7 @@
  *
  * Implements:
  *  1. s0 Canonical JSON v1 (core/CANONICAL_JSON.md)
- *  2. Schema v1.0.0 validator (mirroring core/cert_schema.json and core/python/certificate.py)
+ *  2. Schema v1.0.0 validator (mirroring src/s0/data/cert_schema.json and src/s0/certificate.py)
  *  3. Ed25519 cryptographic signature verifier against pinned issuer keys
  *
  * Zero external dependencies. Works in browsers, Web Workers, and Node.js.

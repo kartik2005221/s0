@@ -38,7 +38,7 @@ Sanitization performance must be evaluated across two distinct operational metri
 
 > [!NOTE]
 > **Why Python Userspace Overwrites Differ From Raw Bus Saturation:**  
-> The Python overwrite engine (`s0_cli.methods.overwrite`) runs a secure streaming loop in 1 MiB chunks. In each iteration, it performs user-to-kernel `write()` syscalls, computes an incremental in-process SHA-256 hash for verifiable attestation, updates terminal progress callbacks, and queries drive thermal sensors. On standard Linux/x86_64 systems, this comprehensive userspace loop sustains **180 – 350 MB/s**. Raw saturation numbers (>1,200 MB/s) represent underlying physical NVMe Gen4 bus capabilities when bypassing user-space hashing with asynchronous direct C I/O (e.g. `dd if=/dev/zero of=/dev/sdX bs=1M oflag=direct`).
+> The Python overwrite engine (`s0.wipe.methods.overwrite`) runs a secure streaming loop in 1 MiB chunks. In each iteration, it performs user-to-kernel `write()` syscalls, computes an incremental in-process SHA-256 hash for verifiable attestation, updates terminal progress callbacks, and queries drive thermal sensors. On standard Linux/x86_64 systems, this comprehensive userspace loop sustains **180 – 350 MB/s**. Raw saturation numbers (>1,200 MB/s) represent underlying physical NVMe Gen4 bus capabilities when bypassing user-space hashing with asynchronous direct C I/O (e.g. `dd if=/dev/zero of=/dev/sdX bs=1M oflag=direct`).
 
 ### Key Engineering Insights:
 

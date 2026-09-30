@@ -29,19 +29,19 @@ from pathlib import Path
 
 # Add repo libraries to sys.path
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "core" / "python"))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "linux" / "cli"))
 
-from s0_core import canonical, certificate, crypto
-from s0_core.config import CONFIG
-from s0_cli.audit import (
+from s0 import canonical, certificate, crypto
+from s0.config import CONFIG
+from s0.audit import (
     AuditBlock,
     init_audit_db,
     record_audit_event,
     verify_audit_ledger,
 )
-from s0_cli.devices import Target
-from s0_cli.wipe import verify_wipe
+from s0.cli.devices import Target
+from s0.wipe.planner import verify_wipe
 
 
 def get_current_rss_mb() -> float:

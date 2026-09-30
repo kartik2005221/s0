@@ -401,7 +401,7 @@ You have three independent ways to verify any s0 certificate, all of which work 
 {% tab title="CLI" %}
 
 ```bash
-s0 verify certificate_a3f19c22.json --key core/keys/demo_issuer_public.pem
+s0 verify certificate_a3f19c22.json --key src/s0/data/keys/demo_issuer_public.pem
 ```
 
 Expected output on a valid certificate:
@@ -506,8 +506,8 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "github_url": "https://github.com/kartik2005221/s0",
   "default_operator": "op-forensic",
   "default_organization": "Digital Forensics & Data Sanitization Lab",
-  "default_key_path": "core/keys/demo_issuer_private.pem",
-  "default_public_key_path": "core/keys/demo_issuer_public.pem",
+  "default_key_path": "src/s0/data/keys/demo_issuer_private.pem",
+  "default_public_key_path": "src/s0/data/keys/demo_issuer_public.pem",
   "default_out_dir": "demo-out",
   "qr_url_template": "https://s0-verify.pages.dev/?cert={cert_uuid}",
   "api_port": 8669

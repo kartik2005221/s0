@@ -23,12 +23,12 @@ from pathlib import Path
 
 import pytest
 
-from s0_cli.carver import calculate_shannon_entropy, carve_image, score_carved_candidate
-from s0_cli.carver import boundary, signatures
-from s0_cli.carver.policy import CarveBudget, CarvePolicy
-from s0_cli.carver.signatures import get_signature_by_ext, sniff
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+from s0.carve import calculate_shannon_entropy, carve_image, score_carved_candidate
+from s0.carve import boundary, signatures
+from s0.carve.policy import CarveBudget, CarvePolicy
+from s0.carve.signatures import get_signature_by_ext, sniff
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 pil = pytest.importorskip("PIL.Image", reason="Pillow required to build image fixtures")
 
@@ -421,7 +421,7 @@ def test_recovery_index_is_written_and_machine_readable(tmp_path):
 
 
 def test_carve_issues_a_verifiable_manifest_certificate(tmp_path):
-    from s0_core.crypto import DEMO_KEY_FINGERPRINT
+    from s0.crypto import DEMO_KEY_FINGERPRINT
     payloads = {"a.png": _png_bytes(), "b.zip": _zip_bytes()}
     path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
     out = tmp_path / "out"
@@ -429,7 +429,7 @@ def test_carve_issues_a_verifiable_manifest_certificate(tmp_path):
     cert = summary.manifest_certificate
     assert cert is not None
     assert cert["signature"]["public_key_fingerprint"] == DEMO_KEY_FINGERPRINT
-    pub = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
+    pub = Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     ok, reason = verify_certificate(cert, [load_public_pem(pub)])
     assert ok, reason
     assert cert["wipe"]["method"] == "FORENSIC_CARVING"
@@ -562,7 +562,7 @@ def test_carve_restricted_to_free_space_does_not_report_live_files(tmp_path):
     time: signature carving swept the entire volume, so every still-allocated
     file on the disk came back as if it had been deleted.
     """
-    from s0_cli.carver.allocation import build_free_space
+    from s0.carve.allocation import build_free_space
 
     img, live, _deleted, live_block = _ext4_with_two_jpegs(tmp_path, allocated=True)
     fsm = build_free_space(str(img), "ext4", 0, img.stat().st_size)
@@ -595,7 +595,7 @@ def test_carve_restricted_to_free_space_does_not_report_live_files(tmp_path):
 
 
 def test_carve_in_unallocated_space_still_finds_a_deleted_file(tmp_path):
-    from s0_cli.carver.allocation import build_free_space
+    from s0.carve.allocation import build_free_space
 
     img, _live, deleted, deleted_block = _ext4_with_two_jpegs(tmp_path, allocated=False)
     fsm = build_free_space(str(img), "ext4", 0, img.stat().st_size)

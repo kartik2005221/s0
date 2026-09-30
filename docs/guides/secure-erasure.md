@@ -172,5 +172,5 @@ To eliminate the possibility of silent hardware write failures or buffered fake 
 4. **Planted Marker Verification (Optional Demo Mode):** When `--plant-markers` is specified, s0 plants unique cryptographic canary tokens across the disk before wiping, and requires 0 grep hits post-wipe.
 
 ```bash
-s0 verify certificate_8f21bc90.json --key core/keys/demo_issuer_public.pem
+s0 verify certificate_8f21bc90.json --key src/s0/data/keys/demo_issuer_public.pem
 ```

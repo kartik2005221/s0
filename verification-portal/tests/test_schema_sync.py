@@ -1,8 +1,8 @@
 """The certificate schema is mirrored in three runtimes. This suite guarantees they
 cannot drift.
 
-    core/cert_schema.json                     -> the normative JSON Schema
-    core/python/s0_core/certificate.py        -> the Python validator (no jsonschema dep)
+    src/s0/data/cert_schema.json                     -> the normative JSON Schema
+    src/s0/certificate.py        -> the Python validator (no jsonschema dep)
     verification-portal/verify.js             -> the browser verifier (no bundler)
 
 If these three ever disagree, a certificate the CLI happily issues is rejected by
@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-SCHEMA_PATH = REPO / "core" / "cert_schema.json"
+SCHEMA_PATH = REPO / "src" / "s0" / "data" / "cert_schema.json"
 VERIFY_JS = REPO / "verification-portal" / "verify.js"
 
 
@@ -33,7 +33,7 @@ def schema():
 
 @pytest.fixture(scope="module")
 def py_registry():
-    from s0_core import certificate as cert
+    from s0 import certificate as cert
 
     return {
         "WIPE_METHODS": cert.WIPE_METHODS,

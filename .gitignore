@@ -1,11 +1,11 @@
 # --- PRIVATE SIGNING KEYS NEVER ENTER THIS REPO ---
-# Policy: core/keys/README.md. The issuing authority's private key is generated
+# Policy: src/s0/data/keys/README.md. The issuing authority's private key is generated
 # out-of-band and stays out-of-band. Only public keys are committed.
 **/*private*.pem
-!core/keys/demo_issuer_private.pem
+!src/s0/data/keys/demo_issuer_private.pem
 **/*private*.key
 **/*private*.der
-core/keys/demo_issuer.key
+src/s0/data/keys/demo_issuer.key
 
 # Python
 __pycache__/

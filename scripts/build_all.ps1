@@ -40,7 +40,7 @@ if (-not (Test-Path $VenvPython)) {
     Write-Host "`n[bootstrap] Creating Python virtual environment..." -ForegroundColor Yellow
     python -m venv "$Repo\.venv"
     & $VenvPython -m pip install --upgrade pip -q
-    & $VenvPython -m pip install -e "$Repo\core\python" -e "$Repo\linux\cli" pytest reportlab qrcode pillow fastapi uvicorn httpx -q
+    & $VenvPython -m pip install -e "$Repo" pytest reportlab qrcode pillow fastapi uvicorn httpx -q
     Write-StepOk "Virtual environment ready"
 }
 
@@ -52,11 +52,9 @@ Write-Host "  Python     : $PyVer"
 
 # ── Phase 1: Install Packages ─────────────────────────────────────────────────
 Start-Phase "Installing Python Packages"
-Write-Step "s0_core (core\python)..."
-& $Pip install -e core\python --no-deps -q
-Write-Step "s0_cli (linux\cli)..."
-& $Pip install -e linux\cli --no-deps -q
-Write-StepOk "Both packages installed in virtual environment"
+Write-Step "s0 (single distribution under src\)..."
+& $Pip install -e . -q
+Write-StepOk "s0 installed in virtual environment"
 End-Phase
 
 # ── Phase 2: Pytest Suites ────────────────────────────────────────────────────

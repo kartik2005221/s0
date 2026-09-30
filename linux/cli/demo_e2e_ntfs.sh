@@ -13,7 +13,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 PY="$REPO/.venv/bin/python"
-CLI=("$PY" -m s0_cli.main)
+CLI=("$PY" -m s0.cli.main)
 WORK="${S0_NTFS_DEMO_DIR:-$REPO/demo-out/ntfs-e2e-$(date +%H%M%S)}"
 IMG="$WORK/ntfs_evidence_target.raw"
 REC_DIR="$WORK/recovered_evidence"
@@ -132,7 +132,7 @@ echo "── [2/6] Detecting Filesystem & Volume Structure ───────
 "$PY" - "$IMG" << 'PYEOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from s0_cli.carver import detect_filesystem, parse_ntfs_boot_sector
+from s0.carve import detect_filesystem, parse_ntfs_boot_sector
 path = sys.argv[1]
 fs = detect_filesystem(path)
 boot = parse_ntfs_boot_sector(path)
@@ -188,12 +188,12 @@ MANIFEST_JSON=$(ls "$REC_DIR"/carving_manifest_*.json | head -1)
 "$PY" - "$MANIFEST_JSON" << 'PYEOF'
 import json, sys
 from pathlib import Path
-sys.path.insert(0, "core/python")
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+sys.path.insert(0, "src")
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 cert = json.load(open(sys.argv[1]))
-pub = load_public_pem("core/keys/demo_issuer_public.pem")
+pub = load_public_pem("src/s0/data/keys/demo_issuer_public.pem")
 ok, reason = verify_certificate(cert, [pub])
 assert ok, f"Manifest verification failed: {reason}"
 print(f"PASS: Valid Ed25519 signature on forensic manifest.")

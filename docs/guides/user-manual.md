@@ -319,7 +319,7 @@ Expected Output:
 
 ### 8.1 Command-Line Verification (`s0 verify`)
 ```bash
-s0 verify certificates/certificate_a8f3b201.json --key core/keys/demo_issuer_public.pem
+s0 verify certificates/certificate_a8f3b201.json --key src/s0/data/keys/demo_issuer_public.pem
 ```
 
 Output:

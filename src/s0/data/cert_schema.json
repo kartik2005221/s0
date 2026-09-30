@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://s0.example/src/s0/data/cert_schema.json",
+  "title": "s0 Wipe Certificate",
+  "$comment": "SIGNING RULE: the signature covers this entire object EXCEPT the 'signature' member, computed over s0 Canonical JSON v1 (see core/CANONICAL_JSON.md). Everything a verifier should trust lives in the signed payload; 'signature.signed_payload_hash' is a display annotation only, never evidence. Schema v1 contains NO float fields by design — see CANONICAL_JSON.md rule 5.",
+  "type": "object",
+  "required": ["schema_version", "cert_uuid", "issued_at", "issuer", "tool", "device", "wipe", "result", "signature"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "cert_uuid": { "type": "string", "format": "uuid" },
+    "issued_at": { "type": "string", "format": "date-time" },
+
+    "issuer": {
+      "type": "object",
+      "required": ["organization", "operator_id"],
+      "additionalProperties": false,
+      "properties": {
+        "organization": { "type": "string", "minLength": 1, "description": "Issuing authority, e.g. Digital Forensics & Data Sanitization Lab. Free text." },
+        "operator_id": { "type": "string", "minLength": 1, "description": "Operator identity as known to the issuer. Free text; no PII guarantees are made." }
+      }
+    },
+
+    "tool": {
+      "type": "object",
+      "required": ["name", "version", "platform"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "platform": { "type": "string", "enum": ["linux", "windows", "macos", "android"] },
+        "os_kernel": { "type": "string" }
+      }
+    },
+
+    "device": {
+      "type": "object",
+      "required": ["device_id", "device_type", "storage_type", "capacity_bytes"],
+      "additionalProperties": false,
+      "properties": {
+        "device_id": { "type": "string", "minLength": 1, "description": "Best stable identifier available: serial number, WWN, IMEI, or for image-file targets sha256 of the target path. Which one is recorded is stated in device_type/notes." },
+        "device_type": { "type": "string", "enum": [
+          "internal_disk", "removable_disk", "image_file", "phone",
+          "file", "file_set", "folder", "folder_tree",
+          "logical_volume", "virtual_disk", "raid_logical_volume", "cloud_volume"
+        ] },
+        "storage_type": { "type": "string", "enum": [
+          "HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN",
+          "file", "folder_tree", "LOGICAL_VOLUME", "VIRTUAL_DISK", "RAID_LOGICAL_VOLUME", "CLOUD_BLOCK"
+        ] },
+        "model": { "type": "string" },
+        "serial_number": { "type": "string" },
+        "capacity_bytes": { "type": "integer", "minimum": 0 },
+        "sector_size": { "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "wipe": {
+      "type": "object",
+      "required": ["method", "nist_category", "start_time", "end_time", "bytes_processed"],
+      "additionalProperties": false,
+      "properties": {
+        "method": { "enum": [
+          "OVERWRITE_ZERO_1PASS", "SHRED_RANDOM_NPASS", "BLKDISCARD",
+          "ATA_SECURE_ERASE", "ATA_SECURE_ERASE_ENHANCED",
+          "NVME_FORMAT_USER_DATA_ERASE", "NVME_FORMAT_CRYPTO_ERASE",
+          "NVME_SANITIZE_BLOCK_ERASE", "NVME_SANITIZE_CRYPTO_ERASE",
+          "WINDOWS_CLEAN_ALL", "WINDOWS_CIPHER_W", "WINDOWS_SED_KEY_DESTROY",
+          "ANDROID_FACTORY_RESET_FBE", "ANDROID_USER_SPACE_OVERWRITE",
+          "FORENSIC_CARVING", "FORENSIC_IMAGING", "FORENSIC_CLONING",
+          "ATA_SANITIZE_BLOCK_ERASE", "ATA_SANITIZE_CRYPTO_SCRAMBLE", "ATA_SANITIZE_OVERWRITE",
+          "NVME_SANITIZE_OVERWRITE", "NVME_SANITIZE_PURGE_REQUIRED",
+          "SCSI_SANITIZE_BLOCK_ERASE", "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE", "SCSI_SANITIZE_OVERWRITE",
+          "SCSI_UNMAP", "LUKS_KEYSLOT_ERASE", "OPAL_CRYPTO_ERASE", "FDE_KEY_DESTROY",
+          "VENDOR_SECURE_ERASE", "RAID_CONTROLLER_PASSTHROUGH_SANITIZE"
+        ]},
+        "nist_category": { "enum": ["Clear", "Purge", "Destroy", "N/A"], "description": "Must match the tier permitted for this method per core/standards/nist_800_88_mapping.md §3. Conditional methods record their reasoning in notes." },
+        "passes": { "type": "integer", "minimum": 1 },
+        "pattern": { "enum": ["zero", "random", "firmware", "key_destruction", "carving", "imaging", "cloning", "not_applicable"] },
+        "start_time": { "type": "string", "format": "date-time" },
+        "end_time": { "type": "string", "format": "date-time" },
+        "bytes_processed": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "result": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["success", "failure", "partial", "reset_triggered"], "description": "'reset_triggered' exists because Android cannot attest after its own wipe — honesty over completeness." },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "verification": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "method": { "type": "string" },
+            "samples_checked": { "type": "integer", "minimum": 0 },
+            "sample_bytes_each": { "type": "integer", "minimum": 0 },
+            "all_samples_match_wipe_pattern": { "type": "boolean" },
+            "planted_pattern_hits_after": { "type": "integer", "minimum": 0, "description": "Forensic grep hits on demo/test targets with planted data; absent on real hardware targets where pre-wipe content is unknown." },
+            "pre_wipe_sample_hash": { "type": "string" },
+            "sample_strategy": { "type": "string", "description": "How sample locations were derived, e.g. 'uniform_pseudorandom', 'first_and_last_plus_spread', 'full_readback'." },
+            "population_blocks": { "type": "integer", "minimum": 0, "description": "Size of the addressable population the sample was drawn from." },
+            "confidence_percent": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Statistical confidence (integer percent) that the unverified residue fraction is below residual_fraction_upper_bound. Integer because s0 Canonical JSON v1 forbids float fields." },
+            "residual_fraction_upper_bound_ppm": { "type": "integer", "minimum": 0, "description": "Upper bound in parts-per-million on the fraction of the medium that could still hold residual data. Integer for the same no-float reason." },
+            "attestation": { "type": "string", "description": "Firmware-reported evidence, e.g. 'nvme_log_0x81_global_data_erased=1', 'ata_sanitize_status_succeeded=1'." },
+            "smart_delta": { "type": "object", "description": "Device health counters captured before and after the operation.", "additionalProperties": { "type": ["string", "number", "integer", "boolean", "null"] } }
+          }
+        }
+      }
+    },
+
+    "notes": { "type": "array", "items": { "type": "string" }, "description": "Signed free-text context: HPA/DCO findings, conditional-tier rationale, anomalies." },
+
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "public_key_fingerprint", "signature_base64url"],
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "public_key_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "signature_base64url": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$", "$comment": "base64url, padding stripped" },
+        "signed_payload_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "$comment": "DISPLAY ANNOTATION ONLY — verifiers recompute canonical payload; this field is not evidence." }
+      }
+    }
+  }
+}

@@ -15,7 +15,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/../.. && pwd)"
 PY="$REPO/.venv/bin/python"
-CLI=("$PY" -m s0_cli.main)
+CLI=("$PY" -m s0.cli.main)
 WORK="${S0_DEMO_DIR:-$REPO/demo-out/e2e-$(date +%H%M%S)}"
 IMG="$WORK/target_disk.img"
 SIZE_MiB="${S0_DEMO_SIZE_MIB:-256}"
@@ -44,7 +44,7 @@ echo "── [2/7] planting confidential markers at known offsets ────�
 "$PY" - "$IMG" <<'EOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from s0_cli.methods.overwrite import plant_patterns, count_pattern_hits
+from s0.wipe.methods.overwrite import plant_patterns, count_pattern_hits
 path = sys.argv[1]
 marker = b"S0-CONFIDENTIAL-PAN-ABCD1234F|AADHAAR-1234-5678-9012"
 import os
@@ -78,7 +78,7 @@ echo "── [6/7] forensic check: raw byte-search of the wiped image ───�
 "$PY" - "$IMG" <<'EOF'
 import sys
 sys.path.insert(0, "linux/cli")
-from s0_cli.methods.overwrite import count_pattern_hits
+from s0.wipe.methods.overwrite import count_pattern_hits
 hits = count_pattern_hits(sys.argv[1], b"S0-CONFIDENTIAL")
 junk = count_pattern_hits(sys.argv[1], b"\x5a" * 4096)
 print(f"confidential-marker hits : {hits}")
@@ -98,10 +98,10 @@ tampered = json.loads(json.dumps(cert))
 tampered["device"]["capacity_bytes"] += 1   # forge one byte
 json.dump(tampered, open(sys.argv[1].replace(".json", ".tampered.json"), "w"))
 EOF
-.venv/bin/s0 verify "$CERT_JSON" --key core/keys/demo_issuer_public.pem
+.venv/bin/s0 verify "$CERT_JSON" --key src/s0/data/keys/demo_issuer_public.pem
 echo "→ tampered copy:"
 .venv/bin/s0 verify "${CERT_JSON%.json}.tampered.json" \
-    --key core/keys/demo_issuer_public.pem && {
+    --key src/s0/data/keys/demo_issuer_public.pem && {
     echo "TAMPER CHECK FAILED — tampered cert verified!"; exit 1
 } || echo "→ tampered certificate correctly REJECTED"
 

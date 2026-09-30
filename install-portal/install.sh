@@ -198,10 +198,8 @@ ok
 
 # ── step 5: install s0 packages ────────────────────────────────────────────
 step "Installing S0 packages and cryptographic modules"
-info "core cryptographic library..."
-pip_retry -e core/python
-info "CLI and forensic engines..."
-pip_retry -e linux/cli
+info "s0 distribution (core, CLI and forensic engines)..."
+pip_retry -e .
 info "PDF, QR code generation and web dashboard..."
 pip_retry reportlab qrcode pillow fastapi "uvicorn[standard]"
 ok

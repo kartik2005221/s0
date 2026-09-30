@@ -166,13 +166,9 @@ Write-Ok
 
 # Step 6: Install S0 packages
 Write-Step "Installing S0 packages"
-Write-Info "core cryptographic library..."
-Invoke-NativeCommand -Description "Installing core cryptographic library" -MaxRetries 3 -Command {
-    & $VenvPython -m pip install -e core\python -q
-}
-Write-Info "CLI and Windows forensic engines..."
-Invoke-NativeCommand -Description "Installing CLI and forensic engines" -MaxRetries 3 -Command {
-    & $VenvPython -m pip install -e linux\cli -q
+Write-Info "s0 distribution (core, CLI and forensic engines)..."
+Invoke-NativeCommand -Description "Installing the s0 distribution" -MaxRetries 3 -Command {
+    & $VenvPython -m pip install -e . -q
 }
 Write-Info "PDF, QR generation and web dashboard..."
 Invoke-NativeCommand -Description "Installing web and PDF dependencies" -MaxRetries 3 -Command {

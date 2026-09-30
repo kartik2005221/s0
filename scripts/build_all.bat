@@ -20,7 +20,7 @@ if not exist "%REPO%\.venv\Scripts\python.exe" (
     echo [bootstrap] Creating Python virtual environment...
     python -m venv "%REPO%\.venv"
     "%REPO%\.venv\Scripts\python.exe" -m pip install --upgrade pip -q
-    "%REPO%\.venv\Scripts\python.exe" -m pip install -e "%REPO%\core\python" -e "%REPO%\linux\cli" pytest reportlab qrcode pillow fastapi uvicorn httpx -q
+    "%REPO%\.venv\Scripts\python.exe" -m pip install -e "%REPO%" pytest reportlab qrcode pillow fastapi uvicorn httpx -q
     echo   [OK] Virtual environment ready
 )
 
@@ -34,11 +34,9 @@ REM ── Phase 1: Install Packages ──────────────�
 set /a PHASE=PHASE+1
 echo.
 echo ── [%PHASE%/%TOTAL%] Installing Python Packages
-echo   -^> s0_core (core\python)...
-"%PIP%" install -e core\python --no-deps -q
-echo   -^> s0_cli (linux\cli)...
-"%PIP%" install -e linux\cli --no-deps -q
-echo   [OK] Both packages installed
+echo   -^> s0 (single distribution under src\)...
+"%PIP%" install -e . -q
+echo   [OK] s0 installed
 
 REM ── Phase 2: Pytest Suites ────────────────────────────────────────────
 set /a PHASE=PHASE+1

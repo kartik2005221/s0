@@ -100,8 +100,7 @@ pip_retry() {
 }
 
 pip_retry --upgrade pip
-pip_retry -e core/python
-pip_retry -e linux/cli
+pip_retry -e .
 pip_retry reportlab qrcode pillow fastapi "uvicorn[standard]"
 ok; info "dependencies refreshed"
 

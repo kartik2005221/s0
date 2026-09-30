@@ -1,18 +1,18 @@
-# Core cryptographic, certification, and forensic dependencies
+# s0 runtime dependencies.
+#
+# Prefer installing the distribution itself:  pip install -e .
+# This file exists for the live ISO, the Docker image and CI images, which build
+# against a source tree before the package is installed.
 cryptography>=42.0.0
 reportlab>=4.0.0
 qrcode[pil]>=7.4.2
 Pillow>=10.0.0
 
-# Web Dashboard & API dependencies
+# Web dashboard (s0 web) -- optional extra: pip install -e ".[web]"
 fastapi>=0.110.0
 uvicorn>=0.28.0
 starlette>=0.36.0
 
-# Local package development installs
--e ./core/python
--e ./linux/cli
-
-# Testing & Verification dependencies
+# Testing
 pytest>=8.0.0
 httpx>=0.27.0

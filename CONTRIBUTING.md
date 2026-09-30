@@ -63,10 +63,10 @@ bash scripts/build_all.sh
 ```
 s0/
 ├── core/                         # Cryptographic & canonicalization engine
-│   ├── python/s0_core/           # Canonical JSON v1 serializer, Ed25519 signer
+│   ├── python/s0/           # Canonical JSON v1 serializer, Ed25519 signer
 │   ├── cert_schema.json          # s0-cert-v1.0.0 JSON Schema
 │   └── tests/                    # Cryptographic test vectors & tamper matrix
-├── linux/cli/s0_cli/             # Master CLI binary and controller drivers
+├── linux/cli/s0/             # Master CLI binary and controller drivers
 │   ├── wipe/                     # Hardware erasure waterfalls & cluster overwrite
 │   ├── carver/                   # 5 recovery engines (signatures, ext4, NTFS, FAT)
 │   ├── imager/                   # Bit-stream disk acquisition & cloning
@@ -91,7 +91,7 @@ Every pull request must pass all tests across the 5-layer QA pyramid:
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
 # Run with test coverage
-.venv/bin/pytest --cov=s0_core --cov=s0_cli --cov-report=term-missing
+.venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Invariants to Preserve:
@@ -105,7 +105,7 @@ Every pull request must pass all tests across the 5-layer QA pyramid:
 ## 6. Extending s0
 
 ### Adding File Carving Signatures
-To add support for recovering a new file type, register its magic bytes in `linux/cli/s0_cli/carver/signatures.py`:
+To add support for recovering a new file type, register its magic bytes in `linux/cli/s0/carver/signatures.py`:
 
 ```python
 BUILTIN_SIGNATURES["webp"] = FileSignature(
@@ -118,10 +118,10 @@ BUILTIN_SIGNATURES["webp"] = FileSignature(
 ```
 
 ### Adding Sanitization Drivers
-Sanitization methods inherit from `Method` in `linux/cli/s0_cli/wipe/methods/base.py`:
+Sanitization methods inherit from `Method` in `linux/cli/s0/wipe/methods/base.py`:
 - Implement `probe(target)` returning applicability, NIST classification (Clear or Purge), and risks.
 - Implement `run(target, progress_cb)` returning `MethodResult`.
-- Register the method identifier in `core/cert_schema.json`.
+- Register the method identifier in `src/s0/data/cert_schema.json`.
 
 ---
 
@@ -143,7 +143,7 @@ Before submitting your pull request, please verify:
 
 - [ ] Code follows PEP 8 conventions, includes strict type annotations (`from __future__ import annotations`), and docstrings.
 - [ ] All 190+ automated unit and integration tests pass (`.venv/bin/pytest`).
-- [ ] Any modifications to `core/cert_schema.json` are reflected in `verification-portal/verify.js` and `core/python/s0_core/`.
+- [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `verification-portal/verify.js` and `src/s0/`.
 - [ ] New CLI flags, methods, or limitations are documented in `docs/guides/cli-reference.md` and related guides.
 - [ ] Added documentation pages are registered in `docs/SUMMARY.md`.
 - [ ] `bash scripts/build_all.sh` completes cleanly with zero errors.

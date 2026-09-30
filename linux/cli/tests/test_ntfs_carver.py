@@ -5,15 +5,15 @@ import struct
 from pathlib import Path
 
 import pytest
-from s0_cli.carver import boundary
-from s0_cli.carver import (
+from s0.carve import boundary
+from s0.carve import (
     carve_image,
     detect_filesystem,
     parse_ntfs_boot_sector,
     scan_ntfs_deleted_files,
 )
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 
 def build_synthetic_mft_record(
@@ -239,7 +239,7 @@ def test_ntfs_resident_and_nonresident_carving(tmp_path):
 
     # Verify Signed Recovery Manifest Certificate
     assert summary.manifest_certificate is not None
-    demo_pub_key = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
+    demo_pub_key = Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     pub = load_public_pem(demo_pub_key)
     ok, reason = verify_certificate(summary.manifest_certificate, [pub])
     assert ok is True

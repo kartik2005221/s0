@@ -6,15 +6,15 @@ import json
 from pathlib import Path
 
 import pytest
-from s0_core.canonical import canonicalize_str, canonicalize
-from s0_core.certificate import (
+from s0.canonical import canonicalize_str, canonicalize
+from s0.certificate import (
     validate,
     verify_certificate,
     METHOD_TIERS,
     WIPE_METHODS,
     NIST_CATEGORIES,
 )
-from s0_core.crypto import (
+from s0.crypto import (
     load_public_pem,
     public_key_fingerprint,
     verify_payload,
@@ -43,7 +43,7 @@ def test_keys_json_matches_repo_public_key():
     trusted = keys_data["trusted_keys"]
     assert len(trusted) >= 1
 
-    demo_pem_path = REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem"
+    demo_pem_path = REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
     pub = load_public_pem(demo_pem_path)
     expected_fp = public_key_fingerprint(pub)
 
@@ -53,7 +53,7 @@ def test_keys_json_matches_repo_public_key():
 
 
 def test_sample_certificates_verification():
-    pub = load_public_pem(REPO_ROOT / "core" / "keys" / "demo_issuer_public.pem")
+    pub = load_public_pem(REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
 
     with open(PORTAL_DIR / "tests" / "sample_valid_cert.json") as f:
         valid_cert = json.load(f)

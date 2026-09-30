@@ -13,7 +13,7 @@ s0 is organized around three vertical layers that cut across all four functional
 ```mermaid
 graph TB
     subgraph UI["Interface Layer"]
-        CLI["s0 CLI<br/><code>linux/cli/s0_cli/main.py</code>"]
+        CLI["s0 CLI<br/><code>linux/cli/s0/main.py</code>"]
         GUI["Web Dashboard<br/><code>web/</code> — FastAPI + Browser"]
         ISO["Bare-Metal Live ISO<br/><code>linux/iso/</code> — Debian Live"]
     end
@@ -25,7 +25,7 @@ graph TB
         M4["Audit Ledger (Supporting)<br/><code>audit/</code> — SQLite + SHA-256 chain"]
     end
 
-    subgraph CORE["Cryptographic Core  <code>core/python/s0_core/</code>"]
+    subgraph CORE["Cryptographic Core  <code>src/s0/</code>"]
         CANON["Canonical JSON v1<br/><code>canonical.py</code>"]
         CRYPTO["Ed25519 Sign/Verify<br/><code>crypto.py</code>"]
         CERT["Certificate Builder<br/><code>certificate.py</code>"]
@@ -60,13 +60,13 @@ graph TB
 
 ```
 s0/
-├── core/python/s0_core/          # Shared cryptographic core (Ed25519, Canonical JSON, PDF/QR)
+├── src/s0/          # Shared cryptographic core (Ed25519, Canonical JSON, PDF/QR)
 │   ├── canonical.py              #   Deterministic JSON serializer — signing contract
 │   ├── crypto.py                 #   Ed25519 key-pair management, sign, verify
 │   ├── certificate.py            #   Certificate construction and schema validation
 │   └── pdfgen.py                 #   ReportLab PDF with embedded QR code
 │
-├── linux/cli/s0_cli/             # Linux CLI — primary delivery vehicle
+├── linux/cli/s0/             # Linux CLI — primary delivery vehicle
 │   ├── main.py                   #   Click entrypoint, subcommand dispatch
 │   ├── devices.py                #   Device enumeration (lsblk, sysfs, /proc)
 │   ├── wipe.py                   #   Module 1 orchestrator
@@ -558,7 +558,7 @@ Because `prev_hash` is an input to every subsequent block's hash, **it is not po
 
 ---
 
-## Cryptographic Core (`core/python/s0_core/`)
+## Cryptographic Core (`src/s0/`)
 
 The cryptographic core is the sole source of truth for all signing, serialization, and certificate construction. No module signs anything independently — all cryptographic operations route through this library.
 

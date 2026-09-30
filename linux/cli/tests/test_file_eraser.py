@@ -4,14 +4,14 @@ import os
 from pathlib import Path
 
 import pytest
-from s0_cli.file_eraser import (
+from s0.cli.file_eraser import (
     erase_single_file,
     erase_folder,
     erase_batch,
     get_file_extents,
 )
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def test_erase_folder_recursive(temp_test_env):
 
 def test_erase_batch_with_certificate(temp_test_env):
     test_dir, file1, file2, sub_dir, file3 = temp_test_env
-    demo_pub_key = Path(__file__).resolve().parents[3] / "core" / "keys" / "demo_issuer_public.pem"
+    demo_pub_key = Path(__file__).resolve().parents[3] / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
 
     summary = erase_batch(
         [file1, sub_dir],
@@ -123,7 +123,7 @@ def test_erase_symlink_rejected(tmp_path):
 
 
 def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
-    from s0_cli.main import main as s0_main
+    from s0.cli.main import main as s0_main
     target = tmp_path / "erase_target.txt"
     target.write_bytes(b"DATA FOR S0 ERASE PDF TEST")
     out_dir = tmp_path / "s0_erase_out"
@@ -150,7 +150,7 @@ def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
 
 
 def test_erase_hardlink_safety(tmp_path):
-    from s0_cli.file_eraser import erase_single_file
+    from s0.cli.file_eraser import erase_single_file
 
     orig = tmp_path / "original.txt"
     orig.write_bytes(b"SHARED HARDLINK DATA")

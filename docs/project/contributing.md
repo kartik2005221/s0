@@ -25,12 +25,12 @@ s0/
 │   ├── cert_schema.json                # Schema v1.0.0 for certificates & manifests
 │   ├── CANONICAL_JSON.md               # Deterministic canonical serialization spec
 │   ├── keys/                           # Demo public/private authority keys
-│   └── python/s0_core/                 # Python reference implementation
+│   └── python/s0/                 # Python reference implementation
 │       ├── canonical.py                # s0 Canonical JSON v1 encoder
 │       ├── crypto.py                   # Ed25519 key generation, sign & verify
 │       ├── certificate.py              # Certificate builder & validation logic
 │       └── pdfgen.py                   # ReportLab PDF generator with QR codes
-├── linux/cli/s0_cli/                   # Linux & unified CLI suite
+├── linux/cli/s0/                   # Linux & unified CLI suite
 │   ├── main.py                         # Unified argument parser (all subcommands)
 │   ├── devices.py                      # Block device & raw image inventory
 │   ├── wipe.py                         # Module 1: Drive & media erasure orchestrator
@@ -91,7 +91,7 @@ bash scripts/build_all.sh
 
 ## 4. How to Add a New File Carving Signature
 
-Adding support for a new file format to **Module 2 (File Carver)** requires adding an entry to `linux/cli/s0_cli/carver/signatures.py`:
+Adding support for a new file format to **Module 2 (File Carver)** requires adding an entry to `linux/cli/s0/carver/signatures.py`:
 
 ```python
 from .signatures import FileSignature, SIGNATURES
@@ -118,11 +118,11 @@ SIGNATURES.append(
 
 ## 5. How to Add a New Sanitization Method
 
-New wiping drivers inherit from `s0_cli.methods.base.Method`:
+New wiping drivers inherit from `s0.wipe.methods.base.Method`:
 
 ```python
-from s0_cli.devices import Target
-from s0_cli.methods.base import Candidate, Method, MethodResult, Plan
+from s0.cli.devices import Target
+from s0.wipe.methods.base import Candidate, Method, MethodResult, Plan
 
 class CustomPurgeMethod(Method):
     method_id = "CUSTOM_HARDWARE_PURGE"
@@ -147,7 +147,7 @@ class CustomPurgeMethod(Method):
         return MethodResult(status="success", bytes_processed=target.capacity_bytes)
 ```
 
-Register your method in `s0_cli/methods/__init__.py` and add its identifier to `core/cert_schema.json` under `/properties/wipe/properties/method/enum`.
+Register your method in `s0/methods/__init__.py` and add its identifier to `src/s0/data/cert_schema.json` under `/properties/wipe/properties/method/enum`.
 
 ---
 
@@ -158,7 +158,7 @@ Always ensure all test suites pass before submitting a pull request:
 ```bash
 .venv/bin/pytest core/tests linux/cli/tests web/tests windows/cli/tests macos/cli/tests verification-portal/tests -v
 
-.venv/bin/pytest --cov=s0_core --cov=s0_cli --cov-report=term-missing
+.venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Quality Invariants:
@@ -185,6 +185,6 @@ When contributing to documentation:
 Before submitting your PR:
 - [ ] Code is formatted cleanly and includes type hints (`from __future__ import annotations`).
 - [ ] All 190+ automated tests pass (`pytest` runs 100% green).
-- [ ] Schema changes in `core/cert_schema.json` are mirrored in `verification-portal/verify.js` and `core/python/s0_core/`.
+- [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `verification-portal/verify.js` and `src/s0/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
 - [ ] Any added pages are linked in `SUMMARY.md`.

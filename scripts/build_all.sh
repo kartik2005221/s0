@@ -36,7 +36,7 @@ if [ ! -d "$REPO/.venv" ] || [ ! -f "$REPO/.venv/bin/python" ]; then
     printf "\n${_yellow}[bootstrap]${_reset} Creating Python virtual environment...\n"
     python3 -m venv "$REPO/.venv"
     "$REPO/.venv/bin/pip" install --upgrade pip -q
-    "$REPO/.venv/bin/pip" install -e "$REPO/core/python" -e "$REPO/linux/cli" \
+    "$REPO/.venv/bin/pip" install -e "$REPO" \
         pytest reportlab qrcode pillow fastapi uvicorn httpx -q
     printf "${_green}   ✓ Virtual environment ready${_reset}\n"
 fi
@@ -55,11 +55,9 @@ printf "${_cyan}═════════════════════�
 
 # ── Phase 1: Install Packages ─────────────────────────────────────────────────
 phase_start "Installing Python Packages"
-step_info "s0_core (core/python)..."
-"$PIP" install -e core/python --no-deps -q
-step_info "s0_cli (linux/cli)..."
-"$PIP" install -e linux/cli --no-deps -q
-step_ok "Both packages installed in virtual environment"
+step_info "s0 (single distribution under src/)..."
+"$PIP" install -e . -q
+step_ok "s0 installed in virtual environment"
 phase_ok
 
 # ── Phase 2: Run Pytest Suites ────────────────────────────────────────────────

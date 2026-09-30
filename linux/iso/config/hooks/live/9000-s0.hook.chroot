@@ -28,18 +28,18 @@ chmod -R go-w /opt/s0
 
 # The web dashboard imports the CLI package by path; make both importable system-wide.
 cat > /usr/lib/python3/dist-packages/s0_path.pth <<'EOF'
-/opt/s0/core/python
+/opt/s0/src
 /opt/s0/linux/cli
 EOF
 
 echo "==> wrapper: s0 on PATH"
 cat > /usr/local/bin/s0 <<'EOF'
 #!/bin/sh
-exec python3 -m s0_cli.main "$@"
+exec python3 -m s0.cli.main "$@"
 EOF
 cat > /usr/local/bin/s0-verify <<'EOF'
 #!/bin/sh
-exec python3 -m s0_core.cli verify "$@"
+exec python3 -m s0.certcli verify "$@"
 EOF
 chmod 0755 /usr/local/bin/s0 /usr/local/bin/s0-verify
 

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from s0_cli.carver.allocation import (
+from s0.carve.allocation import (
     FreeSpaceMap,
     _merge,
     build_free_space,

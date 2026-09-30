@@ -11,17 +11,17 @@ import struct
 from pathlib import Path
 
 import pytest
-from s0_cli.carver.ext4_carver import (
+from s0.carve.ext4_carver import (
     EXT4_EXTENT_HEADER_MAGIC,
     EXT4_MAGIC,
     parse_extent_header,
     scan_ext4_deleted_inodes,
 )
-from s0_cli.carver.fragmentation import (
+from s0.carve.fragmentation import (
     reassemble_cluster_runs,
     reconstruct_bifragment_stream,
 )
-from s0_cli.carver.ntfs_carver import (
+from s0.carve.ntfs_carver import (
     ATTR_DATA,
     ATTR_END_MARKER,
     MFT_RECORD_MAGIC,

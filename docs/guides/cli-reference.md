@@ -308,7 +308,7 @@ s0 wipe --target PATH \
 |------|------|---------|----------|-------------|
 | `--target` | path | — | **yes** | Block device or image file to sanitize. |
 | `--yes` | flag | off | no | Skip the interactive `WIPE` confirmation prompt. |
-| `--key` | path | auto | no, but recommended | Path to issuer Ed25519 private key PEM. Auto-discovers demo key from `core/keys/` if omitted. |
+| `--key` | path | auto | no, but recommended | Path to issuer Ed25519 private key PEM. Auto-discovers demo key from `src/s0/data/keys/` if omitted. |
 | `--out-dir` | path | `.` | no | Directory where certificate files are written. |
 | `--operator` | string | `unknown-operator` | no, but recommended | Operator identity recorded in the certificate payload. |
 | `--organization` | string | `Digital Forensics & Data Sanitization Lab` | no, but recommended | Issuing organization name recorded in the certificate. |
@@ -439,7 +439,7 @@ s0 wipe --target disk_image.raw \
 
 {% hint style="success" %}
 **Auto-key discovery**
-When `--key` is omitted, `s0 wipe` walks `core/keys/` looking for a PEM file matching the pattern `*_private.pem`. The demo keypair ships in that directory so out-of-the-box usage works without any key management. For production deployments, always supply your own authority key via `--key`.
+When `--key` is omitted, `s0 wipe` walks `src/s0/data/keys/` looking for a PEM file matching the pattern `*_private.pem`. The demo keypair ships in that directory so out-of-the-box usage works without any key management. For production deployments, always supply your own authority key via `--key`.
 {% endhint %}
 
 {% hint style="info" %}
@@ -968,7 +968,7 @@ s0 verify CERTIFICATE [--key PEM]
 | Argument / Flag | Type | Default | Required | Description |
 |-----------------|------|---------|----------|-------------|
 | `CERTIFICATE` | path | — | **yes** | Path to the `certificate_<UUID8>.json` or `acquisition_manifest_<UUID8>.json` to verify. |
-| `--key` | path | demo key | no, but recommended | Path to a trusted Ed25519 public key PEM. If omitted, the bundled demo public key from `core/keys/` is used. |
+| `--key` | path | demo key | no, but recommended | Path to a trusted Ed25519 public key PEM. If omitted, the bundled demo public key from `src/s0/data/keys/` is used. |
 
 **Output on success**
 
@@ -1105,7 +1105,7 @@ sudo s0 wipe \
 
 ## s0 upgrade
 
-Updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies source integrity, refreshes Python dependencies, updates editable packages (`s0_core` and `s0_cli`), and asserts version parity.
+Updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies source integrity, refreshes Python dependencies, updates editable packages (`s0` and `s0`), and asserts version parity.
 
 {% tabs %}
 {% tab title="Synopsis" %}
@@ -1265,8 +1265,8 @@ s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (e
 | Path | Purpose |
 |------|---------|
 | `~/.s0/s0_audit.db` | SQLite database storing the append-only, hash-chained audit ledger. Created automatically on first use. |
-| `core/keys/*_private.pem` | Demo/development Ed25519 private key. Auto-discovered when `--key` is not specified. |
-| `core/keys/*_public.pem` | Corresponding demo public key. Used by `s0 verify` when `--key` is not specified. |
+| `src/s0/data/keys/*_private.pem` | Demo/development Ed25519 private key. Auto-discovered when `--key` is not specified. |
+| `src/s0/data/keys/*_public.pem` | Corresponding demo public key. Used by `s0 verify` when `--key` is not specified. |
 | `<out-dir>/certificate_<UUID8>.json` | Signed certificate output from `s0 wipe`. |
 | `<out-dir>/certificate_<UUID8>.pdf` | PDF certificate with embedded QR code. |
 | `<out-dir>/certificate_<UUID8>.qr.png` | Standalone QR code PNG. |
@@ -1281,7 +1281,7 @@ s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (e
 
 {% hint style="warning" %}
 **Demo keys are public**
-The keys in `core/keys/` are committed to the open-source repository and are known to the public. Certificates signed with the demo key provide **integrity** (tamper-evidence) but **not authenticity** (anyone can reproduce the signature). Generate a private authority keypair with `s0 keygen` before any production or legal-hold use.
+The keys in `src/s0/data/keys/` are committed to the open-source repository and are known to the public. Certificates signed with the demo key provide **integrity** (tamper-evidence) but **not authenticity** (anyone can reproduce the signature). Generate a private authority keypair with `s0 keygen` before any production or legal-hold use.
 {% endhint %}
 
 ---

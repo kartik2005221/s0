@@ -34,15 +34,15 @@ Other Useful Flags:
 FILES SYNCHRONIZED BY THIS SCRIPT
 ================================================================================
 1.  s0_config.json                          (Primary Single Source of Truth)
-2.  core/python/pyproject.toml              (s0-core Python package metadata)
+2.  pyproject.toml              (s0-core Python package metadata)
 3.  linux/cli/pyproject.toml                (s0-cli Python package metadata)
-4.  core/python/s0_core/config.py           (DEFAULT_CONFIG fallback)
-5.  core/python/s0_core/__init__.py         (__version__ export)
-6.  linux/cli/s0_cli/__init__.py            (__version__ export)
-7.  linux/cli/s0_cli/imager.py              (tool_version fallback)
-8.  linux/cli/s0_cli/file_eraser.py         (tool_version fallback)
-9.  linux/cli/s0_cli/carver/engine.py       (tool_version fallback)
-10. linux/cli/s0_cli/live_manager.py        (User-Agent header & tag_synth versions)
+4.  src/s0/config.py           (DEFAULT_CONFIG fallback)
+5.  src/s0/__init__.py         (__version__ export)
+6.  linux/cli/s0/__init__.py            (__version__ export)
+7.  linux/cli/s0/imager.py              (tool_version fallback)
+8.  linux/cli/s0/file_eraser.py         (tool_version fallback)
+9.  linux/cli/s0/carver/engine.py       (tool_version fallback)
+10. linux/cli/s0/live_manager.py        (User-Agent header & tag_synth versions)
 11. macos/cli/s0_eraser.py                  (macOS CLI version string & tool_version)
 12. windows/cli/s0_eraser.py                (Windows CLI version string & tool_version)
 13. scripts/benchmark_perf.py               (Benchmark tool_version)
@@ -132,91 +132,52 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> List[Path]:
                 cfg_path.write_text(new_content, encoding="utf-8")
             modified_files.append(cfg_path)
 
-    # 2. core/python/pyproject.toml
-    p = REPO_ROOT / "core" / "python" / "pyproject.toml"
-    if update_file_regex(p, r'(version\s*=\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
+    # 2. Distribution metadata. This is the only packaging site for the
+    #    version: s0.__version__ reads it back through importlib.metadata.
+    # Anchored to the start of a line so it cannot match `requires-python`.
+    p = REPO_ROOT / "pyproject.toml"
+    if update_file_regex(p, r'(?m)^(version\s*=\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
         modified_files.append(p)
 
-    # 3. linux/cli/pyproject.toml
-    p = REPO_ROOT / "linux" / "cli" / "pyproject.toml"
-    if update_file_regex(p, r'(version\s*=\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
-        modified_files.append(p)
-
-    # 4. core/python/s0_core/config.py
-    p = REPO_ROOT / "core" / "python" / "s0_core" / "config.py"
+    # 3. DEFAULT_CONFIG fallback in the package config.
+    p = REPO_ROOT / "src" / "s0" / "config.py"
     if update_file_regex(p, r'("version"\s*:\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
         modified_files.append(p)
 
-    # 4b. core/python/s0_core/__init__.py
-    p = REPO_ROOT / "core" / "python" / "s0_core" / "__init__.py"
-    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
-        modified_files.append(p)
-
-    # 5. linux/cli/s0_cli/__init__.py
-    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "__init__.py"
-    if p.is_file():
+    # 4. Every remaining Python fallback literal.
+    #
+    #    This is a table, not a sequence of hand-written blocks, because the
+    #    previous hand-written list silently stopped matching when the package
+    #    moved out of core/python and linux/cli -- the release check then
+    #    reported a failure against a file that no longer existed. A missing
+    #    entry is now a hard error instead of a silent skip.
+    for rel in (
+        "src/s0/__init__.py",
+        "src/s0/image/imager.py",
+        "src/s0/cli/file_eraser.py",
+        "src/s0/carve/engine.py",
+        "src/s0/live/live_manager.py",
+        "macos/cli/s0_eraser.py",
+        "windows/cli/s0_eraser.py",
+        "scripts/benchmark_perf.py",
+    ):
+        p = REPO_ROOT / rel
+        if not p.is_file():
+            raise FileNotFoundError(
+                f"version-synced file is missing from the tree: {rel}. "
+                "Update the version-source table in scripts/release.py."
+            )
         content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', content)
-        c2, n2 = re.subn(r'__version__\s*=\s*"[^"]+"', f'__version__ = "{target_version}"', c1)
-        if (n1 > 0 or n2 > 0) and c2 != content:
-            if not dry_run:
-                p.write_text(c2, encoding="utf-8")
-            modified_files.append(p)
-
-    # 6. linux/cli/s0_cli/imager.py
-    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "imager.py"
-    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
-        modified_files.append(p)
-
-    # 7. linux/cli/s0_cli/file_eraser.py
-    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "file_eraser.py"
-    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
-        modified_files.append(p)
-
-    # 8. linux/cli/s0_cli/carver/engine.py
-    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "carver" / "engine.py"
-    if update_file_regex(p, r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', dry_run):
-        modified_files.append(p)
-
-    # 9. linux/cli/s0_cli/live_manager.py
-    p = REPO_ROOT / "linux" / "cli" / "s0_cli" / "live_manager.py"
-    if p.is_file():
-        content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
-        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
-        if (n1 > 0 or n2 > 0) and c2 != content:
-            if not dry_run:
-                p.write_text(c2, encoding="utf-8")
-            modified_files.append(p)
-
-    # 10. macos/cli/s0_eraser.py
-    p = REPO_ROOT / "macos" / "cli" / "s0_eraser.py"
-    if p.is_file():
-        content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
-        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
-        if (n1 > 0 or n2 > 0) and c2 != content:
-            if not dry_run:
-                p.write_text(c2, encoding="utf-8")
-            modified_files.append(p)
-
-    # 11. windows/cli/s0_eraser.py
-    p = REPO_ROOT / "windows" / "cli" / "s0_eraser.py"
-    if p.is_file():
-        content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
-        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
-        if (n1 > 0 or n2 > 0) and c2 != content:
-            if not dry_run:
-                p.write_text(c2, encoding="utf-8")
-            modified_files.append(p)
-
-    # 12. scripts/benchmark_perf.py
-    p = REPO_ROOT / "scripts" / "benchmark_perf.py"
-    if p.is_file():
-        content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r"CONFIG\.get\('version',\s*'[^']+'\)", f"CONFIG.get('version', '{target_version}')", content)
-        c2, n2 = re.subn(r'CONFIG\.get\("version",\s*"[^"]+"\)', f'CONFIG.get("version", "{target_version}")', c1)
+        c1, n1 = re.subn(
+            r"CONFIG\.get\('version',\s*'[^']+'\)",
+            f"CONFIG.get('version', '{target_version}')",
+            content,
+        )
+        c2, n2 = re.subn(
+            r'CONFIG\.get\("version",\s*"[^"]+"\)',
+            f'CONFIG.get("version", "{target_version}")',
+            c1,
+        )
         if (n1 > 0 or n2 > 0) and c2 != content:
             if not dry_run:
                 p.write_text(c2, encoding="utf-8")

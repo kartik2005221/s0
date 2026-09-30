@@ -8,10 +8,14 @@ from pathlib import Path
 
 import pytest
 
-CORE_PYTHON = Path(__file__).resolve().parent.parent / "python"
-sys.path.insert(0, str(CORE_PYTHON))
+# Prefer the installed distribution. Fall back to the source tree only so the
+# suite still runs in a bare checkout that has not been `pip install -e .`'d.
+try:  # pragma: no cover - import side effect
+    import s0 as _s0  # noqa: F401
+except ImportError:  # pragma: no cover - import side effect
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from s0_core import crypto, certificate  # noqa: E402
+from s0 import crypto, certificate  # noqa: E402
 
 
 @pytest.fixture(scope="session")

@@ -132,7 +132,7 @@ s0 audit list --limit 25
 
 s0 audit verify
 
-s0 verify certificate_12345678.json --key core/keys/demo_issuer_public.pem
+s0 verify certificate_12345678.json --key src/s0/data/keys/demo_issuer_public.pem
 ```
 
 ### 7. Bootable Live Media & USB Station (`s0 live`)

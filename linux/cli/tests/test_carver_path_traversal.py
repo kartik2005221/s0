@@ -1,7 +1,7 @@
 """Unit tests for carver path traversal protection and filename sanitization."""
 
 import pytest
-from s0_cli.carver.engine import _sanitize_filename
+from s0.carve.engine import _sanitize_filename
 
 
 @pytest.mark.parametrize(

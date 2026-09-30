@@ -83,7 +83,7 @@ flowchart LR
 ### Security
 - **Audit Ledger Unsigned-Block Detection:** Fixed verification vulnerability in `verify_audit_ledger()` where unsigned blocks slipped past default verification because checks evaluated original parameters instead of resolved effective trusted keys. Default audit verification now strictly catches unsigned or invalid blocks.
 - **Uninstaller Safety Hardening:** Hardened `uninstall.sh` and `uninstall.ps1` against arbitrary directory deletion; uninstallation now requires verifying valid `s0` install markers and core project signatures rather than allowing `.git` directory presence alone.
-- **Shared Metadata Input Validation:** Unified input validation across CLI (`--operator`, `--operator-id`, `--organization`) and Web REST API via `s0_core.validation` to prevent control character injection, header splitting, and malformed audit metadata.
+- **Shared Metadata Input Validation:** Unified input validation across CLI (`--operator`, `--operator-id`, `--organization`) and Web REST API via `s0.validation` to prevent control character injection, header splitting, and malformed audit metadata.
 
 ### Added
 - **Unaccredited Demo Key Transparency:** Added explicit visual warnings across the Web Verification Portal (`portal.js`, `verify.js`) and forensic scripts (`verify_cert.py`) when certificates are cryptographically valid but signed using the unaccredited testing key pair (`demo_issuer`).
@@ -144,9 +144,9 @@ flowchart LR
 ### Security
 - **HIGH — Web Authentication Token Hardening:** Restricted `/run/s0/web_auth_token` permissions from `0644` to `0640` with group ownership assigned to the dedicated `s0-kiosk` security group, preventing unauthorized local processes from reading session tokens.
 - **HIGH — ISO Build Toolchain Integrity Verification:** Hardened `.github/workflows/build-iso.yml` to download Debian live-build packages over HTTPS and enforce strict SHA-256 checksum validation (`db5e5ae5925092066fee0e87e9e274af32c56f7b08db254377e248e95e07efae`) before installation.
-- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `linux/cli/s0_cli/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
+- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `linux/cli/s0/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
 - **MEDIUM — Windows NTFS Alternate Data Stream (ADS) Multi-Chunk Scrubbing:** Upgraded Windows ADS scrubbing in `windows/cli/s0_eraser.py` to zero out entire stream allocations in multi-chunk buffers regardless of size prior to stream unlinking.
-- **LOW — Central Configuration Discovery Path Alignment:** Added `/etc/s0/s0_config.json` to central `find_config_file()` discovery candidates in `s0_core.config`, ensuring live appliances and system-wide installations resolve global configuration without split-brain issues.
+- **LOW — Central Configuration Discovery Path Alignment:** Added `/etc/s0/s0_config.json` to central `find_config_file()` discovery candidates in `s0.config`, ensuring live appliances and system-wide installations resolve global configuration without split-brain issues.
 
 ### Added
 - **Automated GitHub Actions ISO Releases:** Configured automated bare-metal hybrid ISO generation in GitHub Actions (`build-iso.yml`) on release publication, automatically attaching `s0-live-amd64.hybrid.iso` and cryptographic checksums to GitHub Releases.
@@ -166,7 +166,7 @@ flowchart LR
 ### Security
 - **CRITICAL — GUI Audit Ledger Signature Verification:** Resolved critical flaw in `verify_audit_ledger()` where default trusted keys were omitted during signature checks, ensuring Ed25519 certificate signatures and authority key pinning are strictly validated during GUI and CLI verification.
 - **HIGH — TOCTOU Symlink & Reparse-Point Eraser Hardening:** Added atomic `O_NOFOLLOW` descriptor opening, `fstat(fd)` regular file validation, Win32 `FILE_ATTRIBUTE_REPARSE_POINT` handle inspection, and direct descriptor overwriting across Windows (`s0_eraser.py`) and macOS (`s0_eraser.py`).
-- **HIGH — Canonical JSON Deterministic Block Hashing:** Migrated blockchain audit ledger block hashing from pipe-delimited string formatting to RFC 8785 Canonical JSON (`s0_core.canonical`), preventing input collisions while maintaining backward-compatible fallback verification for legacy ledgers.
+- **HIGH — Canonical JSON Deterministic Block Hashing:** Migrated blockchain audit ledger block hashing from pipe-delimited string formatting to RFC 8785 Canonical JSON (`s0.canonical`), preventing input collisions while maintaining backward-compatible fallback verification for legacy ledgers.
 - **HIGH — Destructive Web API Per-Session Token Authentication:** Protected `/api/wipe`, `/api/erase-files`, `/api/carve`, and `/api/image` with a high-entropy session authentication token (`X-S0-Auth-Token`) saved to `~/.s0/web_auth_token` (mode 0600) and injected via meta tag into the Web Dashboard DOM, blocking unauthorized local script execution.
 - **MEDIUM — QR Verification Portal URL Validation:** Enforced strict URL scheme and hostname sanitization on custom `portal_url` parameters in `pdfgen.py` and API request models, restricting redirection to HTTPS and local loopback.
 - **MEDIUM — Configuration Path Hijacking Remediation:** Removed `Path.cwd()` from `s0_config.json` candidate discovery list, preventing untrusted local directories from overriding cryptographic key paths and authority settings.
@@ -263,7 +263,7 @@ flowchart LR
   - **Windows (`windows/`):** Win32 direct file I/O with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery and destruction, and ReFS CoW volume detection.
   - **macOS (`macos/`):** Darwin direct hardware cache synchronization via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) quarantine stripping, and APFS snapshot warnings.
 - **Removable Media & Partition Sanitization:** Added native USB flash drive and secondary partition wiping capabilities to Windows and macOS CLI utilities.
-- **FAT32 & exFAT Carving Engines (`linux/cli/s0_cli/carver/`):**
+- **FAT32 & exFAT Carving Engines (`linux/cli/s0/carver/`):**
   - **FAT32 (`fat_carver.py`):** BPB boot sector parsing, `0xE5` deleted directory entry scanning, and contiguous cluster recovery.
   - **exFAT (`exfat_carver.py`):** VBR parsing, 32-byte directory entry set reconstruction (`0x05`/`0x85`, `0x40`/`0xC0`, `0x41`/`0xC1`), and Cluster Heap allocation extraction.
 - **Fragmented Reconstruction Heuristics (`fragmentation.py`):** Implemented non-resident cluster runlist reassembly and bifragment stream recovery across cluster gaps.
@@ -280,7 +280,7 @@ flowchart LR
 ## [1.0.0] — 2026-08-15
 
 ### Added
-- **Module 1: Secure Drive Eraser (`s0_cli/methods/`):**
+- **Module 1: Secure Drive Eraser (`s0/methods/`):**
   - ATA Secure Erase (`ATA_SECURE_ERASE`, `ATA_SECURE_ERASE_ENHANCED`) via controller firmware commands.
   - NVMe Sanitize (`NVME_SANITIZE_BLOCK_ERASE`, `NVME_SANITIZE_CRYPTO_ERASE`) and NVMe Format (`NVME_FORMAT_CRYPTO_ERASE`).
   - Kernel Discard (`BLKDISCARD`) with DRAT/RZAT deterministic readback checks.
@@ -305,10 +305,10 @@ flowchart LR
 ## [0.9.0] — 2026-08-01
 
 ### Added
-- **Core Cryptography Engine (`core/python/s0_core/`):**
+- **Core Cryptography Engine (`src/s0/`):**
   - Pure Ed25519 asymmetric digital signatures per RFC 8032.
   - `s0 Canonical JSON v1` deterministic serializer (`canonical.py`) forbidding float values to eliminate multi-language formatting divergences.
-  - Official certificate schema definition (`core/cert_schema.json`).
+  - Official certificate schema definition (`src/s0/data/cert_schema.json`).
   - High-resolution ReportLab PDF certificate generator with embedded optical QR codes (`pdfgen.py`).
 - **Static Verification Portal (`verification-portal/`):**
   - Zero-backend, 100% client-side WebCrypto / TweetNaCl verification engine.

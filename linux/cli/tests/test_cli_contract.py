@@ -27,9 +27,9 @@ from pathlib import Path
 
 import pytest
 
-from s0_cli.main import build_parser, main
-from s0_cli.ui import GLOBAL_HELP, add_global_arguments, policy_from_args
-from s0_core.terminal import (
+from s0.cli.main import build_parser, main
+from s0.cli.ui import GLOBAL_HELP, add_global_arguments, policy_from_args
+from s0.terminal import (
     EX_INTERRUPTED,
     EX_NOINPUT,
     EX_OK,
@@ -203,7 +203,7 @@ def test_malformed_certificate_is_ex_dataerr(monkeypatch, tmp_path):
 
 
 def test_exit_codes_are_distinct_and_documented():
-    from s0_core.terminal import EXIT_MEANINGS
+    from s0.terminal import EXIT_MEANINGS
     for code, meaning in EXIT_MEANINGS.items():
         assert meaning and isinstance(code, int)
     assert EX_USAGE != EX_NOINPUT

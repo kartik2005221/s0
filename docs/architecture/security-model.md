@@ -78,7 +78,7 @@ sequenceDiagram
 
 {% hint style="info" %}
 **Demo key**
-s0 ships with a demo keypair at `core/keys/demo_issuer_public.pem`. This key is intentionally excluded from `keys.json` — manifests signed with it will always show as amber. Use it only for testing and training.
+s0 ships with a demo keypair at `src/s0/data/keys/demo_issuer_public.pem`. This key is intentionally excluded from `keys.json` — manifests signed with it will always show as amber. Use it only for testing and training.
 {% endhint %}
 
 ---

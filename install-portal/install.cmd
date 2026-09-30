@@ -132,16 +132,10 @@ echo   [OK] pip upgraded
 REM ── Step 6: Install S0 packages ─────────────────────────────────────
 set /a STEP=STEP+1
 echo [%STEP%/%TOTAL%] Installing S0 packages...
-echo   -^> core cryptographic library...
-"%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install -e core\python -q
+echo   -^> s0 distribution (core, CLI and forensic engines)...
+"%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install -e . -q
 if %ERRORLEVEL% neq 0 (
-    echo   [ERROR] Failed to install core cryptographic package.
-    exit /b 1
-)
-echo   -^> CLI and dependencies...
-"%INSTALL_DIR%\.venv\Scripts\python.exe" -m pip install -e linux\cli -q
-if %ERRORLEVEL% neq 0 (
-    echo   [ERROR] Failed to install CLI package.
+    echo   [ERROR] Failed to install the s0 distribution.
     exit /b 1
 )
 echo   -^> PDF, QR generation and web dashboard...

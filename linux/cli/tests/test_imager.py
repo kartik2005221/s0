@@ -8,10 +8,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from s0_cli.imager import BadSectorRange, ImagingOptions, acquire_image
-from s0_cli.main import main
-from s0_core.certificate import verify_certificate
-from s0_core.crypto import load_public_pem
+from s0.image.imager import BadSectorRange, ImagingOptions, acquire_image
+from s0.cli.main import main
+from s0.certificate import verify_certificate
+from s0.crypto import load_public_pem
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_safety_refusal_same_target(temp_workspace):
         destination=str(src_file),
     )
 
-    from s0_cli.devices import SafetyError
+    from s0.cli.devices import SafetyError
     with pytest.raises(SafetyError, match="cannot be the same target"):
         acquire_image(options)
 
@@ -145,8 +145,8 @@ def test_cli_image_and_certificate_signing(temp_workspace):
     dst_file = temp_workspace / "target_replica.raw"
     out_dir = temp_workspace / "out"
 
-    demo_key = Path("core/keys/demo_issuer_private.pem")
-    demo_pub = Path("core/keys/demo_issuer_public.pem")
+    demo_key = Path("src/s0/data/keys/demo_issuer_private.pem")
+    demo_pub = Path("src/s0/data/keys/demo_issuer_public.pem")
 
     cmd = [
         "image",
@@ -243,7 +243,7 @@ def test_cli_image_pdf_generation_and_no_pdf_flag(temp_workspace):
 
 
 def test_image_destination_guards(temp_workspace):
-    from s0_cli.imager import ImagingOptions, acquire_image, SafetyError
+    from s0.image.imager import ImagingOptions, acquire_image, SafetyError
 
     src = temp_workspace / "guard_src.raw"
     src.write_bytes(b"HELLO FORENSICS" * 100)
