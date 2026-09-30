@@ -48,6 +48,7 @@ from s0_core import crypto as core_crypto
 from s0_core.config import CONFIG
 
 from . import boundary
+from .allocation import FreeSpaceMap, build_free_space
 from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
@@ -144,6 +145,11 @@ class CarvingSessionSummary:
     truncated_report: bool = False
     # reason -> count, most common first. Far more useful than a million lines.
     rejection_summary: List[Tuple[str, int]] = field(default_factory=list)
+    # Allocation-aware search accounting. `free_space` is None when the whole
+    # volume had to be searched, which is itself worth recording in a report.
+    free_space: Optional[dict] = None
+    allocated_candidates_skipped: int = 0
+    allocated_bytes_skipped: int = 0
 
     def recovery_rate_ppm(self) -> int:
         """Recovered bytes per million bytes scanned, in integer parts-per-million."""
@@ -416,6 +422,100 @@ def _safe_join(out_p: Path, filename: str) -> Path:
 # --------------------------------------------------------------------------- #
 
 
+def _overlaps_free(fsm: "FreeSpaceMap", start: int, end: int) -> bool:
+    """True if [start, end) touches any free extent of the map."""
+    if end <= start:
+        return False
+    for lo, hi in fsm.ranges:
+        if lo < end and start < hi:
+            return True
+    return False
+
+
+def _resolve_free_space(target_p: Path, parts, total_size: int, policy) -> tuple:
+    """Build the unallocated-space map for the carved target.
+
+    Returns `(map_or_None, notes)`. A map is only produced when it is complete
+    and trustworthy: a partially-parsed allocation structure would silently
+    exclude live space, or worse, include allocated space as if it were deleted.
+    When any partition's map is missing, the whole-volume search is used and the
+    report says so, because a carve that quietly searched less than it claimed
+    is worse than a slow one.
+    """
+    notes: List[str] = []
+    if not policy.use_free_space_only:
+        notes.append(
+            "Allocation-aware search was disabled (--all-space): the whole volume was "
+            "searched, so files that are still allocated will also be reported.")
+        return None, notes
+
+    maps: List[FreeSpaceMap] = []
+    for offset, size, label, ftype in _carve_targets(parts, total_size):
+        if ftype == "raw" or not ftype:
+            notes.append(
+                f"Partition at offset {offset} is not a recognised filesystem "
+                f"({label or 'unlabelled'}); its space was searched in full.")
+            return None, notes
+        fsm = build_free_space(target_p, ftype, offset, size)
+        if not fsm.reliable:
+            notes.append(
+                f"Could not establish a trustworthy allocation map for the "
+                f"{ftype} partition at offset {offset}: {'; '.join(fsm.notes) or 'unknown'}. "
+                f"The whole volume was searched instead.")
+            return None, notes
+        notes.append(
+            f"{ftype}: {fsm.free_bytes / (1 << 20):.1f} MiB free in {fsm.range_count} "
+            f"extent(s) ({fsm.coverage_ppm / 10_000:.1f}% of the filesystem); carving "
+            f"restricted to unallocated space.")
+        maps.append(fsm)
+
+    if not maps:
+        notes.append(
+            "No filesystem allocation map was available, so the whole volume was searched. "
+            "Recovered files may include ones that are still allocated.")
+        return None, notes
+
+    combined = FreeSpaceMap(
+        partition_offset=0,
+        volume_bytes=max(m.volume_bytes for m in maps),
+        ranges=_merge_ranges([r for m in maps for r in m.ranges]),
+        source=", ".join(sorted({m.source for m in maps})),
+        reliable=True,
+    )
+    return combined, notes
+
+
+def _carve_targets(parts, total_size: int) -> List[tuple]:
+    """Normalise detected partitions into (offset, size, label, fs_type).
+
+    `detect_partitions` yields (fs_type, offset) with no length, so a partition's
+    extent is inferred as the distance to the next partition, or to the end of
+    the media for the last one.
+    """
+    if not parts:
+        return [(0, total_size, "", "raw")]
+    entries = sorted(((off, fs) for fs, off in parts), key=lambda e: e[0])
+    out = []
+    for i, (off, ftype) in enumerate(entries):
+        end = entries[i + 1][0] if i + 1 < len(entries) else total_size
+        out.append((off, max(0, end - off), "", ftype))
+    return out
+
+
+def _merge_ranges(ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+    if not ranges:
+        return []
+    ordered = sorted(r for r in ranges if r[1] > r[0])
+    out = [ordered[0]]
+    for start, end in ordered[1:]:
+        last_start, last_end = out[-1]
+        if start <= last_end:
+            out[-1] = (last_start, max(last_end, end))
+        else:
+            out.append((start, end))
+    return out
+
+
 def _scan_signatures(
     src: boundary.ByteSource,
     target_p: Path,
@@ -431,6 +531,7 @@ def _scan_signatures(
     already_recovered: List[CarvedFile],
     progress_callback: Optional[Callable[[int, int, int], None]],
     total_size: int,
+    free_space: Optional["FreeSpaceMap"] = None,
 ) -> List[CarvedFile]:
     """Carve by signature, resolving every boundary through `.boundary`."""
     carved: List[CarvedFile] = []
@@ -476,6 +577,18 @@ def _scan_signatures(
                 carry = b""
                 carry_offset = data_start + len(data)
 
+            # When an allocation map is available, a window that contains no free
+            # space at all cannot hold a deleted file. Skipping the signature
+            # search for it is what makes a carve finish in minutes instead of
+            # hours on a mostly-full volume, and it is the same optimisation
+            # PhotoRec calls remove_used_space().
+            if free_space is not None and not _overlaps_free(free_space, data_start,
+                                                             data_start + len(data)):
+                counters["allocated_bytes_skipped"] = (
+                    counters.get("allocated_bytes_skipped", 0) + len(data)
+                )
+                continue
+
             for sig in active:
                 pos = 0
                 while True:
@@ -486,6 +599,18 @@ def _scan_signatures(
                     offset = data_start + idx
                     if offset < searched_upto:
                         continue    # seen in a previous window's overlap
+
+                    # A signature header inside a block the filesystem still
+                    # considers allocated belongs to a live file. Recovering it
+                    # would re-cover a file that is not deleted, which is how a
+                    # carve ends up reporting the same set of files over and over.
+                    if free_space is not None and not free_space.contains(
+                        offset, min(len(sig.header), 1)
+                    ):
+                        counters["allocated_candidates_skipped"] = (
+                            counters.get("allocated_candidates_skipped", 0) + 1
+                        )
+                        continue
 
                     counters["candidates"] += 1
                     result = _carve_one(
@@ -711,14 +836,17 @@ def carve_image(
         warnings.append("--structure-only was set: signature carving was skipped.")
 
     scanned = 0
+    free_space = None
     if active and not policy.structure_only:
+        free_space, fs_notes = _resolve_free_space(target_p, parts, total_size, policy)
+        warnings.extend(fs_notes)
         try:
             with open(str(target_p), "rb") as fh:
                 src = boundary.ByteSource(fh, total_size)
                 carved = _scan_signatures(
                     src, target_p, out_p, active, custom_signatures, extensions, min_confidence,
                     budget, counters, recovered_hashes, warnings, all_files, progress_callback,
-                    total_size,
+                    total_size, free_space,
                 )
             scanned = counters.pop("bytes_scanned", 0)
             all_files += carved
@@ -832,6 +960,9 @@ def carve_image(
         by_method=by_method,
         truncated_report=truncated_report,
         rejection_summary=rejection_summary[:_MAX_REJECTION_REASONS],
+        free_space=free_space.summary() if free_space is not None else None,
+        allocated_candidates_skipped=counters.get("allocated_candidates_skipped", 0),
+        allocated_bytes_skipped=counters.get("allocated_bytes_skipped", 0),
     )
 
     index_data = {
@@ -850,6 +981,10 @@ def carve_image(
         "candidate_bytes_discarded": counters["rejected_bytes"],
         "duplicates_suppressed": counters["duplicate"],
         "filtered_by_extension_filter": counters["filtered"],
+        "allocation_aware_search": free_space is not None,
+        "free_space": free_space.summary() if free_space is not None else None,
+        "allocated_candidates_skipped": counters.get("allocated_candidates_skipped", 0),
+        "allocated_bytes_skipped": counters.get("allocated_bytes_skipped", 0),
         "by_category": by_category,
         "by_recovery_method": by_method,
         "recovered_files": [

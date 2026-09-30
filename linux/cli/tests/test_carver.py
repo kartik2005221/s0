@@ -489,3 +489,136 @@ def test_budget_admission_is_ordered_and_explained():
     b.commit("image", "png", 500)
     ok, reason = b.admit("image", "png", 100)
     assert not ok and "session cap" in reason
+
+
+# --------------------------------------------------------------------------- #
+# allocation-aware carving
+# --------------------------------------------------------------------------- #
+
+
+def _jpg_bytes(seed: int = 0, size: tuple = (48, 48)) -> bytes:
+    """A genuinely valid JPEG, so the structural validator accepts it."""
+    import random
+    from PIL import Image
+    rnd = random.Random(seed)
+    im = Image.new("RGB", size)
+    im.putdata([(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256))
+                for _ in range(size[0] * size[1])])
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=90)
+    return buf.getvalue()
+
+
+def _ext4_with_two_jpegs(tmp_path: Path, allocated: bool):
+    """Build an ext4 image where one JPEG is live and the other is deleted.
+
+    Without mount privileges a deleted file's blocks cannot be released through
+    the filesystem, so the payload is written into the image and its bitmap bits
+    are then cleared by hand. Blocks 16.. are marked in use by the fixture and
+    carry no real structure, so they are safe to park a payload in.
+
+    `allocated=True` leaves the second JPEG's blocks marked in use, making it a
+    live file; `allocated=False` clears them, making it a deleted file whose
+    content is still sitting in free space.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent))
+    from test_allocation import _ext4_image
+
+    BLOCK = 1024
+    img = _ext4_image(tmp_path / "vol.img", block_size=BLOCK, blocks=64,
+                      blocks_per_group=32, free_per_group=8)
+
+    live = _jpg_bytes(seed=1, size=(48, 48))
+    deleted = _jpg_bytes(seed=2, size=(56, 56))
+    live_block, deleted_block = 16, 20
+
+    with open(img, "r+b") as f:
+        f.seek(live_block * BLOCK)
+        f.write(live)
+        f.seek(deleted_block * BLOCK)
+        f.write(deleted)
+
+    if not allocated:
+        # Group 0's bitmap is the block right after the descriptor table. Bit b
+        # of group 0 describes block 1 + b.
+        bitmap_off = 3 * BLOCK
+        first_bit = deleted_block - 1
+        last_bit = first_bit + -(-len(deleted) // BLOCK)
+        with open(img, "r+b") as f:
+            for bit in range(first_bit, last_bit):
+                off = bitmap_off + (bit // 8)
+                f.seek(off)
+                byte = f.read(1)[0]
+                f.seek(off)
+                f.write(bytes([byte & ~(1 << (bit & 7))]))
+    return img, live, deleted, deleted_block
+
+
+def test_carve_restricted_to_free_space_does_not_report_live_files(tmp_path):
+    """A live file must not be reported as a recovery.
+
+    This is the behaviour that made s0 "recover the same set of files" every
+    time: signature carving swept the entire volume, so every still-allocated
+    file on the disk came back as if it had been deleted.
+    """
+    from s0_cli.carver.allocation import build_free_space
+
+    img, live, _deleted, live_block = _ext4_with_two_jpegs(tmp_path, allocated=True)
+    fsm = build_free_space(str(img), "ext4", 0, img.stat().st_size)
+    assert fsm.reliable
+    # The live JPEG sits in a block the bitmap still marks as in use.
+    assert not fsm.contains(live_block * 1024, 1)
+
+    results = {}
+    for free_only in (True, False):
+        out = tmp_path / f"out_{int(free_only)}"
+        policy = CarvePolicy.for_target(img.stat().st_size)
+        policy.use_free_space_only = free_only
+        policy.structure_recovery_enabled = False
+        s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy,
+                        generate_certificate=False)
+        results[free_only] = {
+            hashlib.sha256(Path(f.recovered_path).read_bytes()).hexdigest()
+            for f in s.carved_files if f.recovered_path
+        }
+        if free_only:
+            assert s.free_space is not None
+        else:
+            assert s.free_space is None
+
+    live_hash = hashlib.sha256(live).hexdigest()
+    # Searching everything finds the live file and reports it as a recovery.
+    assert live_hash in results[False], "fixture did not place a live file in allocated space"
+    # Restricting to unallocated space does not.
+    assert live_hash not in results[True]
+
+
+def test_carve_in_unallocated_space_still_finds_a_deleted_file(tmp_path):
+    from s0_cli.carver.allocation import build_free_space
+
+    img, _live, deleted, deleted_block = _ext4_with_two_jpegs(tmp_path, allocated=False)
+    fsm = build_free_space(str(img), "ext4", 0, img.stat().st_size)
+    assert fsm.contains(deleted_block * 1024, 1), "fixture did not free the deleted file"
+
+    out = tmp_path / "out"
+    policy = CarvePolicy.for_target(img.stat().st_size)
+    policy.structure_recovery_enabled = False
+    s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy,
+                    generate_certificate=False)
+    hashes = {hashlib.sha256(Path(f.recovered_path).read_bytes()).hexdigest()
+              for f in s.carved_files if f.recovered_path}
+    assert hashlib.sha256(deleted).hexdigest() in hashes
+
+
+def test_unknown_filesystem_searches_everything_and_says_so(tmp_path):
+    """A carve that silently searched less than it claimed would be worse."""
+    blob = tmp_path / "raw.img"
+    blob.write_bytes(_jpg_bytes(seed=3) + b"\x00" * 4096)
+    out = tmp_path / "out"
+    s = carve_image(str(blob), str(out), extensions=[".jpg"],
+                    policy=CarvePolicy.for_target(blob.stat().st_size),
+                    generate_certificate=False)
+    assert s.free_space is None
+    assert any("whole volume" in w or "not a recognised filesystem" in w
+               for w in s.warnings), s.warnings

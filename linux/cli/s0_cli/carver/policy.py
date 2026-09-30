@@ -46,6 +46,13 @@ class CarvePolicy:
     structure_recovery_enabled: bool = True
     # Skip signature carving entirely (structure recovery only).
     structure_only: bool = False
+    # Restrict signature carving to unallocated space, using the filesystem's own
+    # allocation map. This is the single biggest precision and speed win
+    # available: without it, every live file on the volume is re-covered as if it
+    # had been deleted, which is what makes a carve report the same set of files
+    # over and over. Falls back to a whole-volume search, with a warning, whenever
+    # an allocation map cannot be established.
+    use_free_space_only: bool = True
     # Extra per-category caps, e.g. {"video": 8}.
     category_caps: Dict[str, int] = field(default_factory=dict)
 

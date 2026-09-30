@@ -1254,6 +1254,11 @@ def cmd_carve(args) -> int:
             return EX_DATAERR
 
     try:
+        carve_policy = None
+        if getattr(args, "all_space", False):
+            from .carver.policy import CarvePolicy as _CarvePolicy
+            carve_policy = _CarvePolicy()
+            carve_policy.use_free_space_only = False
         summary = carve_image(
             args.target,
             args.out_dir,
@@ -1265,6 +1270,7 @@ def cmd_carve(args) -> int:
             signing_key_path=key_path,
             progress_callback=carve_progress_cb,
             generate_certificate=not getattr(args, "no_certificate", False),
+            policy=carve_policy,
         )
         if bar:
             bar.finish(extra=f"Found: {summary.files_recovered:,}")
@@ -1313,6 +1319,10 @@ def cmd_carve(args) -> int:
                 "budget_stop_reason": summary.budget_stop_reason,
                 "by_category": summary.by_category,
                 "by_recovery_method": summary.by_method,
+                "allocation_aware_search": summary.free_space is not None,
+                "free_space": summary.free_space,
+                "allocated_candidates_skipped": summary.allocated_candidates_skipped,
+                "allocated_bytes_skipped": summary.allocated_bytes_skipped,
                 "rejection_summary": [
                     {"reason": reason, "count": count}
                     for reason, count in summary.rejection_summary
@@ -1354,6 +1364,25 @@ def cmd_carve(args) -> int:
     ui.key("Output written", human_bytes(summary.output_budget_bytes))
     if summary.budget_stop_reason:
         ui.key("Budget stopped", summary.budget_stop_reason)
+    if summary.free_space:
+        ui.key("Search space", (
+            f"unallocated only ({human_bytes(summary.free_space['free_bytes'])} free in "
+            f"{summary.free_space['range_count']} extent(s), "
+            f"{summary.free_space['free_ppm'] / 10_000:.1f}% of volume)"
+        ))
+        excluded = (summary.free_space["volume_bytes"] - summary.free_space["free_bytes"])
+        if excluded > 0:
+            ui.key("Excluded as live", human_bytes(excluded))
+        if summary.allocated_candidates_skipped:
+            ui.key("Signatures in live data", (
+                f"{human_int(summary.allocated_candidates_skipped)} not offered to the carver"
+            ))
+    else:
+        ui.key("Search space", (
+            "whole volume (--all-space)"
+            if getattr(args, "all_space", False)
+            else "whole volume (no trustworthy allocation map)"
+        ))
     ui.key("Source filesystem", summary.source_filesystem.upper())
     ui.note("")
 
@@ -2320,6 +2349,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicitly run without generating an Ed25519 forensic manifest certificate",
     )
     crv.add_argument("--no-pdf", action="store_true", help="skip generating printable PDF certificate")
+    crv.add_argument(
+        "--all-space",
+        action="store_true",
+        help=(
+            "search the whole volume instead of only unallocated space. By default the "
+            "filesystem's own allocation map is read (ext4/FAT32/exFAT/NTFS) and carving is "
+            "restricted to free space, so files that are still allocated are not reported as "
+            "recoveries. Use this only when the allocation map cannot be trusted."
+        ),
+    )
     crv.set_defaults(func=cmd_carve)
 
     # 3. Hash-Chained Audit Ledger Subcommand

@@ -23,6 +23,9 @@ class Ext4Superblock:
     inode_size: int
     block_size: int
     magic: int
+    first_data_block: int = 0
+    desc_size: int = 32
+    feature_incompat: int = 0
 
 
 @dataclass
@@ -59,6 +62,13 @@ def parse_ext4_superblock(
             blocks_per_group = struct.unpack_from("<I", sb_data, 32)[0]
             inodes_per_group = struct.unpack_from("<I", sb_data, 40)[0]
             inode_size = struct.unpack_from("<H", sb_data, 88)[0] or 128
+            first_data_block = struct.unpack_from("<I", sb_data, 20)[0]
+            feature_incompat = struct.unpack_from("<I", sb_data, 96)[0]
+            # s_desc_size at 0xFE is only meaningful with the 64bit feature; when
+            # it is zero the descriptor is 32 bytes regardless.
+            desc_size = struct.unpack_from("<H", sb_data, 0xFE)[0]
+            if not (feature_incompat & 0x80) or desc_size not in (32, 64):
+                desc_size = 32
 
             return Ext4Superblock(
                 inodes_count=inodes_count,
@@ -68,6 +78,9 @@ def parse_ext4_superblock(
                 inode_size=inode_size,
                 block_size=block_size,
                 magic=magic,
+                first_data_block=first_data_block,
+                desc_size=desc_size,
+                feature_incompat=feature_incompat,
             )
     except Exception:
         return None
