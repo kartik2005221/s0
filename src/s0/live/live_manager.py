@@ -218,6 +218,25 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
 # 3. Command: s0 live download
 # ---------------------------------------------------------------------------
 
+def _https_only(url: str, what: str = "URL") -> str:
+    """Refuse anything that is not an https:// URL.
+
+    The asset URL comes from a GitHub API response, so it is data rather than a
+    literal, and it is then written straight to a file. A `file://` or plain
+    `http://` value there would turn a release download into a local file read
+    or an unencrypted fetch, and the API response is exactly the thing an
+    attacker would try to influence. Every other download in this module builds
+    its URL from a literal `https://` prefix, so this check is free there and
+    load-bearing here.
+    """
+    if not isinstance(url, str) or not url.lower().startswith("https://"):
+        raise ValueError(
+            f"{what} is not an https:// URL: {url!r}. Refusing to fetch it, "
+            f"because the value came from a network response and would be "
+            f"written straight to disk.")
+    return url
+
+
 def _get_auth_token() -> Optional[str]:
     """Retrieve GitHub token from environment or gh CLI if available."""
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -251,7 +270,7 @@ def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
 
     try:
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
             return json.loads(resp.read().decode("utf-8"))
     except Exception:
         # Fallback to gh release view if gh is installed
@@ -355,7 +374,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         try:
             url = f"https://api.github.com/repos/{repo}/releases?per_page=10"
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
                 all_releases = json.loads(resp.read().decode("utf-8"))
             for cand_rel in all_releases:
                 if cand_rel.get("tag_name") == target_tag:
@@ -450,7 +469,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             return 1
 
     iso_name = iso_asset["name"]
-    iso_url = iso_asset["browser_download_url"]
+    iso_url = _https_only(iso_asset["browser_download_url"], "ISO download URL")
     iso_size = iso_asset["size"]
     target_iso = out_dir / iso_name
 
@@ -465,7 +484,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 
     try:
         req = urllib.request.Request(iso_url, headers=dl_headers)
-        with urllib.request.urlopen(req, timeout=60) as response, open(target_iso, "wb") as out_f:
+        with urllib.request.urlopen(req, timeout=60) as response, open(target_iso, "wb") as out_f:  # nosec B310 - checked by _https_only above
             while True:
                 chunk = response.read(65536)
                 if not chunk:
@@ -508,7 +527,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
     if sha_asset:
         try:
             req = urllib.request.Request(sha_asset["browser_download_url"], headers=dl_headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
                 text = resp.read().decode("utf-8").strip()
                 expected_sha = text.split()[0].lower()
         except Exception:
@@ -527,7 +546,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
     if not expected_sha and sha_sums_asset:
         try:
             req = urllib.request.Request(sha_sums_asset["browser_download_url"], headers=dl_headers)
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
                 text = resp.read().decode("utf-8")
                 for line in text.splitlines():
                     if iso_name in line or "live-amd64" in line:

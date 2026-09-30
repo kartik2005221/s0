@@ -1,0 +1,49 @@
+# Pre-commit hooks.
+#
+# Deliberately short. A hook that takes longer than the change it guards stops
+# being run, and a hook that is skipped is worse than no hook because the
+# pipeline believes it ran. The heavy checks -- pytest, bandit, mypy -- live in
+# CI, where they cannot be bypassed.
+default_language_version:
+  python: python3
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      # A committed private key is the one mistake in this project that cannot
+      # be undone by a later commit, so it is checked rather than documented.
+      - id: detect-private-key
+
+exclude: |
+  (?x)^(
+    industry-plan\.md|
+    PLAN\.md|
+    \.venv/|
+    build/|
+    dist/
+    |
+    # The demonstration issuer key is committed on purpose, so the tool runs
+    # out of the box and so that every certificate it produces says on its face
+    # that it is unaccredited. `detect-private-key` would otherwise fail every
+    # run on a file that is required to be there, and a hook that always fails
+    # is a hook that gets disabled.
+    src/s0/data/keys/demo_issuer_private\.pem
+  )

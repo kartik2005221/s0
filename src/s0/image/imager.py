@@ -166,7 +166,12 @@ def acquire_image(
                 pass
 
     sha256_hasher = hashlib.sha256()
-    md5_hasher = hashlib.md5()
+    # MD5 here is a recorded acquisition fingerprint for cross-checking a copy
+    # against a reference, not a security control: SHA-256 is computed alongside
+    # it and is what the manifest certificate attests to. `usedforsecurity=False`
+    # says so at the call site rather than leaving a reader to work out which
+    # hash this is and whether it matters.
+    md5_hasher = hashlib.md5(usedforsecurity=False)
 
     bytes_copied = 0
     bad_sectors_count = 0

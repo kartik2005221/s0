@@ -1,0 +1,12 @@
+# Default: the maintainers review everything.
+*                       @kartik2005221
+
+# Carving. Every change here can emit a file, so a wrong boundary becomes a
+# wrong finding in someone else's report.
+src/s0/carve/          @kartik2005221
+src/s0/wipe/           @kartik2005221
+
+# Release and packaging. A broken wheel means the tool does not run.
+.github/workflows/     @kartik2005221
+tools/release.py       @kartik2005221
+pyproject.toml         @kartik2005221

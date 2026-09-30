@@ -1,0 +1,33 @@
+# Normalise line endings in the repository, whatever the contributor's platform.
+# A CRLF/LF mix makes a forensic tool's own diffs unreadable, which is the one
+# place they must not be.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.mp4 binary
+*.mkv binary
+*.webm binary
+*.mp3 binary
+*.zip binary
+*.gz binary
+*.bz2 binary
+*.xz binary
+*.zst binary
+*.iso binary
+*.pdf binary
+
+# Signatures and certificates are line-oriented and diffable.
+*.pem text eol=lf
+*.crt text eol=lf
+
+# Keep generated output out of diffs and out of language statistics.
+docs/book/build/ linguist-generated=true
+*.min.js linguist-generated=true
+*.min.css linguist-generated=true
+
+# Anything a test generates, so `git diff` after a test run is not noise.
+*.session linguist-generated=true
+recovery_index.json linguist-generated=true
