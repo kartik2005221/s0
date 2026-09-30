@@ -84,8 +84,13 @@ they matter to someone holding a report.
   the specification and the decoders against synthesised log pages, but the
   drivers remain untested against hardware. This limitation is carried in the
   method docstrings and surfaced as certificate notes.
-- ext4 jbd2 filename recovery is deferred to last. It is the one item whose
-  central claim cannot be verified in this environment.
+- ext4 jbd2 filename recovery is still blocked, but the blocker is now
+  diagnosed rather than assumed. `debugfs` builds and unlinks on a real ext4
+  image without root or a mount, which was thought impossible here; the journal
+  superblock parses and 4,096 blocks read with zero checksum failures, and the
+  reader correctly finds no names because the name is not in the journal -- it
+  survives in a stale directory entry at block 1854, while the journal starts at
+  16385. Closing it needs a kernel writing through a mount.
 - Compressed TIFF is refused rather than sized. A compressed strip's length is
   not its byte count, so the strip geometry gives a confident wrong answer.
 - Clusters whose header was overwritten are not reconstructed. With no in-band
