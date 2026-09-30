@@ -32,7 +32,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-__all__ = ["FreeSpaceMap", "build_free_space", "BitmapReader"]
+__all__ = ["FreeSpaceMap", "build_free_space", "BitmapReader", "decode_run_list",
+           "decode_run_list_raw"]
 
 
 @dataclass
@@ -511,13 +512,17 @@ def _mft_data_runs(record: bytes, wanted_type: int, rdr: BitmapReader,
     return []
 
 
-def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> List[Tuple[int, int]]:
-    """Decode an NTFS run list. Each header byte is len_nibbles<<4 | offset_nibbles."""
+def decode_run_list_raw(blob: bytes) -> List[Tuple[int, int]]:
+    """Decode an NTFS run list into [(lcn, length)], where lcn -1 means sparse.
+
+    Decodes until the terminating zero header, ignoring the declared size. A run
+    list is bounded by the length of the attribute that holds it, so it is safe
+    to read to the terminator; the caller's byte budget is applied separately.
+    """
     runs: List[Tuple[int, int]] = []
     pos = 0
     lcn = 0
-    remaining = real
-    while pos < len(blob) and remaining > 0:
+    while pos < len(blob):
         header = blob[pos]
         if header == 0:
             break
@@ -536,8 +541,32 @@ def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> List[T
             lcn += delta
             runs.append((lcn, length))
         pos += off_nibbles
-        remaining -= length * cluster
     return runs
+
+
+def decode_run_list(blob: bytes, allocated: int, real: int, cluster: int) -> List[Tuple[int, int]]:
+    """Decode an NTFS run list, stopping once `real` bytes of clusters are covered.
+
+    Each run starts with a header byte: the low nibble is the length of the
+    cluster-count field and the high nibble is the length of the signed
+    LCN-delta field. Both fields are little-endian and may span more than one
+    byte, so a 64 KiB run does not fit in the header's low nibble and cannot be
+    read one byte at a time.
+    """
+    runs: List[Tuple[int, int]] = []
+    lcn = 0
+    remaining = real
+    for _lcn, length in decode_run_list_raw(blob):
+        if remaining <= 0:
+            break
+        runs.append((_lcn, length))
+        remaining -= length * cluster
+        lcn = _lcn
+    return runs
+
+
+def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> List[Tuple[int, int]]:
+    return decode_run_list(blob, allocated, real, cluster)
 
 
 # --------------------------------------------------------------------------- #

@@ -53,7 +53,7 @@ from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
 from .fragmentation import reconstruct_bifragment_stream
-from .ntfs_carver import scan_ntfs_deleted_files
+from .ntfs_carver import scan_ntfs_deleted_records
 from .policy import CarveBudget, CarvePolicy
 from .scoring import calculate_shannon_entropy, score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, get_signature_by_ext, signature_from_dict, sniff
@@ -74,6 +74,7 @@ _STRUCTURE_METHODS = {
 # line per rejection produced a 10 MB recovery_index.json for an 8 MB image --
 # the report dwarfed the evidence. The index therefore carries an aggregated
 # reason histogram plus a bounded sample.
+_MAX_RESTORATION_NOTES = 8
 _MAX_REJECTION_SAMPLES = 2_000
 _MAX_REJECTION_REASONS = 100
 
@@ -274,10 +275,27 @@ def _recover_from_filesystem(
     for part_fs, part_offset in parts:
         try:
             if part_fs == "ntfs":
-                found = [(nf.record_num, nf.filename, nf.data, nf.fragment_count,
-                          part_offset + nf.record_num * 1024, None, None)
-                         for nf in scan_ntfs_deleted_files(target_p, include_allocated=False,
-                                                           partition_offset=part_offset)]
+                entries = scan_ntfs_deleted_records(
+                    target_p, partition_offset=part_offset,
+                    max_bytes_per_file=budget.max_output_bytes,
+                    warnings=warnings)
+                found = [(e.record_num, e.name, e.data, e.fragment_count,
+                          e.first_data_offset, e.path, e.mft_changed)
+                         for e in entries if e.data is not None]
+                # A record whose name survives but whose bytes cannot be read
+                # back -- EFS, NTFS compression, or a sparse stream -- is still
+                # evidence, and saying so is more useful than dropping it.
+                unrestorable = [e for e in entries if e.data is None and e.content_caveat]
+                for e in unrestorable[:_MAX_RESTORATION_NOTES]:
+                    warnings.append(
+                        f"NTFS record {e.record_num} ({e.path}) was named but not "
+                        f"restored: {e.content_caveat}")
+                if len(unrestorable) > _MAX_RESTORATION_NOTES:
+                    warnings.append(
+                        f"{len(unrestorable) - _MAX_RESTORATION_NOTES} further NTFS "
+                        f"record(s) were named but not restorable; see the recovery index.")
+                if unrestorable:
+                    counters["structure_filtered"] += len(unrestorable)
             elif part_fs == "ext4":
                 found = [(i.inode_num, f"inode{i.inode_num}", i.data, i.fragment_count,
                           part_offset + (i.extent_block_ranges[0][0] * 1024 if i.extent_block_ranges else 0),

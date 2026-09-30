@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import os
 import struct
+
+from . import mft as mft_mod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, Iterator, List, Optional
 
 
 NTFS_OEM_ID = b"NTFS    "
@@ -269,3 +271,293 @@ def scan_ntfs_deleted_files(
     except Exception:
         pass
     return recovered
+
+
+# --------------------------------------------------------------------------- #
+# deleted-record recovery built on the mft primitives
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class NtfsDeletedEntry:
+    """One deleted file, as it can still be described from its MFT record.
+
+    A deleted record is not blanked. Its $FILE_NAME still holds the original
+    name, its run list still points at whatever clusters it held, and its
+    $STANDARD_INFORMATION still carries the moment the record was last changed --
+    which for a deleted record is the deletion. This is the only place the
+    original name survives once the directory entry is gone, which is why
+    record-level recovery beats blind carving by the length of a filename.
+    """
+    record_num: int
+    sequence_number: int
+    name: str
+    path: str
+    parent_record: Optional[int]
+    size_bytes: int
+    data: Optional[bytes]
+    fragment_count: int
+    is_resident: bool
+    mft_changed: Optional[float] = None
+    created: Optional[float] = None
+    modified: Optional[float] = None
+    accessed: Optional[float] = None
+    fixup_verified: bool = True
+    content_caveat: Optional[str] = None
+    recovered_from_satellite: bool = False
+    # Byte offset of the file's first cluster, so a report can point at where
+    # the content lives rather than at an unrelated MFT record slot.
+    first_data_offset: Optional[int] = None
+
+    @property
+    def is_restorable(self) -> bool:
+        return self.data is not None and self.content_caveat is None
+
+
+def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> List[tuple]:
+    """The cluster runs that make up the $MFT itself.
+
+    $MFT is an ordinary non-resident file and is not guaranteed to be
+    contiguous. Walking `mft_start + n * record_size` finds the first handful of
+    records and then silently yields nothing, which looks exactly like an empty
+    volume. The first record's own run list is the only correct way to find the
+    rest.
+    """
+    start = partition_offset + boot.mft_start_cluster * boot.cluster_size
+    fh.seek(start)
+    first = fh.read(boot.mft_record_size)
+    rec = mft_mod.parse_mft_record(first, sector_size=boot.bytes_per_sector)
+    if not rec:
+        return []
+    for attr in rec.attributes:
+        if attr.type == mft_mod.ATTR_DATA and attr.is_primary_stream:
+            return list(attr.runs)
+    return []
+
+
+def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int,
+                     runs: List[tuple]) -> "Iterator[bytes]":
+    """Yield MFT record buffers in order, following the $MFT's own extents."""
+    rs = boot.mft_record_size
+    per_run = boot.cluster_size // rs if rs else 0
+    if per_run <= 0:
+        return
+    for lcn, length in runs:
+        if lcn < 0:
+            continue
+        for i in range(length):
+            offset = partition_offset + (lcn + i) * boot.cluster_size
+            for j in range(per_run):
+                fh.seek(offset + j * rs)
+                yield fh.read(rs)
+
+
+def _iter_mft_records_contiguous(fh, boot: NtfsBootSector, partition_offset: int,
+                                 limit_bytes: int) -> "Iterator[bytes]":
+    """Walk the MFT assuming it is contiguous from its first cluster.
+
+    Only used when record 0 is unreadable, which happens when the first MFT
+    record is among the casualties of a crash. Records are still yielded
+    individually and each is verified on its own terms, so the result is
+    incomplete but not wrong -- and it is reported as incomplete.
+    """
+    rs = boot.mft_record_size
+    end = partition_offset + limit_bytes
+    offset = partition_offset + boot.mft_start_cluster * boot.cluster_size
+    while offset + rs <= end:
+        fh.seek(offset)
+        record = fh.read(rs)
+        if not record:
+            return
+        yield record
+        offset += rs
+
+
+def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int,
+                 max_bytes: int) -> "tuple":
+    """Read a record's primary stream back off the media.
+
+    Returns (data, fragment_count, caveat, first_data_offset). `caveat` is set
+    when the on-disk bytes are not the file's contents -- compressed, encrypted
+    or sparse -- in which case nothing is returned rather than something wrong.
+    """
+    caveat = rec.cannot_restore_reason
+    if caveat:
+        return None, 0, caveat, None
+
+    primary = None
+    for attr in rec.attributes:
+        if attr.type == mft_mod.ATTR_DATA and attr.is_primary_stream:
+            primary = attr
+            break
+    if primary is None:
+        return None, 0, None, None   # size may survive in $FILE_NAME, content does not
+
+    if not primary.non_resident:
+        return bytes(primary.resident_value), 1, None, None
+
+    runs = list(primary.runs)
+    if not runs:
+        return None, 0, None, None
+    size = min(primary.real_size or max_bytes, max_bytes)
+    spans = mft_mod.runs_to_byte_spans(runs, boot.cluster_size, size)
+    data = mft_mod.read_data(spans, fh, partition_offset, size)
+    first = next((lcn * boot.cluster_size for lcn, _ in runs if lcn >= 0), None)
+    return (data or None), len([r for r in runs if r[1] > 0]), None, first
+
+
+def _build_path(rec, names: Dict[int, str], depth: int = 0) -> str:
+    """Reconstruct a full path by walking parent references.
+
+    A deleted record's parent directory is usually still alive, so the path
+    usually resolves. When the parent is gone too, the walk stops and the
+    remaining component is reported with its record number rather than guessed
+    at, because a plausible-looking wrong path is worse than an honest gap.
+    """
+    parts = [rec.name() or f"record_{rec.record_num}"]
+    seen = {rec.record_num}
+    parent = rec.parent()
+    while parent and depth < 32:
+        pnum = parent[0]
+        if pnum in seen or pnum == 5:
+            break
+        seen.add(pnum)
+        name = names.get(pnum)
+        if not name:
+            parts.append(f"<record {pnum} not found>")
+            break
+        parts.append(name)
+        depth += 1
+        parent_rec = names.get(("ref", pnum))
+        if isinstance(parent_rec, tuple):
+            parent = parent_rec
+    return "\\".join(reversed(parts))
+
+
+def scan_ntfs_deleted_records(
+    image_path: str | Path,
+    partition_offset: int = 0,
+    max_bytes_per_file: int = 64 * 1024 * 1024,
+    max_records: int = 200_000,
+    include_allocated: bool = False,
+    include_system: bool = False,
+    warnings: Optional[List[str]] = None,
+) -> List[NtfsDeletedEntry]:
+    """Recover deleted files from the $MFT, with their original names.
+
+    Records are visited through the $MFT's own extents rather than by assuming
+    it is contiguous, and every record has its update sequence array undone
+    before it is parsed. Deleted files are returned newest-first by the time the
+    record last changed, which is the moment of deletion and the only ordering
+    an examiner actually wants.
+    """
+    boot = parse_ntfs_boot_sector(image_path, partition_offset=partition_offset)
+    if not boot:
+        return []
+    if warnings is None:
+        warnings = []
+
+    out: List[NtfsDeletedEntry] = []
+    try:
+        with open(image_path, "rb") as fh:
+            runs = _mft_extents(fh, boot, partition_offset)
+            if runs:
+                buffers = _iter_mft_records(fh, boot, partition_offset, runs)
+            else:
+                # Record 0 is damaged or absent. Fall back to a contiguous walk so
+                # the records that are still intact are not lost, and say so.
+                warnings.append(
+                    "NTFS record 0 could not be read, so the extent of the $MFT is "
+                    "unknown. Records were read from the first cluster only; any "
+                    "that were relocated when the $MFT was extended are missing "
+                    "from this result.")
+                size = Path(image_path).stat().st_size
+                buffers = _iter_mft_records_contiguous(
+                    fh, boot, partition_offset,
+                    size - partition_offset - boot.mft_start_cluster * boot.cluster_size)
+
+            records: Dict[int, mft_mod.MftRecord] = {}
+            names: Dict[int, str] = {}
+            parents: Dict[int, tuple] = {}
+            order: List[int] = []
+
+            seen = 0
+            for buf in buffers:
+                seen += 1
+                if seen > max_records:
+                    break
+                if not buf or len(buf) < 48 or buf[:4] != mft_mod.MFT_RECORD_MAGIC:
+                    continue
+                rec = mft_mod.parse_mft_record(buf, sector_size=boot.bytes_per_sector)
+                if not rec or rec.record_num in records:
+                    continue
+                records[rec.record_num] = rec
+                order.append(rec.record_num)
+                if rec.name():
+                    names[rec.record_num] = rec.name()
+                parent = rec.parent()
+                if parent:
+                    parents[rec.record_num] = parent
+
+            for rec_num in order:
+                rec = records[rec_num]
+                if rec.is_directory:
+                    continue
+                if rec.record_num in mft_mod.SYSTEM_RECORDS and not include_system:
+                    continue
+                if rec.allocated and not include_allocated:
+                    continue
+                if not rec.name():
+                    continue
+
+                caveat = rec.cannot_restore_reason
+                data = None
+                fragments = 0
+                satellite = False
+                first_offset = None
+                if not caveat:
+                    data, fragments, caveat, first_offset = _reconstruct(
+                        rec, fh, boot, partition_offset, max_bytes_per_file)
+                    if data is None:
+                        # Follow $ATTRIBUTE_LIST: the real $DATA may live in a
+                        # satellite record, which is how large files are stored.
+                        for sat_num in mft_mod.satellite_records(rec):
+                            sat = records.get(sat_num)
+                            if not sat:
+                                continue
+                            mft_mod.merge_satellite(rec, sat)
+                            data, fragments, caveat, first_offset = _reconstruct(
+                                rec, fh, boot, partition_offset, max_bytes_per_file)
+                            satellite = True
+                            if data is not None:
+                                break
+
+                path = _build_path(rec, names)
+                entry = rec.primary_name() or {}
+                out.append(NtfsDeletedEntry(
+                    record_num=rec.record_num,
+                    sequence_number=rec.sequence_number,
+                    name=rec.name(),
+                    path=path,
+                    parent_record=(rec.parent() or (None, None))[0],
+                    size_bytes=rec.real_size or len(data or b""),
+                    data=data,
+                    fragment_count=max(1, fragments),
+                    is_resident=any(not a.non_resident for a in rec.attributes
+                                    if a.type == mft_mod.ATTR_DATA),
+                    mft_changed=rec.mft_changed,
+                    created=rec.created,
+                    modified=rec.modified,
+                    accessed=rec.accessed,
+                    fixup_verified=rec.fixup_verified,
+                    content_caveat=caveat or rec.cannot_restore_reason,
+                    recovered_from_satellite=satellite,
+                    first_data_offset=(None if first_offset is None
+                                       else partition_offset + first_offset),
+                ))
+    except Exception:
+        return out
+
+    # Newest deletion first, then by record number so the order is deterministic.
+    out.sort(key=lambda e: (-(e.mft_changed or 0), e.record_num))
+    return out

@@ -28,9 +28,8 @@ def build_synthetic_mft_record(
     """Construct a minimal valid NTFS MFT record with $FILE_NAME and $DATA."""
     rec = bytearray(1024)
     rec[0:4] = b"FILE"
-    struct.pack_into("<H", rec, 0x04, 48)  # USA offset
-    struct.pack_into("<H", rec, 0x06, 3)   # USA count
-    struct.pack_into("<H", rec, 0x14, 56)  # First attr offset
+    struct.pack_into("<H", rec, 0x0C, 1)   # sequence number
+    struct.pack_into("<H", rec, 0x14, 56)  # offset to the first attribute
     flags = 1 if is_allocated else 0      # 0 = unallocated / deleted
     struct.pack_into("<H", rec, 0x16, flags)
     struct.pack_into("<I", rec, 0x2C, record_num)
@@ -89,6 +88,21 @@ def build_synthetic_mft_record(
     struct.pack_into("<I", rec, attr_offset, 0xFFFFFFFF)
     struct.pack_into("<I", rec, 0x18, attr_offset + 4)
     struct.pack_into("<I", rec, 0x1C, 1024)
+    # Seal a real update sequence array. Without it the last two bytes of every
+    # sector hold whatever the attribute data happened to be, and a parser that
+    # does not undo the fixup reads a corrupt run list or filename. Records built
+    # without one only ever parsed because the fixup was being ignored.
+    seq = 1
+    usa_off = 48
+    struct.pack_into("<H", rec, 0x04, usa_off)
+    struct.pack_into("<H", rec, 0x06, 3)          # two sectors, plus the USN slot
+    struct.pack_into("<H", rec, usa_off, seq)
+    for i in range(1, 3):
+        struct.pack_into("<H", rec, usa_off + i * 2, 0)
+        struct.pack_into("<H", rec, i * 512 - 2, seq)
+    # Everything the placeholders displaced was zero, so the saved slots stay 0.
+    for i in range(1, 3):
+        struct.pack_into("<H", rec, usa_off + i * 2, 0)
     return bytes(rec)
 
 
