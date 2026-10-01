@@ -34,6 +34,70 @@ flowchart LR
     M1 --> M2 --> M3 --> M4
 ```
 
+## [Unreleased]
+
+Landed on `agent/harness`; not yet tagged.
+
+### Forensic recovery
+
+- **Matroska / WebM / MKA carving** (`carve/matroska.py`): structural carving from
+  top-level elements, unknown-size Segment and Cluster handling, DocType and
+  top-level-ID gates. Byte-exact recovery verified across x264, VP8, VP9 and
+  MPEG4 video, plus audio+video muxing.
+- **Fragment reassembly** (`carve/fragmentation.py`): fragmented files are rebuilt
+  in key order from `mfhd.sequence_number` (MP4/HEIF), `tfdt` and Matroska
+  `Cluster.Timestamp`, instead of assuming fragments appear in order. Recovery is
+  byte-exact under reversed and arbitrarily scattered fragment layout.
+- **Structural and decompression boundaries**: AIFF, TIFF, JPEG 2000, MIDI, RTF,
+  Java class, RAR, registry hives, bzip2, xz, zstd and lz4. Findings contained
+  inside another file are dropped after the outer file is recovered.
+- **jbd2 diagnosis**: a real ext4 image is built and unlinked with `debugfs`
+  without root, and the parser reads all 4,096 journal blocks with zero checksum
+  failures. `debugfs` does not journal, so the name survives only in a stale
+  dirent outside the journal and s0 correctly reports `inode<N>`. This is a
+  fixture limitation, not a parser defect; a kernel-written mounted filesystem
+  would be needed to close it.
+
+### Honest evidence
+
+- Sampled-wipe certificates record the bound they actually support: a 64-block
+  clean sample bounds residual data at about 45,730 ppm (4.573%) at 95%
+  confidence. The sample count was previously reported where a guarantee was
+  implied.
+- The AI skill, README and docs no longer claim that one zero pass proves "full
+  Clear sanitization". `carving-signatures.md` is now generated from the live
+  signature registry (62 signatures, 51 extensions, 38 structural rules, 13
+  unresolved extensions) with a `--check` mode in CI.
+- NIST SP 800-88 references moved from Rev. 1 to Rev. 2 across all docs. Per-media
+  overwrite claims are cited to IEEE 2883-2022, since Rev. 2 withdrew those tables.
+- The `wipe` and `carve` help screens now state the sampling bound instead of
+  implying whole-media verification.
+
+### Fixed
+
+- `s0 live build` raised `NameError` before it could check anything: it looked for
+  `iso/build.sh` through a `_root` variable that was never defined.
+- `capabilities.__all__` advertised `PURGE_METHODS`, which the module never
+  defined, so `from ... import *` raised `AttributeError`.
+- `_get_root_mount_source` was annotated `Optional[str]` with no `Optional`
+  import.
+- Exception chaining added where a handler replaces the original error. The web
+  app's path-traversal guard uses `from None` on purpose, so a probe cannot learn
+  the directory prefix from a traceback.
+- `test_global_flags_are_not_required` iterated every parser action and then did
+  nothing, asserting nothing while looking like coverage.
+
+### Changed
+
+- The lint backlog (~1,286 findings) is cleared and ruff is a blocking whole-tree
+  gate. It was a changed-files ratchet, which let a tree-wide regression through
+  whenever the offending file was untouched by the commit. Intentional exceptions
+  are `per-file-ignores` in `pyproject.toml`, each with a stated reason.
+- A repo-wide test walks for `setattr`-style string paths and fails if the target
+  is not an explicit `__all__` export. A `ruff --fix` had silently removed
+  `s0.audit.verify.DEFAULT_AUDIT_DB` and broken 37 tests, because its only
+  consumer patches it by string path, which no import analysis can follow.
+
 ## [2.4.4] — 2026-09-29
 
 ### Security & Safety

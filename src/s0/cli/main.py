@@ -2386,7 +2386,11 @@ def build_parser() -> argparse.ArgumentParser:
         "-p",
         type=int,
         default=1,
-        help="overwrite passes (default 1 — one pass IS Clear per NIST 800-88)",
+        help=(
+            "overwrite passes (default 1: one zero pass is the Clear-tier technique in\n"
+            "NIST SP 800-88 Rev. 2). Verification is by sampling, so this is a bound on\n"
+            "residual data, not a guarantee the medium is blank -- see --verify-samples"
+        ),
     )
     common.add_argument(
         "--pattern",
@@ -2447,7 +2451,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="explicitly run without generating an Ed25519 compliance certificate",
     )
     wp.add_argument("--no-pdf", action="store_true", help="skip generating human-readable PDF compliance certificate")
-    wp.add_argument("--verify-samples", type=int, default=64, help="number of readback samples to verify (default: 64)")
+    wp.add_argument(
+        "--verify-samples",
+        type=int,
+        default=64,
+        help=(
+            "blocks sampled for readback verification (default: 64). Sampling bounds\n"
+            "residual data rather than eliminating it: 64 clean blocks mean under ~45,730\n"
+            "ppm (4.573%%) residual at 95%% confidence. Raise it for a tighter bound, or\n"
+            "use --require-tier Purge to prefer a hardware erase. The bound is recorded\n"
+            "in the certificate."
+        ),
+    )
     wp.add_argument(
         "--plant-markers",
         action="store_true",
@@ -2468,10 +2483,32 @@ def build_parser() -> argparse.ArgumentParser:
     wp.set_defaults(func=cmd_wipe)
 
     # 2. File Carving & Recovery Subcommand
-    crv = sub.add_parser("carve", help="advanced file carving and recovery from raw images / media")
+    crv = sub.add_parser(
+        "carve",
+        help="advanced file carving and recovery from raw images / media",
+        description=(
+            "Carve files from a raw image or block device.\n\n"
+            "Recovery is signature-anchored: a file is recovered from a header to a\n"
+            "validated footer or an in-band end marker. Where no end marker survives,\n"
+            "s0 stops at the last validated boundary and says so rather than padding to\n"
+            "a guess, because a wrong length yields a file that looks intact and is\n"
+            "wrong. Container formats (MP4/HEIF, Matroska/WebM, ZIP, RAR, GZIP, and\n"
+            "the decompression containers) are parsed rather than scanned, and\n"
+            "fragmented files are reassembled by their in-band sequence numbers.\n\n"
+            "Run `s0 carve --target IMG --out-dir OUT` with no --extensions to carve\n"
+            "everything in the registry; the supported-format table is in\n"
+            "skills/s0-forensics/references/carving-signatures.md."
+        ),
+    )
     crv.add_argument("--target", required=True, help="raw disk image or block device to scan")
     crv.add_argument("--out-dir", required=True, help="directory to store carved files")
-    crv.add_argument("--extensions", help="comma-separated file extensions to carve (e.g. jpg,png,pdf,zip)")
+    crv.add_argument(
+        "--extensions",
+        help=(
+            "comma-separated extensions to carve (e.g. jpg,png,pdf,zip,mp4,mkv). "
+            "Omit to carve everything in the registry"
+        ),
+    )
     crv.add_argument(
         "--custom-sig",
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",

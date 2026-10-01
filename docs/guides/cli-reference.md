@@ -211,10 +211,10 @@ options:
 {% tab title="Recommendations" %}
 
 - **Overwrite Pattern (`--pattern zero` vs `random`)**:
-    - **`zero` (Default / Strongly Recommended)**: NIST SP 800-88 Rev. 2 Section 2.4 confirms that a single pass of fixed zeros is fully sufficient to achieve Clear sanitization on all modern hard drives and solid-state storage. Writing zeros achieves maximum write speed (1,280–1,350 MB/s).
+    - **`zero` (Default / Strongly Recommended)**: A single pass of fixed zeros is the Clear-tier technique on modern media. Writing zeros also achieves maximum write speed (1,280-1,350 MB/s). Note what this does *not* claim: s0 verifies by sampling, so `--verify-samples 64` bounds residual data at roughly 45,730 ppm (4.573%) at 95% confidence. A zero readback proves the sampled blocks were zeroed, not that the whole medium is blank, and the certificate records the bound instead of an unconditional guarantee.
     - **`random`**: Requires user-space CSPRNG generation, reducing write throughput to ~450 MB/s. Recommend only when required by legacy military contracts or internal policies specifying pseudorandom noise.
 - **Pass Count (`--passes 1`)**:
-    - **`1` pass (Recommended)**: Multi-pass overwriting (e.g. DoD 5220.22-M 3-pass or 7-pass) is obsolete for modern PRML media and causes needless write wear on flash cells. 1 pass satisfies NIST SP 800-88 Clear.
+    - **`1` pass (Recommended)**: Multi-pass overwriting (e.g. DoD 5220.22-M 3-pass or 7-pass) adds needless write wear on flash cells. One pass is the Rev. 2 Clear-tier technique. On SSDs prefer a hardware Purge command; Clear is a weaker tier than Purge.
 - **Firmware vs Overwrite (`--no-firmware`)**:
     - **Leave unset / Allow Firmware (Recommended)**: For NVMe and SATA drives, firmware commands (Crypto Erase / Sanitize) execute in seconds and erase all physical flash blocks including over-provisioned areas and bad blocks that software overwrite cannot reach (Purge tier). Use `--no-firmware` only if connected via an unstable USB-to-SATA bridge that crashes during SCSI/ATA pass-through commands.
 - **Safety Refusal Override (`--force`)**:

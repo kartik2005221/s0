@@ -33,7 +33,7 @@ Data sanitization compliance has two interlocking concerns: **what you did** (th
 
 ## NIST SP 800-88 Rev. 2
 
-NIST Special Publication 800-88 Revision 1, *Guidelines for Media Sanitization*, is the authoritative U.S. federal standard for data destruction. It defines three sanitization tiers based on the adversary model: how capable is an attacker trying to recover data after you have sanitized the device?
+NIST Special Publication 800-88 Revision 2, *Guidelines for Media Sanitization*, is the authoritative U.S. federal standard for data destruction. It defines three sanitization tiers based on the adversary model: how capable is an attacker trying to recover data after you have sanitized the device?
 
 ### The Three Tiers — Plain Language
 

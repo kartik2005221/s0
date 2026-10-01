@@ -128,6 +128,44 @@ After secure deletion with s0 on ext4 or NTFS, the filesystem journal may tempor
 - For ext4: mount with `data=journal` to journal data in addition to metadata, then wipe the journal (`tune2fs -O ^has_journal` + surface wipe) — or wipe the entire volume.
 - For NTFS: a full volume wipe is the only reliable option for clearing `$LogFile` and `$UsnJrnl`.
 - Accept journal residue as a known, documented limitation when file-level erasure is the only option.
+### jbd2: file names are not recovered from the journal
+
+s0 parses the ext4 journal (jbd2) and reads it back cleanly: all 4,096 blocks of a
+real 1 GiB test image decode with zero checksum failures. What it will not do is
+invent a file name.
+
+A jbd2 journal stores the *old* block contents. When a file's directory entry is
+unlinked, the journal may retain that entry, which contains the name. Recovering it
+requires the journal to actually contain that block, and that block to have not yet
+been recycled.
+
+Testing this needs care, because the obvious method does not work. An ext4 image
+built and modified with `debugfs` is **not journalled** — `debugfs` writes directly
+to the image and bypasses the kernel's journal. In that fixture the name survives only
+in a stale directory entry *outside* the journal, so s0 correctly reports `inode<N>`
+rather than a name. That is the honest outcome and the parser behaving correctly, not
+a silent failure.
+
+To exercise the path where a name is recoverable you need a **kernel-written
+journal**: mount a real ext4 filesystem, unlink a file, and unmount. That requires
+loop-device privileges. Until such a fixture exists, the journal *contents* are
+verified and journal-based name recovery is not.
+
+### Readback verification is sampling, not exhaustion
+
+For a file or image wipe, s0 verifies by reading back a sample of blocks (64 by
+default, `--verify-samples`). A clean sample means the sampled blocks were zeroed. It
+does not mean every block on the medium was read.
+
+The certificate reports the bound this supports rather than an absolute: see
+`sample_strategy`, `population_blocks`, `confidence_percent` and
+`residual_fraction_upper_bound_ppm` in `verification`. With the defaults, a clean
+sample bounds residual data at about 45,730 ppm (4.573%) at 95% confidence.
+
+For a claim of complete erasure, use a hardware Purge command rather than overwrite,
+and confirm the firmware status. s0 cannot verify what the controller did after the
+fact, and says so.
+
 
 ---
 

@@ -43,7 +43,7 @@ Sanitization performance must be evaluated across two distinct operational metri
 ### Key Engineering Insights:
 
 1. **Zero vs. Random Overwrite Bottleneck:**  
-   Writing continuous `0x00` bytes is significantly faster than pseudo-random overwriting (`0x??`), which is throttled by user-space entropy generation and cryptographic pseudo-random number generator (CSPRNG) buffer fills. Because NIST SP 800-88 Rev. 2 explicitly confirms that a single zero overwrite satisfies the **Clear** tier for modern media, single-pass zeroing is the recommended operational default.
+   Writing continuous `0x00` bytes is significantly faster than pseudo-random overwriting (`0x??`), which is throttled by user-space entropy generation and cryptographic pseudo-random number generator (CSPRNG) buffer fills. Because a single zero overwrite is the **Clear**-tier technique on modern media, single-pass zeroing is the recommended operational default for speed. That is a throughput recommendation, not a stronger guarantee: s0 verifies by sampling, so the certificate reports a residual bound (roughly 45,730 ppm at 95% confidence for the default 64 blocks) rather than claiming the medium is blank.
 
 2. **Firmware Commands vs. Logical Overwrite:**  
    On solid-state drives, issuing an `NVME_SANITIZE` or `NVME_FORMAT (Crypto Erase)` command resets the internal cryptographic encryption keys or flash cell voltages in seconds, completely purging the drive with zero flash cell write endurance degradation. Because no bulk data travels over the host bus, this is measured as a completion latency rather than bus throughput.

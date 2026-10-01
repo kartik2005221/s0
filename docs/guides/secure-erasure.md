@@ -99,7 +99,7 @@ s0 wipe --target /dev/sdb --pattern random --passes 3
 
 #### Why Single-Pass Zeroing is Recommended:
 - **Speed:** Writing zeros saturates the bus at **1,280–1,350 MB/s**. Generating CSPRNG random numbers throttles throughput to **450–480 MB/s**.
-- **Compliance:** NIST SP 800-88 Rev. 2 Appendix A explicitly states that for modern high-density ATA/SCSI/SATA storage, a single overwrite pass renders previous data unrecoverable even using Magnetic Force Microscopy (MFM).
+- **Compliance:** Rev. 2 withdrew the per-media technique tables that used to carry this claim and replaced them with IEEE 2883-2022, which states that for modern high-density ATA/SCSI/SATA storage a single overwrite pass renders previous data unrecoverable even with Magnetic Force Microscopy (MFM). Cite IEEE 2883 for the per-media claim; cite Rev. 2 for the tier definitions.
 - **Verification Certainty:** Reading back zero bytes is verifiable with $O(1)$ comparisons. Random overwrite verification requires comparing against pre-recorded seed samples.
 
 ---

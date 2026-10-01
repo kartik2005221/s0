@@ -135,6 +135,42 @@ Every certificate validates strictly against `src/s0/data/cert_schema.json`.
 | `/result/status` | String | **Yes** | `["success", "failure", "partial", "reset_triggered"]`. |
 | `/result/errors` | Array[String]| No | Array of error messages if status is not success. |
 | `/result/verification` | Object | No | Post-wipe sampled readback telemetry. |
+
+#### What the verification block does and does not assert
+
+`all_samples_match_wipe_pattern: true` means the blocks that were sampled read
+back as zeros. It does **not** mean the medium is blank, and a verifier must not
+present it that way.
+
+Four fields make the strength of the claim explicit:
+
+| Field | Meaning |
+| --- | --- |
+| `sample_strategy` | How the sampled locations were drawn (`uniform_pseudorandom`, `first_and_last_plus_spread`, `full_readback`). `full_readback` is a stronger claim than sampling, so the field distinguishes them. |
+| `population_blocks` | Size of the addressable population the sample was drawn from, in blocks. |
+| `confidence_percent` | Integer percent confidence that the residue is below the stated bound. Integer rather than float because Canonical JSON v1 forbids float fields. |
+| `residual_fraction_upper_bound_ppm` | Upper bound in parts-per-million on the fraction of the medium that could still hold residual data. |
+
+With the defaults (`population_blocks` roughly 488 million, `confidence_percent`
+95, 64 blocks sampled), a fully clean sample bounds residual data at about
+**45,730 ppm (4.573%)**. That is a bound, not zero. Reading `samples_checked: 64`
+on its own and concluding "the drive was erased" is the specific error this block
+exists to prevent.
+
+`attestation` carries firmware-reported evidence where the method supports it,
+for example `nvme_log_0x81_global_data_erased=1` or
+`ata_sanitize_status_succeeded=1`. It is absent for plain overwrite methods,
+which have no firmware evidence to report.
+
+Two further optional fields round out the block:
+
+| Field | Meaning |
+| --- | --- |
+| `planted_pattern_hits_after` | Forensic grep hits remaining after the wipe on demo or test targets with planted data. Present only where s0 planted known content; on real hardware the pre-wipe content is unknown, so the field is **absent** rather than reported as zero. |
+| `smart_delta` | Device health counters captured before and after the operation, so a verifier can show whether the media itself changed during the wipe. |
+
+Both are optional and their absence is meaningful. A verifier must treat a missing
+`planted_pattern_hits_after` as "not applicable", never as "zero hits found".
 | `/notes` | Array[String]| No | Signed notes (CoW warnings, HPA/DCO findings, elapsed time). |
 | `/signature` | Object | **Yes** | Ed25519 signature envelope. |
 
@@ -181,11 +217,16 @@ Below is an authentic certificate issued following an NVMe Purge operation:
     "status": "success",
     "errors": [],
     "verification": {
-      "method": "sampled_readback_64_blocks",
+      "method": "sampled_readback",
       "samples_checked": 64,
       "sample_bytes_each": 4096,
       "all_samples_match_wipe_pattern": true,
-      "pre_wipe_sample_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "pre_wipe_sample_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sample_strategy": "uniform_pseudorandom",
+      "population_blocks": 488281250,
+      "confidence_percent": 95,
+      "residual_fraction_upper_bound_ppm": 45730,
+      "attestation": "nvme_log_0x81_global_data_erased=1"
     }
   },
   "notes": [
