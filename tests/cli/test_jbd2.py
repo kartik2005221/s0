@@ -11,10 +11,7 @@ from __future__ import annotations
 
 import struct
 
-import pytest
-
 from s0.carve import jbd2
-
 
 # The first 0x44 bytes of a jbd2 superblock from a 64 MiB ext4 image made with
 # `mkfs.ext4 -b 1024`. Taken verbatim; the UUID differs per image and is

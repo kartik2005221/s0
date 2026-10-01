@@ -8,12 +8,9 @@ asks the device what it can do, and never claims a tier it cannot substantiate.
 
 from __future__ import annotations
 
-import pytest
-
 from s0.wipe.methods import capabilities as cap
 from s0.wipe.methods import sanitize as san
 from s0.wipe.methods.capabilities import DeviceCapabilities, Tiers, plan_ladder
-
 
 # --------------------------------------------------------------------------- #
 # the ladder

@@ -8,11 +8,50 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 Everything below has landed on `agent/harness` and is verified by the suite
-(1029 passed, 2 skipped at the time of writing). The changes are ordered by how
+(1071 collected: 1061 passed, 10 skipped). The changes are ordered by how
 much they change what the tool *reports*, because that is the order in which
 they matter to someone holding a report.
 
 ### Fixed
+
+- `s0 live build` crashed with `NameError` before it could check anything. The
+  script looked for `iso/build.sh` through a `_root` variable that was never
+  defined, so the non-root path always raised instead of reporting where it
+  looked. It now resolves the install tree with `s0.resources.repo_root()`, the
+  same helper the rest of the package uses.
+- `s0.wipe.methods.capabilities.__all__` advertised `PURGE_METHODS`, a name the
+  module never defined, so `from s0.wipe.methods.capabilities import *` raised
+  `AttributeError`. The entry now names `SCSI_SANITIZE_SERVICE_ACTIONS`, which
+  does exist. Whether a purge-capable method is available is a property of the
+  connected device, so it comes from `probe_capabilities` rather than a
+  hardcoded list.
+- `s0.cli.devices._get_root_mount_source` was annotated `Optional[str]` without
+  importing `Optional`, so the annotation referenced an undefined name.
+- Exception chaining (`raise ... from`) added where a handler deliberately
+  replaces the original error with a more meaningful one. The path-traversal
+  guard in the web app uses `from None` on purpose: chaining the
+  `ValueError` from `relative_to()` would tell a caller which prefix it was
+  probing.
+- `test_global_flags_are_not_required` iterated every parser action and then did
+  nothing, so it asserted nothing while looking like coverage. It now checks the
+  property it claims to.
+
+### Changed
+
+- Ruff is now a blocking whole-tree gate in CI. The previous ratchet
+  (hard gate on changed files, advisory whole-tree report) existed to absorb
+  ~1,286 findings, mostly `List` -> `list` modernisation; those are cleared.
+  A changed-files-only gate would have let a tree-wide regression through
+  whenever the offending file was untouched by the commit.
+- The lint exceptions are `per-file-ignores` in `pyproject.toml` with a stated
+  reason each, not scattered `# noqa` comments: best-effort cleanup (`S110`),
+  deliberately deferred imports (`E402`), and the platform erasers, release
+  script, benchmark and skill checker calling tools found on `PATH`
+  (`S603`, `S607`). 129 genuinely unused imports were removed.
+- Bandit reports zero medium, high or undefined findings across `src/`. The 177
+  low-severity hits are the same accepted-risk patterns above (`B404`, `B603`,
+  `B607`, `B110`).
+
 
 - **A failed NVMe sanitize was attested as successful.** SSTAT bits 3:0 are a
   status *code*, not a set of flags, but the decoder tested the field as a bit
@@ -96,7 +135,6 @@ they matter to someone holding a report.
 - Clusters whose header was overwritten are not reconstructed. With no in-band
   key left, any position is a guess, and a guessed position yields a file that
   plays the wrong footage rather than no footage.
-- The ~1,286 pre-existing ruff findings are not cleared. The lint gate is a
-  ratchet: it hard-fails on changed files and reports the backlog as a notice. A
-  wall would be red from the first commit, and a gate that is always red is one
-  people learn to ignore.
+- Platform erasers (`macos/cli/`, `windows/cli/`) are covered by import, CLI
+  dispatch and dry-run tests only. The commands that actually write to a disk
+  need the native OS and real hardware, so they remain unverified here.

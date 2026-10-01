@@ -21,7 +21,6 @@ from __future__ import annotations
 import os
 from importlib import resources
 from pathlib import Path
-from typing import Optional
 
 __all__ = [
     "data_dir",
@@ -51,7 +50,7 @@ def read_bytes(relative: str) -> bytes:
     return (resources.files(_PACKAGE) / relative).read_bytes()
 
 
-def repo_root() -> Optional[Path]:
+def repo_root() -> Path | None:
     """Return the source-checkout root, or ``None`` when running from a wheel.
 
     A packaged install has no checkout above it, so every caller must treat this
@@ -64,7 +63,7 @@ def repo_root() -> Optional[Path]:
     return None
 
 
-def _from_env(var: str) -> Optional[Path]:
+def _from_env(var: str) -> Path | None:
     raw = os.environ.get(var, "").strip()
     if not raw:
         return None
@@ -72,7 +71,7 @@ def _from_env(var: str) -> Optional[Path]:
     return p if p.is_file() else None
 
 
-def _packaged(relative: str) -> Optional[Path]:
+def _packaged(relative: str) -> Path | None:
     candidate = data_dir() / relative
     return candidate if candidate.is_file() else None
 
@@ -80,7 +79,7 @@ def _packaged(relative: str) -> Optional[Path]:
 def _resolve(env_var: str, relative: str, description: str) -> Path:
     """Env override, then packaged copy, then the source checkout."""
 
-    def from_checkout() -> Optional[Path]:
+    def from_checkout() -> Path | None:
         root = repo_root()
         if root is None:
             return None
@@ -117,7 +116,7 @@ def cert_schema() -> Path:
     return _resolve("S0_CERT_SCHEMA", _CERT_SCHEMA, "Certificate schema")
 
 
-def packaged_config() -> Optional[Path]:
+def packaged_config() -> Path | None:
     """Path to ``s0_config.json``: the checkout's copy if there is one, else the packaged one.
 
     The repository-root ``s0_config.json`` remains the release single source of

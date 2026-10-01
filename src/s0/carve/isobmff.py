@@ -33,8 +33,8 @@ decompression procedure it describes for the sample-to-chunk table.
 from __future__ import annotations
 
 import struct
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Dict, Iterator, List, Optional, Tuple
 
 __all__ = [
     "BoxError",
@@ -99,7 +99,7 @@ class Box:
         return self.type in CONTAINER_BOXES and self.type not in _LEAF_CONTAINERS
 
 
-def _read_header(buf: bytes, pos: int) -> Optional[Box]:
+def _read_header(buf: bytes, pos: int) -> Box | None:
     """Parse one box header at ``pos`` in ``buf``, or return ``None`` if short."""
     if pos + 8 > len(buf):
         return None
@@ -121,7 +121,7 @@ def _read_header(buf: bytes, pos: int) -> Optional[Box]:
     return Box(btype, pos, header, size, pos + header, pos + size)
 
 
-def iter_boxes(buf: bytes, start: int = 0, end: Optional[int] = None,
+def iter_boxes(buf: bytes, start: int = 0, end: int | None = None,
                depth: int = 0) -> Iterator[Box]:
     """Yield every box in ``buf[start:end]``, descending into containers.
 
@@ -142,7 +142,7 @@ def iter_boxes(buf: bytes, start: int = 0, end: Optional[int] = None,
         pos += box.size
 
 
-def find_box(buf: bytes, box_type: bytes) -> Optional[Box]:
+def find_box(buf: bytes, box_type: bytes) -> Box | None:
     """Return the first box of ``box_type`` anywhere in the tree, or ``None``."""
     for box in iter_boxes(buf):
         if box.type == box_type:
@@ -150,7 +150,7 @@ def find_box(buf: bytes, box_type: bytes) -> Optional[Box]:
     return None
 
 
-def find_box_in(source, start: int, end: int, box_type: bytes) -> Optional["BoxHeader"]:
+def find_box_in(source, start: int, end: int, box_type: bytes) -> BoxHeader | None:
     """Find a box by walking a :class:`s0.carve.boundary.ByteSource`.
 
     The carver resolves boundaries against a file handle rather than a bytes
@@ -208,7 +208,7 @@ def _fullbox_body(buf: bytes, pos: int, nbytes: int) -> bytes:
     return buf[start:start + nbytes]
 
 
-def _u32s(buf: bytes) -> List[int]:
+def _u32s(buf: bytes) -> list[int]:
     return list(struct.unpack(f">{len(buf) // 4}I", buf[:len(buf) // 4 * 4]))
 
 
@@ -221,17 +221,17 @@ class Track:
     timescale: int
     sample_size: int                # 0 means "per-sample, see entry_sizes"
     sample_count: int
-    entry_sizes: List[int] = field(default_factory=list)
-    stsc: List[Tuple[int, int, int]] = field(default_factory=list)   # (first_chunk, spc, sdi)
-    chunk_offsets: List[int] = field(default_factory=list)
+    entry_sizes: list[int] = field(default_factory=list)
+    stsc: list[tuple[int, int, int]] = field(default_factory=list)   # (first_chunk, spc, sdi)
+    chunk_offsets: list[int] = field(default_factory=list)
     offsets_are_64bit: bool = False
-    stts_sample_count: Optional[int] = None
+    stts_sample_count: int | None = None
     stts_delta_sum: int = 0
-    sync_samples: Optional[List[int]] = None      # 1-based, as the spec stores them
+    sync_samples: list[int] | None = None      # 1-based, as the spec stores them
     duration: int = 0
 
     # -- derived, filled in by validate() ------------------------------------
-    samples_before_run: List[int] = field(default_factory=list)
+    samples_before_run: list[int] = field(default_factory=list)
 
     # -- public API ----------------------------------------------------------
 
@@ -276,7 +276,7 @@ class Track:
         return (self.samples_before_run[-1]
                 + max(0, len(self.chunk_offsets) - last_chunk + 1) * last_spc)
 
-    def chunk_of(self, sample: int) -> Tuple[int, int, int]:
+    def chunk_of(self, sample: int) -> tuple[int, int, int]:
         """Return ``(run_index, chunk_number_1based, first_sample_in_chunk)``."""
         self.prepare()
         j = 0
@@ -301,7 +301,7 @@ class Track:
                 break
         return run
 
-    def sample_extent(self, sample: int) -> Tuple[int, int]:
+    def sample_extent(self, sample: int) -> tuple[int, int]:
         """Return ``(offset_within_file, length)`` for sample ``sample``.
 
         The offset is cumulative within its chunk, so this is
@@ -319,7 +319,7 @@ class Track:
             offset += self.size_of(k)
         return offset, self.size_of(sample)
 
-    def chunk_extent(self, chunk_index: int) -> Tuple[int, int]:
+    def chunk_extent(self, chunk_index: int) -> tuple[int, int]:
         """Return ``(offset, total_length)`` of chunk ``chunk_index`` (0-based).
 
         A chunk holds ``samples_per_chunk`` samples starting at the sample whose
@@ -358,11 +358,11 @@ class Track:
 class SampleTable:
     """The whole of a file's sample tables, with every track validated."""
 
-    tracks: List[Track]
-    ftyp_offset: Optional[int] = None
-    moov_offset: Optional[int] = None
+    tracks: list[Track]
+    ftyp_offset: int | None = None
+    moov_offset: int | None = None
     fragmented: bool = False
-    problems: List[str] = field(default_factory=list)
+    problems: list[str] = field(default_factory=list)
 
     @property
     def media_start(self) -> int:
@@ -374,14 +374,14 @@ class SampleTable:
         vals = [t.media_end for t in self.tracks if t.chunk_offsets]
         return max(vals) if vals else 0
 
-    def validate(self, file_size: Optional[int] = None) -> Tuple[bool, List[str]]:
+    def validate(self, file_size: int | None = None) -> tuple[bool, list[str]]:
         """Check every track against the format's own invariants.
 
         Returns ``(ok, reasons)``. ``file_size`` is the size of the *original*
         file when known; pass ``None`` to check only internal consistency, which
         is the only option when the file is already known to be fragmented.
         """
-        reasons: List[str] = []
+        reasons: list[str] = []
         if self.fragmented:
             return False, ["file is fragmented MP4: moov sample tables are empty by "
                            "specification, so no index can be recovered from it"]
@@ -440,7 +440,7 @@ class SampleTable:
         return (not reasons), reasons
 
 
-def is_fragmented(buf: bytes, start: int = 0, end: Optional[int] = None) -> bool:
+def is_fragmented(buf: bytes, start: int = 0, end: int | None = None) -> bool:
     """True if the file uses Movie Fragments rather than a populated sample table.
 
     ISO/IEC 14496-12 requires an ``mvex`` box in ``moov`` and forbids non-empty
@@ -481,7 +481,7 @@ def _ascii4(buf: bytes, pos: int) -> bytes:
     return buf[pos:pos + 4]
 
 
-def _parse_track(buf: bytes, trak: Box) -> Optional[Track]:
+def _parse_track(buf: bytes, trak: Box) -> Track | None:
     """Build a :class:`Track` from a ``trak`` box, or ``None`` if it has no table."""
     tkhd = mdhd = hdlr = stbl = stsd = None
     for box in iter_boxes(buf, trak.payload_start, trak.payload_end):
@@ -585,7 +585,7 @@ def _parse_track(buf: bytes, trak: Box) -> Optional[Track]:
     return track
 
 
-def parse_moov(buf: bytes, moov_offset: Optional[int] = None) -> SampleTable:
+def parse_moov(buf: bytes, moov_offset: int | None = None) -> SampleTable:
     """Parse every track's sample table out of a file's ``moov`` box.
 
     ``buf`` may be the whole file or just the ``moov`` box; ``moov_offset`` is
@@ -598,7 +598,7 @@ def parse_moov(buf: bytes, moov_offset: Optional[int] = None) -> SampleTable:
     if moov_offset is not None:
         moov_offset = moov_offset + moov.start
 
-    tracks: List[Track] = []
+    tracks: list[Track] = []
     for box in iter_boxes(buf, moov.payload_start, moov.payload_end):
         if box.type != b"trak":
             continue
@@ -622,14 +622,14 @@ def parse_moov(buf: bytes, moov_offset: Optional[int] = None) -> SampleTable:
 # Reassembly support
 # --------------------------------------------------------------------------- #
 
-def chunk_extents(table: SampleTable) -> List[Tuple[int, int, int]]:
+def chunk_extents(table: SampleTable) -> list[tuple[int, int, int]]:
     """Every media extent in the file, in file order.
 
     Returns ``(track_index, offset, length)`` triples sorted by offset. Chunks
     are the unit of reassembly rather than samples: a sample never spans a chunk
     boundary, and a fragment boundary in practice lands on a chunk boundary too.
     """
-    out: List[Tuple[int, int, int]] = []
+    out: list[tuple[int, int, int]] = []
     for ti, t in enumerate(table.tracks):
         if not t.chunk_offsets or not t.stsc:
             continue
@@ -645,7 +645,7 @@ def chunk_extents(table: SampleTable) -> List[Tuple[int, int, int]]:
 
 
 def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
-                        mapping: Dict[int, int]) -> bytes:
+                        mapping: dict[int, int]) -> bytes:
     """Return ``file_bytes`` with every chunk offset moved through ``mapping``.
 
     ``mapping`` translates an offset *within the original file* to an offset
@@ -670,7 +670,7 @@ def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
 
     # Collect the stco/co64 boxes to patch, innermost first, tracking byte paths
     # so each patch is applied to the correct copy of the box.
-    patches: List[Tuple[int, int, int, int, int]] = []   # (box_start, count, width, table_start, track)
+    patches: list[tuple[int, int, int, int, int]] = []   # (box_start, count, width, table_start, track)
     for trak in _iter_children(file_bytes, moov.payload_start, moov.payload_end, b"trak"):
         stbl = _find_child(file_bytes, trak.payload_start, trak.payload_end, b"stbl")
         if stbl is None:
@@ -685,7 +685,7 @@ def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
 
     out = bytearray(file_bytes)
     for table_start, count, width, _ts, _tk in patches:
-        new_vals: List[int] = []
+        new_vals: list[int] = []
         for k in range(count):
             old = (struct.unpack_from(">I", out, table_start + 4 * k)[0] if width == 4
                    else struct.unpack_from(">Q", out, table_start + 8 * k)[0])
@@ -712,7 +712,7 @@ def _iter_children(buf: bytes, start: int, end: int, box_type: bytes) -> Iterato
             yield bx
 
 
-def _find_child(buf: bytes, start: int, end: int, box_type: bytes) -> Optional[Box]:
+def _find_child(buf: bytes, start: int, end: int, box_type: bytes) -> Box | None:
     for bx in _iter_children(buf, start, end, box_type):
         return bx
     return None
@@ -744,8 +744,8 @@ class Reassembly:
     """A file rebuilt from fragments that were not adjacent in the image."""
 
     payload: bytes
-    fragments: List[Fragment]
-    notes: List[str]
+    fragments: list[Fragment]
+    notes: list[str]
 
     @property
     def gap_bytes(self) -> int:
@@ -762,7 +762,7 @@ class Reassembly:
 
 
 def reassemble_two_fragment(source, start: int, table: SampleTable,
-                            image_size: int, search_limit: int) -> Optional[Reassembly]:
+                            image_size: int, search_limit: int) -> Reassembly | None:
     """Rebuild a camera-style fragmented MP4 from its two physical fragments.
 
     The shape this handles is the one every camera card actually produces, and
@@ -874,7 +874,7 @@ def reassemble_two_fragment(source, start: int, table: SampleTable,
     return Reassembly(payload=payload, fragments=fragments, notes=notes)
 
 
-def _iter_top_level(source, start: int, end: int) -> Iterator["BoxHeader"]:
+def _iter_top_level(source, start: int, end: int) -> Iterator[BoxHeader]:
     """Yield top-level boxes by walking sizes forward from ``start``."""
     pos = start
     while pos + 8 <= end:

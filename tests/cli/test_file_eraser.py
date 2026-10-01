@@ -1,17 +1,16 @@
 """Unit tests for s0 Module 1: Secure File & Folder Eraser."""
 
 import os
-from pathlib import Path
 
 import pytest
+
 from s0 import resources
-from s0.cli.file_eraser import (
-    erase_single_file,
-    erase_folder,
-    erase_batch,
-    get_file_extents,
-)
 from s0.certificate import verify_certificate
+from s0.cli.file_eraser import (
+    erase_batch,
+    erase_folder,
+    erase_single_file,
+)
 from s0.crypto import load_public_pem
 
 

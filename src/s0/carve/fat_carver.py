@@ -13,10 +13,8 @@ import os
 import struct
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 from . import fat_directory as fat_dir
-
 
 FAT32_SIGNATURE = 0xAA55
 
@@ -41,7 +39,7 @@ class FatRecoveredFile:
     filename: str
     size_bytes: int
     is_deleted: bool
-    data: Optional[bytes] = None
+    data: bytes | None = None
     # How the filename was arrived at, and how far it can be relied on. A
     # deleted entry's long name cannot be checksum-verified -- deletion overwrote
     # the byte the fragments were hashed against -- so it is corroborated
@@ -53,7 +51,7 @@ class FatRecoveredFile:
 def parse_fat32_boot_sector(
     image_path: str | Path,
     partition_offset: int = 0,
-) -> Optional[Fat32BootSector]:
+) -> Fat32BootSector | None:
     """Parse FAT32 BPB boot sector at partition_offset."""
     try:
         with open(image_path, "rb") as f:
@@ -67,7 +65,7 @@ def parse_fat32_boot_sector(
                 return None
 
             # Check for FAT32 marker at offset 82 or FAT string
-            fs_type_str = boot[82:90].decode("ascii", "ignore").strip()
+            boot[82:90].decode("ascii", "ignore").strip()
             oem_name = boot[3:11].decode("ascii", "ignore").strip()
 
             bytes_per_sec = struct.unpack_from("<H", boot, 11)[0]
@@ -120,7 +118,7 @@ def scan_fat32_deleted_files(
     max_scan_clusters: int = 2048,
     partition_offset: int = 0,
     max_file_bytes: int = 100 * 1024 * 1024,
-) -> List[FatRecoveredFile]:
+) -> list[FatRecoveredFile]:
     """Traverse FAT32 directory clusters and carve deleted entries (0xE5 marker).
 
     A deleted entry keeps its 8.3 name with the first byte replaced by 0xE5, so
@@ -132,7 +130,7 @@ def scan_fat32_deleted_files(
     if not boot:
         return []
 
-    recovered: List[FatRecoveredFile] = []
+    recovered: list[FatRecoveredFile] = []
 
     try:
         with open(image_path, "rb") as f:

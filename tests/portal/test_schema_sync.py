@@ -13,14 +13,12 @@ seamlessness defect this repo must not ship.
 from __future__ import annotations
 
 import json
-import re
-import subprocess
-import shutil
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
-from s0.resources import repo_root
 
 REPO = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = REPO / "src" / "s0" / "data" / "cert_schema.json"

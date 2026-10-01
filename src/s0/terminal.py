@@ -27,8 +27,9 @@ import json
 import os
 import shutil
 import sys
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from typing import Any
 
 # --------------------------------------------------------------------------- #
 # exit codes -- sysexits.h, because "1 means everything" is not an API
@@ -100,14 +101,14 @@ ASCII_BOX = {"h": "-", "v": "|", "tl": "+", "tr": "+", "bl": "+", "br": "+"}
 class OutputPolicy:
     """Resolved presentation settings for one process."""
 
-    color: Optional[bool] = None
+    color: bool | None = None
     quiet: bool = False
     verbose: int = 0
     fmt: str = "text"                 # text | json | csv
     # Streams default to the real stdout/stderr but are injectable so tests and
     # the ISO kiosk can render into a buffer.
-    stream: Optional[Any] = None
-    err_stream: Optional[Any] = None
+    stream: Any | None = None
+    err_stream: Any | None = None
 
     def __post_init__(self) -> None:
         self.stream = self.stream if self.stream is not None else sys.stdout
@@ -153,7 +154,7 @@ class OutputPolicy:
         return False
 
     @property
-    def box(self) -> Dict[str, str]:
+    def box(self) -> dict[str, str]:
         return UNICODE_BOX if self.use_unicode else ASCII_BOX
 
     @property
@@ -250,7 +251,7 @@ class OutputPolicy:
 class Column:
     title: str
     align: str = "l"                 # l | r
-    max_width: Optional[int] = None
+    max_width: int | None = None
     min_width: int = 0
     # True for identifiers, where an over-long value is cut from the left so the
     # distinguishing tail survives. False for prose, which is cut from the right
@@ -295,12 +296,12 @@ def render_table(policy: OutputPolicy, columns: Sequence[Column],
 
     header = "  ".join(
         c.title.ljust(w) if c.align == "l" else c.title.rjust(w)
-        for c, w in zip(columns, widths))
+        for c, w in zip(columns, widths, strict=False))
     policy.err("  " + header)
     policy.err("  " + policy.box["h"] * len(header))
     for row in rows:
         cells = []
-        for value, col, w in zip(row, columns, widths):
+        for value, col, w in zip(row, columns, widths, strict=False):
             if col.align == "l":
                 value = _ellipsise_left(value, w) if col.tail else _ellipsise_end(value, w)
             else:
@@ -341,7 +342,7 @@ def _ellipsise_right(value: str, width: int) -> str:
     return value[:width - 3] + "..."
 
 
-def human_bytes(n: Optional[int], *, binary: bool = True) -> str:
+def human_bytes(n: int | None, *, binary: bool = True) -> str:
     if n is None:
         return "-"
     step = 1024 if binary else 1000
@@ -360,7 +361,7 @@ def human_int(n: int) -> str:
     return f"{n:,}"
 
 
-def plural(n: int, singular: str, plural_form: Optional[str] = None) -> str:
+def plural(n: int, singular: str, plural_form: str | None = None) -> str:
     return f"{human_int(n)} {singular if n == 1 else (plural_form or singular + 's')}"
 
 
@@ -370,15 +371,15 @@ def plural(n: int, singular: str, plural_form: Optional[str] = None) -> str:
 
 
 def envelope(command: str, *, status: str, result: Any = None,
-             artifacts: Optional[List[Dict[str, Any]]] = None,
-             warnings: Optional[List[str]] = None,
-             errors: Optional[List[Dict[str, Any]]] = None,
-             audit: Optional[Dict[str, Any]] = None,
-             signature: Optional[Dict[str, Any]] = None,
-             started_at: Optional[str] = None,
-             finished_at: Optional[str] = None,
-             duration_seconds: Optional[int] = None,
-             args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+             artifacts: list[dict[str, Any]] | None = None,
+             warnings: list[str] | None = None,
+             errors: list[dict[str, Any]] | None = None,
+             audit: dict[str, Any] | None = None,
+             signature: dict[str, Any] | None = None,
+             started_at: str | None = None,
+             finished_at: str | None = None,
+             duration_seconds: int | None = None,
+             args: dict[str, Any] | None = None) -> dict[str, Any]:
     """Build the versioned machine-readable envelope every `--json` uses.
 
     Invariants (see docs/architecture/canonical-json.md rule 5): integers only, absolute
@@ -386,7 +387,7 @@ def envelope(command: str, *, status: str, result: Any = None,
     """
     from .config import CONFIG
 
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "schema": f"s0.{command}/1",
         "schema_version": "1.0.0",
         "tool": {
@@ -415,11 +416,11 @@ def envelope(command: str, *, status: str, result: Any = None,
     return body
 
 
-def artifact(path, kind: str, sha256: Optional[str] = None,
-             size_bytes: Optional[int] = None) -> Dict[str, Any]:
+def artifact(path, kind: str, sha256: str | None = None,
+             size_bytes: int | None = None) -> dict[str, Any]:
     from pathlib import Path
     p = Path(path)
-    entry: Dict[str, Any] = {"kind": kind, "path": str(p.resolve())}
+    entry: dict[str, Any] = {"kind": kind, "path": str(p.resolve())}
     if sha256:
         entry["sha256"] = sha256
     try:

@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from . import resources
 
-DEFAULT_CONFIG: Dict[str, Any] = {
+DEFAULT_CONFIG: dict[str, Any] = {
     "version": "2.4.4",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
@@ -34,7 +34,7 @@ def find_config_file() -> Path | None:
         if p.is_file():
             return p
 
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     root = resources.repo_root()
     if root is not None:
         # Source checkout: the repo-root file is the release single source of truth.
@@ -50,12 +50,12 @@ def find_config_file() -> Path | None:
     return None
 
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     cfg = dict(DEFAULT_CONFIG)
     cfg_file = find_config_file()
     if cfg_file:
         try:
-            with open(cfg_file, "r", encoding="utf-8") as f:
+            with open(cfg_file, encoding="utf-8") as f:
                 user_cfg = json.load(f)
                 if isinstance(user_cfg, dict):
                     cfg.update(user_cfg)

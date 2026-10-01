@@ -24,15 +24,11 @@ the sense-code decoding for us. Where it does not, the raw command is built here
 
 from __future__ import annotations
 
-import os
-import shutil
-import struct
-import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
 
-from .capabilities import DeviceCapabilities, Tiers, has_external_tool, _run
+from .capabilities import Tiers, _run, has_external_tool
 
 __all__ = [
     "SanitizeOutcome",
@@ -65,8 +61,8 @@ class SanitizeOutcome:
     command: str
     status: str = "unknown"
     attestation: str = ""
-    notes: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
     started_at: float = 0.0
     duration_seconds: float = 0.0
 
@@ -111,11 +107,11 @@ ATA_ERROR_REASON = {
 }
 
 
-def _sanitize_timeout(override: Optional[float]) -> float:
+def _sanitize_timeout(override: float | None) -> float:
     return float(override) if override else DEFAULT_TIMEOUT
 
 
-def ata_sanitize_status(dev: str) -> Tuple[int, dict]:
+def ata_sanitize_status(dev: str) -> tuple[int, dict]:
     """Read ATA SANITIZE STATUS EXT. Returns ``(state_code, decoded)``."""
     if not has_external_tool("hdparm"):
         return -1, {"error": "hdparm is not installed"}
@@ -142,7 +138,7 @@ def ata_sanitize_status(dev: str) -> Tuple[int, dict]:
             1 if info.get("frozen") else 0), info
 
 
-def _antifreeze(dev: str) -> Tuple[bool, str]:
+def _antifreeze(dev: str) -> tuple[bool, str]:
     if not has_external_tool("hdparm"):
         return False, "hdparm is not installed; cannot clear the sanitize freeze lock"
     rc, out, err = _run(["hdparm", "--yes-i-know-what-i-am-doing", "--sanitize-anti-freeze-lock", dev],
@@ -158,8 +154,8 @@ def _ata_sanitize(
     method_id: str,
     tier: str,
     mechanism: str,
-    extra_args: Optional[List[str]] = None,
-    timeout: Optional[float] = None,
+    extra_args: list[str] | None = None,
+    timeout: float | None = None,
     poll: Callable[[str], None] = lambda _m: None,
 ) -> SanitizeOutcome:
     outcome = SanitizeOutcome(
@@ -315,7 +311,7 @@ NVME_SSTAT = {
 }
 
 
-def sanitize_status_nvme(ctrl: str) -> Tuple[int, dict]:
+def sanitize_status_nvme(ctrl: str) -> tuple[int, dict]:
     """Read NVMe log page 0x81 (Sanitize Status). Returns ``(sstat, decoded)``."""
     if not has_external_tool("nvme"):
         return -1, {"error": "nvme-cli is not installed"}
@@ -346,7 +342,7 @@ def sanitize_status_nvme(ctrl: str) -> Tuple[int, dict]:
 
 
 def nvme_sanitize(ctrl: str, sanact: str, *, pattern: int = 0xDEADBEEF, passes: int = 1,
-                  use_ause: bool = True, timeout: Optional[float] = None,
+                  use_ause: bool = True, timeout: float | None = None,
                   poll: Callable[[str], None] = lambda _m: None) -> SanitizeOutcome:
     """Issue an NVMe Sanitize command and block until the controller finishes.
 
@@ -457,7 +453,7 @@ SCSI_SERVICE_ACTION = {"overwrite": 0x01, "block_erase": 0x02,
 
 
 def scsi_sanitize(dev: str, service_action: str, *, pattern: bytes = b"\x00\x00\x00\x00",
-                  passes: int = 1, timeout: Optional[float] = None,
+                  passes: int = 1, timeout: float | None = None,
                   poll: Callable[[str], None] = lambda _m: None) -> SanitizeOutcome:
     method_map = {
         "overwrite": ("SCSI_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE),

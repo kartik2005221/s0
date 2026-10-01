@@ -14,7 +14,6 @@ import os
 import shutil
 import sys
 import time
-from typing import Optional
 
 
 def _human(n: float) -> str:

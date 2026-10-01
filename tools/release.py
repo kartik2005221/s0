@@ -70,7 +70,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -80,7 +79,7 @@ def get_current_config_version() -> str:
     cfg_path = REPO_ROOT / "s0_config.json"
     if not cfg_path.is_file():
         raise FileNotFoundError(f"Configuration file not found: {cfg_path}")
-    with open(cfg_path, "r", encoding="utf-8") as f:
+    with open(cfg_path, encoding="utf-8") as f:
         data = json.load(f)
     version = data.get("version")
     if not version:
@@ -113,9 +112,9 @@ def update_file_regex(
     return False
 
 
-def sync_all_files(target_version: str, dry_run: bool = False) -> List[Path]:
+def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
     """Synchronize target_version across all repository files."""
-    modified_files: List[Path] = []
+    modified_files: list[Path] = []
 
     # 1. s0_config.json
     cfg_path = REPO_ROOT / "s0_config.json"
@@ -319,7 +318,7 @@ def check_sync_status() -> int:
     return 0
 
 
-def run_command(cmd: List[str], check: bool = True) -> subprocess.CompletedProcess:
+def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
     """Execute a subprocess command printing output."""
     print(f"[*] Running: {' '.join(cmd)}")
     res = subprocess.run(cmd, cwd=str(REPO_ROOT), text=True)

@@ -5,10 +5,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
-from s0 import crypto
-from s0 import resources
+from s0 import crypto, resources
 from s0.certificate import (
     canonicalize,
     payload_of,
@@ -27,22 +25,40 @@ from .db import (
     init_audit_db,
 )
 
+# `DEFAULT_AUDIT_DB` is re-exported on purpose: tests point this module's default
+# at a temporary database via `monkeypatch.setattr("s0.audit.verify.DEFAULT_AUDIT_DB",
+# ...)`, which is a string path that no static import analysis can see. Without an
+# explicit `__all__`, ruff reads the import as unused and removes it, and the
+# monkeypatch then fails at runtime with AttributeError.
+__all__ = [
+    "DEFAULT_AUDIT_DB",
+    "GENESIS_PREV_HASH",
+    "ChainAuditReport",
+    "compute_block_hash",
+    "compute_legacy_block_hash",
+    "get_db_connection",
+    "get_default_audit_db",
+    "get_default_trusted_keys",
+    "init_audit_db",
+    "verify_audit_ledger",
+]
+
 
 @dataclass
 class ChainAuditReport:
     is_valid: bool
     total_blocks_verified: int
-    broken_block_index: Optional[int] = None
+    broken_block_index: int | None = None
     reason: str = "Audit ledger is continuous, unbroken, and mathematically valid."
-    details: List[str] = field(default_factory=list)
+    details: list[str] = field(default_factory=list)
     is_demo_signed: bool = False
-    demo_key_warning: Optional[str] = None
+    demo_key_warning: str | None = None
 
 
-def get_default_trusted_keys() -> List:
+def get_default_trusted_keys() -> list:
     """Retrieve default trusted issuer public keys if available in standard locations."""
     keys = []
-    candidates: List[Path] = []
+    candidates: list[Path] = []
     try:
         candidates.append(resources.demo_public_key())
     except FileNotFoundError:
@@ -67,7 +83,7 @@ def get_default_trusted_keys() -> List:
 
 def verify_audit_ledger(
     db_path: str | Path | None = None,
-    trusted_public_keys: Optional[List] = None,
+    trusted_public_keys: list | None = None,
 ) -> ChainAuditReport:
     """Verify 100% cryptographic continuity of the hash-chained audit ledger."""
     if db_path is None:

@@ -115,7 +115,55 @@ ignore = [
 # Tests assert, shell out to ffmpeg and the CLI, build MD5/SHA-1 lists on
 # purpose, and shuffle fixtures with a seeded PRNG: those are the things under
 # test, not oversights.
-"tests/**" = ["S101", "S603", "S607", "S324", "S311"]
+# `S108` appears because several tests assert that s0 *refuses* `/tmp/...`
+# inputs; the hardcoded path is the subject of the assertion. `E101` fires on
+# `test_firmware_probes.py`, whose fixtures reproduce hdparm output verbatim --
+# real hdparm indents with tabs, and normalising them would make the parser
+# tests stop testing the parser.
+# `E402` is needed by the platform-launcher tests: they put the repo root on
+# `sys.path` first, then import `macos/` and `windows/`, which are standalone
+# launchers rather than parts of the installed `s0` distribution.
+# `S110` is unlinking a `tmp_path` file during cleanup.
+"tests/**" = [
+    "S101", "S311", "S324", "S603", "S607", "S108",
+    "E101", "E402", "S110",
+]
+
+# Best-effort cleanup is the idiom, not an oversight. `try: os.unlink(x)
+# except OSError: pass` means "the file was already gone, which is the outcome we
+# wanted". Rewriting 124 of these to log would bury real errors in noise, and the
+# ones that must not be silent (certificate signing, device selection) already
+# raise or append to `warnings`.
+#
+# `main.py` and `__init__.py` import inside functions on purpose: the CLI defers
+# heavy imports until the subcommand needs them, so `s0 --help` does not pay for
+# reportlab, and `s0/__init__.py` does not create an import cycle.
+#
+# The tool's entire job includes shelling out to ffmpeg, hdparm, nvme and
+# sg_sanitize, which is why S603 and S607 are ignored in `src` too. The security
+# review that matters is bandit, which is a gate in CI.
+"src/**/*.py" = ["S110", "E402", "S603", "S607"]
+"src/s0/cli/main.py" = ["S110", "E402", "S603", "S607"]
+"src/s0/__init__.py" = ["S110", "E402", "S603", "S607"]
+"src/s0/web/app.py" = ["S310"]
+"src/s0/live/live_manager.py" = ["S310", "S112"]
+"src/s0/temperature.py" = ["S112"]
+
+# The platform erasers, the release script, the benchmark harness and the skill's
+# certificate checker are all developer-invoked programs that legitimately call
+# tools found on PATH: `diskutil` and `mdls` on macOS, `manage-bde`/`cipher` and
+# PowerShell on Windows, `git`/`gh` in the release script, `ffmpeg` in the
+# benchmark. Hard-coding absolute paths would break them on any machine where
+# those tools are installed somewhere else.
+#
+# S603/S607 are therefore recorded as accepted risk here rather than "fixed".
+# The control that actually matters is that no untrusted input reaches these argv
+# lists: `S310`-style URL fetches are pinned to https, and Bandit runs as a
+# blocking gate in CI with zero medium-or-higher findings.
+"macos/cli/*.py" = ["S110", "S603", "S607", "E402"]
+"windows/cli/*.py" = ["S110", "S603", "S607", "E402"]
+"tools/*.py" = ["S110", "S603", "S607", "E402"]
+"skills/s0-forensics/scripts/*.py" = ["S110", "S603", "S607", "E402"]
 
 [tool.bandit]
 exclude_dirs = ["tests", "vendor", "docs"]

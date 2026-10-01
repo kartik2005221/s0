@@ -9,14 +9,12 @@ import hashlib
 import json
 import os
 import sqlite3
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from s0 import crypto
 from s0 import resources
-
 
 GENESIS_PREV_HASH = "0" * 64
 
@@ -43,7 +41,7 @@ class AuditBlock:
     signature: str
     prev_hash: str
     block_hash: str
-    certificate_json: Optional[str] = None
+    certificate_json: str | None = None
     block_signature: str = ""
 
 
@@ -203,7 +201,7 @@ def init_audit_db(db_path: str | Path | None = None) -> Path:
 
 
 def record_audit_event(
-    certificate: Dict[str, Any],
+    certificate: dict[str, Any],
     operation_type: str = "DRIVE_ERASE",
     db_path: str | Path | None = None,
     private_key: Any = None,
@@ -230,9 +228,9 @@ def record_audit_event(
         sig_obj = certificate.get("signature", {})
         signature = sig_obj.get("signature_base64url", "unsigned")
         try:
+            from s0 import crypto
             from s0.canonical import canonicalize
             from s0.certificate import payload_of
-            from s0 import crypto
             payload_hash = crypto.payload_sha256(canonicalize(payload_of(certificate))).replace("sha256:", "")
         except Exception:
             payload_hash = sig_obj.get("signed_payload_hash", "sha256:" + "0" * 64).replace("sha256:", "")
@@ -339,10 +337,10 @@ def record_audit_event(
 
 def list_audit_blocks(
     db_path: str | Path | None = None,
-    operation_type: Optional[str] = None,
+    operation_type: str | None = None,
     limit: int = 100,
     offset: int = 0,
-) -> List[AuditBlock]:
+) -> list[AuditBlock]:
     """Retrieve audit blocks from the ledger with optional filtering and pagination."""
     if db_path is None:
         db_path = get_default_audit_db()

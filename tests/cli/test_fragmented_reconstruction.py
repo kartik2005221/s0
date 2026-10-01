@@ -6,19 +6,14 @@ Covers:
 3. Bifragment / cluster-gap heuristic stream reassembly.
 """
 
-import io
 import struct
 from pathlib import Path
 
-import pytest
 from s0.carve.ext4_carver import (
     EXT4_EXTENT_HEADER_MAGIC,
-    EXT4_MAGIC,
-    parse_extent_header,
     scan_ext4_deleted_inodes,
 )
 from s0.carve.fragmentation import (
-    reassemble_cluster_runs,
     reconstruct_bifragment_stream,
 )
 from s0.carve.ntfs_carver import (

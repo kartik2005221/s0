@@ -30,7 +30,6 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 __all__ = ["FreeSpaceMap", "build_free_space", "BitmapReader", "decode_run_list",
            "decode_run_list_raw"]
@@ -42,10 +41,10 @@ class FreeSpaceMap:
 
     partition_offset: int
     volume_bytes: int
-    ranges: List[Tuple[int, int]] = field(default_factory=list)   # (start, end) relative
+    ranges: list[tuple[int, int]] = field(default_factory=list)   # (start, end) relative
     source: str = "unknown"
     reliable: bool = False
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     @property
     def free_bytes(self) -> int:
@@ -94,7 +93,7 @@ class BitmapReader:
         except OSError:
             pass
 
-    def __enter__(self) -> "BitmapReader":
+    def __enter__(self) -> BitmapReader:
         return self
 
     def __exit__(self, *_exc) -> None:
@@ -487,7 +486,7 @@ def _ntfs_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
 
 
 def _mft_data_runs(record: bytes, wanted_type: int, rdr: BitmapReader,
-                    part: int, boot: dict) -> List[Tuple[int, int]]:
+                    part: int, boot: dict) -> list[tuple[int, int]]:
     """Decode a non-resident $DATA attribute's run list into [(lcn, length)]."""
     cluster = boot["cluster_size"]
     attr_off = struct.unpack_from("<H", record, 0x14)[0]
@@ -512,14 +511,14 @@ def _mft_data_runs(record: bytes, wanted_type: int, rdr: BitmapReader,
     return []
 
 
-def decode_run_list_raw(blob: bytes) -> List[Tuple[int, int]]:
+def decode_run_list_raw(blob: bytes) -> list[tuple[int, int]]:
     """Decode an NTFS run list into [(lcn, length)], where lcn -1 means sparse.
 
     Decodes until the terminating zero header, ignoring the declared size. A run
     list is bounded by the length of the attribute that holds it, so it is safe
     to read to the terminator; the caller's byte budget is applied separately.
     """
-    runs: List[Tuple[int, int]] = []
+    runs: list[tuple[int, int]] = []
     pos = 0
     lcn = 0
     while pos < len(blob):
@@ -544,7 +543,7 @@ def decode_run_list_raw(blob: bytes) -> List[Tuple[int, int]]:
     return runs
 
 
-def decode_run_list(blob: bytes, allocated: int, real: int, cluster: int) -> List[Tuple[int, int]]:
+def decode_run_list(blob: bytes, allocated: int, real: int, cluster: int) -> list[tuple[int, int]]:
     """Decode an NTFS run list, stopping once `real` bytes of clusters are covered.
 
     Each run starts with a header byte: the low nibble is the length of the
@@ -553,19 +552,17 @@ def decode_run_list(blob: bytes, allocated: int, real: int, cluster: int) -> Lis
     byte, so a 64 KiB run does not fit in the header's low nibble and cannot be
     read one byte at a time.
     """
-    runs: List[Tuple[int, int]] = []
-    lcn = 0
+    runs: list[tuple[int, int]] = []
     remaining = real
     for _lcn, length in decode_run_list_raw(blob):
         if remaining <= 0:
             break
         runs.append((_lcn, length))
         remaining -= length * cluster
-        lcn = _lcn
     return runs
 
 
-def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> List[Tuple[int, int]]:
+def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> list[tuple[int, int]]:
     return decode_run_list(blob, allocated, real, cluster)
 
 
@@ -574,7 +571,7 @@ def _decode_runs(blob: bytes, allocated: int, real: int, cluster: int) -> List[T
 # --------------------------------------------------------------------------- #
 
 
-def _merge(ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+def _merge(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
     """Sort and coalesce overlapping or adjacent ranges."""
     ordered = sorted(r for r in ranges if r[1] > r[0])
     if not ordered:
@@ -624,7 +621,7 @@ def build_free_space(image_path: str | Path, fs_type: str, part_offset: int,
                         notes=[f"no allocation map for {fs_type}; the whole volume will be searched"])
 
 
-def _fat32_vbr(rdr: BitmapReader, part: int) -> Optional[dict]:
+def _fat32_vbr(rdr: BitmapReader, part: int) -> dict | None:
     sec = rdr.read(part, 512)
     if len(sec) < 512 or sec[510:512] != b"\x55\xaa":
         return None
@@ -656,7 +653,7 @@ def _fat32_vbr(rdr: BitmapReader, part: int) -> Optional[dict]:
     return vbr
 
 
-def _exfat_boot(rdr: BitmapReader, part: int) -> Optional[dict]:
+def _exfat_boot(rdr: BitmapReader, part: int) -> dict | None:
     sec = rdr.read(part, 512)
     if len(sec) < 512 or sec[3:11] != b"EXFAT   ":
         return None
@@ -674,7 +671,7 @@ def _exfat_boot(rdr: BitmapReader, part: int) -> Optional[dict]:
     }
 
 
-def _ntfs_boot(rdr: BitmapReader, part: int) -> Optional[dict]:
+def _ntfs_boot(rdr: BitmapReader, part: int) -> dict | None:
     sec = rdr.read(part, 512)
     if len(sec) < 512 or sec[3:11] != b"NTFS    ":
         return None

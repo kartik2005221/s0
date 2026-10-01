@@ -14,8 +14,8 @@ in their docstrings AND surface it as certificate notes when used.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 ProgressFn = Callable[[str], None]  # human-readable progress line
 
@@ -29,8 +29,8 @@ class Target:
     capacity_bytes: int
     sector_size: int = 512
     storage_type: str = "UNKNOWN"  # HDD/SSD/NVMe/eMMC/UFS/IMAGE_FILE
-    model: Optional[str] = None
-    serial: Optional[str] = None
+    model: str | None = None
+    serial: str | None = None
     removable: bool = False  # block only: /sys/block/<dev>/removable
 
     @property

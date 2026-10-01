@@ -2,13 +2,12 @@
 
 import struct
 from pathlib import Path
-import pytest
 
 from s0.carve import (
-    parse_fat32_boot_sector,
-    scan_fat32_deleted_files,
     carve_image,
     detect_filesystem,
+    parse_fat32_boot_sector,
+    scan_fat32_deleted_files,
 )
 
 

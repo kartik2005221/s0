@@ -9,10 +9,7 @@ Provides multi-fragment forensic reassembly capabilities:
 
 from __future__ import annotations
 
-import io
-import math
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Tuple
 
 from .scoring import calculate_shannon_entropy
 
@@ -28,22 +25,22 @@ class FragmentInfo:
 @dataclass
 class ReconstructedStream:
     total_size: int
-    fragments: List[FragmentInfo]
+    fragments: list[FragmentInfo]
     data: bytes
     is_fragmented: bool = False
-    validation_notes: List[str] = field(default_factory=list)
+    validation_notes: list[str] = field(default_factory=list)
 
 
 def reassemble_cluster_runs(
-    runs: List[Tuple[int, int]],
+    runs: list[tuple[int, int]],
     disk_file,
     cluster_size: int,
     partition_offset: int = 0,
-    target_size: Optional[int] = None,
+    target_size: int | None = None,
 ) -> ReconstructedStream:
     """Reassemble data across a list of (cluster_index, cluster_count) runs."""
-    fragments: List[FragmentInfo] = []
-    chunks: List[bytes] = []
+    fragments: list[FragmentInfo] = []
+    chunks: list[bytes] = []
     remaining = target_size if target_size is not None else float("inf")
     seq = 0
 
@@ -103,7 +100,7 @@ def reconstruct_bifragment_stream(
     cluster_size: int = 4096,
     max_search_bytes: int = 4 * 1024 * 1024,
     max_file_size: int = 10 * 1024 * 1024,
-) -> Optional[ReconstructedStream]:
+) -> ReconstructedStream | None:
     """Attempt bifragment heuristic reconstruction when head fragment lacks footer.
 
     Scans forward unallocated clusters within search window to locate matching footer

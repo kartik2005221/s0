@@ -12,7 +12,6 @@ Forensic-grade selective sanitization for Apple macOS (APFS, HFS+, FAT32, exFAT)
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -24,7 +23,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, List, Optional
+
 
 # Ensure core library is accessible
 def _find_repo_root() -> Path:
@@ -44,15 +43,16 @@ if cli_dir.exists() and str(cli_dir) not in sys.path:
 try:
     from s0 import certificate as cert_mod
     from s0 import crypto as core_crypto
-    from s0.progress import ProgressBar
-    from s0.temperature import read_temperature
     from s0 import pdfgen
     from s0.config import CONFIG
+    from s0.progress import ProgressBar
+    from s0.temperature import read_temperature
 except ImportError:
     cert_mod = None
     core_crypto = None
     ProgressBar = None
-    read_temperature = lambda _: None
+    def read_temperature(_):
+        return None
     pdfgen = None
     CONFIG = {
         "default_operator": "op-forensic-01",
@@ -74,10 +74,10 @@ class MacDriveWipeResult:
     passes: int
     pattern: str
     status: str
-    error: Optional[str] = None
+    error: str | None = None
     verification_passed: bool = False
     samples_checked: int = 0
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -88,14 +88,14 @@ class MacFileEraseResult:
     passes: int
     pattern: str
     status: str
-    error: Optional[str] = None
+    error: str | None = None
     metadata_cleansed: bool = False
-    cow_warning: Optional[str] = None
+    cow_warning: str | None = None
     xattrs_cleared: bool = False
     filesystem: str = "unknown"
 
 
-def detect_macos_filesystem(path_str: str) -> tuple[str, Optional[str]]:
+def detect_macos_filesystem(path_str: str) -> tuple[str, str | None]:
     """Detect filesystem and APFS CoW status on macOS."""
     fs_name = "unknown"
     cow_warning = None
@@ -122,7 +122,7 @@ def detect_macos_filesystem(path_str: str) -> tuple[str, Optional[str]]:
     return fs_name, cow_warning
 
 
-def macos_clear_attributes(path_str: str, fd: Optional[int] = None) -> bool:
+def macos_clear_attributes(path_str: str, fd: int | None = None) -> bool:
     """Clear extended attributes (quarantine, finder info, resource forks)."""
     cleared = False
     try:
@@ -362,7 +362,7 @@ def erase_folder_macos(
     dir_path: str | Path,
     passes: int = 1,
     pattern: str = "zero",
-) -> List[MacFileEraseResult]:
+) -> list[MacFileEraseResult]:
     root_dir = Path(dir_path).resolve()
     results = []
     if not root_dir.exists() or not root_dir.is_dir():
@@ -407,17 +407,17 @@ def erase_folder_macos(
 
 
 def erase_batch_macos(
-    targets: List[str | Path],
+    targets: list[str | Path],
     passes: int = 1,
     pattern: str = "zero",
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
+    signing_key_path: str | Path | None = None,
     generate_certificate: bool = True,
-) -> tuple[List[MacFileEraseResult], Optional[dict]]:
+) -> tuple[list[MacFileEraseResult], dict | None]:
     """Execute batch file & folder erasure on macOS and issue an Ed25519-signed certificate."""
     start_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    results: List[MacFileEraseResult] = []
+    results: list[MacFileEraseResult] = []
 
     total_est = sum(Path(t).stat().st_size for t in targets if Path(t).is_file()) * passes
     bar = ProgressBar(max(total_est, 1024), operation="s0-mac erase") if ProgressBar and total_est > 0 else None
@@ -442,7 +442,7 @@ def erase_batch_macos(
     failed = sum(1 for r in results if r.status == "failure")
     total_bytes = sum(r.bytes_overwritten for r in results)
 
-    warnings: List[str] = [
+    warnings: list[str] = [
         "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
         "Caveat: Flash storage (SSDs/NVMe) FTL wear leveling may prevent physical overwriting of retired blocks.",
     ]
@@ -499,7 +499,7 @@ def erase_batch_macos(
     return results, signed_cert
 
 
-def _get_macos_boot_disk() -> Optional[str]:
+def _get_macos_boot_disk() -> str | None:
     """Query macOS for the actual boot device's whole-disk identifier.
 
     Parses `diskutil info /` -> "Part of Whole: diskN" to get the real
@@ -531,7 +531,7 @@ def _get_macos_boot_disk() -> Optional[str]:
     return None
 
 
-def _resolve_apfs_physical_store(container_disk: str) -> Optional[str]:
+def _resolve_apfs_physical_store(container_disk: str) -> str | None:
     """Given an APFS container (e.g. 'disk3') or volume, find its backing physical disk."""
     if shutil.which("diskutil") is None:
         return None
@@ -706,11 +706,11 @@ def wipe_drive_or_partition_macos(
     chunk_size: int = 1048576,
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
+    signing_key_path: str | Path | None = None,
     generate_certificate: bool = True,
     force: bool = False,
-    mock_size: Optional[int] = None,
-) -> tuple[MacDriveWipeResult, Optional[dict]]:
+    mock_size: int | None = None,
+) -> tuple[MacDriveWipeResult, dict | None]:
     """Wipe a USB pen drive, external disk, or secondary partition on macOS.
 
     - Performs strict safety check against macOS boot disk (disk0) and root mounts
@@ -863,7 +863,7 @@ def wipe_drive_or_partition_macos(
         notes=[
             f"macOS raw {target_type} sanitization completed ({total_written} bytes across {passes} pass(es)).",
             f"Volume unmount requested via diskutil: {unmounted}.",
-            f"Hardware write cache flushed via fcntl(F_FULLFSYNC).",
+            "Hardware write cache flushed via fcntl(F_FULLFSYNC).",
             f"Sampled readback verification: {samples_checked} samples checked (passed: {verification_passed}).",
         ],
     )
@@ -912,7 +912,7 @@ def wipe_drive_or_partition_macos(
     return result, signed_cert
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     subcommands = {
         "list", "plan", "wipe", "carve",
@@ -976,8 +976,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             force=args.force,
         )
 
-        cert_path: Optional[Path] = None
-        pdf_path: Optional[Path] = None
+        cert_path: Path | None = None
+        pdf_path: Path | None = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -1039,8 +1039,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         failed = sum(1 for r in results if r.status == "failure")
         total_bytes = sum(r.bytes_overwritten for r in results)
 
-        cert_path: Optional[Path] = None
-        pdf_path: Optional[Path] = None
+        cert_path: Path | None = None
+        pdf_path: Path | None = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)

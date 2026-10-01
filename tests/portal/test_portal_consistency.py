@@ -25,7 +25,6 @@ import re
 from pathlib import Path
 
 import pytest
-from s0.resources import repo_root
 
 REPO = Path(__file__).resolve().parents[2]
 SHARED_TOKENS = REPO / "shared" / "tokens.css"
@@ -81,7 +80,7 @@ def test_surface_css_imports_the_shared_tokens(css):
         f"{rel} does not import the shared tokens; every colour must come from "
         f"shared/tokens.css")
     # @import must be the first rule or the whole sheet is ignored.
-    first = next(l.strip() for l in text.splitlines() if l.strip())
+    first = next(line.strip() for line in text.splitlines() if line.strip())
     assert first.startswith("@import"), f"{rel}: @import is not the first rule"
 
 
@@ -134,7 +133,10 @@ def test_shared_tokens_disable_animation_for_reduced_motion():
 def test_every_public_surface_has_a_strict_csp(headers):
     rel = headers.relative_to(REPO)
     text = headers.read_text(encoding="utf-8")
-    csp_lines = [l for l in text.splitlines() if l.strip().startswith("Content-Security-Policy:")]
+    csp_lines = [
+        line for line in text.splitlines()
+        if line.strip().startswith("Content-Security-Policy:")
+    ]
     assert csp_lines, f"{rel} serves no Content-Security-Policy"
     csp = csp_lines[0]
 
@@ -173,7 +175,10 @@ def test_csp_hashes_match_the_inline_blocks(html):
     rel = html.relative_to(REPO)
     headers_path = html.parent / "_headers"
     text = headers_path.read_text(encoding="utf-8")
-    csp = next(l for l in text.splitlines() if l.strip().startswith("Content-Security-Policy:"))
+    csp = next(
+        line for line in text.splitlines()
+        if line.strip().startswith("Content-Security-Policy:")
+    )
     listed = set(re.findall(r"'?(sha256-[A-Za-z0-9+/=]+)'?", csp))
 
     source = html.read_text(encoding="utf-8")
@@ -332,8 +337,8 @@ def test_async_status_regions_are_announced():
         text = html.read_text(encoding="utf-8")
         if 'aria-live' in text:
             continue
-        offenders = [h for h in re.findall(r'id="([A-Za-z0-9_]*(?:status|progress|log|result)[A-Za-z0-9_]*)"',
-                                           text, flags=re.I)]
+        offenders = list(re.findall(r'id="([A-Za-z0-9_]*(?:status|progress|log|result)[A-Za-z0-9_]*)"',
+                                           text, flags=re.I))
         assert not offenders, (
             f"{html.relative_to(REPO)} has {offenders} but declares no aria-live region; "
             f"screen-reader users will not hear the outcome")

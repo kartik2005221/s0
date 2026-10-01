@@ -27,19 +27,24 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import struct
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 __all__ = [
     "DeviceCapabilities",
     "probe_capabilities",
     "Tiers",
-    "PURGE_METHODS",
+    "SCSI_SANITIZE_SERVICE_ACTIONS",
     "has_external_tool",
 ]
+
+# `PURGE_METHODS` was listed here but never defined in this module, so
+# `from ... capabilities import *` raised AttributeError. The tier vocabulary
+# lives on `Tiers`; the name that was wanted is the service-action table below,
+# which does exist. If a caller wants the purge-capable method list, it should be
+# derived from `probe_capabilities` rather than hardcoded here, because whether a
+# method is available is a property of the connected device.
 
 
 class Tiers:
@@ -82,7 +87,7 @@ class DeviceCapabilities:
     controller: str = ""
     model: str = ""
     serial: str = ""
-    rotational: Optional[bool] = None
+    rotational: bool | None = None
     # ATA Sanitize (ATA-4/ACS-4 opcode 0xB4)
     ata_sanitize_supported: bool = False
     ata_sanitize_block_erase: bool = False
@@ -103,8 +108,8 @@ class DeviceCapabilities:
     blksecdiscard: bool = False
     blkzeroout: bool = False
     # hidden-address state
-    hpa_present: Optional[bool] = None
-    dco_present: Optional[bool] = None
+    hpa_present: bool | None = None
+    dco_present: bool | None = None
     # topology
     is_loop: bool = False
     is_raid_member: bool = False
@@ -112,16 +117,16 @@ class DeviceCapabilities:
     is_lvm: bool = False
     is_mounted: bool = False
     # everything discovered
-    notes: List[str] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     # -- derived ----------------------------------------------------------
-    def available_methods(self) -> List[Tuple[str, str, str]]:
+    def available_methods(self) -> list[tuple[str, str, str]]:
         """Return `(method_id, tier, mechanism)` for everything on offer, best first.
 
         `method_id` is the exact string that goes into the certificate.
         """
-        out: List[Tuple[str, str, str]] = []
+        out: list[tuple[str, str, str]] = []
         if self.ata_sanitize_block_erase:
             out.append(("ATA_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE,
                         "ATA Device Configuration/Sanitize feature set, command 0xB4, "
@@ -168,7 +173,7 @@ class DeviceCapabilities:
         return any(t in (Tiers.FIRMWARE_PURGE, Tiers.CRYPTOGRAPHIC_ERASE)
                    for _, t, _ in self.available_methods())
 
-    def summary_lines(self) -> List[str]:
+    def summary_lines(self) -> list[str]:
         lines = [f"Transport            : {self.transport}"]
         if self.controller:
             lines.append(f"Controller           : {self.controller}")
@@ -181,12 +186,8 @@ class DeviceCapabilities:
             lines.append("  CRYPTO SCRAMBLE EXT: " + _yn(self.ata_sanitize_crypto_scramble))
             lines.append("  OVERWRITE EXT      : " + _yn(self.ata_sanitize_overwrite))
         lines.append("NVMe SANICAP         : "
-                     + ("crypto=%s block=%s overwrite=%s sprrs=%s" % (
-                         _yn(self.nvme_sanicap_crypto_erase), _yn(self.nvme_sanicap_block_erase),
-                         _yn(self.nvme_sanicap_overwrite), _yn(self.nvme_sprrs))))
-        lines.append("SCSI SANITIZE (0x48) : block=%s crypto=%s overwrite=%s" % (
-            _yn(self.scsi_sanitize_block_erase), _yn(self.scsi_sanitize_crypto_erase),
-            _yn(self.scsi_sanitize_overwrite)))
+                     + (f"crypto={_yn(self.nvme_sanicap_crypto_erase)} block={_yn(self.nvme_sanicap_block_erase)} overwrite={_yn(self.nvme_sanicap_overwrite)} sprrs={_yn(self.nvme_sprrs)}"))
+        lines.append(f"SCSI SANITIZE (0x48) : block={_yn(self.scsi_sanitize_block_erase)} crypto={_yn(self.scsi_sanitize_crypto_erase)} overwrite={_yn(self.scsi_sanitize_overwrite)}")
         lines.append("Kernel BLKDISCARD    : " + _yn(self.blkdiscard))
         if self.hpa_present is not None:
             lines.append("HPA present          : " + _yn(self.hpa_present))
@@ -219,7 +220,7 @@ def has_external_tool(name: str) -> bool:
     return _EXTERNAL[name]
 
 
-def _run(cmd: List[str], timeout: int = 20) -> Tuple[int, str, str]:
+def _run(cmd: list[str], timeout: int = 20) -> tuple[int, str, str]:
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         return proc.returncode, proc.stdout, proc.stderr
@@ -491,7 +492,7 @@ def sys_block_exists(dev: str) -> bool:
     return (Path("/sys/block") / Path(dev).name).is_dir()
 
 
-def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> Dict[str, object]:
+def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> dict[str, object]:
     """The ordered method ladder, plus whether the request can be satisfied.
 
     Returned shape is what the operator sees before anything is written, and what

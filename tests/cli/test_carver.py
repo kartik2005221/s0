@@ -15,22 +15,19 @@ import hashlib
 import io
 import os
 import random
-import tempfile
-import sqlite3
 import shutil
-import struct
+import sqlite3
 import subprocess
 import tarfile
+import tempfile
 import wave
 import zipfile
-import zlib
 from pathlib import Path
 
 import pytest
-from s0 import resources
 
-from s0.carve import calculate_shannon_entropy, carve_image, score_carved_candidate
-from s0.carve import boundary, signatures
+from s0 import resources
+from s0.carve import boundary, calculate_shannon_entropy, carve_image, score_carved_candidate, signatures
 from s0.carve.policy import CarveBudget, CarvePolicy
 from s0.carve.signatures import get_signature_by_ext, sniff
 from s0.certificate import verify_certificate
@@ -122,7 +119,7 @@ def _write_image_with_payloads(tmp_path, payloads, total=48 * 1024 * 1024, fill=
     span = total // (len(payloads) + 2)
     buf = bytearray()
     placements = {}
-    for i, (name, data) in enumerate(payloads.items()):
+    for _i, (name, data) in enumerate(payloads.items()):
         pad = (fill * ((span * 2) // len(fill) + 2))[: span]
         buf += pad
         placements[name] = len(buf)
@@ -274,7 +271,6 @@ def test_mp3_frame_chain_rejects_a_non_random_lone_sync_word():
 
 
 def test_mp3_frame_chain_accepts_a_real_frame_sequence(tmp_path):
-    ffmpeg = None
     payload = _synth_mp3_frames(40)
     if payload is None:
         pytest.skip("no MPEG frame sequence generator available")
@@ -747,6 +743,7 @@ def test_budget_admission_is_ordered_and_explained():
 def _jpg_bytes(seed: int = 0, size: tuple = (48, 48)) -> bytes:
     """A genuinely valid JPEG, so the structural validator accepts it."""
     import random
+
     from PIL import Image
     rnd = random.Random(seed)
     im = Image.new("RGB", size)
@@ -1044,6 +1041,7 @@ class TestCandidatePrefilter:
 
     def test_bmp_with_a_plausible_size_but_nonsense_reserved_words_is_rejected(self):
         import struct as _struct
+
         from s0.carve.engine import _plausible_header
         sig = self._sig("bmp")
         window = bytearray(64)

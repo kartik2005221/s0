@@ -19,8 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from s0.carve import mft
-from s0.carve import usn
+from s0.carve import mft, usn
 from s0.carve.ntfs_carver import (
     parse_ntfs_boot_sector,
     read_usn_journal,
@@ -892,6 +891,7 @@ def test_volume_without_a_journal_says_so_rather_than_failing(tmp_path):
 def test_cli_output_and_json_report_journal_names(tmp_path, capsys):
     """The names have to reach the operator, in both output formats."""
     import json
+
     from s0.cli.main import main
 
     img = _journal_volume(tmp_path, [

@@ -9,19 +9,16 @@ way around: the JSON remains the artifact of record.
 
 from __future__ import annotations
 
-import json
 import io
 from pathlib import Path
-from typing import Optional
+from xml.sax.saxutils import escape as _xml_escape
 
 import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-from xml.sax.saxutils import escape as _xml_escape
 
 from .canonical import canonicalize_str
 
@@ -79,7 +76,7 @@ def qr_module_count(data: str, *, ec_level: str = QR_ECC) -> int:
     return img.modules_count
 
 
-def qr_size_mm_for(data: str, *, max_mm: float = QR_MAX_MM, ec_level: str = QR_ECC) -> Optional[float]:
+def qr_size_mm_for(data: str, *, max_mm: float = QR_MAX_MM, ec_level: str = QR_ECC) -> float | None:
     """Smallest printable size (mm) that keeps `data` scannable, or None if it
     cannot be made scannable within `max_mm` or exceeds QR version 40 capacity.
     """

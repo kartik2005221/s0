@@ -1,7 +1,8 @@
 """Tests for CLI metadata validation on wipe, carve, image subcommands."""
 
 from types import SimpleNamespace
-from s0.cli.main import cmd_wipe, cmd_carve, cmd_image, cmd_erase_files, _validate_cli_metadata
+
+from s0.cli.main import _validate_cli_metadata, cmd_wipe
 from s0.terminal import EX_USAGE
 
 

@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
-
 
 EXT4_SUPERBLOCK_OFFSET = 1024
 EXT4_MAGIC = 0xEF53
@@ -45,15 +42,15 @@ class Ext4RecoveredInode:
     mode: int
     size_bytes: int
     deletion_time: int
-    extent_block_ranges: List[tuple[int, int]] = field(default_factory=list)  # (start_block, count)
-    data: Optional[bytes] = None
+    extent_block_ranges: list[tuple[int, int]] = field(default_factory=list)  # (start_block, count)
+    data: bytes | None = None
     fragment_count: int = 1
 
 
 def parse_ext4_superblock(
     image_path: str | Path,
     partition_offset: int = 0,
-) -> Optional[Ext4Superblock]:
+) -> Ext4Superblock | None:
     """Parse ext4 superblock from a disk image at partition_offset + 1024."""
     try:
         with open(image_path, "rb") as f:
@@ -104,7 +101,7 @@ def parse_extent_header(
     disk_file=None,
     block_size: int = 4096,
     partition_offset: int = 0,
-) -> List[tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """Parse ext4 extent header and return (start_block, count) for all fragments."""
     if len(i_block_bytes) < 12:
         return []
@@ -150,7 +147,7 @@ def scan_ext4_deleted_inodes(
     image_path: str | Path,
     max_inodes: int = 500,
     partition_offset: int = 0,
-) -> List[Ext4RecoveredInode]:
+) -> list[Ext4RecoveredInode]:
     """Scan ext4 image structure for genuinely deleted inode structures and extent trees."""
     sb = parse_ext4_superblock(image_path, partition_offset=partition_offset)
     if not sb:

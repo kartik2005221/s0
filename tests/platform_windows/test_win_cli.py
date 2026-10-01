@@ -1,9 +1,9 @@
 """Tests for Windows CLI module."""
 
 import json
-import os
 import sys
 from pathlib import Path
+
 import pytest
 
 from s0.resources import repo_root
@@ -16,15 +16,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from windows.cli import (
-    WIN32_FIND_STREAM_DATA,
-    detect_windows_filesystem,
-    enumerate_ntfs_streams_win32,
     erase_batch_windows,
     erase_folder_windows,
     erase_single_file_windows,
-    scrub_alternate_data_streams,
 )
 from windows.cli.s0_eraser import main as win_main
+
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 

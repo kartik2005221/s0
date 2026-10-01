@@ -93,37 +93,27 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: |
+      - name: Install ruff
+        run: |
           python -m pip install --upgrade pip
           pip install ruff
-      # The lint gate is a ratchet, not a wall.
-      #
-      # The repository carries ~1,286 pre-existing ruff findings, almost all of
-      # them `List` -> `list` and `Optional[X]` -> `X | None` style modernisation.
-      # Making ruff a hard wall over the whole tree would mean a red build from
-      # the first commit and a gate nobody trusts, which is worse than no gate:
-      # people learn to read red as normal. So the hard check runs on the files
-      # this change touches, and the whole-tree run is reported alongside it so
-      # the backlog is visible and cannot quietly grow.
-      - name: Ruff (lint, changed files)
-        run: |
-          set -euo pipefail
-          BASE=$(git merge-base HEAD origin/master 2>/dev/null || git rev-parse HEAD~1)
-          CHANGED=$(git diff --name-only --diff-filter=ACMR "$BASE" -- '*.py' || true)
-          if [ -z "$CHANGED" ]; then
-            echo "no changed Python files; nothing to gate"
-            exit 0
-          fi
-          echo "gating on:"; echo "$CHANGED"
-          # shellcheck disable=SC2086
-          ruff check --output-format=github $CHANGED
 
-      - name: Ruff (whole tree, advisory)
-        continue-on-error: true
-        run: |
-          TOTAL=$(ruff check --output-format concise . 2>/dev/null | grep -c ':' || true)
-          echo "::notice title=Ruff backlog::${TOTAL} pre-existing finding(s) in the whole tree. The gate applies to changed files only."
-          ruff check --output-format concise . 2>/dev/null | head -40 || true
+      # Ruff is a hard wall over the whole tree.
+      #
+      # This used to be a ratchet (hard gate on changed files, whole tree reported
+      # as advisory) because the repo carried ~1,286 findings, mostly `List` ->
+      # `list` modernisation. That backlog is cleared now, so the ratchet is dead
+      # weight: it let a tree-wide regression through whenever the offending file
+      # happened to be untouched by the commit. A gate nobody trusts is worse than
+      # no gate, because people learn to read red as normal.
+      #
+      # The intentional exceptions are not scattered `# noqa` comments. They are
+      # `per-file-ignores` in pyproject.toml, each with a comment saying why:
+      # best-effort cleanup (S110), deferred imports (E402), and the platform
+      # erasers and release script shelling out to tools found on PATH (S603,
+      # S607). Anything else is a real finding and should fail the build.
+      - name: Ruff (lint, whole tree, blocking)
+        run: ruff check --output-format=github .
 
       - name: EditorConfig and hygiene
         uses: pre-commit/action@v3.0.1

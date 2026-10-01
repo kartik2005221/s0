@@ -77,7 +77,8 @@ def canonicalize_str(value: Any) -> str:
     try:
         _canon(value, out)
     except RecursionError:
-        raise CanonicalizationError("data structure exceeds maximum recursion depth")
+        raise CanonicalizationError(
+            "data structure exceeds maximum recursion depth") from None
     return "".join(out)
 
 

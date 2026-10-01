@@ -10,7 +10,6 @@ import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from s0.wipe.methods.base import Target
@@ -54,7 +53,7 @@ def _unescape_mount_field(s: str) -> str:
 def _mounted_paths() -> set[str]:
     mounts = set()
     try:
-        with open("/proc/mounts", "r", encoding="utf-8") as f:
+        with open("/proc/mounts", encoding="utf-8") as f:
             for line in f:
                 parts = line.split()
                 if len(parts) >= 2:
@@ -349,7 +348,7 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
     return warnings
 
 
-def _get_root_mount_source() -> Optional[str]:
+def _get_root_mount_source() -> str | None:
     """Resolve the real backing device path for the running root filesystem (/),
     attempting findmnt first with direct /proc/mounts parsing as fallback.
     """
@@ -365,7 +364,7 @@ def _get_root_mount_source() -> Optional[str]:
         pass
 
     try:
-        with open("/proc/mounts", "r", encoding="utf-8") as f:
+        with open("/proc/mounts", encoding="utf-8") as f:
             for line in f:
                 parts = line.split()
                 if len(parts) >= 2 and _unescape_mount_field(parts[1]) == "/":

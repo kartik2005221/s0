@@ -14,7 +14,7 @@ Covers:
 import struct
 from pathlib import Path
 
-import pytest
+from s0.carve import boundary
 from s0.carve.engine import (
     carve_image,
     detect_filesystem,
@@ -32,7 +32,6 @@ from s0.carve.ntfs_carver import (
 from s0.carve.scoring import (
     score_carved_candidate,
 )
-from s0.carve import boundary
 from s0.carve.signatures import get_signature_by_ext
 from s0.cli.devices import (
     Target,
@@ -255,7 +254,7 @@ def test_scoring_flags_effectively_constant_data():
 
 def test_random_wipe_verification_entropy(tmp_path: Path):
     import os
-    from s0.wipe.planner import sample_offsets
+
 
     # Create file with random bytes
     rand_file = tmp_path / "random.img"
@@ -311,7 +310,7 @@ def test_mount_octal_unescaping():
 
 
 def test_partition_boundary_matching():
-    from s0.cli.devices import _is_partition, _is_dev_or_subpartition
+    from s0.cli.devices import _is_dev_or_subpartition, _is_partition
 
     assert _is_partition("sda") is False
     assert _is_partition("sda1") is True
@@ -331,9 +330,10 @@ def test_partition_boundary_matching():
 
 
 def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
-    import shutil
-    from s0.cli.main import cmd_wipe
     import argparse
+    import shutil
+
+    from s0.cli.main import cmd_wipe
 
     monkeypatch.setattr(shutil, "which", lambda cmd: None)
     monkeypatch.setattr("s0.cli.main._resolve_target", lambda path: Target(path="/dev/sde", kind="block", capacity_bytes=100*1024*1024, sector_size=512, storage_type="HDD"))

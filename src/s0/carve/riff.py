@@ -44,7 +44,6 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 __all__ = [
     "RiffError",
@@ -88,7 +87,7 @@ class Chunk:
     start: int          # offset of the FOURCC
     size: int           # payload size, excluding the 8-byte header
     depth: int = 0
-    list_type: Optional[bytes] = None   # for LIST/RIFF, the type FOURCC at +8
+    list_type: bytes | None = None   # for LIST/RIFF, the type FOURCC at +8
 
     @property
     def payload_start(self) -> int:
@@ -122,7 +121,7 @@ class Chunk:
         return self.next_offset
 
 
-def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> List[Chunk]:
+def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> list[Chunk]:
     """List every chunk between ``start`` and ``end``, descending into LISTs.
 
     Raises :class:`RiffError` on a chunk that overruns its parent, because a
@@ -130,7 +129,7 @@ def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> List[Chunk
     """
     if depth > _MAX_DEPTH:
         raise RiffError(f"chunk nesting deeper than {_MAX_DEPTH} levels")
-    out: List[Chunk] = []
+    out: list[Chunk] = []
     pos = start
     while pos + _CHUNK_HEADER <= end:
         fourcc = data[pos:pos + 4]
@@ -158,7 +157,7 @@ def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> List[Chunk
     return out
 
 
-def find_movi(chunks: List[Chunk]) -> Optional[Chunk]:
+def find_movi(chunks: list[Chunk]) -> Chunk | None:
     """Return the top-level ``movi`` LIST, or ``None``."""
     for c in chunks:
         if c.fourcc == b"LIST" and c.list_type == b"movi":
@@ -196,7 +195,7 @@ class IndexEntry:
         return self.size & 0x7FFFFFFF
 
 
-def parse_idx1(data: bytes, offset: int) -> List[IndexEntry]:
+def parse_idx1(data: bytes, offset: int) -> list[IndexEntry]:
     """Parse an ``idx1`` box at ``offset``. Returns [] if it is not one.
 
     Each row is 16 bytes: ``dwChunkId``, ``dwFlags``, ``dwOffset``, ``dwSize``.
@@ -205,7 +204,7 @@ def parse_idx1(data: bytes, offset: int) -> List[IndexEntry]:
         return []
     size = struct.unpack_from("<I", data, offset + 4)[0]
     end = min(len(data), offset + 8 + size)
-    entries: List[IndexEntry] = []
+    entries: list[IndexEntry] = []
     pos = offset + 8
     while pos + 16 <= end:
         chunk_id = data[pos:pos + 4]
@@ -219,7 +218,7 @@ def parse_idx1(data: bytes, offset: int) -> List[IndexEntry]:
 # AVI 2.0: OpenDML indx / ix##
 # --------------------------------------------------------------------------- #
 
-def parse_opendml_indx(data: bytes, offset: int) -> List[IndexEntry]:
+def parse_opendml_indx(data: bytes, offset: int) -> list[IndexEntry]:
     """Parse an OpenDML ``indx`` super-index at ``offset``.
 
     Layout: a ``dwLongsPerEntry`` guard, ``dwIndexType``, ``dwChunkCount``, the
@@ -242,7 +241,7 @@ def parse_opendml_indx(data: bytes, offset: int) -> List[IndexEntry]:
     base = struct.unpack_from("<Q", data, payload + 24)[0]
     # dwLongsPerEntry(4) dwIndexType(4) dwChunkCount(4) dwReserved[3](12)
     # dwBaseOffset(8) = 32 bytes of header before the first row.
-    entries: List[IndexEntry] = []
+    entries: list[IndexEntry] = []
     pos = payload + 32
     end = min(len(data), payload + 32 + 16 * chunk_count)
     while pos + 16 <= end:
@@ -261,24 +260,24 @@ def parse_opendml_indx(data: bytes, offset: int) -> List[IndexEntry]:
 class AviIndex:
     """A resolved AVI chunk inventory."""
 
-    entries: List[IndexEntry]
+    entries: list[IndexEntry]
     base: int
     base_is_absolute: bool
-    movi_start: Optional[int]
+    movi_start: int | None
     keyframes: int = 0
     #: How the offset base was decided, and how well. This belongs in the
     #: recovery report: "which of the two documented bases did you assume, and
     #: what made you assume it" is the first question an examiner should ask of
     #: an index-driven recovery.
     resolution: str = ""
-    problems: List[str] = field(default_factory=list)
+    problems: list[str] = field(default_factory=list)
 
-    def extent(self, entry: IndexEntry) -> Tuple[int, int]:
+    def extent(self, entry: IndexEntry) -> tuple[int, int]:
         """Absolute ``(offset, length)`` of a referenced chunk's *header*."""
         return (entry.offset if self.base_is_absolute
                 else self.base + entry.offset, entry.size)
 
-    def media_extent(self) -> Tuple[int, int]:
+    def media_extent(self) -> tuple[int, int]:
         """``(first_offset, last_end)`` of all indexed chunks, or (0, 0)."""
         if not self.entries:
             return (0, 0)
@@ -289,7 +288,7 @@ class AviIndex:
         return (min(o for o, _ in offs), max(n for _, n in offs))
 
 
-def _fourcc_hits(data: bytes, entries: List[IndexEntry], base: int,
+def _fourcc_hits(data: bytes, entries: list[IndexEntry], base: int,
                  absolute: bool) -> int:
     """How many indexed entries land on a matching chunk header under one base.
 
@@ -313,8 +312,8 @@ def _fourcc_hits(data: bytes, entries: List[IndexEntry], base: int,
     return hits
 
 
-def resolve_index(data: bytes, movi: Optional[Chunk],
-                  entries: List[IndexEntry]) -> Optional[AviIndex]:
+def resolve_index(data: bytes, movi: Chunk | None,
+                  entries: list[IndexEntry]) -> AviIndex | None:
     """Decide whether ``entries`` are movi-relative or file-absolute.
 
     Trap 1: both are legal and real files use both, so this tests both and keeps
@@ -353,7 +352,7 @@ def resolve_index(data: bytes, movi: Optional[Chunk],
                     movi_start=movi_start, keyframes=keyframes, resolution=resolution)
 
 
-def find_avi_index(data: bytes) -> Optional[AviIndex]:
+def find_avi_index(data: bytes) -> AviIndex | None:
     """Locate and resolve an AVI's chunk index, whichever kind it uses.
 
     Prefers OpenDML ``indx`` when present, because it is a stronger structure

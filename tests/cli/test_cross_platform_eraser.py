@@ -1,7 +1,6 @@
 """Tests for Cross-Platform File & Folder Eraser Module (Linux, Windows, macOS)."""
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -14,29 +13,27 @@ assert REPO_ROOT is not None, "platform launcher tests require a source checkout
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import pytest
 from macos.s0_eraser import (
     erase_batch_macos,
     erase_folder_macos,
     erase_single_file_macos,
 )
-from s0.cli.file_eraser import (
-    detect_cow_and_filesystem,
-    erase_batch,
-    erase_folder,
-    erase_single_file,
-    platform_cleanse_attributes,
-    platform_sync,
-)
-from s0 import certificate as cert_mod
-from s0 import crypto as core_crypto
 from windows.s0_eraser import (
     WIN32_FIND_STREAM_DATA,
     enumerate_ntfs_streams_win32,
     erase_batch_windows,
     erase_folder_windows,
     erase_single_file_windows,
-    scrub_alternate_data_streams,
+)
+
+from s0 import certificate as cert_mod
+from s0 import crypto as core_crypto
+from s0.cli.file_eraser import (
+    detect_cow_and_filesystem,
+    erase_batch,
+    erase_single_file,
+    platform_cleanse_attributes,
+    platform_sync,
 )
 
 

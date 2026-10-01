@@ -3,23 +3,17 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-import pytest
-from s0.canonical import canonicalize_str, canonicalize
+from s0.canonical import canonicalize_str
 from s0.certificate import (
-    validate,
-    verify_certificate,
-    METHOD_TIERS,
-    WIPE_METHODS,
     NIST_CATEGORIES,
+    WIPE_METHODS,
+    verify_certificate,
 )
 from s0.crypto import (
     load_public_pem,
     public_key_fingerprint,
-    verify_payload,
 )
-
 from s0.resources import repo_root
 
 REPO_ROOT = repo_root()

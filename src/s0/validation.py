@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from s0.config import CONFIG
 
 FORBIDDEN_METADATA_CHARS = set('<>&"\'\\|')
 
 
-def validate_metadata_str(field_name: str, v: Optional[str], max_len: int = 128) -> Optional[str]:
+def validate_metadata_str(field_name: str, v: str | None, max_len: int = 128) -> str | None:
     """Validate and sanitize metadata string fields (operator_id, organization, etc.).
 
     Rejects characters < > & " ' \\ | and enforces length limits.

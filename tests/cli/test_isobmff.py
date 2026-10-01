@@ -725,7 +725,7 @@ class TestSignatureModel:
         still not claim an EBML file, and the Matroska entries must not be
         reachable through the MP4 rule.
         """
-        from s0.carve.signatures import SIGNATURES, _SIGNATURES_BY_EXT, sniff
+        from s0.carve.signatures import _SIGNATURES_BY_EXT, SIGNATURES, sniff
         ebml = b"\x1a\x45\xdf\xa3"
         # The MP4 sniffer keys on `ftyp`; EBML files have none, so a real
         # Matroska header must not be reported as ISO-BMFF.

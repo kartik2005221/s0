@@ -3,11 +3,10 @@
 import json
 import struct
 import zlib
-from pathlib import Path
 
 import pytest
 
-from s0 import crypto, certificate, pdfgen
+from s0 import certificate, crypto, pdfgen
 from s0.canonical import canonicalize_str
 
 

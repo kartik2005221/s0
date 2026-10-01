@@ -44,9 +44,7 @@ both is far more likely to be real.
 from __future__ import annotations
 
 import struct
-import zlib
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
 
 # Block types, as written in the first four bytes of every journal block, in
 # network byte order.
@@ -102,7 +100,7 @@ class JournalBlock:
     block_type: int
     sequence: int
     data: bytes
-    checksum_ok: Optional[bool] = None
+    checksum_ok: bool | None = None
     magic_ok: bool = True
 
     @property
@@ -153,7 +151,7 @@ class Jbd2Superblock:
 _VALID_BLOCKSIZES = (1024, 2048, 4096, 8192, 16384, 32768, 65536)
 
 
-def parse_jbd2_superblock(blob: bytes) -> Optional[Jbd2Superblock]:
+def parse_jbd2_superblock(blob: bytes) -> Jbd2Superblock | None:
     """Parse a journal superblock, rejecting anything whose geometry is nonsense.
 
     The magic is necessary but nowhere near sufficient. Because it is only 32
@@ -254,7 +252,7 @@ class Ext4DirEntry:
         return _FILE_TYPE_NAMES.get(self.file_type, f"type_{self.file_type}")
 
 
-def parse_ext4_directory(blob: bytes) -> List[Ext4DirEntry]:
+def parse_ext4_directory(blob: bytes) -> list[Ext4DirEntry]:
     """Parse the entries of one ext4 directory block.
 
     Entries are variable length and packed end to end, each carrying its own
@@ -262,7 +260,7 @@ def parse_ext4_directory(blob: bytes) -> List[Ext4DirEntry]:
     length means the block is torn and the walk stops, rather than looping or
     reading past the end.
     """
-    entries: List[Ext4DirEntry] = []
+    entries: list[Ext4DirEntry] = []
     pos = 0
     limit = len(blob)
     while pos + 8 <= limit:
@@ -298,10 +296,10 @@ class JournalName:
     inode: int
     name: str
     file_type: int
-    size_bytes: Optional[int] = None
+    size_bytes: int | None = None
     from_directory: bool = False
     from_inode: bool = False
-    checksum_ok: Optional[bool] = None
+    checksum_ok: bool | None = None
 
     @property
     def corroborated(self) -> bool:
@@ -318,14 +316,14 @@ def read_journal_blocks(
     data: bytes,
     superblock: Jbd2Superblock,
     max_blocks: int = 4096,
-) -> List[JournalBlock]:
+) -> list[JournalBlock]:
     """Read journal blocks, verifying each checksum where one is present.
 
     The journal is walked from its start block. Everything read is a candidate:
     a block that is not a recognised type is a hole in the ring, not a reason to
     abandon the rest, so the scan continues.
     """
-    blocks: List[JournalBlock] = []
+    blocks: list[JournalBlock] = []
     bs = superblock.blocksize
     if bs <= 0 or len(data) < bs:
         return blocks
@@ -361,7 +359,7 @@ def recover_names(
     data: bytes,
     superblock: Jbd2Superblock,
     max_blocks: int = 4096,
-) -> Tuple[List[JournalName], dict]:
+) -> tuple[list[JournalName], dict]:
     """Recover filenames from a jbd2 journal image.
 
     Returns the names and a set of counters describing what was read, so a
@@ -379,7 +377,7 @@ def recover_names(
     stats["blocks_read"] = len(blocks)
     stats["checksum_failures"] = sum(1 for b in blocks if b.checksum_ok is False)
 
-    found: Dict[int, JournalName] = {}
+    found: dict[int, JournalName] = {}
 
     for block in blocks:
         if block.checksum_ok is False:
@@ -412,7 +410,7 @@ def recover_names(
     return list(found.values()), stats
 
 
-def summarize(names: List[JournalName], stats: dict) -> dict:
+def summarize(names: list[JournalName], stats: dict) -> dict:
     return {
         **stats,
         "directories": sum(1 for n in names if n.file_type == EXT4_DIR_FT_DIR),

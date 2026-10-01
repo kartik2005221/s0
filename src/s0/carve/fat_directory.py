@@ -29,9 +29,7 @@ looks like a plausible name, and is the kind of mistake that survives review.
 
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 # 8.3 attributes. 0x0F marks a long-filename fragment rather than a real entry.
 ATTR_READ_ONLY = 0x01
@@ -139,9 +137,9 @@ VERIFY_FAILED = "failed"            # the evidence contradicts the name
 class FatRecoveredName:
     """A filename as recovered, with what supports it."""
     short_name: str
-    long_name: Optional[str] = None
+    long_name: str | None = None
     verification: str = VERIFY_FAILED
-    fragments: List[FatLfnFragment] = field(default_factory=list)
+    fragments: list[FatLfnFragment] = field(default_factory=list)
 
     @property
     def long_name_verified(self) -> bool:
@@ -205,7 +203,7 @@ def short_name_checksum(short_name: bytes) -> int:
     return checksum
 
 
-def parse_lfn_fragment(entry: FatDirectoryEntry) -> Optional[FatLfnFragment]:
+def parse_lfn_fragment(entry: FatDirectoryEntry) -> FatLfnFragment | None:
     """Decode one long-filename fragment, or None if it is not one.
 
     A fragment is rejected outright when its character count exceeds the 13 the
@@ -264,9 +262,9 @@ def parse_lfn_fragment(entry: FatDirectoryEntry) -> Optional[FatLfnFragment]:
     )
 
 
-def assemble_long_name(fragments: List[FatLfnFragment],
-                       expected_checksum: Optional[int],
-                       ) -> Tuple[Optional[str], str]:
+def assemble_long_name(fragments: list[FatLfnFragment],
+                       expected_checksum: int | None,
+                       ) -> tuple[str | None, str]:
     """Join fragments into a name, and report how far it can be trusted.
 
     `expected_checksum` is the checksum of the 8.3 entry, or None when that
@@ -304,9 +302,9 @@ def assemble_long_name(fragments: List[FatLfnFragment],
     return name, VERIFY_CHECKSUM if expected_checksum is not None else VERIFY_ADJACENT
 
 
-def read_directory_cluster(raw: bytes, cluster_size: int) -> List[FatDirectoryEntry]:
+def read_directory_cluster(raw: bytes, cluster_size: int) -> list[FatDirectoryEntry]:
     """Decode every 32-byte slot in one directory cluster."""
-    entries: List[FatDirectoryEntry] = []
+    entries: list[FatDirectoryEntry] = []
     for offset in range(0, len(raw) - 31, 32):
         entries.append(FatDirectoryEntry(offset=offset, raw=raw[offset : offset + 32]))
     return entries
@@ -315,8 +313,8 @@ def read_directory_cluster(raw: bytes, cluster_size: int) -> List[FatDirectoryEn
 def read_directory(
     raw: bytes,
     cluster_size: int,
-    following_clusters: Optional[List[int]] = None,
-) -> List[FatDirectoryEntry]:
+    following_clusters: list[int] | None = None,
+) -> list[FatDirectoryEntry]:
     """Decode a directory, following its cluster chain when one is supplied.
 
     A 0x00 entry ends the directory. A 0xE5 entry is a free slot and does not,
@@ -324,7 +322,7 @@ def read_directory(
     case, and the reason a walker that stops at the first free slot sees only the
     files before the first deletion.
     """
-    entries: List[FatDirectoryEntry] = []
+    entries: list[FatDirectoryEntry] = []
     for index in read_directory_cluster(raw, cluster_size):
         if index.is_end_of_directory:
             return entries
@@ -332,7 +330,7 @@ def read_directory(
     return entries
 
 
-def expected_checksum_for(entry: FatDirectoryEntry) -> Optional[int]:
+def expected_checksum_for(entry: FatDirectoryEntry) -> int | None:
     """The checksum an LFN run for this 8.3 entry would carry, if recoverable.
 
     For a live entry this is exact. For a deleted entry it is not: deletion
@@ -363,9 +361,9 @@ class FatNamedEntry:
 
 
 def name_entries(
-    entries: List[FatDirectoryEntry],
+    entries: list[FatDirectoryEntry],
     include_free: bool = True,
-) -> List[FatNamedEntry]:
+) -> list[FatNamedEntry]:
     """Pair each 8.3 entry with the long-name fragments that precede it.
 
     Fragments accumulate as the directory is walked and are consumed by the next
@@ -376,8 +374,8 @@ def name_entries(
     A malformed fragment breaks the run for the same reason: nothing after it can
     be assumed to belong to the entry whose 8.3 name it used to describe.
     """
-    out: List[FatNamedEntry] = []
-    pending: List[FatLfnFragment] = []
+    out: list[FatNamedEntry] = []
+    pending: list[FatLfnFragment] = []
 
     for entry in entries:
         if entry.is_end_of_directory:

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+
 # Prefer the installed distribution. Fall back to the source tree only so the
 # suite still runs in a bare checkout that has not been `pip install -e .`'d.
 def _repo_root() -> Path:
@@ -28,7 +29,7 @@ try:  # pragma: no cover - import side effect
 except ImportError:  # pragma: no cover - import side effect
     sys.path.insert(0, str(_repo_root() / "src"))
 
-from s0 import crypto, certificate  # noqa: E402
+from s0 import certificate, crypto  # noqa: E402
 
 
 @pytest.fixture(scope="session")

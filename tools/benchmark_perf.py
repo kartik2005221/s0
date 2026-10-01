@@ -32,14 +32,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from s0 import canonical, certificate, crypto
-from s0.config import CONFIG
 from s0.audit import (
-    AuditBlock,
-    init_audit_db,
     record_audit_event,
     verify_audit_ledger,
 )
 from s0.cli.devices import Target
+from s0.config import CONFIG
 from s0.wipe.planner import verify_wipe
 
 

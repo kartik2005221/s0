@@ -14,8 +14,8 @@ decide whether a candidate is real.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any
 
 # Categories used across the signature table and the recovery report.
 CATEGORIES = ("image", "document", "archive", "audio", "video", "executable", "database", "system", "custom")
@@ -41,19 +41,19 @@ class FileSignature:
     #: -- which is how every ISO-BMFF signature here came to be pinned to 0x18
     #: while ffmpeg writes 0x20, and real MP4s were never even candidates.
     header_offset: int = 0
-    footer: Optional[bytes] = None
+    footer: bytes | None = None
     footer_offset_from_end: int = 0
     min_size: int = 64
     max_size: int = 50 * _MB
-    fixed_size: Optional[int] = None
+    fixed_size: int | None = None
     # Optional inbuilt string: the format reliably contains this marker, which
     # is a strong additional filter for 2-byte magics (scalpel calls this
     # "inbuilt"). Checked within the first `inbuilt_search_window` bytes.
-    inbuilt: Optional[bytes] = None
+    inbuilt: bytes | None = None
     inbuilt_search_window: int = 4096
 
 
-SIGNATURES: List[FileSignature] = [
+SIGNATURES: list[FileSignature] = [
     # ---------------- images ----------------
     FileSignature("JPEG Image", "jpg", "image",
                   header=b"\xff\xd8\xff", footer=b"\xff\xd9",
@@ -245,7 +245,7 @@ RESOLVABLE = {
     "sqlite", "pcap", "pcapng", "gz", "tar", "elf", "exe", "dll", "rtf", "rar",
 }
 
-_SIGNATURES_BY_EXT: Dict[str, List[FileSignature]] = {}
+_SIGNATURES_BY_EXT: dict[str, list[FileSignature]] = {}
 for _sig in SIGNATURES:
     _SIGNATURES_BY_EXT.setdefault(_sig.extension, []).append(_sig)
 
@@ -262,7 +262,7 @@ def parse_hex_bytes(val: str | bytes) -> bytes:
     return bytes.fromhex(cleaned)
 
 
-def signature_from_dict(d: Dict[str, Any]) -> FileSignature:
+def signature_from_dict(d: dict[str, Any]) -> FileSignature:
     """Instantiate a FileSignature from a JSON/dict description."""
     hdr_val = d.get("header") or d.get("header_hex") or ""
     header = parse_hex_bytes(hdr_val)
@@ -294,7 +294,7 @@ def signature_from_dict(d: Dict[str, Any]) -> FileSignature:
     )
 
 
-def get_signatures_by_ext(ext: str, custom_sigs: Optional[List[FileSignature]] = None) -> List[FileSignature]:
+def get_signatures_by_ext(ext: str, custom_sigs: list[FileSignature] | None = None) -> list[FileSignature]:
     """All signatures for an extension, custom definitions taking precedence."""
     clean = ext.lower().lstrip(".")
     if custom_sigs:
@@ -304,13 +304,13 @@ def get_signatures_by_ext(ext: str, custom_sigs: Optional[List[FileSignature]] =
     return list(_SIGNATURES_BY_EXT.get(clean, ()))
 
 
-def get_signature_by_ext(ext: str, custom_sigs: Optional[List[FileSignature]] = None) -> Optional[FileSignature]:
+def get_signature_by_ext(ext: str, custom_sigs: list[FileSignature] | None = None) -> FileSignature | None:
     """The single best signature for an extension (used by structure-based recovery)."""
     found = get_signatures_by_ext(ext, custom_sigs)
     return found[0] if found else None
 
 
-def supported_extensions() -> List[str]:
+def supported_extensions() -> list[str]:
     """Every extension the carver can recognise, sorted."""
     return sorted({s.extension for s in SIGNATURES})
 
@@ -321,7 +321,7 @@ def supported_extensions() -> List[str]:
 _SNIFF_ORDER = sorted(SIGNATURES, key=lambda s: -len(s.header))
 
 
-def sniff(data: bytes) -> Optional[FileSignature]:
+def sniff(data: bytes) -> FileSignature | None:
     """Identify a buffer by content.
 
     Used for filesystem-native recoveries, where the metadata gives the exact

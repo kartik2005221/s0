@@ -1,15 +1,13 @@
 """Method-selection matrix + safety-refusal tests (injected probes, no real HW)."""
 
-import json
 import subprocess
 from types import SimpleNamespace
 
 import pytest
 
-from s0.terminal import EX_USAGE
-
 import s0.wipe.planner as wipe_mod
 from s0.cli.devices import SafetyError, Target, check_safety, device_id_for
+from s0.terminal import EX_USAGE
 from s0.wipe.methods.overwrite import OverwriteMethod
 from s0.wipe.planner import select_method
 
@@ -74,20 +72,23 @@ def test_nvme_uncapable_gets_block_erase_and_records_crypto_unavailable(monkeypa
 
 
 def test_ata_enhanced_support_selects_purge():
-    probe = lambda t: {"supported": True, "enhanced_supported": True, "frozen": False}
+    def probe(t):
+        return {"supported": True, "enhanced_supported": True, "frozen": False}
     chosen, _ = select_method(HDD, ata_probe=probe)
     assert chosen.method.id == "ATA_SECURE_ERASE_ENHANCED"
     assert chosen.method.nist_category == "Purge"
 
 
 def test_ata_standard_support_selects_standard_erase():
-    probe = lambda t: {"supported": True, "enhanced_supported": False, "frozen": False}
+    def probe(t):
+        return {"supported": True, "enhanced_supported": False, "frozen": False}
     chosen, _ = select_method(HDD, ata_probe=probe)
     assert chosen.method.id == "ATA_SECURE_ERASE"
 
 
 def test_ata_unsupported_falls_back_to_clear_overwrite():
-    probe = lambda t: {"supported": False, "enhanced_supported": False, "frozen": False}
+    def probe(t):
+        return {"supported": False, "enhanced_supported": False, "frozen": False}
     chosen, alts = select_method(SSD, ata_probe=probe)
     assert isinstance(chosen.method, OverwriteMethod)
     assert chosen.method.nist_category == "Clear"
@@ -95,7 +96,8 @@ def test_ata_unsupported_falls_back_to_clear_overwrite():
 
 
 def test_frozen_drive_never_gets_ata_path():
-    probe = lambda t: {"supported": True, "enhanced_supported": True, "frozen": True}
+    def probe(t):
+        return {"supported": True, "enhanced_supported": True, "frozen": True}
     chosen, alts = select_method(HDD, ata_probe=probe)
     assert isinstance(chosen.method, OverwriteMethod)
     assert any("FROZEN" in a.reason for a in alts)
@@ -211,8 +213,9 @@ def test_is_os_device_detection(monkeypatch):
 
 
 def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
-    from types import SimpleNamespace
     from pathlib import Path
+    from types import SimpleNamespace
+
     import s0.cli.main as main_mod
 
     args = SimpleNamespace(

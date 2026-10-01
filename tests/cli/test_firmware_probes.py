@@ -7,11 +7,9 @@ they do NOT prove real firmware behaves this way, which is exactly why
 LIMITATIONS.md and the certificate notes say "not hardware-validated".
 """
 
-import pytest
 
-from s0.wipe.methods import ata as ata_mod
 from s0.cli.devices import Target
-
+from s0.wipe.methods import ata as ata_mod
 
 BLOCK = Target(path="/dev/sda", kind="block", capacity_bytes=500 * 2**30,
                storage_type="HDD", model="ST500LT012", serial="S0VWXYZ")

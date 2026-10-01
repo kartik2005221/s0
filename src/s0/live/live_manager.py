@@ -17,16 +17,13 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from s0 import resources
 from s0.config import CONFIG
 from s0.progress import ProgressBar
-
 
 GITHUB_REPO = "kartik2005221/s0"
 
@@ -44,9 +41,9 @@ def _format_size(size_bytes: int) -> str:
 # 1. Device Enumeration (Cross-Platform Removable USBs)
 # ---------------------------------------------------------------------------
 
-def get_removable_usb_devices() -> List[Dict[str, Any]]:
+def get_removable_usb_devices() -> list[dict[str, Any]]:
     """Enumerate removable USB drives safely across Linux, macOS, and Windows."""
-    devices: List[Dict[str, Any]] = []
+    devices: list[dict[str, Any]] = []
 
     if sys.platform == "linux":
         sys_block = Path("/sys/block")
@@ -56,7 +53,7 @@ def get_removable_usb_devices() -> List[Dict[str, Any]]:
         # Determine root / boot disk to protect it
         system_disks = set()
         try:
-            with open("/proc/mounts", "r", encoding="utf-8") as f:
+            with open("/proc/mounts", encoding="utf-8") as f:
                 for line in f:
                     parts = line.split()
                     if len(parts) >= 2 and parts[1] in ("/", "/boot", "/boot/efi", "/home"):
@@ -237,7 +234,7 @@ def _https_only(url: str, what: str = "URL") -> str:
     return url
 
 
-def _get_auth_token() -> Optional[str]:
+def _get_auth_token() -> str | None:
     """Retrieve GitHub token from environment or gh CLI if available."""
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
@@ -252,7 +249,7 @@ def _get_auth_token() -> Optional[str]:
     return None
 
 
-def _fetch_github_release(repo: str, version: str) -> Dict[str, Any]:
+def _fetch_github_release(repo: str, version: str) -> dict[str, Any]:
     """Fetch GitHub Release metadata via public API or gh CLI."""
     if version.lower() == "latest":
         url = f"https://api.github.com/repos/{repo}/releases/latest"
@@ -523,7 +520,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             return 1
 
     # Verify Checksum
-    expected_sha: Optional[str] = None
+    expected_sha: str | None = None
     if sha_asset:
         try:
             req = urllib.request.Request(sha_asset["browser_download_url"], headers=dl_headers)
@@ -650,7 +647,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
         return 2
 
     # Resolve ISO
-    iso_path: Optional[Path] = None
+    iso_path: Path | None = None
     if getattr(args, "iso", None):
         iso_path = Path(args.iso).resolve()
     else:
@@ -739,7 +736,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 
     try:
         if sys.platform == "win32":
-            from windows.cli.s0_eraser import win32_open_drive_or_partition, win32_flush_buffers
+            from windows.cli.s0_eraser import win32_flush_buffers, win32_open_drive_or_partition
             f_out = win32_open_drive_or_partition(write_target, write=True)
             with open(iso_path, "rb") as f_in:
                 while True:
@@ -791,7 +788,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 def cmd_live_build(args: argparse.Namespace) -> int:
     """Build s0 bare-metal Live ISO from source."""
     if sys.platform != "linux":
-        print(f"[s0 live]  ERROR : 's0 live build' natively requires the Linux kernel and Debian live-build toolchain.", file=sys.stderr)
+        print("[s0 live]  ERROR : 's0 live build' natively requires the Linux kernel and Debian live-build toolchain.", file=sys.stderr)
         print(f"    Current platform: {sys.platform}", file=sys.stderr)
         print()
         print("Tips:")
@@ -805,6 +802,12 @@ def cmd_live_build(args: argparse.Namespace) -> int:
         print("    Run: sudo s0 live build", file=sys.stderr)
         return 1
 
+    # `_root` was never defined here, so every `s0 live build` run that reached
+    # this line raised NameError rather than reporting where it looked. The
+    # install tree is found the same way the rest of the package finds it.
+    from s0.resources import repo_root
+
+    _root = repo_root()
     build_script = _root / "iso" / "build.sh" if _root is not None else Path("iso/build.sh")
     if not build_script.is_file():
         print("[s0 live]  ERROR : build.sh not found in the s0 installation tree.", file=sys.stderr)

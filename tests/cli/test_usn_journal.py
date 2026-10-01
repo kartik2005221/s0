@@ -12,7 +12,6 @@ its neighbour.
 from __future__ import annotations
 
 import struct
-from pathlib import Path
 
 import pytest
 
@@ -23,7 +22,6 @@ from s0.carve.usn import (
     REASON_RENAME_NEW,
     REASON_RENAME_OLD,
     USN_RECORD_V2,
-    USN_RECORD_V4,
     build_timeline,
     decode_reasons,
     parse_usn_journal,
@@ -109,9 +107,9 @@ def test_v2_record_round_trips():
 
 
 def test_v2_and_v3_are_byte_identical_apart_from_the_version():
-    fields = dict(usn_value=0x2000, timestamp=1_750_000_000.0,
-                  reason=REASON_FILE_DELETE, file_ref=ordinal(0x2A, 5),
-                  parent_ref=ordinal(5, 5))
+    fields = {"usn_value": 0x2000, "timestamp": 1_750_000_000.0,
+                  "reason": REASON_FILE_DELETE, "file_ref": ordinal(0x2A, 5),
+                  "parent_ref": ordinal(5, 5)}
     v2 = parse_usn_record(make_record("evidence.zip", version=2, **fields))
     v3 = parse_usn_record(make_record("evidence.zip", version=3, **fields))
     for rec in (v2, v3):

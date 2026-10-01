@@ -265,6 +265,7 @@ class TestCarverIntegration:
     @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
     def test_the_report_shows_the_resolved_index(self, tmp_path):
         import json
+
         from s0.carve import carve_image
         src = _encode_avi(tmp_path)
         image = tmp_path / "img.raw"

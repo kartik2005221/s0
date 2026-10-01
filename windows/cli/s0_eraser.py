@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import ctypes
-import hashlib
 import json
 import os
 import secrets
@@ -23,7 +22,7 @@ import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+
 
 # Ensure core library is accessible
 def _find_repo_root() -> Path:
@@ -43,15 +42,16 @@ if cli_dir.exists() and str(cli_dir) not in sys.path:
 try:
     from s0 import certificate as cert_mod
     from s0 import crypto as core_crypto
-    from s0.progress import ProgressBar
-    from s0.temperature import read_temperature
     from s0 import pdfgen
     from s0.config import CONFIG
+    from s0.progress import ProgressBar
+    from s0.temperature import read_temperature
 except ImportError:
     cert_mod = None
     core_crypto = None
     ProgressBar = None
-    read_temperature = lambda _: None
+    def read_temperature(_):
+        return None
     pdfgen = None
     CONFIG = {
         "default_operator": "op-forensic-01",
@@ -100,10 +100,10 @@ class WinDriveWipeResult:
     passes: int
     pattern: str
     status: str
-    error: Optional[str] = None
+    error: str | None = None
     verification_passed: bool = False
     samples_checked: int = 0
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -114,14 +114,14 @@ class WinFileEraseResult:
     passes: int
     pattern: str
     status: str
-    error: Optional[str] = None
+    error: str | None = None
     metadata_cleansed: bool = False
-    cow_warning: Optional[str] = None
-    ads_streams_scrubbed: List[str] = field(default_factory=list)
+    cow_warning: str | None = None
+    ads_streams_scrubbed: list[str] = field(default_factory=list)
     filesystem: str = "unknown"
 
 
-def detect_windows_filesystem(path_str: str) -> tuple[str, Optional[str]]:
+def detect_windows_filesystem(path_str: str) -> tuple[str, str | None]:
     """Query Windows volume information for filesystem type and ReFS CoW detection."""
     fs_name = "unknown"
     cow_warning = None
@@ -147,12 +147,12 @@ def detect_windows_filesystem(path_str: str) -> tuple[str, Optional[str]]:
     return fs_name, cow_warning
 
 
-def enumerate_ntfs_streams_win32(path_str: str) -> List[Tuple[str, int]]:
+def enumerate_ntfs_streams_win32(path_str: str) -> list[tuple[str, int]]:
     """Dynamically enumerate Alternate Data Streams using Win32 FindFirstStreamW.
 
     Returns list of (stream_name, stream_size) tuples. Excludes default stream '::$DATA'.
     """
-    streams: List[Tuple[str, int]] = []
+    streams: list[tuple[str, int]] = []
     if not (hasattr(ctypes, "windll") and hasattr(ctypes.windll, "kernel32")):
         return streams
 
@@ -192,13 +192,13 @@ def enumerate_ntfs_streams_win32(path_str: str) -> List[Tuple[str, int]]:
     return streams
 
 
-def scrub_alternate_data_streams(path_str: str) -> List[str]:
+def scrub_alternate_data_streams(path_str: str) -> list[str]:
     """Dynamically enumerate and scrub NTFS Alternate Data Streams (ADS).
 
     Uses Win32 FindFirstStreamW / FindNextStreamW where available, falling back
     to common security and metadata stream names if dynamic enumeration is unavailable.
     """
-    scrubbed: List[str] = []
+    scrubbed: list[str] = []
 
     # 1. Dynamic enumeration via Win32 API
     dynamic_streams = enumerate_ntfs_streams_win32(path_str)
@@ -254,7 +254,7 @@ def scrub_alternate_data_streams(path_str: str) -> List[str]:
     return scrubbed
 
 
-def win32_clear_attributes(path_str: str, fd: Optional[int] = None) -> None:
+def win32_clear_attributes(path_str: str, fd: int | None = None) -> None:
     """Clear Windows Read-Only and Hidden attributes."""
     try:
         if fd is not None:
@@ -517,9 +517,9 @@ def erase_folder_windows(
     dir_path: str | Path,
     passes: int = 1,
     pattern: str = "zero",
-) -> List[WinFileEraseResult]:
+) -> list[WinFileEraseResult]:
     root_dir = Path(dir_path).resolve()
-    results: List[WinFileEraseResult] = []
+    results: list[WinFileEraseResult] = []
     if not root_dir.exists() or not root_dir.is_dir():
         return [
             WinFileEraseResult(
@@ -562,17 +562,17 @@ def erase_folder_windows(
 
 
 def erase_batch_windows(
-    targets: List[str | Path],
+    targets: list[str | Path],
     passes: int = 1,
     pattern: str = "zero",
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
+    signing_key_path: str | Path | None = None,
     generate_certificate: bool = True,
-) -> tuple[List[WinFileEraseResult], Optional[dict]]:
+) -> tuple[list[WinFileEraseResult], dict | None]:
     """Execute batch file & folder erasure on Windows and issue an Ed25519-signed certificate."""
     start_time = cert_mod.now_utc() if cert_mod else time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    results: List[WinFileEraseResult] = []
+    results: list[WinFileEraseResult] = []
 
     total_est = sum(Path(t).stat().st_size for t in targets if Path(t).is_file()) * passes
     bar = ProgressBar(max(total_est, 1024), operation="s0-win erase") if ProgressBar and total_est > 0 else None
@@ -597,7 +597,7 @@ def erase_batch_windows(
     failed = sum(1 for r in results if r.status == "failure")
     total_bytes = sum(r.bytes_overwritten for r in results)
 
-    warnings: List[str] = [
+    warnings: list[str] = [
         "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
         "Caveat: Flash storage (SSDs/NVMe) FTL wear leveling may prevent physical overwriting of retired blocks.",
     ]
@@ -776,11 +776,11 @@ def wipe_drive_or_partition_windows(
     chunk_size: int = 65536,
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
+    signing_key_path: str | Path | None = None,
     generate_certificate: bool = True,
     force: bool = False,
-    mock_size: Optional[int] = None,
-) -> tuple[WinDriveWipeResult, Optional[dict]]:
+    mock_size: int | None = None,
+) -> tuple[WinDriveWipeResult, dict | None]:
     """Wipe a secondary partition (D:, E:) or removable pen drive/physical disk on Windows.
 
     - Performs strict safety checks against running OS drive (C:) and primary drive (PhysicalDrive0)
@@ -972,7 +972,7 @@ def wipe_drive_or_partition_windows(
     return result, signed_cert
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     subcommands = {
         "list", "plan", "wipe", "carve",
@@ -1036,8 +1036,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             force=args.force,
         )
 
-        cert_path: Optional[Path] = None
-        pdf_path: Optional[Path] = None
+        cert_path: Path | None = None
+        pdf_path: Path | None = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
@@ -1099,8 +1099,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         failed = sum(1 for r in results if r.status == "failure")
         total_bytes = sum(r.bytes_overwritten for r in results)
 
-        cert_path: Optional[Path] = None
-        pdf_path: Optional[Path] = None
+        cert_path: Path | None = None
+        pdf_path: Path | None = None
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)

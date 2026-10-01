@@ -29,23 +29,30 @@ import time
 import urllib.parse
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
 from s0 import pdfgen, platform, resources
-from s0.config import CONFIG
-from s0.temperature import read_temperature
-from s0.validation import validate_metadata_str
-from s0.audit import list_audit_blocks, verify_audit_ledger, record_audit_event
+from s0.audit import list_audit_blocks, record_audit_event, verify_audit_ledger
 from s0.audit.verify import get_default_trusted_keys
 from s0.carve import carve_image
-from s0.cli.devices import SafetyError, Target, check_safety, get_block_device_size, image_target, list_block_targets
+from s0.cli.devices import (
+    SafetyError,
+    Target,
+    check_safety,
+    get_block_device_size,
+    image_target,
+    list_block_targets,
+)
 from s0.cli.file_eraser import erase_batch
+from s0.config import CONFIG
 from s0.image.imager import ImagingOptions, acquire_image
+from s0.temperature import read_temperature
+from s0.validation import validate_metadata_str
 from s0.wipe.methods.ata import hpa_dco_report
 from s0.wipe.planner import select_method
 
@@ -99,6 +106,7 @@ def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
 app = FastAPI(title="s0 Forensic & Sanitization Dashboard", docs_url=None, redoc_url=None)
 
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "*.local", "testserver"])
 
 PORTAL_DIR = REPO / "portals/verify"
@@ -152,8 +160,8 @@ _init_session_auth_token()
 
 
 def verify_auth_token(
-    x_s0_auth_token: Optional[str] = Header(None, alias="X-S0-Auth-Token"),
-    token: Optional[str] = Query(None),
+    x_s0_auth_token: str | None = Header(None, alias="X-S0-Auth-Token"),
+    token: str | None = Query(None),
 ) -> None:
     """Verify per-session authentication token on protected endpoints."""
     tok = x_s0_auth_token or token
@@ -172,7 +180,7 @@ def verify_auth_token(
         raise HTTPException(
             status_code=401,
             detail="Unauthorized: invalid session authentication token encoding",
-        )
+        ) from None
 
 
 def _validate_metadata_str(field_name: str, v: str, max_len: int = 128) -> str:
@@ -182,7 +190,7 @@ def _validate_metadata_str(field_name: str, v: str, max_len: int = 128) -> str:
     return res
 
 
-def _validate_portal_url(v: Optional[str]) -> Optional[str]:
+def _validate_portal_url(v: str | None) -> str | None:
     if not v:
         return None
     v = v.strip()
@@ -200,7 +208,7 @@ def _validate_portal_url(v: Optional[str]) -> Optional[str]:
     except ValueError:
         raise
     except Exception as exc:
-        raise ValueError(f"Invalid portal_url: {exc}")
+        raise ValueError(f"Invalid portal_url: {exc}") from exc
 
 
 def _get_secure_keys_dir() -> Path:
@@ -222,7 +230,7 @@ def _get_secure_keys_dir() -> Path:
         return fallback
 
 
-def _resolve_key(key_path: Optional[str], key_data: Optional[str], out_dir: Optional[Path] = None) -> tuple[Optional[Path], bool]:
+def _resolve_key(key_path: str | None, key_data: str | None, out_dir: Path | None = None) -> tuple[Path | None, bool]:
     """Resolve custom signing key from raw PEM content or local file path.
 
     Returns (key_path, is_demo_key). Custom pasted keys are securely saved into
@@ -275,12 +283,12 @@ class WipeRequest(BaseModel):
         alias="operator"
     )
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    key_path: Optional[str] = None
-    key_data: Optional[str] = None
-    out_dir: Optional[str] = None
+    key_path: str | None = None
+    key_data: str | None = None
+    out_dir: str | None = None
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
-    portal_url: Optional[str] = None
+    portal_url: str | None = None
 
     @field_validator("target")
     @classmethod
@@ -299,7 +307,7 @@ class WipeRequest(BaseModel):
 
     @field_validator("out_dir")
     @classmethod
-    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+    def validate_out_dir(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -309,7 +317,7 @@ class WipeRequest(BaseModel):
 
     @field_validator("key_path")
     @classmethod
-    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_key_path(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -329,26 +337,26 @@ class WipeRequest(BaseModel):
 
     @field_validator("portal_url")
     @classmethod
-    def validate_portal_url(cls, v: Optional[str]) -> Optional[str]:
+    def validate_portal_url(cls, v: str | None) -> str | None:
         return _validate_portal_url(v)
 
 
 class FileEraseRequest(BaseModel):
-    targets: List[str]
+    targets: list[str]
     passes: int = Field(default=1, ge=1, le=100)
     pattern: str = "zero"
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    key_path: Optional[str] = None
-    key_data: Optional[str] = None
-    out_dir: Optional[str] = None
+    key_path: str | None = None
+    key_data: str | None = None
+    out_dir: str | None = None
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
-    portal_url: Optional[str] = None
+    portal_url: str | None = None
 
     @field_validator("targets")
     @classmethod
-    def validate_targets(cls, v: List[str]) -> List[str]:
+    def validate_targets(cls, v: list[str]) -> list[str]:
         if not v:
             raise ValueError("targets list cannot be empty")
         for t in v:
@@ -366,7 +374,7 @@ class FileEraseRequest(BaseModel):
 
     @field_validator("out_dir")
     @classmethod
-    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+    def validate_out_dir(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -376,7 +384,7 @@ class FileEraseRequest(BaseModel):
 
     @field_validator("key_path")
     @classmethod
-    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_key_path(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -396,21 +404,21 @@ class FileEraseRequest(BaseModel):
 
     @field_validator("portal_url")
     @classmethod
-    def validate_portal_url(cls, v: Optional[str]) -> Optional[str]:
+    def validate_portal_url(cls, v: str | None) -> str | None:
         return _validate_portal_url(v)
 
 
 class CarveRequest(BaseModel):
     target: str
-    extensions: Optional[List[str]] = None
+    extensions: list[str] | None = None
     min_confidence: int = 50
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    out_dir: Optional[str] = None
-    key_path: Optional[str] = None
-    key_data: Optional[str] = None
+    out_dir: str | None = None
+    key_path: str | None = None
+    key_data: str | None = None
     no_pdf: bool = False
-    custom_signatures: Optional[List[Dict[str, Any]]] = None
+    custom_signatures: list[dict[str, Any]] | None = None
 
     @field_validator("target")
     @classmethod
@@ -422,7 +430,7 @@ class CarveRequest(BaseModel):
 
     @field_validator("out_dir")
     @classmethod
-    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+    def validate_out_dir(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -432,7 +440,7 @@ class CarveRequest(BaseModel):
 
     @field_validator("key_path")
     @classmethod
-    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_key_path(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -460,14 +468,14 @@ class ImageRequest(BaseModel):
     confirm_text: str = ""
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
-    out_dir: Optional[str] = None
-    key_path: Optional[str] = None
-    key_data: Optional[str] = None
+    out_dir: str | None = None
+    key_path: str | None = None
+    key_data: str | None = None
     no_pdf: bool = False
 
     @field_validator("out_dir")
     @classmethod
-    def validate_out_dir(cls, v: Optional[str]) -> Optional[str]:
+    def validate_out_dir(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -477,7 +485,7 @@ class ImageRequest(BaseModel):
 
     @field_validator("key_path")
     @classmethod
-    def validate_key_path(cls, v: Optional[str]) -> Optional[str]:
+    def validate_key_path(cls, v: str | None) -> str | None:
         if v and v.strip():
             p = Path(v.strip()).resolve()
             for sp in _SYSTEM_PATHS:
@@ -512,7 +520,7 @@ def _find_target(path: str):
     try:
         return image_target(path)
     except FileNotFoundError:
-        raise HTTPException(404, f"no such image file: {path}")
+        raise HTTPException(404, f"no such image file: {path}") from None
 
 
 @app.get("/")
@@ -1250,7 +1258,7 @@ def download(job_id: str, filename: str) -> FileResponse:
     try:
         path.relative_to(out_dir_path)
     except ValueError:
-        raise HTTPException(404, "no such artifact")
+        raise HTTPException(404, "no such artifact") from None
     if not path.is_file():
         raise HTTPException(404, "no such artifact")
     return FileResponse(path, filename=path.name)

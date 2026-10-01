@@ -1,6 +1,5 @@
 """Crypto primitive tests: keygen, PEM round-trip, fingerprints, sign/verify."""
 
-import pytest
 
 from s0 import crypto
 

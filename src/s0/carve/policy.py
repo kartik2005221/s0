@@ -12,7 +12,6 @@ image and a 16 TiB drive are both handled sensibly without operator tuning.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict
 
 _MB = 1024 * 1024
 _GB = 1024 * 1024 * 1024
@@ -54,10 +53,10 @@ class CarvePolicy:
     # an allocation map cannot be established.
     use_free_space_only: bool = True
     # Extra per-category caps, e.g. {"video": 8}.
-    category_caps: Dict[str, int] = field(default_factory=dict)
+    category_caps: dict[str, int] = field(default_factory=dict)
 
     @classmethod
-    def for_target(cls, target_size: int, **overrides) -> "CarvePolicy":
+    def for_target(cls, target_size: int, **overrides) -> CarvePolicy:
         """Scale the output budget to the size of the target being carved."""
         policy = cls()
         if target_size > 0:
@@ -83,8 +82,8 @@ class CarveBudget:
     policy: CarvePolicy
     bytes_written: int = 0
     files_written: int = 0
-    per_category: Dict[str, int] = field(default_factory=dict)
-    per_extension: Dict[str, int] = field(default_factory=dict)
+    per_category: dict[str, int] = field(default_factory=dict)
+    per_extension: dict[str, int] = field(default_factory=dict)
     # Why the session stopped emitting, for the report.
     stop_reason: str = ""
 

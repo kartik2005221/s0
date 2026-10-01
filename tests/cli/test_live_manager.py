@@ -4,17 +4,13 @@ import argparse
 import io
 import json
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from s0.live.live_manager import (
     _format_size,
     cmd_live_build,
     cmd_live_devices,
     cmd_live_flash,
-    get_removable_usb_devices,
     register_live_parser,
 )
 
@@ -164,6 +160,7 @@ def test_cmd_live_download_non_interactive_fails_without_allow_older(tmp_path, m
 
 def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, capsys):
     import hashlib
+
     from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"MOCK_BOOTABLE_ISO_BYTES_V240"
@@ -194,7 +191,7 @@ def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, ca
     def fake_urlopen(req, *args, **kwargs):
         url = req.full_url if hasattr(req, "full_url") else str(req)
         if "sha256" in url:
-            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode("utf-8"))
+            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode())
         elif "iso" in url:
             return io.BytesIO(iso_bytes)
         elif "releases" in url:
@@ -222,6 +219,7 @@ def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, ca
 
 def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatch, capsys):
     import hashlib
+
     from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"MOCK_BOOTABLE_ISO_NON_INTERACTIVE"
@@ -252,7 +250,7 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
     def fake_urlopen(req, *args, **kwargs):
         url = req.full_url if hasattr(req, "full_url") else str(req)
         if "sha256" in url:
-            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode("utf-8"))
+            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode())
         elif "iso" in url:
             return io.BytesIO(iso_bytes)
         elif "releases" in url:
@@ -277,7 +275,6 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
 
 
 def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path, monkeypatch, capsys):
-    import hashlib
     from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"ACTUAL_DOWNLOADED_ISO_CONTENT"
@@ -308,7 +305,7 @@ def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path
     def fake_urlopen(req, *args, **kwargs):
         url = req.full_url if hasattr(req, "full_url") else str(req)
         if "sha256" in url:
-            return io.BytesIO(f"{tampered_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode("utf-8"))
+            return io.BytesIO(f"{tampered_sha}  s0-live-v2.4.0-amd64.hybrid.iso\n".encode())
         elif "iso" in url:
             return io.BytesIO(iso_bytes)
         elif "releases" in url:
@@ -334,6 +331,7 @@ def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path
 def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, monkeypatch):
     """Ensure GITHUB_TOKEN is not included in download headers for release assets (Bug #3)."""
     import hashlib
+
     from s0.live.live_manager import cmd_live_download
 
     iso_bytes = b"ISO_CONTENT"
@@ -364,7 +362,7 @@ def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, 
         download_requests.append(req)
         url = req.full_url if hasattr(req, "full_url") else str(req)
         if "sha256" in url:
-            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.1-amd64.hybrid.iso\n".encode("utf-8"))
+            return io.BytesIO(f"{iso_sha}  s0-live-v2.4.1-amd64.hybrid.iso\n".encode())
         elif "iso" in url:
             return io.BytesIO(iso_bytes)
         return io.BytesIO(b"")

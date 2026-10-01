@@ -4,10 +4,9 @@ import hashlib
 import struct
 from pathlib import Path
 
-import pytest
 from s0 import resources
-from s0.carve import boundary
 from s0.carve import (
+    boundary,
     carve_image,
     detect_filesystem,
     parse_ntfs_boot_sector,

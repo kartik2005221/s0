@@ -1,16 +1,13 @@
 """Web Dashboard API tests — headless via FastAPI TestClient."""
 
 import json
-import sys
 import os
 import time
 from pathlib import Path
 
 import pytest
-
-from s0.resources import repo_root
-
 from fastapi.testclient import TestClient
+
 from s0.audit import init_audit_db
 from s0.resources import repo_root
 from s0.web import app as gui_app
@@ -124,10 +121,8 @@ def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_
     job_id = r.json()["job_id"]
 
     result = None
-    last = None
     for _ in range(120):
         j = client.get(f"/api/job/{job_id}").json()
-        last = j
         if j["status"] in ("done", "error"):
             result = j.get("result")
             break
@@ -170,6 +165,7 @@ def test_carve_api(client, tmp_path):
     walking its marker segments, so a hand-built header would (correctly) be
     rejected."""
     import io as _io
+
     from PIL import Image as _Image
     buf = _io.BytesIO()
     _Image.new("RGB", (32, 32), (12, 34, 56)).save(buf, format="JPEG", quality=85)
@@ -236,6 +232,7 @@ def test_operator_id_xss_injection_rejected(client, tmp_path):
 
 def test_download_path_traversal_blocked(client, tmp_path):
     import uuid
+
     from s0.web.app import _jobs, _lock
 
     job_id = uuid.uuid4().hex[:12]

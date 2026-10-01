@@ -16,7 +16,7 @@ from .certificate import verify_certificate
 
 
 def _cmd_keygen(args) -> int:
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
     from .certificate import now_utc  # noqa: F401  (import keeps parity with docs)
 
     priv = crypto.generate_private_key()
@@ -37,7 +37,7 @@ def _load_cert(path: Path) -> dict:
     try:
         cert = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise SystemExit(f"error: {path} is not valid JSON: {exc}")
+        raise SystemExit(f"error: {path} is not valid JSON: {exc}") from exc
     if not isinstance(cert, dict):
         raise SystemExit(f"error: {path} does not contain a JSON object")
     return cert

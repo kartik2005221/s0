@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 # USN_RECORD versions. V2 is Windows XP; V3 is Vista onward and is byte-identical
 # to V2, differing only in the version field. V4 is a different structure entirely
@@ -120,14 +119,14 @@ _MAX_REASON = 0x20000000
 _MAX_FILETIME = 2650467744000000000
 
 
-def decode_reasons(mask: int) -> List[str]:
+def decode_reasons(mask: int) -> list[str]:
     """Expand a reason bitmask into the named operations it represents."""
     if not mask:
         return []
     return [name for bit, name in USN_REASONS.items() if mask & bit]
 
 
-def parse_usn_time(value: int) -> Optional[float]:
+def parse_usn_time(value: int) -> float | None:
     """Convert an NT FILETIME (100ns ticks since 1601-01-01) to a UNIX timestamp.
 
     Returns None rather than a nonsense date when the value is one of NTFS's
@@ -147,7 +146,7 @@ def parse_usn_time(value: int) -> Optional[float]:
 class UsnRecord:
     version: int
     usn: int
-    timestamp: Optional[float]
+    timestamp: float | None
     reason_mask: int
     file_reference: int
     parent_reference: int
@@ -156,7 +155,7 @@ class UsnRecord:
     name: str
 
     @property
-    def reasons(self) -> List[str]:
+    def reasons(self) -> list[str]:
         return decode_reasons(self.reason_mask)
 
     @property
@@ -193,7 +192,7 @@ class UsnRecord:
         )
 
 
-def parse_usn_record(blob: bytes) -> Optional[UsnRecord]:
+def parse_usn_record(blob: bytes) -> UsnRecord | None:
     """Parse one USN_RECORD from the head of `blob`.
 
     Returns None if the record is not plausibly a USN record. The journal is
@@ -243,7 +242,7 @@ def parse_usn_record(blob: bytes) -> Optional[UsnRecord]:
     timestamp_raw = struct.unpack_from("<Q", blob, time_off)[0]
     reason = struct.unpack_from("<I", blob, reason_off)[0]
     source = struct.unpack_from("<I", blob, source_off)[0]
-    security = struct.unpack_from("<I", blob, security_off)[0]
+    struct.unpack_from("<I", blob, security_off)[0]
     attributes = struct.unpack_from("<I", blob, attr_off)[0]
     name_length = struct.unpack_from("<H", blob, name_len_off)[0]
     name_offset = struct.unpack_from("<H", blob, name_off_off)[0]
@@ -282,13 +281,13 @@ class UsnTimelineEntry:
     mft_entry: int
     name: str
     parent_mft_entry: int
-    created_at: Optional[float] = None
-    deleted_at: Optional[float] = None
-    renamed_from: Optional[str] = None
+    created_at: float | None = None
+    deleted_at: float | None = None
+    renamed_from: str | None = None
     is_directory: bool = False
     last_usn: int = 0
     event_count: int = 0
-    reasons: List[str] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)
     renamed: bool = False
 
     @property
@@ -296,7 +295,7 @@ class UsnTimelineEntry:
         return self.deleted_at is not None
 
     @property
-    def last_seen_at(self) -> Optional[float]:
+    def last_seen_at(self) -> float | None:
         return self.deleted_at or self.created_at
 
     @property
@@ -315,7 +314,7 @@ def parse_usn_journal(
     data: bytes,
     start_usn: int = 0,
     max_records: int = 500_000,
-) -> List[UsnRecord]:
+) -> list[UsnRecord]:
     """Read a USN journal image into a list of records, in USN order.
 
     `data` is the raw content of the $J stream, which is a ring buffer: the bytes
@@ -325,7 +324,7 @@ def parse_usn_journal(
     ordered by USN, which is monotonic in real time and so cannot be spoofed by
     a clock change.
     """
-    records: List[UsnRecord] = []
+    records: list[UsnRecord] = []
     seen: set = set()
     pos = 0
     limit = len(data)
@@ -347,9 +346,9 @@ def parse_usn_journal(
 
 
 def build_timeline(
-    records: List[UsnRecord],
-    name_hint: Optional[Dict[int, str]] = None,
-) -> List[UsnTimelineEntry]:
+    records: list[UsnRecord],
+    name_hint: dict[int, str] | None = None,
+) -> list[UsnTimelineEntry]:
     """Fold journal records into one entry per file reference.
 
     A single file appears many times in the journal, once per operation, and its
@@ -359,7 +358,7 @@ def build_timeline(
     where a filesystem timestamp is not.
     """
     name_hint = name_hint or {}
-    by_ref: Dict[int, UsnTimelineEntry] = {}
+    by_ref: dict[int, UsnTimelineEntry] = {}
 
     # Records arrive sorted by USN, so the first create or rename for a reference
     # is that file's earliest known event and the last delete is its last.
@@ -401,7 +400,7 @@ def build_timeline(
     )
 
 
-def summarize(entries: List[UsnTimelineEntry]) -> Dict[str, int]:
+def summarize(entries: list[UsnTimelineEntry]) -> dict[str, int]:
     """Counts for a report, so a journal scan is legible without reading it."""
     return {
         "files_tracked": len(entries),

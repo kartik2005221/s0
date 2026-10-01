@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 MFT_RECORD_MAGIC = b"FILE"
 MFT_END_MARKER = 0xFFFFFFFF
@@ -62,7 +61,7 @@ class FixupError(Exception):
     """The record's update sequence array does not verify."""
 
 
-def parse_nt_time(value: int) -> Optional[float]:
+def parse_nt_time(value: int) -> float | None:
     """Convert an NT FILETIME (100ns ticks since 1601-01-01) to a UNIX timestamp.
 
     Returns None for values that are not a real instant -- 0 and 0xFFFFFFFFFFFF
@@ -77,7 +76,7 @@ def parse_nt_time(value: int) -> Optional[float]:
     return seconds
 
 
-def apply_fixup(record: bytearray, sector_size: int) -> Tuple[bool, int]:
+def apply_fixup(record: bytearray, sector_size: int) -> tuple[bool, int]:
     """Undo the update sequence array, in place.
 
     Returns (verified, sequence_number). Raises FixupError if the record's
@@ -133,7 +132,7 @@ class MftAttribute:
     name: str
     non_resident: bool
     resident_value: bytes = b""
-    runs: List[Tuple[int, int]] = field(default_factory=list)   # (lcn, length)
+    runs: list[tuple[int, int]] = field(default_factory=list)   # (lcn, length)
     allocated_size: int = 0
     real_size: int = 0
     initialized_size: int = 0
@@ -184,17 +183,17 @@ class MftRecord:
     fixup_verified: bool
     sector_size: int
     bytes_in_use: int = 0
-    attributes: List[MftAttribute] = field(default_factory=list)
+    attributes: list[MftAttribute] = field(default_factory=list)
     # Populated from $STANDARD_INFORMATION.
-    created: Optional[float] = None
-    modified: Optional[float] = None
-    mft_changed: Optional[float] = None
-    accessed: Optional[float] = None
+    created: float | None = None
+    modified: float | None = None
+    mft_changed: float | None = None
+    accessed: float | None = None
     # Populated from $FILE_NAME. A record can carry several, one per hard link,
     # and for a directory one per .. entry.
-    names: List[dict] = field(default_factory=list)
+    names: list[dict] = field(default_factory=list)
     # Raw $ATTRIBUTE_LIST payloads, followed on demand to find satellite records.
-    attribute_lists: List[bytes] = field(default_factory=list)
+    attribute_lists: list[bytes] = field(default_factory=list)
 
     @property
     def real_size(self) -> int:
@@ -228,7 +227,7 @@ class MftRecord:
         return True
 
     @property
-    def cannot_restore_reason(self) -> Optional[str]:
+    def cannot_restore_reason(self) -> str | None:
         """Why this record's content cannot be reconstructed, if it cannot."""
         for attr in self.attributes:
             if attr.type == ATTR_DATA and not attr.is_primary_stream:
@@ -247,7 +246,7 @@ class MftRecord:
     def deleted(self) -> bool:
         return not self.allocated
 
-    def primary_name(self) -> Optional[dict]:
+    def primary_name(self) -> dict | None:
         """The $FILE_NAME entry that is not a hard link or a .. reference.
 
         Windows stores up to 20 $FILE_NAME attributes per directory and one per
@@ -271,7 +270,7 @@ class MftRecord:
         entry = self.primary_name()
         return entry["name"] if entry else ""
 
-    def parent(self) -> Optional[Tuple[int, int]]:
+    def parent(self) -> tuple[int, int] | None:
         """The (record, sequence) of the directory containing this object."""
         entry = self.primary_name()
         if not entry:
@@ -279,7 +278,7 @@ class MftRecord:
         ref = entry.get("parent_ref")
         return ref if ref else None
 
-    def timestamps(self) -> Dict[str, Optional[float]]:
+    def timestamps(self) -> dict[str, float | None]:
         return {
             "created": self.created,
             "modified": self.modified,
@@ -288,7 +287,7 @@ class MftRecord:
         }
 
 
-def _first_attribute_offset(record: bytes) -> Optional[int]:
+def _first_attribute_offset(record: bytes) -> int | None:
     """Locate the start of the attribute chain.
 
     The header field for this lives at 0x14, which is what ntfs-3g writes and
@@ -345,7 +344,7 @@ def _iter_attributes(record: bytes):
         offset += attr_len
 
 
-def _parse_attribute_list(blob: bytes) -> List[Tuple[int, int, int]]:
+def _parse_attribute_list(blob: bytes) -> list[tuple[int, int, int]]:
     """Decode $ATTRIBUTE_LIST into [(type, start_vcn, satellite_record_number)].
 
     Each 0x18-byte entry names the attribute type, the VCN it starts at, and the
@@ -360,7 +359,7 @@ def _parse_attribute_list(blob: bytes) -> List[Tuple[int, int, int]]:
       0x0B  6  MFT file reference (6-byte entry number, no sequence)
       0x11  2  attribute id         0x13  2  attribute name
     """
-    out: List[Tuple[int, int, int]] = []
+    out: list[tuple[int, int, int]] = []
     for i in range(0, max(0, len(blob) - 0x17), 0x18):
         if blob[i] == 0:
             break
@@ -375,9 +374,9 @@ def _parse_attribute_list(blob: bytes) -> List[Tuple[int, int, int]]:
     return out
 
 
-def satellite_records(rec: MftRecord, limit: int = 64) -> List[int]:
+def satellite_records(rec: MftRecord, limit: int = 64) -> list[int]:
     """Record numbers holding this file's data, per its $ATTRIBUTE_LIST."""
-    out: List[int] = []
+    out: list[int] = []
     for blob in rec.attribute_lists:
         for attr_type, _vcn, entry in _parse_attribute_list(blob):
             if attr_type == ATTR_DATA and entry not in out and entry != rec.record_num:
@@ -409,7 +408,7 @@ def parse_mft_record(
     raw: bytes,
     sector_size: int = 512,
     strict: bool = True,
-) -> Optional[MftRecord]:
+) -> MftRecord | None:
     """Parse one fixup-corrected MFT record.
 
     `strict` rejects a record whose update sequence array does not verify. A
@@ -431,10 +430,10 @@ def parse_mft_record(
     record = bytes(buf)
 
     flags = struct.unpack_from("<H", record, 0x16)[0]
-    attrs: List[MftAttribute] = []
-    std: Optional[dict] = None
-    names: List[dict] = []
-    attr_lists: List[bytes] = []
+    attrs: list[MftAttribute] = []
+    std: dict | None = None
+    names: list[dict] = []
+    attr_lists: list[bytes] = []
 
     for offset, attr_type, attr_len, non_resident, name in _iter_attributes(record):
         if attr_type == ATTR_STANDARD_INFORMATION and not non_resident:
@@ -491,7 +490,7 @@ def parse_mft_record(
                 # A $FILE_NAME entry marked directory with a matching record
                 # number is the "." link of a directory; the one whose parent
                 # differs is "..". Neither names the object.
-                "is_primary": not (decoded in (".", "..")),
+                "is_primary": decoded not in (".", ".."),
             })
 
         elif attr_type == ATTR_DATA and not non_resident:
@@ -548,14 +547,14 @@ def parse_mft_record(
     )
 
 
-def read_data(spans: List[Tuple[int, int, bool]], handle, partition_offset: int,
+def read_data(spans: list[tuple[int, int, bool]], handle, partition_offset: int,
               limit_bytes: int) -> bytes:
     """Read reconstructed file content from a list of byte spans.
 
     Sparse spans are emitted as real zero bytes rather than skipped, because the
     file's byte offsets depend on them being present.
     """
-    out: List[bytes] = []
+    out: list[bytes] = []
     remaining = limit_bytes
     for offset, length, sparse in spans:
         if remaining <= 0:
@@ -573,14 +572,14 @@ def read_data(spans: List[Tuple[int, int, bool]], handle, partition_offset: int,
     return b"".join(out)
 
 
-def runs_to_byte_spans(runs: List[Tuple[int, int]], cluster_size: int,
-                       limit_bytes: int) -> List[Tuple[int, int, bool]]:
+def runs_to_byte_spans(runs: list[tuple[int, int]], cluster_size: int,
+                       limit_bytes: int) -> list[tuple[int, int, bool]]:
     """Turn cluster runs into (byte_offset, length, is_sparse) spans.
 
     `limit_bytes` caps the total so a corrupt or hostile run list -- a
     fragment count of 2^64 clusters -- cannot ask for an unbounded read.
     """
-    spans: List[Tuple[int, int, bool]] = []
+    spans: list[tuple[int, int, bool]] = []
     remaining = limit_bytes
     for lcn, length in runs:
         if remaining <= 0:

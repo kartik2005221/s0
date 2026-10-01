@@ -3,7 +3,6 @@
 import struct
 from pathlib import Path
 
-import pytest
 from s0.carve.engine import carve_image, detect_filesystem, detect_partitions
 from s0.carve.exfat_carver import (
     ENTRY_TYPE_FILE_DELETED,

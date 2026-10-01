@@ -8,11 +8,9 @@ to recover deleted files with intact filenames, metadata, and data clusters with
 
 from __future__ import annotations
 
-import os
 import struct
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 EXFAT_OEM_MAGIC = b"EXFAT   "
 EXFAT_BOOT_SIGNATURE = 0xAA55
@@ -48,7 +46,7 @@ class ExFatRecoveredFile:
     first_cluster: int
     is_deleted: bool
     no_fat_chain: bool
-    data: Optional[bytes] = None
+    data: bytes | None = None
     fragment_count: int = 1
     create_time: int = 0
     modify_time: int = 0
@@ -62,7 +60,7 @@ class ExFatRecoveredFile:
 def parse_exfat_boot_sector(
     image_path: str | Path,
     partition_offset: int = 0,
-) -> Optional[ExFatBootSector]:
+) -> ExFatBootSector | None:
     """Parse exFAT VBR boot sector at partition_offset."""
     try:
         with open(image_path, "rb") as f:
@@ -125,7 +123,7 @@ def _read_fat_chain(
     boot: ExFatBootSector,
     start_cluster: int,
     max_clusters: int = 16384,
-) -> List[int]:
+) -> list[int]:
     """Traverse exFAT File Allocation Table for a cluster chain."""
     chain = [start_cluster]
     curr = start_cluster
@@ -154,9 +152,9 @@ def _scan_directory_entries(
     dir_cluster: int,
     include_allocated: bool = False,
     max_scan_clusters: int = 64,
-) -> List[ExFatRecoveredFile]:
+) -> list[ExFatRecoveredFile]:
     """Scan directory cluster chain for deleted and allocated file entry sets."""
-    recovered: List[ExFatRecoveredFile] = []
+    recovered: list[ExFatRecoveredFile] = []
     clusters_to_scan = [dir_cluster]
 
     # If FAT exists, follow chain for directory
@@ -290,7 +288,7 @@ def scan_exfat_deleted_files(
     partition_offset: int = 0,
     include_allocated: bool = False,
     max_clusters: int = 4096,
-) -> List[ExFatRecoveredFile]:
+) -> list[ExFatRecoveredFile]:
     """Traverse exFAT directory structure and carve deleted files from Cluster Heap."""
     boot = parse_exfat_boot_sector(image_path, partition_offset=partition_offset)
     if not boot:

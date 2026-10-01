@@ -41,8 +41,8 @@ from __future__ import annotations
 
 import struct
 import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
 
 __all__ = [
     "ByteSource",
@@ -169,9 +169,9 @@ class ByteSource:
 class Boundary:
     """Outcome of resolving where a candidate ends."""
 
-    end: Optional[int]
+    end: int | None
     method: str = UNDETERMINED
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     @property
     def resolved(self) -> bool:
@@ -213,7 +213,7 @@ def _ascii(b: bytes, o: int, n: int) -> bytes:
     return b[o : o + n]
 
 
-def _sanity(size: Optional[int], minimum: int, maximum: int) -> Optional[int]:
+def _sanity(size: int | None, minimum: int, maximum: int) -> int | None:
     if size is None or size < minimum or size > maximum:
         return None
     return size
@@ -242,7 +242,7 @@ _MPEG_SAMPLERATES = {
 _MPEG_VERSION_BY_ID = {3: 3, 2: 2, 0: 0}
 
 
-def parse_mpeg_frame_header(buf: bytes, off: int) -> Optional[dict]:
+def parse_mpeg_frame_header(buf: bytes, off: int) -> dict | None:
     """Decode a 4-byte MPEG audio frame header at `off`.
 
     Returns None when any reserved combination is present. Layer 3 and layer 2
@@ -305,7 +305,7 @@ def parse_mpeg_frame_header(buf: bytes, off: int) -> Optional[dict]:
 
 
 def _mpeg_sequence(src: ByteSource, start: int, header_len: int, min_frames: int,
-                   max_frames: int, limit: int) -> Tuple[int, int, str]:
+                   max_frames: int, limit: int) -> tuple[int, int, str]:
     """Walk consecutive MPEG audio frames from `start`.
 
     Returns ``(frame_count, end_offset, reason)``. The decisive rule is that
@@ -316,7 +316,6 @@ def _mpeg_sequence(src: ByteSource, start: int, header_len: int, min_frames: int
     end_limit = min(src.size, start + limit)
     frames = 0
     off = start + header_len
-    first = None
     # A tiny sliding window is enough; we only ever need one frame header plus
     # the next sync word.
     window_size = 64 * 1024
@@ -357,7 +356,7 @@ def _mpeg_sequence(src: ByteSource, start: int, header_len: int, min_frames: int
 # --------------------------------------------------------------------------- #
 
 
-def _id3v2_size(src: ByteSource, start: int) -> Optional[Tuple[int, int]]:
+def _id3v2_size(src: ByteSource, start: int) -> tuple[int, int] | None:
     """Return ``(tag_total_bytes, id3v2_major_version)`` or None."""
     head = src.read(start, 10)
     if len(head) < 10 or head[:3] != b"ID3":
@@ -454,7 +453,7 @@ def _riff_walk(src: ByteSource, start: int, pos: int, max_size: int, depth: int)
     return Boundary(end, CONTAINER_WALK, ["RIFF chunk list terminated cleanly"])
 
 
-def _avi_index_notes(src: "ByteSource", start: int, end: int) -> List[str]:
+def _avi_index_notes(src: ByteSource, start: int, end: int) -> list[str]:
     """Report the AVI chunk index, and the extent it implies.
 
     The index is not decoration: it is what makes an AVI a structurally
@@ -471,7 +470,6 @@ def _avi_index_notes(src: "ByteSource", start: int, end: int) -> List[str]:
     if idx is None:
         return ["no readable AVI chunk index"]
     first, last = idx.media_extent()
-    base = "file-absolute" if idx.base_is_absolute else "movi-relative"
     return [
         f"AVI index resolved: {len(idx.entries)} chunk(s), {idx.keyframes} keyframe(s)",
         idx.resolution,
@@ -591,7 +589,7 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     saw_dqt = False
     saw_dht = False
     segments = 0
-    sof_dims: Optional[Tuple[int, int]] = None
+    sof_dims: tuple[int, int] | None = None
 
     while pos + 2 <= limit:
         # A real JPEG has a few dozen header segments at most. Without this cap
@@ -600,8 +598,8 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         segments += 1
         if segments > 32:
             return Boundary(None, UNDETERMINED,
-                            [f"more than 32 header segments before SOS: the length fields "
-                             f"are not describing a JPEG"])
+                            ["more than 32 header segments before SOS: the length fields "
+                             "are not describing a JPEG"])
         marker = src.read_until(b"\xff", pos, min(limit - pos, 1 << 24))
         if marker == -1:
             break
@@ -926,7 +924,7 @@ def _ogg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
 
 _OGG_MIME = {
     b"\x7fFLAC": "flac", b"\x01vorbis": "ogg", b"\x80theora": "ogv",
-    b"Speex   ": "spx", b"\x7fFLAC": "flac",
+    b"Speex   ": "spx",
 }
 
 
@@ -979,7 +977,7 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """MP4/MOV/QuickTime: walk the atom tree until the top-level atom ends."""
     limit = min(src.size, start + max_size)
 
-    def atom_end(pos: int, depth: int) -> Optional[int]:
+    def atom_end(pos: int, depth: int) -> int | None:
         head = src.read(pos, 8)
         if len(head) < 8:
             return None
@@ -1050,7 +1048,7 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
 
 
 def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
-                   limit: int) -> Tuple[Optional[int], List[str]]:
+                   limit: int) -> tuple[int | None, list[str]]:
     """Resolve an MP4's true media end from its sample table, if one survives.
 
     Returns ``(end, notes)``. ``end`` is ``None`` when the table is absent,
@@ -1352,7 +1350,7 @@ def _elf_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         e_phnum = struct.unpack_from(e + "H", head, 0x2C)[0]
         e_shentsize = struct.unpack_from(e + "H", head, 0x2E)[0]
         e_shnum = struct.unpack_from(e + "H", head, 0x30)[0]
-    if e_version_ok := (struct.unpack_from(e + "I", head, 0x14)[0] != 1):
+    if struct.unpack_from(e + "I", head, 0x14)[0] != 1:
         return Boundary(None, UNDETERMINED, ["ELF e_version is not EV_CURRENT"])
     if e_phnum > 4096 or e_shnum > 65535:
         return Boundary(None, UNDETERMINED, ["ELF table counts are implausible"])
@@ -1417,7 +1415,7 @@ def _wav_specific_end(src: ByteSource, start: int, max_size: int) -> Boundary:
 # --------------------------------------------------------------------------- #
 
 
-def _mpeg_audio_end(src: ByteSource, start: int, max_size: int, id3_version: Optional[int]) -> Boundary:
+def _mpeg_audio_end(src: ByteSource, start: int, max_size: int, id3_version: int | None) -> Boundary:
     limit = min(src.size, start + max_size)
     pos = start
     header_len = 0
@@ -1456,7 +1454,7 @@ _TS_PACKET = 188
 _TS_MAX_PIDS = 64
 
 
-def _ts_packet_header(hdr: bytes) -> Optional[Tuple[int, bool, int, int]]:
+def _ts_packet_header(hdr: bytes) -> tuple[int, bool, int, int] | None:
     """Parse the 4-byte MPEG-TS transport header, or return ``None`` if invalid.
 
     Returns ``(pid, payload_unit_start, adaptation_field_control,
@@ -1595,7 +1593,7 @@ def _macho_end(src: ByteSource, start: int, max_size: int) -> Boundary:
 # registry
 # --------------------------------------------------------------------------- #
 
-_BOUNDARY_RULES: Dict[str, SignatureRule] = {
+_BOUNDARY_RULES: dict[str, SignatureRule] = {
     "bmp": _bm_end,
     "ico": _pe_end,
     "wav": _wav_specific_end,
@@ -1709,7 +1707,7 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
 # --------------------------------------------------------------------------- #
 
 
-def validate_structure(data: bytes, ext: str) -> Tuple[bool, str]:
+def validate_structure(data: bytes, ext: str) -> tuple[bool, str]:
     """Decide whether `data` is a coherent instance of `.ext`.
 
     This is a *gate*, not a score component. s0's scoring model used to award a
@@ -1775,7 +1773,7 @@ def validate_structure(data: bytes, ext: str) -> Tuple[bool, str]:
     return True, "no structural rule for this format; accepted on boundary resolution alone"
 
 
-def _validate_jpeg(data: bytes) -> Tuple[bool, str]:
+def _validate_jpeg(data: bytes) -> tuple[bool, str]:
     if data[:2] != b"\xff\xd8":
         return False, "missing SOI"
     marker = data[3] if len(data) > 3 else 0
@@ -1789,7 +1787,7 @@ def _validate_jpeg(data: bytes) -> Tuple[bool, str]:
     return True, "SOI ... SOS ... EOI marker sequence intact"
 
 
-def _validate_png(data: bytes) -> Tuple[bool, str]:
+def _validate_png(data: bytes) -> tuple[bool, str]:
     if not data.startswith(b"\x89PNG\r\n\x1a\n"):
         return False, "invalid PNG signature"
     if _be32(data, 8) != 13 or _ascii(data, 12, 4) != b"IHDR":
@@ -1811,7 +1809,7 @@ def _validate_png(data: bytes) -> Tuple[bool, str]:
     return False, "PNG chunk list does not terminate on IEND"
 
 
-def _validate_gif(data: bytes) -> Tuple[bool, str]:
+def _validate_gif(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 6) not in (b"GIF87a", b"GIF89a"):
         return False, "GIF version field invalid"
     if _le16(data, 6) == 0 or _le16(data, 8) == 0:
@@ -1819,7 +1817,7 @@ def _validate_gif(data: bytes) -> Tuple[bool, str]:
     return True, f"GIF {_ascii(data, 0, 6).decode()} logical screen {_le16(data, 6)}x{_le16(data, 8)}"
 
 
-def _validate_pdf(data: bytes) -> Tuple[bool, str]:
+def _validate_pdf(data: bytes) -> tuple[bool, str]:
     if not data.startswith(b"%PDF-"):
         return False, "missing %PDF- header"
     ver = _ascii(data, 5, 3)
@@ -1832,7 +1830,7 @@ def _validate_pdf(data: bytes) -> Tuple[bool, str]:
     return True, f"PDF {ver.decode()} with /Root and %%EOF terminator"
 
 
-def _validate_zip(data: bytes) -> Tuple[bool, str]:
+def _validate_zip(data: bytes) -> tuple[bool, str]:
     eocd = data.rfind(b"PK\x05\x06")
     if eocd == -1:
         return False, "no end-of-central-directory record"
@@ -1854,7 +1852,7 @@ def _validate_zip(data: bytes) -> Tuple[bool, str]:
     return True, f"ZIP64 archive with {entries} entries"
 
 
-def _validate_bmp(data: bytes) -> Tuple[bool, str]:
+def _validate_bmp(data: bytes) -> tuple[bool, str]:
     if _le32(data, 6) != 0:
         return False, "reserved field is non-zero"
     dib = _le32(data, 14)
@@ -1869,7 +1867,7 @@ def _validate_bmp(data: bytes) -> Tuple[bool, str]:
     return True, f"BMP {size} bytes, DIB variant {dib}, pixel data at +{pixel_off}"
 
 
-def _validate_wav(data: bytes) -> Tuple[bool, str]:
+def _validate_wav(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 8, 4) != b"WAVE":
         return False, "RIFF form is not WAVE"
     pos = 12
@@ -1898,7 +1896,7 @@ def _validate_wav(data: bytes) -> Tuple[bool, str]:
     return True, "WAVE with a valid fmt chunk and a data chunk"
 
 
-def _validate_mp3(data: bytes) -> Tuple[bool, str]:
+def _validate_mp3(data: bytes) -> tuple[bool, str]:
     """Frame-chain validation. This is the whole point for MP3."""
     pos = 0
     id3_note = ""
@@ -1914,7 +1912,7 @@ def _validate_mp3(data: bytes) -> Tuple[bool, str]:
     return True, f"{id3_note}{frames} consecutive MPEG frames with an intact sync chain ({reason})"
 
 
-def _validate_gzip(data: bytes) -> Tuple[bool, str]:
+def _validate_gzip(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 3) != b"\x1f\x8b\x08":
         return False, "gzip magic or CM byte invalid"
     flg = data[3]
@@ -1961,7 +1959,7 @@ def _validate_gzip(data: bytes) -> Tuple[bool, str]:
     return True, "gzip decodes cleanly (no trailer present in the carved window)"
 
 
-def _validate_sqlite(data: bytes) -> Tuple[bool, str]:
+def _validate_sqlite(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 16) != b"SQLite format 3\x00":
         return False, "SQLite magic string invalid"
     page_size = _be16(data, 16) or 65536
@@ -2012,7 +2010,7 @@ def _validate_sqlite(data: bytes) -> Tuple[bool, str]:
     return True, f"{pages} page(s); {btree} page(s) have valid b-tree headers and ordered cell pointers"
 
 
-def _validate_elf(data: bytes) -> Tuple[bool, str]:
+def _validate_elf(data: bytes) -> tuple[bool, str]:
     if data[:4] != b"\x7fELF":
         return False, "ELF magic invalid"
     if data[4] not in (1, 2):
@@ -2027,7 +2025,7 @@ def _validate_elf(data: bytes) -> Tuple[bool, str]:
     return True, f"ELF e_type={e_type}, {'64' if data[4] == 2 else '32'}-bit, consistent header"
 
 
-def _validate_7z(data: bytes) -> Tuple[bool, str]:
+def _validate_7z(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 6) != b"7z\xbc\xaf\x27\x1c":
         return False, "7z signature invalid"
     ver_major, ver_minor = data[6], data[7]
@@ -2040,7 +2038,7 @@ def _validate_7z(data: bytes) -> Tuple[bool, str]:
     return True, f"7z v{ver_major}.{ver_minor}, next header at +{32 + start_hdr + next_off}"
 
 
-def _validate_ogg(data: bytes) -> Tuple[bool, str]:
+def _validate_ogg(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 4) != b"OggS":
         return False, "Ogg capture pattern invalid"
     if data[4] != 0:
@@ -2051,7 +2049,7 @@ def _validate_ogg(data: bytes) -> Tuple[bool, str]:
     return True, f"Ogg page, {nsegs} segment(s), body {sum(data[27:27 + nsegs])} bytes"
 
 
-def _validate_avi(data: bytes) -> Tuple[bool, str]:
+def _validate_avi(data: bytes) -> tuple[bool, str]:
     """An AVI is only as trustworthy as its chunk index.
 
     The RIFF size field alone is 4 bytes that a random file can satisfy, and a
@@ -2093,7 +2091,7 @@ def _validate_avi(data: bytes) -> Tuple[bool, str]:
                   f"{base} offset base at {idx.base}, media {first}..{last}")
 
 
-def _validate_mp4(data: bytes) -> Tuple[bool, str]:
+def _validate_mp4(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 4, 4) != b"ftyp":
         return False, "no ftyp box at offset 4"
     major = _ascii(data, 8, 4).decode("latin-1")
@@ -2122,7 +2120,7 @@ def _validate_mp4(data: bytes) -> Tuple[bool, str]:
                   f"media {t.media_start}..{t.media_end}")
 
 
-def _validate_flac(data: bytes) -> Tuple[bool, str]:
+def _validate_flac(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 4) != b"fLaC":
         return False, "fLaC signature invalid"
     pos = 4
@@ -2146,7 +2144,7 @@ def _validate_flac(data: bytes) -> Tuple[bool, str]:
     return True, f"FLAC with {len(blocks)} metadata block(s), last-block flag set"
 
 
-def _validate_pcap(data: bytes) -> Tuple[bool, str]:
+def _validate_pcap(data: bytes) -> tuple[bool, str]:
     magic = _le32(data, 0)
     if magic == 0xA1B2C3D4:
         endian, nano = "little", False
@@ -2164,7 +2162,7 @@ def _validate_pcap(data: bytes) -> Tuple[bool, str]:
     return True, f"pcap, {endian}-endian{', nanosecond' if nano else ''}, first record {incl} bytes"
 
 
-def _validate_pcapng(data: bytes) -> Tuple[bool, str]:
+def _validate_pcapng(data: bytes) -> tuple[bool, str]:
     if _ascii(data, 0, 4) != b"\x0a\x0d\x0d\x0a":
         return False, "PCAPNG section header block magic invalid"
     total = _le32(data, 4)
@@ -2177,7 +2175,7 @@ def _validate_pcapng(data: bytes) -> Tuple[bool, str]:
     return True, f"PCAPNG section header block, {total} bytes, length cross-checked"
 
 
-def _validate_tar(data: bytes) -> Tuple[bool, str]:
+def _validate_tar(data: bytes) -> tuple[bool, str]:
     if not data[:1].isalnum() and data[:1] not in (b".", b"/"):
         return False, "tar name field has an implausible first byte"
     try:
@@ -2190,7 +2188,7 @@ def _validate_tar(data: bytes) -> Tuple[bool, str]:
     return True, f"tar header, member size {size} bytes"
 
 
-def _validate_mpegts(data: bytes) -> Tuple[bool, str]:
+def _validate_mpegts(data: bytes) -> tuple[bool, str]:
     if len(data) < _TS_PACKET * _TS_MIN_PACKETS:
         return False, (f"fewer than {_TS_MIN_PACKETS} 188-byte MPEG-TS packets, "
                        "which is too short to distinguish from coincidence")
@@ -2198,7 +2196,7 @@ def _validate_mpegts(data: bytes) -> Tuple[bool, str]:
         return False, f"length {len(data)} is not a multiple of {_TS_PACKET}"
 
     # Reuse the walk's parser so the two gates cannot drift apart.
-    pids: Dict[int, int] = {}
+    pids: dict[int, int] = {}
     off = 0
     while off + _TS_PACKET <= len(data):
         parsed = _ts_packet_header(data[off:off + 4])
@@ -2224,7 +2222,7 @@ def _validate_mpegts(data: bytes) -> Tuple[bool, str]:
                   f"transport header valid, {len(pids)} PID(s) ({listed})")
 
 
-def _validate_macho(data: bytes) -> Tuple[bool, str]:
+def _validate_macho(data: bytes) -> tuple[bool, str]:
     magic = int.from_bytes(data[:4], "little")
     if magic not in (0xFEEDFACE, 0xFEEDFACF, 0xCEFAEDFE, 0xCFFAEDFE):
         return False, f"Mach-O magic 0x{magic:08X} is not a known variant"

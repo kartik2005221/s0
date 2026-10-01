@@ -48,7 +48,6 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
 
 _interrupted = threading.Event()
 
@@ -67,20 +66,8 @@ if threading.current_thread() is threading.main_thread():
     except (ValueError, AttributeError):
         pass
 
-from s0 import certificate as cert_mod
-from s0 import platform
-from s0 import resources
-from s0.config import CONFIG
-from s0.terminal import EX_CANTCREAT, EX_CONFIG, EX_DATAERR, EX_FAILURE, \
-    EX_INTERRUPTED, EX_IOERR, EX_NOINPUT, EX_NOPERM, EX_OK, EX_SOFTWARE, \
-    EX_TEMPFAIL, EX_USAGE
-from s0.terminal import OutputPolicy
-from s0.cli.ui import (UI, Column, add_global_arguments, artifact, human_bytes,
-                       human_int, policy_from_args)
-from s0.progress import ProgressBar
-
-from s0 import __version__, __version_str__
-from s0.audit import init_audit_db, list_audit_blocks, record_audit_event, verify_audit_ledger
+from s0 import __version__, __version_str__, platform, resources
+from s0.audit import list_audit_blocks, record_audit_event, verify_audit_ledger
 from s0.carve import carve_image, signature_from_dict
 from s0.cli.devices import (
     SafetyError,
@@ -92,10 +79,29 @@ from s0.cli.devices import (
 )
 from s0.cli.devices import Target as DevTarget
 from s0.cli.file_eraser import erase_batch
-from s0.wipe.methods.ata import AtaSecureEraseMethod, hpa_dco_report
-from s0.wipe.methods.base import Plan
-from s0.wipe.methods.overwrite import OverwriteMethod, plant_patterns
+from s0.cli.ui import UI, Column, add_global_arguments, artifact, human_bytes, human_int, policy_from_args
+from s0.config import CONFIG
+from s0.crypto import is_demo_key
+from s0.progress import ProgressBar
 from s0.temperature import read_temperature
+from s0.terminal import (
+    EX_CANTCREAT,
+    EX_CONFIG,
+    EX_DATAERR,
+    EX_FAILURE,
+    EX_INTERRUPTED,
+    EX_IOERR,
+    EX_NOINPUT,
+    EX_NOPERM,
+    EX_OK,
+    EX_SOFTWARE,
+    EX_TEMPFAIL,
+    EX_USAGE,
+    OutputPolicy,
+)
+from s0.wipe.methods.ata import hpa_dco_report
+from s0.wipe.methods.base import Plan
+from s0.wipe.methods.overwrite import plant_patterns
 from s0.wipe.planner import (
     default_issuer_key,
     make_certificate,
@@ -105,14 +111,11 @@ from s0.wipe.planner import (
 )
 
 
-from s0.crypto import is_demo_key
-
-
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _validate_portal_url(url: Optional[str]) -> Optional[str]:
+def _validate_portal_url(url: str | None) -> str | None:
     if not url:
         return url
     import urllib.parse
@@ -157,14 +160,14 @@ def _validate_cli_metadata(args) -> bool:
 
 
 _S0_ASCII = r"""
-            /$$$$$$ 
+            /$$$$$$
            /$$$_  $$
   /$$$$$$$| $$$$\ $$
  /$$_____/| $$ $$ $$
 |  $$$$$$ | $$\ $$$$
  \____  $$| $$ \ $$$
  /$$$$$$$/|  $$$$$$/
-|_______/  \______/  
+|_______/  \______/
 """
 
 
@@ -426,7 +429,7 @@ def cmd_plan(args) -> int:
         return EX_DATAERR
 
     # Interrogate the medium. Read-only: IDENTIFY-style reads and sysfs only.
-    from s0.wipe.methods.capabilities import probe_capabilities, plan_ladder
+    from s0.wipe.methods.capabilities import plan_ladder, probe_capabilities
     caps = probe_capabilities(target.path, kind=target.kind)
     requested = getattr(args, "require_tier", None) or (
         "Purge" if getattr(args, "firmware", False) else "Clear")
@@ -546,7 +549,7 @@ def cmd_wipe(args) -> int:
     if getattr(args, "firmware", False):
         require_tier = "Purge"
     if require_tier:
-        from s0.wipe.methods.capabilities import probe_capabilities, plan_ladder
+        from s0.wipe.methods.capabilities import plan_ladder, probe_capabilities
         try:
             probe_target = _resolve_target(target_arg or targets[0])
         except (FileNotFoundError, SafetyError) as exc:
@@ -616,7 +619,7 @@ def cmd_wipe(args) -> int:
 
     if sys.platform == "win32" and target.kind == "block":
         try:
-            from windows.cli.s0_eraser import wipe_drive_or_partition_windows, check_windows_wipe_safety
+            from windows.cli.s0_eraser import check_windows_wipe_safety, wipe_drive_or_partition_windows
         except ImportError:
             print("error: Windows drive wipe requires the s0 Windows engine (windows.cli.s0_eraser).\n"
                   "  Ensure the S0 installation includes Windows components or repo root is on sys.path.", file=sys.stderr)
@@ -629,9 +632,9 @@ def cmd_wipe(args) -> int:
 
         if not args.yes:
             print(f"\n[s0 wipe]  Target        : {target.path}")
-            print(f"[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (Windows Native)")
-            print(f"[s0 wipe]  NIST Category : Clear")
-            print(f"[s0 wipe]  Summary       : Windows raw volume overwrite with volume lock and dismount")
+            print("[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (Windows Native)")
+            print("[s0 wipe]  NIST Category : Clear")
+            print("[s0 wipe]  Summary       : Windows raw volume overwrite with volume lock and dismount")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (Windows Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
@@ -690,7 +693,7 @@ def cmd_wipe(args) -> int:
 
     if sys.platform == "darwin" and target.kind == "block":
         try:
-            from macos.cli.s0_eraser import wipe_drive_or_partition_macos, check_macos_wipe_safety
+            from macos.cli.s0_eraser import check_macos_wipe_safety, wipe_drive_or_partition_macos
         except ImportError:
             print("error: macOS drive wipe requires the s0 macOS engine (macos.cli.s0_eraser).\n"
                   "  Ensure the S0 installation includes macOS components or repo root is on sys.path.", file=sys.stderr)
@@ -703,10 +706,10 @@ def cmd_wipe(args) -> int:
 
         if not args.yes:
             print(f"\n[s0 wipe]  Target        : {target.path}")
-            print(f"[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (macOS Native)")
-            print(f"[s0 wipe]  NIST Category : Clear")
-            print(f"[s0 wipe]  Summary       : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
-            print(f"[s0 wipe]  HPA/DCO       : Not supported on macOS (requires Linux with hdparm)")
+            print("[s0 wipe]  Method        : OVERWRITE_ZERO_1PASS (macOS Native)")
+            print("[s0 wipe]  NIST Category : Clear")
+            print("[s0 wipe]  Summary       : macOS raw character device (/dev/rdisk) overwrite with fcntl(F_FULLFSYNC)")
+            print("[s0 wipe]  HPA/DCO       : Not supported on macOS (requires Linux with hdparm)")
             ans = input(f"\nType '{target.path}' to confirm permanent erasure of {target.path} (macOS Native): ")
             if ans.strip() != str(target.path):
                 print("aborted — nothing was written", file=sys.stderr)
@@ -1077,7 +1080,7 @@ def cmd_erase_files(args) -> int:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
         return 2
 
-    print(f"==> S0: Secure File & Folder Sanitization")
+    print("==> S0: Secure File & Folder Sanitization")
 
     key_path = default_issuer_key(getattr(args, "key", None))
     _warn_if_demo_key(key_path)
@@ -1364,8 +1367,8 @@ def cmd_carve(args) -> int:
     # Bodyfiles, written before any format branch so that --format json produces
     # the same artifacts as the text output. An artifact that only appears in one
     # output format is an artifact nobody finds.
-    bodyfile_artifacts: List[Path] = []
-    bodyfile_rows: List[tuple] = []
+    bodyfile_artifacts: list[Path] = []
+    bodyfile_rows: list[tuple] = []
     if getattr(args, "bodyfile", None) or getattr(args, "gaps_bodyfile", None):
         from s0.carve import bodyfile as bf
         extents = summary.recovered_extents
@@ -2216,9 +2219,9 @@ def cmd_image(args) -> int:
 def cmd_web(args) -> int:
     """Launch the s0 local Web Dashboard in browser."""
     import subprocess
+    import threading
     import time
     import webbrowser
-    import threading
 
     port = getattr(args, "port", None) or CONFIG.get("api_port", 8669)
     host = getattr(args, "host", None) or "127.0.0.1"
@@ -2307,7 +2310,7 @@ def cmd_web(args) -> int:
     print(f"[s0 web]  Auth URL : {auth_url}")
     print(f"[s0 web]  Token    : {token_path} (mode 0600)")
     print(f"[s0 web]  Binding  : {host} (Strict loopback isolation)")
-    print(f"[s0 web]  Status   : Live — Press CTRL+C to stop")
+    print("[s0 web]  Status   : Live — Press CTRL+C to stop")
     print()
 
     cmd = [

@@ -150,7 +150,7 @@ class AtaSecureEraseMethod(WipeMethod):
 
         atexit.register(cleanup_lock)
         try:
-            for step, label in zip(steps, labels):
+            for step, label in zip(steps, labels, strict=False):
                 progress(label)
                 try:
                     code, out, err = _run(step)
@@ -196,7 +196,9 @@ def _security_block(hdparm_i_output: str) -> str:
     parser survives cosmetic changes between hdparm versions.
     """
     lines = hdparm_i_output.splitlines()
-    start = next((i for i, l in enumerate(lines) if l.strip() == "Security:"), None)
+    start = next(
+        (i for i, raw_line in enumerate(lines) if raw_line.strip() == "Security:"), None
+    )
     if start is None:
         return ""
     block = []

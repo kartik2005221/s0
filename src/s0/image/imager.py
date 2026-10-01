@@ -12,20 +12,19 @@ import os
 import shutil
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Optional
 
 from s0 import certificate as cert_mod
-from s0 import platform as platform_mod
 from s0 import crypto as core_crypto
+from s0 import platform as platform_mod
 from s0 import resources
-from s0.config import CONFIG
-
 from s0.audit import record_audit_event
-from s0.cli.devices import SafetyError, check_safety, get_block_device_size, list_block_targets
+from s0.cli.devices import SafetyError, check_safety, get_block_device_size
 from s0.cli.devices import Target as DevTarget
+from s0.config import CONFIG
 
 
 @dataclass
@@ -51,7 +50,7 @@ class ImagingOptions:
     operator: str = "op-forensic"
     organization: str = "Digital Forensics & Incident Response Lab"
     notes: list[str] = field(default_factory=list)
-    key_path: Optional[str | Path] = None
+    key_path: str | Path | None = None
     no_certificate: bool = False
     out_dir: str = "."
     force: bool = False
@@ -72,11 +71,11 @@ class ImagingResult:
     bad_sector_ranges: list[BadSectorRange]
     source_sha256: str
     source_md5: str
-    manifest_path: Optional[str] = None
-    manifest_certificate: Optional[dict] = None
+    manifest_path: str | None = None
+    manifest_certificate: dict | None = None
     audit_ledger_recorded: bool = False
-    audit_ledger_error: Optional[str] = None
-    error: Optional[str] = None
+    audit_ledger_error: str | None = None
+    error: str | None = None
 
 
 def _resolve_source_target(path: str) -> tuple[str, int, str]:
@@ -110,7 +109,7 @@ def _resolve_source_target(path: str) -> tuple[str, int, str]:
 
 def acquire_image(
     options: ImagingOptions,
-    progress_callback: Optional[Callable[[int, int, float, int], None]] = None,
+    progress_callback: Callable[[int, int, float, int], None] | None = None,
 ) -> ImagingResult:
     """Perform bit-stream forensic acquisition from source to destination."""
     start_time = time.time()
@@ -204,9 +203,9 @@ def acquire_image(
             chunk = b""
             try:
                 chunk = src_f.read(block_size)
-            except (OSError, IOError) as read_err:
+            except OSError as read_err:
                 if not options.error_recovery:
-                    raise IOError(f"Read error at offset {current_offset}: {read_err}") from read_err
+                    raise OSError(f"Read error at offset {current_offset}: {read_err}") from read_err
 
                 # Fallback: sector-by-sector read through the bad block
                 sub_offset = current_offset
@@ -220,7 +219,7 @@ def acquire_image(
                         if not sec_data:
                             break
                         recovered_chunk.extend(sec_data)
-                    except (OSError, IOError):
+                    except OSError:
                         # Bad sector encountered: zero-fill to maintain alignment
                         bad_sectors_count += 1
                         bad_bytes_count += sector_size

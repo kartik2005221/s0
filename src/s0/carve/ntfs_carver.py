@@ -9,15 +9,13 @@ Parses Master File Table ($MFT) directly from raw images/block devices:
 
 from __future__ import annotations
 
-import os
 import struct
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from . import mft as mft_mod
 from . import usn as usn_mod
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, Iterator, List, Optional
-
 
 NTFS_OEM_ID = b"NTFS    "
 MFT_RECORD_MAGIC = b"FILE"
@@ -44,15 +42,15 @@ class NtfsRecoveredFile:
     size_bytes: int
     is_resident: bool
     is_deleted: bool
-    data: Optional[bytes] = None
+    data: bytes | None = None
     fragment_count: int = 1
-    runs: List[tuple[int, int]] = field(default_factory=list)
+    runs: list[tuple[int, int]] = field(default_factory=list)
 
 
 def parse_ntfs_boot_sector(
     image_path: str | Path,
     partition_offset: int = 0,
-) -> Optional[NtfsBootSector]:
+) -> NtfsBootSector | None:
     """Parse NTFS boot sector at partition_offset."""
     try:
         with open(image_path, "rb") as f:
@@ -104,7 +102,7 @@ def parse_mft_record_bytes(
     disk_file=None,
     cluster_size: int = 4096,
     partition_offset: int = 0,
-) -> Optional[NtfsRecoveredFile]:
+) -> NtfsRecoveredFile | None:
     """Parse single MFT record buffer (resident & single-run non-resident DATA)."""
     if len(rec_bytes) < 1024 or rec_bytes[0:4] != MFT_RECORD_MAGIC:
         return None
@@ -118,8 +116,8 @@ def parse_mft_record_bytes(
     record_num = struct.unpack_from("<I", rec_bytes, 0x2C)[0]
     first_attr_offset = struct.unpack_from("<H", rec_bytes, 0x14)[0]
 
-    filename: Optional[str] = None
-    file_data: Optional[bytes] = None
+    filename: str | None = None
+    file_data: bytes | None = None
     real_size: int = 0
     is_resident: bool = False
 
@@ -164,7 +162,7 @@ def parse_mft_record_bytes(
                     real_size = struct.unpack_from("<Q", rec_bytes, offset + 48)[0]
                     runlist_data = rec_bytes[offset + runlist_offset :]
 
-                    runs: List[tuple[int, int]] = []
+                    runs: list[tuple[int, int]] = []
                     r_idx = 0
                     current_lcn = 0
                     while r_idx < len(runlist_data):
@@ -241,13 +239,13 @@ def scan_ntfs_deleted_files(
     max_records: int = 2000,
     include_allocated: bool = False,
     partition_offset: int = 0,
-) -> List[NtfsRecoveredFile]:
+) -> list[NtfsRecoveredFile]:
     """Scan NTFS $MFT on disk image and recover deleted file entries."""
     boot = parse_ntfs_boot_sector(image_path, partition_offset=partition_offset)
     if not boot:
         return []
 
-    recovered: List[NtfsRecoveredFile] = []
+    recovered: list[NtfsRecoveredFile] = []
     try:
         with open(image_path, "rb") as f:
             mft_offset = partition_offset + boot.mft_start_cluster * boot.cluster_size
@@ -294,28 +292,28 @@ class NtfsDeletedEntry:
     sequence_number: int
     name: str
     path: str
-    parent_record: Optional[int]
+    parent_record: int | None
     size_bytes: int
-    data: Optional[bytes]
+    data: bytes | None
     fragment_count: int
     is_resident: bool
-    mft_changed: Optional[float] = None
-    created: Optional[float] = None
-    modified: Optional[float] = None
-    accessed: Optional[float] = None
+    mft_changed: float | None = None
+    created: float | None = None
+    modified: float | None = None
+    accessed: float | None = None
     fixup_verified: bool = True
-    content_caveat: Optional[str] = None
+    content_caveat: str | None = None
     recovered_from_satellite: bool = False
     # Byte offset of the file's first cluster, so a report can point at where
     # the content lives rather than at an unrelated MFT record slot.
-    first_data_offset: Optional[int] = None
+    first_data_offset: int | None = None
 
     @property
     def is_restorable(self) -> bool:
         return self.data is not None and self.content_caveat is None
 
 
-def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> List[tuple]:
+def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> list[tuple]:
     """The cluster runs that make up the $MFT itself.
 
     $MFT is an ordinary non-resident file and is not guaranteed to be
@@ -337,7 +335,7 @@ def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> List[tuple]
 
 
 def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int,
-                     runs: List[tuple]) -> "Iterator[bytes]":
+                     runs: list[tuple]) -> Iterator[bytes]:
     """Yield MFT record buffers in order, following the $MFT's own extents."""
     rs = boot.mft_record_size
     per_run = boot.cluster_size // rs if rs else 0
@@ -354,7 +352,7 @@ def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int,
 
 
 def _iter_mft_records_contiguous(fh, boot: NtfsBootSector, partition_offset: int,
-                                 limit_bytes: int) -> "Iterator[bytes]":
+                                 limit_bytes: int) -> Iterator[bytes]:
     """Walk the MFT assuming it is contiguous from its first cluster.
 
     Only used when record 0 is unreadable, which happens when the first MFT
@@ -375,7 +373,7 @@ def _iter_mft_records_contiguous(fh, boot: NtfsBootSector, partition_offset: int
 
 
 def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int,
-                 max_bytes: int) -> "tuple":
+                 max_bytes: int) -> tuple:
     """Read a record's primary stream back off the media.
 
     Returns (data, fragment_count, caveat, first_data_offset). `caveat` is set
@@ -407,7 +405,7 @@ def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int,
     return (data or None), len([r for r in runs if r[1] > 0]), None, first
 
 
-def _build_path(rec, names: Dict[int, str], depth: int = 0) -> str:
+def _build_path(rec, names: dict[int, str], depth: int = 0) -> str:
     """Reconstruct a full path by walking parent references.
 
     A deleted record's parent directory is usually still alive, so the path
@@ -442,8 +440,8 @@ def scan_ntfs_deleted_records(
     max_records: int = 200_000,
     include_allocated: bool = False,
     include_system: bool = False,
-    warnings: Optional[List[str]] = None,
-) -> List[NtfsDeletedEntry]:
+    warnings: list[str] | None = None,
+) -> list[NtfsDeletedEntry]:
     """Recover deleted files from the $MFT, with their original names.
 
     Records are visited through the $MFT's own extents rather than by assuming
@@ -458,7 +456,7 @@ def scan_ntfs_deleted_records(
     if warnings is None:
         warnings = []
 
-    out: List[NtfsDeletedEntry] = []
+    out: list[NtfsDeletedEntry] = []
     try:
         with open(image_path, "rb") as fh:
             runs = _mft_extents(fh, boot, partition_offset)
@@ -477,10 +475,10 @@ def scan_ntfs_deleted_records(
                     fh, boot, partition_offset,
                     size - partition_offset - boot.mft_start_cluster * boot.cluster_size)
 
-            records: Dict[int, mft_mod.MftRecord] = {}
-            names: Dict[int, str] = {}
-            parents: Dict[int, tuple] = {}
-            order: List[int] = []
+            records: dict[int, mft_mod.MftRecord] = {}
+            names: dict[int, str] = {}
+            parents: dict[int, tuple] = {}
+            order: list[int] = []
 
             seen = 0
             for buf in buffers:
@@ -534,7 +532,7 @@ def scan_ntfs_deleted_records(
                                 break
 
                 path = _build_path(rec, names)
-                entry = rec.primary_name() or {}
+                rec.primary_name() or {}
                 out.append(NtfsDeletedEntry(
                     record_num=rec.record_num,
                     sequence_number=rec.sequence_number,
@@ -573,8 +571,8 @@ def find_usn_journal(
     fh,
     boot: NtfsBootSector,
     partition_offset: int,
-    records: Dict[int, "mft_mod.MftRecord"],
-) -> Optional[tuple]:
+    records: dict[int, mft_mod.MftRecord],
+) -> tuple | None:
     """Locate the $J data stream of $UsnJrnl, the NTFS change journal.
 
     $UsnJrnl is a metadata file living in $Extend and is not at a fixed record
@@ -608,8 +606,8 @@ def read_usn_journal(
     partition_offset: int = 0,
     max_journal_bytes: int = 256 * 1024 * 1024,
     max_records: int = 500_000,
-    warnings: Optional[List[str]] = None,
-) -> List["usn_mod.UsnRecord"]:
+    warnings: list[str] | None = None,
+) -> list[usn_mod.UsnRecord]:
     """Read the NTFS change journal, newest changes last, in USN order.
 
     Returns an empty list when the volume has no journal, which is expected for
@@ -626,7 +624,7 @@ def read_usn_journal(
             runs = _mft_extents(fh, boot, partition_offset)
             if not runs:
                 return []
-            records: Dict[int, mft_mod.MftRecord] = {}
+            records: dict[int, mft_mod.MftRecord] = {}
             for buf in _iter_mft_records(fh, boot, partition_offset, runs):
                 if not buf or len(buf) < 48 or buf[:4] != mft_mod.MFT_RECORD_MAGIC:
                     continue

@@ -1,9 +1,9 @@
 """Tests for macOS CLI module."""
 
 import json
-import os
 import sys
 from pathlib import Path
+
 import pytest
 
 from s0.resources import repo_root
@@ -16,15 +16,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from macos.cli import (
-    MacFileEraseResult,
-    detect_macos_filesystem,
     erase_batch_macos,
     erase_folder_macos,
     erase_single_file_macos,
-    macos_clear_attributes,
     macos_full_fsync,
 )
 from macos.cli.s0_eraser import main as mac_main
+
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 
@@ -288,9 +286,10 @@ def test_mac_cli_flag_aliases(monkeypatch, tmp_path: Path):
 
 
 def test_mac_boot_disk_detection(monkeypatch):
-    from macos.cli.s0_eraser import _get_macos_boot_disk
-    import subprocess
     import shutil
+    import subprocess
+
+    from macos.cli.s0_eraser import _get_macos_boot_disk
 
     monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/sbin/diskutil" if cmd == "diskutil" else None)
 
@@ -333,8 +332,8 @@ def test_is_macos_dev_or_subpartition():
 
 
 def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
-    from macos.cli.s0_eraser import check_macos_wipe_safety
     import macos.cli.s0_eraser as mod
+    from macos.cli.s0_eraser import check_macos_wipe_safety
 
     # Mock dynamic detection returning disk3 (not default disk0)
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
@@ -356,9 +355,10 @@ def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
 
 
 def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
-    from macos.cli.s0_eraser import check_macos_wipe_safety
-    import macos.cli.s0_eraser as mod
     import subprocess
+
+    import macos.cli.s0_eraser as mod
+    from macos.cli.s0_eraser import check_macos_wipe_safety
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: None)
 
@@ -384,8 +384,8 @@ def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
 
 
 def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
-    from macos.cli.s0_eraser import wipe_drive_or_partition_macos
     import macos.cli.s0_eraser as mod
+    from macos.cli.s0_eraser import wipe_drive_or_partition_macos
 
     # Mock unmount returning False on a device path
     monkeypatch.setattr(mod, "unmount_macos_target", lambda target: False)
@@ -400,8 +400,8 @@ def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
 def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
     """On Apple Silicon, boot disk reports APFS container 'disk3', but physical SSD is 'disk0'.
     Both disk0 (physical store) and disk3 (container) must be refused."""
-    from macos.cli.s0_eraser import check_macos_wipe_safety
     import macos.cli.s0_eraser as mod
+    from macos.cli.s0_eraser import check_macos_wipe_safety
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
     monkeypatch.setattr(mod, "_resolve_apfs_physical_store", lambda c: "disk0" if c == "disk3" else None)

@@ -21,7 +21,6 @@ threshold and drowned the genuine recoveries.
 from __future__ import annotations
 
 import math
-from typing import List, Optional, Tuple
 
 from . import boundary
 from .signatures import FileSignature
@@ -125,7 +124,7 @@ def entropy_block_profile(data: bytes,
     return (mean, var ** 0.5)
 
 
-def uniform_random_complaint(data: bytes) -> Optional[str]:
+def uniform_random_complaint(data: bytes) -> str | None:
     """Return why ``data`` looks like random bytes, or ``None`` if it does not.
 
     A single return value on purpose. An earlier version returned
@@ -175,8 +174,8 @@ def score_carved_candidate(
     has_valid_footer: bool = False,
     *,
     boundary_method: str = boundary.UNDETERMINED,
-    boundary_notes: Tuple[str, ...] = (),
-) -> Tuple[int, List[str]]:
+    boundary_notes: tuple[str, ...] = (),
+) -> tuple[int, list[str]]:
     """Score a *structurally validated* candidate from 0 to 100.
 
     Callers must run :func:`boundary.validate_structure` first and discard the
@@ -193,7 +192,7 @@ def score_carved_candidate(
     that.
     """
     score = 0
-    heuristics: List[str] = []
+    heuristics: list[str] = []
     ext = sig.extension.lower().lstrip(".")
 
     # 1. Identity (40) -- assumed: the caller gated on structural validation.
@@ -269,7 +268,7 @@ _DEFAULT_EXPECTATION = {
 }
 
 
-def _entropy_expectation(category: str, ext: str) -> Tuple[float, float]:
+def _entropy_expectation(category: str, ext: str) -> tuple[float, float]:
     key = (category, ext)
     if key in _ENTROPY_EXPECTATIONS:
         return _ENTROPY_EXPECTATIONS[key]

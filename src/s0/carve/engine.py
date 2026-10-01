@@ -36,31 +36,29 @@ This engine fixes all of it:
 
 from __future__ import annotations
 
-import struct
 import hashlib
 import json
 import re
+import struct
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
 
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 from s0 import resources
 from s0.config import CONFIG
 
-from . import boundary
+from . import bodyfile, boundary, provenance, session, suppression
 from .allocation import FreeSpaceMap, build_free_space
-from . import provenance
 from .exfat_carver import scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
 from .fat_carver import scan_fat32_deleted_files
 from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
-from .usn import build_timeline
 from .policy import CarveBudget, CarvePolicy
-from . import bodyfile, session, suppression
 from .scoring import score_carved_candidate
 from .signatures import SIGNATURES, FileSignature, sniff
+from .usn import build_timeline
 
 # Recovery methods, in descending order of evidentiary value.
 METHOD_STRUCTURE = "filesystem_metadata"
@@ -106,8 +104,8 @@ class CarvedFile:
     size_bytes: int
     sha256: str
     confidence_score: int
-    heuristics: List[str] = field(default_factory=list)
-    recovered_path: Optional[str] = None
+    heuristics: list[str] = field(default_factory=list)
+    recovered_path: str | None = None
     recovery_method: str = METHOD_SIGNATURE
     is_fragmented: bool = False
     fragment_count: int = 1
@@ -115,13 +113,13 @@ class CarvedFile:
     # filesystem itself told us the length.
     boundary_method: str = boundary.UNDETERMINED
     # Original path/names when the filesystem supplied them.
-    original_name: Optional[str] = None
-    original_path: Optional[str] = None
-    deleted_at: Optional[str] = None
+    original_name: str | None = None
+    original_path: str | None = None
+    deleted_at: str | None = None
     #: What supports ``original_name``, and whether a path was recovered at all.
     #: Set for filesystem-native recoveries. Left ``None`` for signature
     #: carving, which has no metadata and must not appear to have any.
-    provenance: Optional[dict] = None
+    provenance: dict | None = None
 
 
 @dataclass
@@ -139,35 +137,35 @@ class CarvingSessionSummary:
     total_bytes_scanned: int
     total_candidates_found: int
     files_recovered: int
-    carved_files: List[CarvedFile] = field(default_factory=list)
-    manifest_certificate: Optional[dict] = None
-    warnings: List[str] = field(default_factory=list)
+    carved_files: list[CarvedFile] = field(default_factory=list)
+    manifest_certificate: dict | None = None
+    warnings: list[str] = field(default_factory=list)
     # Accounting, so a thin result is visible instead of being padded with noise.
     rejected_candidates: int = 0
     rejected_bytes: int = 0
     bytes_recovered: int = 0
     output_budget_bytes: int = 0
     budget_stop_reason: str = ""
-    rejected_samples: List[RejectedCandidate] = field(default_factory=list)
-    by_category: Dict[str, int] = field(default_factory=dict)
-    by_method: Dict[str, int] = field(default_factory=dict)
+    rejected_samples: list[RejectedCandidate] = field(default_factory=list)
+    by_category: dict[str, int] = field(default_factory=dict)
+    by_method: dict[str, int] = field(default_factory=dict)
     truncated_report: bool = False
     # reason -> count, most common first. Far more useful than a million lines.
-    rejection_summary: List[Tuple[str, int]] = field(default_factory=list)
+    rejection_summary: list[tuple[str, int]] = field(default_factory=list)
     # Allocation-aware search accounting. `free_space` is None when the whole
     # volume had to be searched, which is itself worth recording in a report.
-    free_space: Optional[dict] = None
+    free_space: dict | None = None
     allocated_candidates_skipped: int = 0
     allocated_bytes_skipped: int = 0
     # Names and deletion times recovered from the NTFS change journal. These are
     # evidence that a file existed, not recovered files: no bytes come from the
     # journal, so they are counted and reported separately rather than added to
     # files_recovered.
-    deleted_names_from_journal: List[dict] = field(default_factory=list)
+    deleted_names_from_journal: list[dict] = field(default_factory=list)
     # (start, end) inclusive byte ranges of everything recovered, in the target.
     # Written out as a bodyfile so another tool can be pointed at the same bytes
     # instead of being asked to re-read the whole volume.
-    recovered_extents: List[Tuple[int, int]] = field(default_factory=list)
+    recovered_extents: list[tuple[int, int]] = field(default_factory=list)
     # Files held back because they matched a known-hash set. Counted and
     # reported, never silently dropped: a tool whose report cannot account for
     # what it withheld is a tool whose report cannot be relied on.
@@ -197,7 +195,7 @@ class CarvingSessionSummary:
 # --------------------------------------------------------------------------- #
 
 
-def _probe_fs_at_offset(f, offset: int) -> Optional[str]:
+def _probe_fs_at_offset(f, offset: int) -> str | None:
     """Probe for NTFS, ext4, FAT32 or exFAT at a given byte offset."""
     try:
         f.seek(offset)
@@ -221,9 +219,9 @@ def _probe_fs_at_offset(f, offset: int) -> Optional[str]:
     return None
 
 
-def detect_partitions(target_path: str | Path) -> List[Tuple[str, int]]:
+def detect_partitions(target_path: str | Path) -> list[tuple[str, int]]:
     """Detect filesystems on bare media, an MBR disk or a GPT disk."""
-    results: List[Tuple[str, int]] = []
+    results: list[tuple[str, int]] = []
     try:
         with open(target_path, "rb") as f:
             fs_at_0 = _probe_fs_at_offset(f, 0)
@@ -289,14 +287,14 @@ def detect_filesystem(target_path: str | Path) -> str:
 def _recover_from_filesystem(
     target_p: Path,
     out_p: Path,
-    parts: List[Tuple[str, int]],
-    extensions: Optional[List[str]],
+    parts: list[tuple[str, int]],
+    extensions: list[str] | None,
     budget: CarveBudget,
-    warnings: List[str],
-    counters: Dict[str, int],
+    warnings: list[str],
+    counters: dict[str, int],
     recovered_hashes: set,
-    known_hashes: Optional["suppression.SuppressionSet"] = None,
-) -> Tuple[List[CarvedFile], List[dict]]:
+    known_hashes: suppression.SuppressionSet | None = None,
+) -> tuple[list[CarvedFile], list[dict]]:
     """Recover deleted files from filesystem metadata.
 
     This is the highest-value path: the filesystem knows the real length, the
@@ -308,10 +306,10 @@ def _recover_from_filesystem(
     objects whose content is not on the volume, and it is kept apart from the
     first so a report cannot imply bytes were recovered from a name alone.
     """
-    recovered: List[CarvedFile] = []
-    timeline: List[dict] = []
+    recovered: list[CarvedFile] = []
+    timeline: list[dict] = []
     norm_exts = {e.lower().lstrip(".") for e in extensions} if extensions else None
-    names_seen: Dict[str, int] = {}
+    names_seen: dict[str, int] = {}
 
     for part_fs, part_offset in parts:
         journal = None
@@ -387,7 +385,6 @@ def _recover_from_filesystem(
                 continue
 
 
-            start_at = offset if offset is not None else 0
             digest = hashlib.sha256(data).hexdigest()
             if digest in recovered_hashes:
                 counters["duplicate"] += 1
@@ -525,7 +522,7 @@ def _safe_join(out_p: Path, filename: str) -> Path:
 # --------------------------------------------------------------------------- #
 
 
-def _overlaps_free(fsm: "FreeSpaceMap", start: int, end: int) -> bool:
+def _overlaps_free(fsm: FreeSpaceMap, start: int, end: int) -> bool:
     """True if [start, end) touches any free extent of the map."""
     if end <= start:
         return False
@@ -545,14 +542,14 @@ def _resolve_free_space(target_p: Path, parts, total_size: int, policy) -> tuple
     report says so, because a carve that quietly searched less than it claimed
     is worse than a slow one.
     """
-    notes: List[str] = []
+    notes: list[str] = []
     if not policy.use_free_space_only:
         notes.append(
             "Allocation-aware search was disabled (--all-space): the whole volume was "
             "searched, so files that are still allocated will also be reported.")
         return None, notes
 
-    maps: List[FreeSpaceMap] = []
+    maps: list[FreeSpaceMap] = []
     for offset, size, label, ftype in _carve_targets(parts, total_size):
         if ftype == "raw" or not ftype:
             notes.append(
@@ -588,7 +585,7 @@ def _resolve_free_space(target_p: Path, parts, total_size: int, policy) -> tuple
     return combined, notes
 
 
-def _carve_targets(parts, total_size: int) -> List[tuple]:
+def _carve_targets(parts, total_size: int) -> list[tuple]:
     """Normalise detected partitions into (offset, size, label, fs_type).
 
     `detect_partitions` yields (fs_type, offset) with no length, so a partition's
@@ -605,7 +602,7 @@ def _carve_targets(parts, total_size: int) -> List[tuple]:
     return out
 
 
-def _merge_ranges(ranges: List[Tuple[int, int]]) -> List[Tuple[int, int]]:
+def _merge_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
     if not ranges:
         return []
     ordered = sorted(r for r in ranges if r[1] > r[0])
@@ -623,22 +620,22 @@ def _scan_signatures(
     src: boundary.ByteSource,
     target_p: Path,
     out_p: Path,
-    active: List[FileSignature],
-    custom_signatures: Optional[List[FileSignature]],
-    extensions: Optional[List[str]],
+    active: list[FileSignature],
+    custom_signatures: list[FileSignature] | None,
+    extensions: list[str] | None,
     min_confidence: int,
     budget: CarveBudget,
-    counters: Dict[str, int],
+    counters: dict[str, int],
     recovered_hashes: set,
-    warnings: List[str],
-    already_recovered: List[CarvedFile],
-    progress_callback: Optional[Callable[[int, int, int], None]],
+    warnings: list[str],
+    already_recovered: list[CarvedFile],
+    progress_callback: Callable[[int, int, int], None] | None,
     total_size: int,
-    free_space: Optional["FreeSpaceMap"] = None,
-    suppression: Optional["suppression.SuppressionSet"] = None,
-) -> List[CarvedFile]:
+    free_space: FreeSpaceMap | None = None,
+    suppression: suppression.SuppressionSet | None = None,
+) -> list[CarvedFile]:
     """Carve by signature, resolving every boundary through `.boundary`."""
-    carved: List[CarvedFile] = []
+    carved: list[CarvedFile] = []
     scanned = 0
     chunk = budget.policy.scan_chunk_bytes
     overlap = budget.policy.scan_overlap_bytes
@@ -910,7 +907,7 @@ def _try_fragmented_reassembly(src: boundary.ByteSource, offset: int, max_size: 
     return assembly.payload, list(assembly.notes) + notes
 
 
-def _ts_run_length(window: bytes, off: int, want: int) -> Optional[int]:
+def _ts_run_length(window: bytes, off: int, want: int) -> int | None:
     """Count consecutive valid 188-byte transport packets starting at ``off``.
 
     Returns ``None`` when the window runs out before ``want`` packets can be
@@ -938,7 +935,7 @@ def _ts_run_length(window: bytes, off: int, want: int) -> Optional[int]:
     return n
 
 
-def _plausible_header(sig: FileSignature, window: bytes, off: int) -> Optional[str]:
+def _plausible_header(sig: FileSignature, window: bytes, off: int) -> str | None:
     """Reject an implausible candidate using only the bytes already in memory.
 
     Returns ``None`` to let the candidate through, or a short reason to drop it.
@@ -1012,15 +1009,15 @@ def _carve_one(
     src: boundary.ByteSource,
     offset: int,
     sig: FileSignature,
-    extensions: Optional[List[str]],
+    extensions: list[str] | None,
     min_confidence: int,
     budget: CarvePolicy | CarveBudget,
-    counters: Dict[str, int],
+    counters: dict[str, int],
     recovered_hashes: set,
-    warnings: List[str],
+    warnings: list[str],
     allow_guess: bool = False,
-    suppression: Optional["suppression.SuppressionSet"] = None,
-) -> Optional[Tuple[bytes, boundary.Boundary, int, List[str]]]:
+    suppression: suppression.SuppressionSet | None = None,
+) -> tuple[bytes, boundary.Boundary, int, list[str]] | None:
     """Resolve, validate, read and score one candidate. None == rejected."""
     ext = sig.extension
     if extensions and ext not in {e.lower().lstrip(".") for e in extensions}:
@@ -1057,7 +1054,7 @@ def _carve_one(
         return None
 
     payload = None
-    extra_notes: List[str] = []
+    extra_notes: list[str] = []
     if ext in _ISOBFMF_EXTENSIONS:
         # A physically fragmented ISO-BMFF file is not detectable by its length:
         # the index fragment plus whatever follows it adds up to the right size
@@ -1133,18 +1130,18 @@ def carve_image(
     target_path: str | Path,
     output_dir: str | Path,
     *,
-    extensions: Optional[List[str]] = None,
-    custom_signatures: Optional[List[FileSignature]] = None,
-    min_confidence: Optional[int] = None,
-    chunk_size: Optional[int] = None,
+    extensions: list[str] | None = None,
+    custom_signatures: list[FileSignature] | None = None,
+    min_confidence: int | None = None,
+    chunk_size: int | None = None,
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
-    progress_callback: Optional[Callable[[int, int, int], None]] = None,
+    signing_key_path: str | Path | None = None,
+    progress_callback: Callable[[int, int, int], None] | None = None,
     generate_certificate: bool = True,
-    policy: Optional[CarvePolicy] = None,
-    known_hashes: Optional["suppression.SuppressionSet"] = None,
-    resume: Optional["session.CarveSession"] = None,
+    policy: CarvePolicy | None = None,
+    known_hashes: suppression.SuppressionSet | None = None,
+    resume: session.CarveSession | None = None,
 ) -> CarvingSessionSummary:
     """Recover deleted and unallocated files from an image, image file or device.
 
@@ -1182,15 +1179,15 @@ def carve_image(
         policy.scan_chunk_bytes = max(256 * 1024, int(chunk_size))
 
     budget = CarveBudget(policy=policy)
-    counters: Dict[str, int] = {
+    counters: dict[str, int] = {
         "candidates": 0, "accepted": 0, "rejected": 0, "rejected_bytes": 0,
         "duplicate": 0, "filtered": 0, "bytes_recovered": 0,
         "structure_candidates": 0, "structure_accepted": 0, "structure_filtered": 0,
         "budget_stops": 0, "rejected_samples": [],
     }
-    warnings: List[str] = []
+    warnings: list[str] = []
     recovered_hashes: set = set()
-    all_files: List[CarvedFile] = []
+    all_files: list[CarvedFile] = []
     if resume is not None:
         resume.check_against(target_p)
         # A resumed candidate is a duplicate of what the previous run already
@@ -1207,7 +1204,7 @@ def carve_image(
             warnings.append(note)
 
     # ---- 1. filesystem-native recovery (highest evidentiary value) ----
-    journal_timeline: List[dict] = []
+    journal_timeline: list[dict] = []
     if policy.structure_recovery_enabled:
         all_files, journal_timeline = _recover_from_filesystem(
             target_p, out_p, parts, extensions, budget, warnings, counters,
@@ -1255,8 +1252,8 @@ def carve_image(
             scanned = total_size
         counters.pop("bytes_scanned", None)
 
-    all_rejected: List[RejectedCandidate] = counters.pop("rejected_samples", [])
-    hist: Dict[str, int] = {}
+    all_rejected: list[RejectedCandidate] = counters.pop("rejected_samples", [])
+    hist: dict[str, int] = {}
     for r in all_rejected:
         hist[r.reason] = hist.get(r.reason, 0) + 1
     rejection_summary = sorted(hist.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -1270,7 +1267,7 @@ def carve_image(
         warnings.append("Forensic recovery manifest certificate omitted per operator "
                         "request (--no-certificate).")
     else:
-        key_file: Optional[Path]
+        key_file: Path | None
         if signing_key_path:
             key_file = Path(signing_key_path)
         else:
@@ -1281,7 +1278,7 @@ def carve_image(
         if key_file is not None and key_file.exists():
             try:
                 now_iso = cert_mod.now_utc()
-                by_method: Dict[str, int] = {}
+                by_method: dict[str, int] = {}
                 for c in all_files:
                     by_method[c.recovery_method] = by_method.get(c.recovery_method, 0) + 1
                 cert_dict = cert_mod.build_certificate(
@@ -1340,10 +1337,10 @@ def carve_image(
             f"already-recovered extent and were not written a second time")
 
     # ---- 4. machine-readable index ----
-    by_category: Dict[str, int] = {}
+    by_category: dict[str, int] = {}
     for c in all_files:
         by_category[c.category] = by_category.get(c.category, 0) + 1
-    by_method: Dict[str, int] = {}
+    by_method: dict[str, int] = {}
     for c in all_files:
         by_method[c.recovery_method] = by_method.get(c.recovery_method, 0) + 1
 
@@ -1480,8 +1477,8 @@ def _is_contained(start: int, end: int, recovered) -> bool:
     return False
 
 
-def drop_contained(all_files: List[CarvedFile], counters: Dict[str, int],
-                   out_p: Path) -> List[CarvedFile]:
+def drop_contained(all_files: list[CarvedFile], counters: dict[str, int],
+                   out_p: Path) -> list[CarvedFile]:
     """Remove findings whose bytes lie inside another finding's extent.
 
     Two formats nest, and then the inner one is found on its own: a JPEG 2000
@@ -1511,7 +1508,7 @@ def drop_contained(all_files: List[CarvedFile], counters: Dict[str, int],
                 break
     if not contained:
         return all_files
-    kept: List[CarvedFile] = []
+    kept: list[CarvedFile] = []
     for f in all_files:
         if id(f) in contained:
             counters["contained"] = counters.get("contained", 0) + 1
@@ -1527,7 +1524,7 @@ def drop_contained(all_files: List[CarvedFile], counters: Dict[str, int],
 
 
 def _read_journal_evidence(target_p: Path, part_offset: int,
-                           warnings: List[str]) -> Optional[List]:
+                           warnings: list[str]) -> list | None:
     """Read the NTFS change journal, if this partition has one.
 
     The journal is a separate kind of evidence from the MFT: it names files whose
@@ -1547,8 +1544,8 @@ def _read_journal_evidence(target_p: Path, part_offset: int,
     return build_timeline(records)
 
 
-def _merge_journal_evidence(timeline: List, names_seen: Dict[str, int],
-                            warnings: List[str]) -> List[dict]:
+def _merge_journal_evidence(timeline: list, names_seen: dict[str, int],
+                            warnings: list[str]) -> list[dict]:
     """Record which journal names are new, and how many corroborated the MFT.
 
     A name that appears both in a deleted MFT record and in the journal is
@@ -1556,7 +1553,7 @@ def _merge_journal_evidence(timeline: List, names_seen: Dict[str, int],
     A name that appears only in the journal had its record reused or zeroed, and
     that distinction is the whole reason the journal is read.
     """
-    rows: List[dict] = []
+    rows: list[dict] = []
     for entry in timeline:
         if not entry.name or entry.name in (".", ".."):
             continue

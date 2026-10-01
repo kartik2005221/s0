@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-from s0.resources import repo_root
 
 from s0.canonical import CanonicalizationError, canonicalize, canonicalize_str
 

@@ -17,12 +17,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
-_TEMP_CACHE: dict[str, tuple[float, Optional[int]]] = {}
+_TEMP_CACHE: dict[str, tuple[float, int | None]] = {}
 
 
-def read_temperature(device_path: str, cache_ttl: float = 2.0) -> Optional[int]:
+def read_temperature(device_path: str, cache_ttl: float = 2.0) -> int | None:
     """Best-effort temperature read in Celsius with rate-limiting cache.
 
     Caches readings for `cache_ttl` seconds (default 2.0s) to avoid spawning
@@ -43,7 +42,7 @@ def read_temperature(device_path: str, cache_ttl: float = 2.0) -> Optional[int]:
     return val
 
 
-def _read_temperature_raw(device_path: str) -> Optional[int]:
+def _read_temperature_raw(device_path: str) -> int | None:
     try:
         if sys.platform.startswith("linux"):
             return _read_linux_temp(device_path)
@@ -57,7 +56,7 @@ def _read_temperature_raw(device_path: str) -> Optional[int]:
         return None
 
 
-def _read_linux_temp(device_path: str) -> Optional[int]:
+def _read_linux_temp(device_path: str) -> int | None:
     p = Path(device_path)
     dev_name = p.name
 
@@ -76,7 +75,7 @@ def _read_linux_temp(device_path: str) -> Optional[int]:
     return _try_smartctl(device_path)
 
 
-def _try_linux_hwmon(dev_name: str) -> Optional[int]:
+def _try_linux_hwmon(dev_name: str) -> int | None:
     base = Path(f"/sys/class/block/{dev_name}/device")
     if not base.exists():
         parent = re.sub(r"\d+$", "", dev_name)
@@ -98,7 +97,7 @@ def _try_linux_hwmon(dev_name: str) -> Optional[int]:
     return None
 
 
-def _try_nvme_smart(device_path: str) -> Optional[int]:
+def _try_nvme_smart(device_path: str) -> int | None:
     if not shutil.which("nvme"):
         return None
     try:
@@ -121,7 +120,7 @@ def _try_nvme_smart(device_path: str) -> Optional[int]:
     return None
 
 
-def _read_windows_temp(device_path: str) -> Optional[int]:
+def _read_windows_temp(device_path: str) -> int | None:
     # 1. Try smartctl on Windows
     t = _try_smartctl(device_path)
     if t is not None:
@@ -171,11 +170,11 @@ def _read_windows_temp(device_path: str) -> Optional[int]:
     return None
 
 
-def _read_macos_temp(device_path: str) -> Optional[int]:
+def _read_macos_temp(device_path: str) -> int | None:
     return _try_smartctl(device_path)
 
 
-def _try_smartctl(device_path: str) -> Optional[int]:
+def _try_smartctl(device_path: str) -> int | None:
     if not shutil.which("smartctl"):
         return None
     try:

@@ -4,8 +4,6 @@ import hashlib
 import struct
 from pathlib import Path
 
-import pytest
-from s0 import resources
 from s0.carve import (
     carve_image,
     detect_filesystem,

@@ -8,10 +8,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from s0.image.imager import BadSectorRange, ImagingOptions, acquire_image
-from s0.cli.main import main
+
 from s0.certificate import verify_certificate
+from s0.cli.main import main
 from s0.crypto import load_public_pem
+from s0.image.imager import ImagingOptions, acquire_image
 
 
 @pytest.fixture
@@ -243,7 +244,7 @@ def test_cli_image_pdf_generation_and_no_pdf_flag(temp_workspace):
 
 
 def test_image_destination_guards(temp_workspace):
-    from s0.image.imager import ImagingOptions, acquire_image, SafetyError
+    from s0.image.imager import ImagingOptions, SafetyError, acquire_image
 
     src = temp_workspace / "guard_src.raw"
     src.write_bytes(b"HELLO FORENSICS" * 100)

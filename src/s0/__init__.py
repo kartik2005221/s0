@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from .config import CONFIG
 
@@ -42,10 +41,10 @@ __all__ = [
 ]
 
 
-def _distribution_version() -> Optional[str]:
+def _distribution_version() -> str | None:
     """Version of the installed ``s0`` distribution, or ``None`` if not installed."""
     try:
-        from importlib.metadata import PackageNotFoundError, version
+        from importlib.metadata import version
 
         return version("s0")
     except Exception:
@@ -88,6 +87,7 @@ __version_str__ = (
     f"{__version__} (commit {__git_commit__})" if __git_commit__ else str(__version__)
 )
 
+from . import crypto
 from .canonical import CanonicalizationError, canonicalize, canonicalize_str
 from .certificate import (
     CertificateError,
@@ -97,8 +97,7 @@ from .certificate import (
     validate,
     verify_certificate,
 )
+from .config import CONFIG, load_config
 from .progress import ProgressBar
 from .temperature import read_temperature
-from . import crypto
-from .config import CONFIG, load_config
 from .validation import validate_metadata_str

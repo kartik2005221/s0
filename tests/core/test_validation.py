@@ -1,7 +1,8 @@
 """Tests for shared metadata validation module."""
 
 import pytest
-from s0.validation import validate_metadata_str, FORBIDDEN_METADATA_CHARS
+
+from s0.validation import validate_metadata_str
 
 
 def test_validate_metadata_str_valid():

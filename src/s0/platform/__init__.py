@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 __all__ = [
     "current",
@@ -100,7 +99,7 @@ def is_block_device(path: Path) -> bool:
     return False
 
 
-def darwin_raw_device_path(value: str) -> Optional[str]:
+def darwin_raw_device_path(value: str) -> str | None:
     """Map a macOS ``/dev/rdiskN`` path to its buffered ``/dev/diskN`` form.
 
     The raw device bypasses the disk-arbiter cache, which is what imaging wants

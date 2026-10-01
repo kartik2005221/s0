@@ -15,10 +15,9 @@ Commands ask this module for a printer; they never call ``print()`` directly.
 
 from __future__ import annotations
 
-import io
-import os
 import sys
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from s0.terminal import (  # re-exported so callers need one import
     EX_CANTCREAT,
@@ -96,7 +95,7 @@ def add_global_arguments(parser) -> None:
 
 
 def policy_from_args(args, *, stdout=None, stderr=None) -> OutputPolicy:
-    colour: Optional[bool] = None
+    colour: bool | None = None
     fmt = "text"
     if getattr(args, "no_color", False) or getattr(args, "color", None) == "never":
         colour = False
@@ -122,7 +121,7 @@ class UI:
     def __init__(self, policy: OutputPolicy, command: str):
         self.policy = policy
         self.command = command
-        self._warnings: List[str] = []
+        self._warnings: list[str] = []
 
     # -- data (stdout) ----------------------------------------------------
     def line(self, text: str = "") -> None:
@@ -175,16 +174,16 @@ class UI:
         return ProgressBar(*args, disable=disabled, **kwargs)
 
     @property
-    def warnings(self) -> List[str]:
+    def warnings(self) -> list[str]:
         return list(self._warnings)
 
     # -- envelope ---------------------------------------------------------
-    def envelope(self, **kwargs) -> Dict[str, Any]:
+    def envelope(self, **kwargs) -> dict[str, Any]:
         return envelope(self.command, **kwargs)
 
     def finish(self, *, result: Any, status: str = "success",
-               artifacts: Optional[List[Dict[str, Any]]] = None,
-               errors: Optional[List[Dict[str, Any]]] = None,
+               artifacts: list[dict[str, Any]] | None = None,
+               errors: list[dict[str, Any]] | None = None,
                **kwargs) -> None:
         """Emit the machine-readable envelope when a structured format is asked for."""
         if self.policy.fmt == "json":
@@ -193,7 +192,7 @@ class UI:
                 errors=errors, warnings=self._warnings, **kwargs))
 
 
-def fail(ui: "UI", code: int, message: str, *, hint: str = "") -> int:
+def fail(ui: UI, code: int, message: str, *, hint: str = "") -> int:
     """Report a failure the one way every command reports failures."""
     if ui is not None:
         ui.error(message)

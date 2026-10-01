@@ -1,15 +1,14 @@
 """Unit tests for s0 Audit Management & Hash-Chained Ledger."""
 
-import json
 import sqlite3
-from pathlib import Path
 
 import pytest
+
 from s0 import resources
 from s0.audit import (
     init_audit_db,
-    record_audit_event,
     list_audit_blocks,
+    record_audit_event,
     verify_audit_ledger,
 )
 from s0.audit.db import compute_block_hash
@@ -82,8 +81,8 @@ def test_append_audit_events_and_verify_chain(test_audit_db, sample_cert):
 
 
 def test_detect_data_tampering_in_ledger(test_audit_db, sample_cert):
-    b1 = record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
-    b2 = record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db)
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db)
 
     # Maliciously modify row in database (forge target_id)
     conn = sqlite3.connect(str(test_audit_db))
@@ -119,8 +118,8 @@ def test_detect_block_deletion_and_rehash(test_audit_db, sample_cert):
     pub = load_public_pem(resources.demo_public_key())
 
     # Record two valid, signed blocks
-    b1 = record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db, private_key=priv)
-    b2 = record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db, private_key=priv)
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db, private_key=priv)
+    record_audit_event(sample_cert, operation_type="FILE_ERASE", db_path=test_audit_db, private_key=priv)
 
     # Sanity check: valid prior to tampering
     rep_before = verify_audit_ledger(test_audit_db, trusted_public_keys=[pub])

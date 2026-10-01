@@ -6,7 +6,6 @@ file-backed image (no root needed); the bytes are real and land on disk.
 """
 
 import json
-import secrets
 from pathlib import Path
 
 import pytest
