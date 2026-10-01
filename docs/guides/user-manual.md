@@ -12,7 +12,7 @@ If you only need to perform a quick 5-minute setup and test run on an image file
 ## 1. Introduction & Operational Philosophy
 
 The **s0 (Sector Zero)** suite unifies offensive and defensive storage operations into a single open-source platform:
-1. **Defensive Anti-Forensics & Sanitization:** Irreversibly destroying digital data across storage drives, individual files, and directory hierarchies in compliance with **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**.
+1. **Defensive Anti-Forensics & Sanitization:** Irreversibly destroying digital data across storage drives, individual files, and directory hierarchies in compliance with **NIST SP 800-88 Rev. 2** and **IEEE 2883-2022**.
 2. **Offensive Digital Forensics & Evidence Recovery:** Reconstructing deleted, concealed, or lost files from formatted media and raw disk images across ext4, NTFS, FAT32, and exFAT without mounting the filesystem.
 3. **Forensic Acquisition & Cloning:** Creating bit-stream disk images with live dual hashing (SHA-256 and MD5) and bad-sector fault tolerance per **ISO/IEC 27037**.
 4. **Cryptographic Non-Repudiation:** Binding every action to an **Ed25519 digital signature** and appending the event to an immutable **SHA-256 hash-chained local audit ledger**.

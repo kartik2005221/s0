@@ -308,3 +308,103 @@ class TestTiers:
         assert "sanitize" in A.NIST_800_88_TERMS
         assert "purge" in A.NIST_800_88_TERMS
         assert "not proof of absence" in A.NIST_800_88_TERMS["verify"]
+
+
+# --------------------------------------------------------------------------- #
+# The bound has to reach the certificate, not just the library
+# --------------------------------------------------------------------------- #
+
+class TestBoundReachesTheCertificate:
+    """The schema has carried these fields for longer than the code has used them.
+
+    `population_blocks`, `confidence_percent` and
+    `residual_fraction_upper_bound_ppm` are in `cert_schema.json` and in the
+    validator's permitted set, and nothing populated them. A certificate that
+    said "64 samples, all zero" and gave no bound invited the reader to treat 64
+    as sufficient.
+    """
+
+    def _verify(self, tmp_path, samples):
+        from s0.wipe.methods.base import Target
+        from s0.wipe.planner import verify_wipe
+        img = tmp_path / "v.img"
+        img.write_bytes(b"\x00" * 4_000_000)
+        target = Target(path=str(img), kind="image",
+                        capacity_bytes=4_000_000, sector_size=512)
+        verif, _post = verify_wipe(target, "zero", samples=samples,
+                                   sample_bytes=4096)
+        return verif
+
+    def test_the_population_is_counted_in_sectors(self, tmp_path):
+        """One read per sector-aligned offset, so the population is sectors.
+
+        Dividing capacity by `sample_bytes` instead gives the wrong population,
+        and on a small image gives a population smaller than the sample count --
+        impossible, and what a test caught.
+        """
+        verif = self._verify(tmp_path, samples=64)
+        assert verif["population_blocks"] == 4_000_000 // 512
+        assert verif["population_blocks"] >= verif["samples_checked"]
+
+    def test_a_tiny_target_does_not_produce_an_impossible_population(self, tmp_path):
+        from s0.wipe.methods.base import Target
+        from s0.wipe.planner import verify_wipe
+        img = tmp_path / "tiny.img"
+        img.write_bytes(b"\x00" * 8192)
+        target = Target(path=str(img), kind="image", capacity_bytes=8192,
+                        sector_size=512)
+        verif, _ = verify_wipe(target, "zero", samples=8, sample_bytes=4096)
+        assert verif["population_blocks"] >= verif["samples_checked"], verif
+
+    def test_the_bound_is_64_samples_being_about_4_5_percent(self, tmp_path):
+        """The number the skill previously implied was sufficient."""
+        verif = self._verify(tmp_path, samples=64)
+        assert verif["confidence_percent"] == 95
+        ppm = verif["residual_fraction_upper_bound_ppm"]
+        assert 40_000 <= ppm <= 50_000, f"expected ~4.5%, got {ppm / 10000:.2f}%"
+
+    def test_more_samples_tighten_the_recorded_bound(self, tmp_path):
+        weak = self._verify(tmp_path, samples=64)
+        strong = self._verify(tmp_path, samples=3000)
+        assert (strong["residual_fraction_upper_bound_ppm"]
+                < weak["residual_fraction_upper_bound_ppm"])
+
+    def test_every_field_is_schema_permitted(self, tmp_path):
+        """Floats are forbidden by the schema, which is why the bound is an
+        integer count of parts per million rather than a float fraction."""
+        import json
+        from pathlib import Path
+        schema = json.loads(
+            (Path(A.__file__).parent.parent / "data" / "cert_schema.json").read_text())
+        allowed = set(schema["properties"]["result"]["properties"]["verification"]["properties"])
+        verif = self._verify(tmp_path, samples=64)
+        for key, value in verif.items():
+            if value is None:
+                continue
+            assert key in allowed, f"{key} is not in the certificate schema"
+            spec = schema["properties"]["result"]["properties"]["verification"]["properties"][key]
+            if spec.get("type") == "integer":
+                assert isinstance(value, int) and not isinstance(value, bool), key
+
+    def test_a_dirty_readback_is_not_reported_as_clean(self, tmp_path):
+        """A surviving needle must fail the check and count as non-matching.
+
+        This is the case the whole bound attaches to: a sample that found
+        residue cannot be summarised as a clean sample no matter how many blocks
+        were read.
+        """
+        from s0.wipe.methods.base import Target
+        from s0.wipe.planner import verify_wipe
+        needle = b"NEEDLE-FORGOT-TO-ERASE"
+        img = tmp_path / "d.img"
+        img.write_bytes(b"\x00" * 1_000_000 + needle + b"\x00" * (1_000_000 - len(needle)))
+        target = Target(path=str(img), kind="image", capacity_bytes=2_000_000,
+                        sector_size=512)
+        # Offsets chosen to straddle the residue.
+        verif, _ = verify_wipe(target, "zero", offsets=[0, 1_000_000],
+                               sample_bytes=4096, planted_needles=[needle])
+        assert verif["all_samples_match_wipe_pattern"] is False
+        assert verif["planted_pattern_hits_after"] >= 1
+        # A failed sample is not a clean sample, so the bound is not a clean bound.
+        assert "not sanitized" in verif["attestation"] or verif[
+            "residual_fraction_upper_bound_ppm"] == 1_000_000

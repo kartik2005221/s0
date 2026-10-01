@@ -1,6 +1,6 @@
 # Bare-Metal Live ISO — Build & Deployment Guide
 
-> **Compliance Reference:** NIST SP 800-88 Rev. 1 §2.4 — Independent Sanitization Environments
+> **Compliance Reference:** NIST SP 800-88 Rev. 2 §2.4 — Independent Sanitization Environments
 > **Target Architecture:** x86_64 (amd64) Hybrid ISO (UEFI + Legacy BIOS)
 > **Base Distribution:** Debian 12 (Bookworm) Minimal Live System
 > **Interface:** Automated Chromium Kiosk UI → local root-privileged sanitization daemon (`127.0.0.1:8000`)

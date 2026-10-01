@@ -1,6 +1,6 @@
-# NIST SP 800-88 Rev. 1 & IEEE 2883-2022 Method Mappings
+# NIST SP 800-88 Rev. 2 & IEEE 2883-2022 Method Mappings
 
-This reference provides exact technical mappings of all `s0` sanitization methods to NIST SP 800-88 Rev. 1 and IEEE 2883-2022 standards.
+This reference provides exact technical mappings of all `s0` sanitization methods to NIST SP 800-88 Rev. 2 and IEEE 2883-2022 standards.
 
 ---
 

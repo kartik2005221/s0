@@ -8,7 +8,7 @@ s0 (Sector Zero) is designed from the ground up to produce **cryptographically v
 
 | Regulatory Framework | What s0 Provides |
 |---|---|
-| **NIST SP 800-88 Rev. 1** | Automated method selection, honest Clear vs Purge categorization, signed certificate |
+| **NIST SP 800-88 Rev. 2** | Automated method selection, honest Clear vs Purge categorization, signed certificate |
 | **DoD 5220.22-M** | 3-pass overwrite pattern support (`OVERWRITE_RANDOM_3PASS`) |
 | **ISO/IEC 27001 / 27040** | Audit trail, cryptographic proof of sanitization, tamper-evident certificate chain |
 | **HIPAA Security Rule § 164.310(d)(2)(i)** | Media disposal verification with operator identity and hardware serial numbers |
@@ -24,14 +24,14 @@ Data sanitization compliance has two interlocking concerns: **what you did** (th
 
 | Standard | Role in s0 |
 |---|---|
-| **NIST SP 800-88 Rev. 1** | Tier classification of every sanitization method |
+| **NIST SP 800-88 Rev. 2** | Tier classification of every sanitization method |
 | **IEEE 2883-2022** | Aligns Sanitize / Clear / Purge definitions |
 | **ISO/IEC 27037:2012** | Forensic evidence handling and chain-of-custody integrity |
 | **DPDPA 2023 (India)** | Verifiable sanitization records for personal data storage media |
 
 ---
 
-## NIST SP 800-88 Rev. 1
+## NIST SP 800-88 Rev. 2
 
 NIST Special Publication 800-88 Revision 1, *Guidelines for Media Sanitization*, is the authoritative U.S. federal standard for data destruction. It defines three sanitization tiers based on the adversary model: how capable is an attacker trying to recover data after you have sanitized the device?
 
@@ -96,7 +96,7 @@ The key distinction between Clear and Purge is *where* the erase command is exec
 
 ## Method → NIST Tier Mapping
 
-The following table is the authoritative mapping between s0 sanitization methods and their NIST SP 800-88 Rev. 1 classification, as encoded in `cert_schema.json`.
+The following table is the authoritative mapping between s0 sanitization methods and their NIST SP 800-88 Rev. 2 classification, as encoded in `cert_schema.json`.
 
 | Method | NIST Tier | Technical Basis |
 |---|---|---|
@@ -211,7 +211,7 @@ Any sanitization certificate issued without confirming HPA/DCO absence (or using
 
 IEEE Standard 2883-2022, *IEEE Standard for Sanitizing Storage*, is the industry standard that formalizes and extends the NIST SP 800-88 framework. It provides:
 
-- Formal definitions of **Sanitize**, **Clear**, and **Purge** consistent with NIST SP 800-88 Rev. 1
+- Formal definitions of **Sanitize**, **Clear**, and **Purge** consistent with NIST SP 800-88 Rev. 2
 - Technology-specific guidance for SSDs, HDDs, hybrid drives, and emerging memory types
 - Verification procedures for confirming sanitization completeness
 
@@ -440,7 +440,7 @@ Skipping pre-flight checks (especially HPA/DCO) can result in a certificate that
 
 | Standard | Full Title | Issuing Body |
 |---|---|---|
-| NIST SP 800-88 Rev. 1 | Guidelines for Media Sanitization | NIST (U.S.) |
+| NIST SP 800-88 Rev. 2 | Guidelines for Media Sanitization | NIST (U.S.) |
 | IEEE 2883-2022 | Standard for Sanitizing Storage | IEEE |
 | ISO/IEC 27037:2012 | Guidelines for Identification, Collection, Acquisition and Preservation of Digital Evidence | ISO / IEC |
 | DPDPA 2023 | Digital Personal Data Protection Act 2023 | Government of India |

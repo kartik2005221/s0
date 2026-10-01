@@ -15,23 +15,22 @@ certificate) can state honestly why the chosen tier is what it is.
 from __future__ import annotations
 
 import collections
-import hashlib
 import math
 import secrets
 import shutil
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 # The wipe CLI imports the shared core from the same venv.
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 from s0 import resources
+from s0.cli.devices import device_id_for
 from s0.config import CONFIG
 
-from s0.cli.devices import Target, device_id_for
 from .methods.ata import AtaSecureEraseMethod
-from .methods.base import MethodResult, Plan, ProgressFn, Target as T, WipeMethod  # noqa: F401
+from .methods.base import MethodResult, Plan, ProgressFn, WipeMethod  # noqa: F401
+from .methods.base import Target as T
 from .methods.blkdiscard import BlkdiscardMethod
 from .methods.nvme import NvmeMethod
 from .methods.overwrite import OverwriteMethod
@@ -205,7 +204,13 @@ def verify_wipe(
 
     Honest scope: this is SAMPLING through the OS's view of the device — strong
     statistical evidence, not an exhaustive forensic sweep. What was checked is
-    recorded verbatim in the certificate.
+    recorded verbatim in the certificate, and so is what it is worth.
+
+    The bound matters more than the count, so it is recorded. "64 blocks, all
+    zero" says the sampled blocks read as zero; it does not say the medium is
+    clean, and at 64 samples the one-sided 95% upper bound on the fraction still
+    matching is about 4.5%. A certificate carrying only the count would let a
+    reader mistake one number for the other.
     """
     offs = offsets if offsets is not None else sample_offsets(
         target.capacity_bytes, target.sector_size, samples)
@@ -222,7 +227,7 @@ def verify_wipe(
     elif pattern == "zero":
         verif["all_samples_match_wipe_pattern"] = all(b == b"\x00" * len(b) for b in post)
     elif pre_samples is not None and len(pre_samples) == len(post):
-        changed = [a != b for a, b in zip(pre_samples, post)]
+        changed = [a != b for a, b in zip(pre_samples, post, strict=False)]
         pct_changed = sum(changed) / len(changed) if changed else 1.0
         verif["all_samples_match_wipe_pattern"] = (pct_changed >= 0.90)
         verif["method"] = "sampled_readback_changed_vs_pre"
@@ -243,6 +248,45 @@ def verify_wipe(
         verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
         verif["all_samples_match_wipe_pattern"] = (pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy)
         verif["note_only_pattern_check_possible_with_pre_samples"] = True
+
+    # Record what the sample is worth, not just how many were taken.
+    #
+    # The certificate schema has carried `population_blocks`,
+    # `confidence_percent` and `residual_fraction_upper_bound_ppm` since before
+    # this code existed, and nothing populated them. A certificate that says
+    # "64 samples, all zero" and gives no bound invites the reader to treat 64 as
+    # sufficient; at 64 samples the one-sided 95% upper bound on the fraction
+    # still matching is about 4.5%.
+    #
+    # The population is counted in the same unit the sampling used -- sectors,
+    # because `sample_offsets` returns sector-aligned positions and one read per
+    # offset. Dividing by `sample_bytes` instead gives the wrong population, and
+    # on a small image it gives a population smaller than the sample count,
+    # which is impossible and was exactly what a test caught.
+    from .attest import build_sampling_proof
+
+    sector = max(1, target.sector_size)
+    population = max(len(post), target.capacity_bytes // sector)
+    proof = build_sampling_proof(
+        blocks_sampled=len(post),
+        blocks_total=population,
+        blocks_matching=0 if verif.get("all_samples_match_wipe_pattern") else 1,
+        pattern_description=f"{sample_bytes}-byte readback against the "
+                            f"{pattern} wipe pattern",
+        confidence=0.95,
+    )
+    verif["population_blocks"] = population
+    verif["confidence_percent"] = int(round(proof.confidence * 100))
+    # Parts per million: an integer, because the schema forbids floats and
+    # because a signed canonical artifact should not carry ambiguous float text.
+    verif["residual_fraction_upper_bound_ppm"] = int(round(proof.upper_bound_fraction * 1_000_000))
+    verif["attestation"] = proof.claim()
+    if proof.clean and proof.upper_bound_fraction > 0.01:
+        verif["sample_strategy"] = (
+            f"uniform_pseudorandom; {proof.blocks_sampled} of {population} sectors; "
+            f"residue bounded at {proof.upper_bound_fraction * 100:.2f}% "
+            f"({proof.confidence:.0%} confidence) -- raise --verify-samples for a "
+            f"tighter bound")
 
     if planted_needles:
         from .methods.overwrite import count_pattern_hits

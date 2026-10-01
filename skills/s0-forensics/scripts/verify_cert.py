@@ -45,7 +45,7 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
         return 2
 
     try:
-        with open(cert_path, "r", encoding="utf-8") as f:
+        with open(cert_path, encoding="utf-8") as f:
             cert_data = json.load(f)
     except Exception as exc:
         print(f"[ERROR] Failed to parse JSON: {exc}", file=sys.stderr)

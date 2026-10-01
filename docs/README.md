@@ -34,7 +34,7 @@ s0 is a digital forensic sanitization and recovery tool. You must **only** opera
   <tbody>
     <tr>
       <td><strong>Drive Eraser</strong></td>
-      <td>NIST SP 800-88 Rev.1 Clear and Purge sanitization for NVMe SSDs, SATA HDDs/SSDs, USB drives, and disk images. Automates NVME_SANITIZE, ATA_SECURE_ERASE, BLKDISCARD ioctls, and multi-pass pattern overwriting with 64-block post-wipe readback verification.</td>
+      <td>NIST SP 800-88 Rev. 2 Clear and Purge sanitization for NVMe SSDs, SATA HDDs/SSDs, USB drives, and disk images. Automates NVME_SANITIZE, ATA_SECURE_ERASE, BLKDISCARD ioctls, and multi-pass pattern overwriting with 64-block post-wipe readback verification.</td>
       <td><a href="guides/user-manual.md#3-module-1-secure-drive-eraser">Drive Eraser Manual</a></td>
     </tr>
     <tr>
@@ -63,7 +63,7 @@ Most sanitization tools tell you a drive was wiped. s0 **proves it mathematicall
 
 | Capability | s0 Suite | Conventional Tools (e.g. Blancco / DBAN) |
 |---|:---:|:---:|
-| **NIST SP 800-88 Rev.1 Purge & Clear** | Yes (Automatic selection) | Varies |
+| **NIST SP 800-88 Rev. 2 Purge & Clear** | Yes (Automatic selection) | Varies |
 | **Ed25519 Asymmetric Digital Signatures** | Yes (Built-in RFC 8032) | No (Closed proprietary signatures) |
 | **Deterministic s0 Canonical JSON v1** | Yes (Strict integer discipline) | No (Unstandardized XML/CSV) |
 | **SHA-256 Hash-Chained Audit Ledger** | Yes (Tamper-evident SQLite) | No (Plain text / mutable logs) |
@@ -136,4 +136,4 @@ s0 wipe --target \\.\PhysicalDrive1 --operator "analyst-01" --organization "Fore
 
 ## Standards & Compliance
 
-s0 sanitization methods and evidence handling protocols are mapped to international standards including **NIST SP 800-88 Rev. 1**, **IEEE 2883-2022**, and **ISO/IEC 27037**. For full technical mappings and court-admissibility checklists, see the [Compliance Guide](compliance/nist-compliance.md).
+s0 sanitization methods and evidence handling protocols are mapped to international standards including **NIST SP 800-88 Rev. 2**, **IEEE 2883-2022**, and **ISO/IEC 27037**. For full technical mappings and court-admissibility checklists, see the [Compliance Guide](compliance/nist-compliance.md).

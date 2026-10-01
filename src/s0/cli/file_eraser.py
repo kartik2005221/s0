@@ -18,10 +18,9 @@ import shutil
 import stat
 import subprocess
 import sys
-import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, List, Optional
 
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
@@ -37,9 +36,9 @@ class FileEraseResult:
     passes: int
     pattern: str
     status: str  # "success", "failure", "skipped"
-    error: Optional[str] = None
+    error: str | None = None
     metadata_cleansed: bool = False
-    cow_warning: Optional[str] = None
+    cow_warning: str | None = None
     extents_count: int = 0
     filesystem: str = "unknown"
 
@@ -50,12 +49,12 @@ class BatchEraseSummary:
     successful_files: int
     failed_files: int
     total_bytes_processed: int
-    results: List[FileEraseResult] = field(default_factory=list)
-    certificate: Optional[dict] = None
-    warnings: List[str] = field(default_factory=list)
+    results: list[FileEraseResult] = field(default_factory=list)
+    certificate: dict | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
-def detect_cow_and_filesystem(path_str: str) -> tuple[str, Optional[str]]:
+def detect_cow_and_filesystem(path_str: str) -> tuple[str, str | None]:
     """Detect underlying filesystem and CoW status across Linux, macOS, and Windows."""
     fs_name = "unknown"
     cow_warning = None
@@ -143,8 +142,8 @@ def platform_sync(fd: int) -> None:
             pass
     elif sys.platform == "win32":
         try:
-            import msvcrt
             import ctypes
+            import msvcrt
             handle = msvcrt.get_osfhandle(fd)
             if ctypes.windll.kernel32.FlushFileBuffers(handle):
                 return
@@ -157,7 +156,7 @@ def platform_sync(fd: int) -> None:
         pass
 
 
-def platform_cleanse_attributes(path_str: str, fd: Optional[int] = None) -> None:
+def platform_cleanse_attributes(path_str: str, fd: int | None = None) -> None:
     """Clear platform-specific file attributes, locks, xattrs, and alternate data streams."""
     try:
         if fd is not None:
@@ -253,7 +252,7 @@ def erase_single_file(
     passes: int = 1,
     pattern: str = "zero",
     chunk_size: int = 65536,
-    progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
     force: bool = False,
 ) -> FileEraseResult:
     if pattern not in ("zero", "random"):
@@ -419,7 +418,7 @@ def erase_single_file(
         # 1. Overwrite file contents
         if file_size > 0:
             with os.fdopen(raw_fd, "r+b") as f:
-                for p in range(1, passes + 1):
+                for _p in range(1, passes + 1):
                     f.seek(0)
                     remaining = file_size
                     while remaining > 0:
@@ -543,9 +542,9 @@ def erase_folder(
     *,
     passes: int = 1,
     pattern: str = "zero",
-    progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
     force: bool = False,
-) -> List[FileEraseResult]:
+) -> list[FileEraseResult]:
     """Recursively sanitize all files and scrub directories in a folder."""
     if pattern not in ("zero", "random"):
         raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
@@ -615,14 +614,14 @@ def erase_folder(
 
 
 def erase_batch(
-    targets: List[str | Path],
+    targets: list[str | Path],
     *,
     passes: int = 1,
     pattern: str = "zero",
     operator_id: str = "op-forensic-01",
     organization: str = "Digital Forensics & Data Sanitization Lab",
-    signing_key_path: Optional[str | Path] = None,
-    progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    signing_key_path: str | Path | None = None,
+    progress_callback: Callable[[str, int, int], None] | None = None,
     generate_certificate: bool = True,
     force: bool = False,
 ) -> BatchEraseSummary:
@@ -630,7 +629,7 @@ def erase_batch(
     if pattern not in ("zero", "random"):
         raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
     start_time = cert_mod.now_utc()
-    all_results: List[FileEraseResult] = []
+    all_results: list[FileEraseResult] = []
 
     for t in targets:
         p = Path(t).resolve()
@@ -683,7 +682,7 @@ def erase_batch(
     if not generate_certificate:
         warnings.append("Compliance certification omitted per operator request (--no-certificate).")
     else:
-        key_file: Optional[Path]
+        key_file: Path | None
         if signing_key_path:
             key_file = Path(signing_key_path)
         else:
@@ -712,13 +711,30 @@ def erase_batch(
                     pattern=pattern,
                     status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
                     errors=[r.error for r in all_results if r.error] or None,
-                    verification={
-                        "method": "post_erase_absence_and_overwrite_readback",
-                        "samples_checked": total_files,
-                        "sample_bytes_each": 0,
-                        "all_samples_match_wipe_pattern": (failures == 0),
-                        "planted_pattern_hits_after": failures,
-                    },
+verification={
+                          "method": "post_erase_absence_and_overwrite_readback",
+                          "samples_checked": total_files,
+                          "sample_bytes_each": 0,
+                          "all_samples_match_wipe_pattern": (failures == 0),
+                          "planted_pattern_hits_after": failures,
+                          # Not a statistical sample, so no residual bound
+                          # applies; the schema's fields are used to say that
+                          # explicitly rather than left absent, because an
+                          # absent bound reads to a certificate consumer as
+                          # "no bound was needed" rather than "this check is of
+                          # a different kind".
+                          "population_blocks": total_files,
+                          "confidence_percent": 100,
+                          "attestation": (
+                              "exhaustive re-stat of every path supplied to this "
+                              "operation; this is not a statistical sample and "
+                              "carries no residual bound"),
+                          "sample_strategy": (
+                              "exhaustive_over_supplied_paths; note that the "
+                              "supplied list cannot itself be verified complete, "
+                              "so this attests absence for the paths given and "
+                              "not for the volume"),
+                      },
                     notes=[
                         f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
                         f"Target classification: {kind} — {dir_count} director(ies), {file_count} file(s) supplied.",

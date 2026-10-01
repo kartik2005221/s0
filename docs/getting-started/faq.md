@@ -31,7 +31,7 @@ Traditionally, forensic practitioners and IT security teams are forced to deploy
 By uniting these capabilities into a single open-source platform:
 1. **Verification of Destruction:** You can immediately test your own sanitization jobs by running the carver on wiped media to verify that zero recoverable artifacts remain.
 2. **Unified Chain of Custody:** Both evidence collection and media decommissioning are recorded in the exact same cryptographic audit ledger.
-3. **Open Standards:** Replaces proprietary, closed-source wipe algorithms with transparent, peer-reviewed implementations of NIST SP 800-88 Rev. 1 and RFC 8032.
+3. **Open Standards:** Replaces proprietary, closed-source wipe algorithms with transparent, peer-reviewed implementations of NIST SP 800-88 Rev. 2 and RFC 8032.
 
 ### Is s0 free and open source?
 Yes. s0 is licensed under the permissive **MIT License**. It can be deployed across commercial enterprises, government agencies, and research laboratories without licensing fees.
@@ -41,7 +41,7 @@ Yes. s0 is licensed under the permissive **MIT License**. It can be deployed acr
 ## 2. Secure Data Sanitization (Drive & File Sanitization)
 
 ### Is a single-pass zero overwrite really enough to destroy data?
-**Yes.** According to **NIST SP 800-88 Rev. 1 (Appendix A)**:
+**Yes.** According to **NIST SP 800-88 Rev. 2 (Appendix A)**:
 > *"For ATA hard drives manufactured after 2001 (capacities greater than 15 GB), clearing the read/write heads by writing zeros to all addressable locations is sufficient to prevent recovery using Magnetic Force Microscopy (MFM) and other laboratory techniques."*
 
 The common myth that 7-pass or 35-pass (Gutmann) overwriting is required originated in the 1990s when hard disk tracks were wide enough for magnetic residue analysis. On modern high-density magnetic and solid-state media, single-pass zeroing satisfies the **NIST Clear** tier.

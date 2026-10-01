@@ -35,7 +35,7 @@
 
 | Capability | Module | What S0 Does |
 |---|:---:|---|
-| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 1 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
+| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
 | **Offensive Carving** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and USB drives across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
 | **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and ddrescue-style bad sector zero-filling. |
 | **Zero-Trust Verification** | Portal | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
@@ -191,7 +191,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 
 | Standard | Category | S0 Engineering Implementation |
 |---|---|---|
-| **NIST SP 800-88 Rev. 1** | Media Sanitization | Purge (NVMe Sanitize, ATA Secure Erase), Clear (1-pass zero overwrite, file cluster sanitization). |
+| **NIST SP 800-88 Rev. 2** | Media Sanitization | Purge (NVMe Sanitize, ATA Secure Erase), Clear (1-pass zero overwrite, file cluster sanitization). |
 | **IEEE 2883-2022** | Storage Sanitization | Standardized classification of physical and logical block sanitization. |
 | **ISO/IEC 27037** | Digital Evidence Handling | Simultaneous SHA-256 & MD5 evidence hashing, non-repudiation via Ed25519 signing, append-only ledger. |
 | **RFC 8785** | Canonical JSON (JCS) | Deterministic cryptographic certificate serialization and block hashing. |

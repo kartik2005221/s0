@@ -1,7 +1,7 @@
-# NIST SP 800-88 Rev.1 mapping — s0 method registry
+# NIST SP 800-88 Rev. 2 mapping — s0 method registry
 
 **Status of this document:** it maps s0's implemented methods to the sanitization
-categories defined in *NIST SP 800-88 Rev.1, Guidelines for Media Sanitization*. It does **not**
+categories defined in *NIST SP 800-88 Rev. 2, Guidelines for Media Sanitization*. It does **not**
 claim NIST certification — no software tool can be "NIST certified"; 800-88 is a decision
 framework an organization applies. Where a method's tier depends on hardware behavior we could
 not observe in the development environment, this document says so, and `docs/compliance/nist-compliance.md`
@@ -113,7 +113,7 @@ tables remain in this file as engineering reference only.
 
 ## 4. Overwrite passes: the honest position
 
-NIST 800-88 Rev.1 requires **one** overwrite pass for Clear on modern drives; multi-pass
+NIST 800-88 Rev. 2 requires **one** overwrite pass for Clear on modern drives; multi-pass
 patterns (DoD 5220.22-M etc.) are legacy policy artifacts from MFM/RLL-era physics and add no
 measurable security on current hardware. s0 defaults to one pass and offers multi-pass
 only as an explicit policy option, labeled in the UI as compliance theater rather than added

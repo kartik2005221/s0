@@ -5,7 +5,14 @@ description: Execute forensic-grade media sanitization, bit-stream disk imaging,
 
 # s0 Forensics & Data Sanitization Skill
 
-This skill guides an AI agent through safely, accurately, and patiently executing operations using **s0 (Sector Zero)** — the NIST SP 800-88 Rev. 1 compliant forensic sanitization, imaging, carving, and cryptographic verification suite.
+This skill guides an AI agent through safely, accurately, and patiently executing operations using **s0 (Sector Zero)** — the NIST SP 800-88 **Rev. 2** compliant forensic sanitization, imaging, carving, and cryptographic verification suite.
+
+!!! warning "Never relay a sanitization tier as fact unless the certificate states it"
+    s0 refuses to claim a tier its evidence does not support, and it will not
+    accept one on request. If you find yourself about to tell a user that a
+    drive "is sanitized" because the tool exited zero, stop and read the
+    certificate's `result.verification.attestation` instead. An exit code is not a
+    claim; the attestation is.
 
 ---
 
@@ -43,12 +50,23 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 When configuring parameters for `s0`, follow these engineering rules:
 
 ### A. Overwrite Pattern (`--pattern zero` vs `random`)
-- **Recommendation**: Always use `zero` (default).
-- **Rationale**: NIST SP 800-88 Rev. 1 Section 2.4 confirms that a single pass of fixed zeros provides full Clear sanitization across modern PRML magnetic hard drives and solid-state storage. Writing zeros achieves maximum sequential bus throughput (1,280–1,350 MB/s), whereas `random` requires CSPRNG generation that limits speed to ~450 MB/s without adding forensic security. Use `random` only if contractually mandated by legacy client agreements.
+- **Recommendation**: Use `zero` (the default) for speed, but **do not describe the
+  result as "fully sanitized"**.
+- **Rationale**: A single zero pass is the fastest option — sequential bus
+  throughput rather than CSPRNG generation — and it is what SP 800-88 Rev. 2
+  Clear is normally understood to mean. It is **not** a statement about the
+  medium's spare area, wear-levelled remapping or on-device caches, none of
+  which a host-level overwrite reaches. Say "a single zero pass was performed and
+  readback sampled", and let the certificate's tier field carry the claim. Use
+  `random` when a contract mandates it.
 
 ### B. Overwrite Pass Count (`--passes 1`)
-- **Recommendation**: Always use `1` pass (default).
-- **Rationale**: Multi-pass wiping (e.g., DoD 5220.22-M 3-pass or 7-pass) was designed in the 1980s for stepper-motor drives prone to track drift. Modern drives do not retain residual magnetic signals after a single overwrite pass. Multi-pass wiping causes needless flash cell write-wear on SSDs and wastes hours on multi-terabyte drives.
+- **Recommendation**: Use `1` pass (the default) unless a contract says otherwise.
+- **Rationale**: Multi-pass wiping (DoD 5220.22-M 3-pass or 7-pass) was designed
+  for 1980s stepper drives prone to track drift. One pass is the norm now, and
+  extra passes cost real flash write-endurance on SSDs and hours on a
+  multi-terabyte drive. State this as the rationale, never as a claim that extra
+  passes would add nothing.
 
 ### C. Firmware Commands vs Overwrite (`--no-firmware`)
 - **Recommendation**: Allow s0 to auto-select firmware commands (do not pass `--no-firmware` unless troubleshooting).
@@ -103,7 +121,20 @@ sudo s0 wipe \
 **Agent Patience Protocol:**
 - During firmware sanitization (NVMe Sanitize or ATA Secure Erase), the controller may take between 10 seconds and 90 minutes. **Do not terminate or poll aggressively.**
 - If running in headless automation, add `--yes` and `--json` to capture the event stream.
-- On completion, verify that `s0` sampled 64 post-wipe verification blocks with 0 non-zero hits.
+- On completion, read `result.verification` from the certificate. Do **not** treat
+  the sample count as the evidence. s0 records:
+  - `samples_checked` — how many were read.
+  - `population_blocks` — the population the sample was drawn from.
+  - `confidence_percent` — 95.
+  - `residual_fraction_upper_bound_ppm` — **the number that matters**: the
+    one-sided upper bound on the fraction of the medium still holding the
+    pattern, in parts per million.
+  - `attestation` — the above as a sentence, for your report.
+
+  The default 64 samples bound the residue at about **4.5%**, which is weak
+  evidence for a compliance claim. If the bound matters, raise
+  `--verify-samples`: 299 samples bound it at 1%, and 0.01% takes about 29,956.
+  A clean sample is not a clean drive, and the certificate says so.
 
 ---
 
@@ -139,9 +170,48 @@ s0 carve \
     --operator "examiner.carter"
 ```
 
+**What s0 can now recover that a forward-scanning carver cannot:**
+
+- **Fragmented files, out of order.** Fragments are ordered by the key *inside*
+  each one — ISO-BMFF `mfhd.sequence_number` and `tfdt` decode time, Matroska
+  `Cluster.Timestamp` — not by where they sit on the volume. 46% of real fragmented
+  recordings are laid out out of order, which is why no shipping tool recovers
+  them. You do not need to do anything special to benefit; it happens on every
+  carve.
+- **Matroska and WebM**, including recordings with an unknown-size Segment,
+  which is what most in-car cameras write.
+- **Twelve container formats** that previously had a signature but no way to
+  establish a length, and so were carved to `max_size` — a file with unrelated
+  evidence glued to the end. AIFF, TIFF, JPEG 2000, MIDI, RTF, Java `.class`,
+  RAR5, registry hives, and exact decompression-derived lengths for bzip2, xz,
+  lzma, zstd and lz4.
+
+**Useful options worth knowing:**
+
+| Flag | Purpose |
+|---|---|
+| `--hash-set <file\|dir>` | Suppress files the examiner already has. Reads bare digests, `sha*sum` output and NSRL rows, or hashes a directory in place. Applies to both the signature and the filesystem-native path. |
+| `--bodyfile <path>` | Write the recovered byte ranges for another tool. |
+| `--gaps-bodyfile <path>` | Write the ranges that were **searched and found nothing**. For fragmented work this is usually the more useful of the two — the holes are the finding. |
+| `--session <file>` | Resume an interrupted carve. Refused if the image has changed since the session was written. |
+| `--write-session <file>` | Record this run's recovered extents so it can be resumed. |
+
 **Agent Protocol:**
-- Check whether filesystem-aware carving (ext4 inode table, NTFS $MFT, FAT32 directory, exFAT cluster heap) or signature-based carving was selected.
-- Review `recovery_index.json` to verify recovered artifact IDs, SHA-256 hashes, and confidence ratings.
+- Check whether filesystem-aware carving (ext4 inode table, NTFS $MFT, FAT32
+  directory, exFAT cluster heap) or signature-based carving was selected.
+- Review `recovery_index.json` for recovered artifact IDs, SHA-256 hashes,
+  confidence ratings, `contained_candidates_dropped`, and the `warnings` list.
+- **Name provenance is a separate question from data recovery.** A file recovered
+  from filesystem metadata carries `name_provenance` saying what supports the
+  name. On exFAT, FAT32 and ext4 a deleted record holds the name and the first
+  cluster but **no parent**, so the path is not recoverable from the volume and
+  s0 says so in a sentence rather than printing a bare filename as though it
+  were a path. Read `path_is_recovered` before writing a path into your report.
+- ext4 **journal (jbd2) filenames are not recovered yet.** The journal reader
+  works and is verified against a real superblock, but the fixture that would
+  prove end-to-end name recovery needs a mounted filesystem. Deleted ext4 files
+  are reported as `inode<N>` with their data recovered — which is honest, and
+  not a name.
 
 ---
 
@@ -192,7 +262,60 @@ Boot the target system directly into the air-gapped live environment to access i
 
 ---
 
-## 4. Error Handling & Edge Cases
+## 4. Refusals Are Correct Behaviour — Do Not Work Around Them
+
+This is the section most likely to save you from a bad report.
+
+s0 refuses to do several things it *could* do by guessing. Each refusal names
+its reason in `recovery_index.json`, the CLI output, and the boundary notes.
+When you see one, the correct action is to report it, not to find a way around it.
+
+| Refusal | Why | What to do |
+|---|---|---|
+| Compressed TIFF (LZW, Deflate, PackBits) | A compressed strip's length is not its byte count, so the strip geometry gives a confident *wrong* answer | Report it as not sized. Uncompressed TIFF is exact. |
+| Multi-page TIFF whose IFD chain leaves the file | The chain cannot be followed, so no bound can be proven | Report it. |
+| Registry hive with no terminating empty block | A truncated hive and a complete one are otherwise indistinguishable | Report it as truncated. |
+| Windows INI, Berkeley DB | Text with no length and no terminator; no magic to size by | Report it. |
+| A fragment whose header was overwritten | No in-band key survives, so any position is a guess | Report the bytes as unassigned. |
+| No original path on exFAT/FAT32/ext4 | A deleted record holds no parent pointer | Report the filename and say the path is unavailable. |
+| A sanitize tier the device did not support | Invariant 2: never claim a tier the evidence does not support | Report the downgrade with its reason. |
+| A candidate inside an already-recovered extent | The same bytes would be reported twice under two names | Expected; see `contained_candidates_dropped`. |
+
+A tool that guesses here produces a file that looks complete and is not. That is
+worse than no output, because it is believed. If a refusal blocks work that
+genuinely needs doing, say so to the user — do not bypass it.
+
+---
+
+## 5. Reading a Certificate Attestation
+
+The certificate is the evidence; the exit code is not. For any wipe:
+
+```bash
+python3 -c "import json,sys; v=json.load(open(sys.argv[1]))['result']['verification']; \
+print('sampled:', v.get('samples_checked'), 'of', v.get('population_blocks')); \
+print('confidence:', str(v.get('confidence_percent'))+'%'); \
+print('residue bound:', (v.get('residual_fraction_upper_bound_ppm') or 0)/10000, '%'); \
+print(v.get('attestation'))" /evidence/certs/certificate_*.json
+```
+
+Three cases, and they are not interchangeable:
+
+- **Sampled readback** (device wipe). Carries a statistical bound. The default
+  64 samples bound the residue at ~4.5% at 95% confidence — weak. Raise
+  `--verify-samples` when the bound is load-bearing.
+- **Exhaustive over supplied paths** (file/folder erase). Not a sample, so no
+  residual bound applies. It attests absence *for the paths you supplied* — s0
+  cannot verify that your list was complete.
+- **NVMe sanitize** (`s0.wipe.attest`). The strongest available: the
+  controller's own Global Data Erased bit, plus the action it reports having run.
+  Note that the bit means nothing has been written *since the last successful
+  sanitize*; it does not mean this operation was that sanitize. Always read it
+  together with the status code, which is `result.status` in the sanitize log.
+
+---
+
+## 6. Error Handling & Edge Cases
 
 | Failure Scenario | Root Cause | Mandatory Agent Remediation |
 |---|---|---|
@@ -204,7 +327,7 @@ Boot the target system directly into the air-gapped live environment to access i
 
 ---
 
-## 5. Detailed Reference Documentation
+## 7. Detailed Reference Documentation
 
 When deep technical domain context is needed, consult the bundled reference files:
 - [NIST SP 800-88 & IEEE 2883-2022 Method Mappings](references/nist-800-88-mapping.md)

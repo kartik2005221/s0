@@ -3,7 +3,7 @@
 {% hint style="info" %}
 **Document Scope & Standards**
 - **Primary Focus:** In-depth technical guide to storage sanitization, controller firmware commands, file cluster overwriting, and metadata destruction.
-- **Applicable Standards:** NIST SP 800-88 Rev. 1, IEEE 2883-2022, DoD 5220.22-M
+- **Applicable Standards:** NIST SP 800-88 Rev. 2, IEEE 2883-2022, DoD 5220.22-M
 - **Modules Covered:** Module 1 (Defensive Media & File Sanitizer)
 {% endhint %}
 
@@ -99,7 +99,7 @@ s0 wipe --target /dev/sdb --pattern random --passes 3
 
 #### Why Single-Pass Zeroing is Recommended:
 - **Speed:** Writing zeros saturates the bus at **1,280–1,350 MB/s**. Generating CSPRNG random numbers throttles throughput to **450–480 MB/s**.
-- **Compliance:** NIST SP 800-88 Rev. 1 Appendix A explicitly states that for modern high-density ATA/SCSI/SATA storage, a single overwrite pass renders previous data unrecoverable even using Magnetic Force Microscopy (MFM).
+- **Compliance:** NIST SP 800-88 Rev. 2 Appendix A explicitly states that for modern high-density ATA/SCSI/SATA storage, a single overwrite pass renders previous data unrecoverable even using Magnetic Force Microscopy (MFM).
 - **Verification Certainty:** Reading back zero bytes is verifiable with $O(1)$ comparisons. Random overwrite verification requires comparing against pre-recorded seed samples.
 
 ---

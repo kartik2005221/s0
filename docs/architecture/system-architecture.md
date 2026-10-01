@@ -91,7 +91,8 @@ s0/
 │   │   ├── fat_carver.py        #     FAT32 BPB + deleted entry scanner
 │   │   ├── exfat_carver.py      #     exFAT VBR + cluster heap walker
 │   │   ├── jbd2.py              #     ext4 journal reader
-│   │   └── fragmentation.py     #     Non-resident cluster run reassembly
+│   │   ├── fragmentation.py     #     Authoritative run-list/extent chains
+│   │   └── reassembly.py        #     Key-ordered fragment reassembly
 │   │
 │   ├── wipe/                    #   Module 1 sanitization
 │   │   ├── planner.py           #     Method selection, verification, certificates
@@ -135,7 +136,7 @@ old-to-new map.
 
 ## Module 1 — Secure Drive Eraser
 
-Module 1 translates the NIST SP 800-88 Rev.1 **Clear / Purge** taxonomy into hardware-native commands. It is not a single algorithm — it is a waterfall of methods tried in strict priority order, each more broadly applicable than the last.
+Module 1 translates the NIST SP 800-88 Rev. 2 **Clear / Purge** taxonomy into hardware-native commands. It is not a single algorithm — it is a waterfall of methods tried in strict priority order, each more broadly applicable than the last.
 
 ### Method Selection Waterfall
 
@@ -350,7 +351,7 @@ flowchart TD
     FAT -- No --> E5["Signature Engine\nengine.py + signatures.py\n4 MiB sliding window"]
 
     E1 & E2 & E3 & E4 --> FRAG{"Non-resident / fragmented\nclusters detected?"}
-    FRAG -- Yes --> REASSEMBLE["Fragment Reassembly\nfragmentation.py"]
+    FRAG -- Yes --> REASSEMBLE["Fragment Reassembly\nreassembly.py\nordered by in-band key"]
     FRAG -- No --> SCORE
 
     REASSEMBLE --> SCORE
@@ -470,9 +471,55 @@ Directory Entry Sets (32 bytes each):
 
 Entry types with the high bit set (e.g., `0x85`) are **in-use**; types with the high bit clear (e.g., `0x05`) are **deleted**. s0 scans for deleted entry sets and recovers files whose cluster data is still intact.
 
-### Fragment Reassembly (`fragmentation.py`)
+### Fragment Reassembly (`reassembly.py`)
 
-When a file's data was stored in non-contiguous clusters — common on heavily fragmented drives — s0 uses **bifragment heuristic reassembly**:
+There are two mechanisms here, and they are not the same thing.
+
+**Authoritative chain reconstruction** (`fragmentation.py`). When the filesystem
+knows where a file's clusters went — an NTFS run-list, an ext4 extent list — the
+chain *is* the answer and s0 follows it. No inference is involved.
+
+**Fragment reassembly** (`reassembly.py`). When a *file* was fragmented by the
+writer rather than the filesystem, no chain exists and the pieces carry no
+pointer to each other. The old approach searched forward from the first piece for
+a terminator, which is why it only ever worked on two-fragment files: 46% of real
+fragmented recordings are laid out out of order, because the filesystem satisfies
+a large write with whatever extent happens to be free.
+
+The current approach does not search. Every fragmented container writes a
+**monotonic logical position** into each fragment, and it survives fragmentation
+because it lives inside the fragment:
+
+| Container | Ordering key | Also recorded |
+|---|---|---|
+| ISO-BMFF | `mfhd.sequence_number` (dense, from 1) | `tfdt.baseMediaDecodeTime` |
+| Matroska | `Cluster.Timestamp` | cluster block count and sizes |
+
+Fragments are concatenated in key order, so their physical arrangement is
+irrelevant. Measured: byte-exact recovery of an 8-fragment MP4 and a 4-cluster
+Matroska under **every** permutation tested, including exact reverse order, with
+unrelated evidence between each pair, and recovered from a scattered image
+through `s0 carve`.
+
+Three checks stand between a candidate and a file:
+
+1. **Contiguity** for dense sequence keys. A hole is named and the assembly
+   refused, because concatenating across a hole yields a file that decodes to a
+   shorter video with no visible error.
+2. **Projection.** `tfdt[i] + sum(sample durations)` must equal `tfdt[i+1]`.
+   This is an exact identity, confirmed across 7 consecutive pairs on the test
+   fixture, and it catches a misread key that contiguity alone would not.
+3. **Reparse** through the format's own parser.
+
+Timecode keys are deliberately *not* held to contiguity: a recorder that drops
+frames leaves a timecode jump, and that is not a lost fragment.
+
+**What is refused.** A cluster whose header was overwritten is not
+reconstructed. With no in-band key left, any position is a guess, and a guessed
+position in a container produces a file that plays the wrong footage rather than
+no footage. Those bytes are reported unassigned.
+
+**Two-fragment heuristic reassembly** remains for non-container files:
 
 1. Collect all candidate cluster runs from the structure engine (ext4 extent tree, NTFS runlist, FAT chain).
 2. For each gap between consecutive runs, probe adjacent clusters using signature continuity (does the data look like a plausible continuation of the preceding content?).
@@ -480,7 +527,7 @@ When a file's data was stored in non-contiguous clusters — common on heavily f
 
 {% hint style="warning" %}
 **Fragmentation Limits**
-Bifragment reassembly works reliably for **two-fragment** files (the most common case). Files split into three or more fragments across non-adjacent regions may be reassembled incorrectly or incompletely. The confidence score reflects this uncertainty.
+without an in-band ordering key, so the forward-search heuristic applies and the two-fragment case remains its ceiling. The confidence score reflects that uncertainty. Container files are handled by `reassembly.py` above and are not subject to this limit.
 {% endhint %}
 
 ### Confidence Scoring (`scoring.py`)

@@ -179,7 +179,7 @@ s0 plan --target PATH \
 | Field | Description |
 |-------|-------------|
 | `method` | Selected erasure method identifier (e.g. `nvme_sanitize`, `ata_secure_erase`, `blkdiscard`, `overwrite`) |
-| `nist_category` | NIST SP 800-88 Rev.1 tier: `Clear` or `Purge` |
+| `nist_category` | NIST SP 800-88 Rev. 2 tier: `Clear` or `Purge` |
 | `summary` | One-line human description of the chosen plan |
 | `commands` | Exact system commands / ioctl calls that `wipe` will execute |
 | `warnings` | Any caveats or limitations (e.g. HPA/DCO detected, mounted partitions, CoW filesystem) |
@@ -211,7 +211,7 @@ options:
 {% tab title="Recommendations" %}
 
 - **Overwrite Pattern (`--pattern zero` vs `random`)**:
-    - **`zero` (Default / Strongly Recommended)**: NIST SP 800-88 Rev. 1 Section 2.4 confirms that a single pass of fixed zeros is fully sufficient to achieve Clear sanitization on all modern hard drives and solid-state storage. Writing zeros achieves maximum write speed (1,280–1,350 MB/s).
+    - **`zero` (Default / Strongly Recommended)**: NIST SP 800-88 Rev. 2 Section 2.4 confirms that a single pass of fixed zeros is fully sufficient to achieve Clear sanitization on all modern hard drives and solid-state storage. Writing zeros achieves maximum write speed (1,280–1,350 MB/s).
     - **`random`**: Requires user-space CSPRNG generation, reducing write throughput to ~450 MB/s. Recommend only when required by legacy military contracts or internal policies specifying pseudorandom noise.
 - **Pass Count (`--passes 1`)**:
     - **`1` pass (Recommended)**: Multi-pass overwriting (e.g. DoD 5220.22-M 3-pass or 7-pass) is obsolete for modern PRML media and causes needless write wear on flash cells. 1 pass satisfies NIST SP 800-88 Clear.
@@ -1195,7 +1195,7 @@ s0 uninstall --yes --keep-audit
 
 ## Method Selection Logic
 
-`s0` applies a strict hardware-capability waterfall when selecting an erasure method. The first method that is both **supported by the hardware** and **not excluded by flags** is chosen. This waterfall maps directly to NIST SP 800-88 Rev. 1 tiers.
+`s0` applies a strict hardware-capability waterfall when selecting an erasure method. The first method that is both **supported by the hardware** and **not excluded by flags** is chosen. This waterfall maps directly to NIST SP 800-88 Rev. 2 tiers.
 
 ```mermaid
 flowchart TD
@@ -1237,7 +1237,7 @@ flowchart TD
 
 {% hint style="info" %}
 **NVMe Format vs. NVMe Sanitize**
-NVMe Sanitize is preferred because it operates in the background on the controller (survives host power cycles) and is the operation explicitly called out in NIST SP 800-88 Rev. 1 §2.4. NVMe Format with Crypto Erase is used when Sanitize is not supported — it is still a Purge-tier operation but must complete in a single controller session.
+NVMe Sanitize is preferred because it operates in the background on the controller (survives host power cycles) and is the operation explicitly called out in NIST SP 800-88 Rev. 2 §2.4. NVMe Format with Crypto Erase is used when Sanitize is not supported — it is still a Purge-tier operation but must complete in a single controller session.
 {% endhint %}
 
 ---
@@ -1457,4 +1457,4 @@ Execute the Debian Bookworm live-build pipeline natively on Linux to generate a 
 
 ---
 
-*CLI Reference · s0 (Sector Zero) · NIST SP 800-88 Rev. 1 Compliant Forensic Sanitization Suite*
+*CLI Reference · s0 (Sector Zero) · NIST SP 800-88 Rev. 2 Compliant Forensic Sanitization Suite*
