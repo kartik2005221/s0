@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
 PORT="${1:-8080}"
-PORTAL_DIR="$REPO/portals/verify"
+PORTAL_DIR="$REPO/site/verify"
 
 echo "================================================================="
 echo " s0 Verification Portal (Pure Client-Side Zero-Trust Web)"

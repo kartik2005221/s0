@@ -46,7 +46,7 @@ FILES SYNCHRONIZED BY THIS SCRIPT
 11. macos/cli/s0_eraser.py                  (macOS CLI version string & tool_version)
 12. windows/cli/s0_eraser.py                (Windows CLI version string & tool_version)
 13. tools/benchmark_perf.py               (Benchmark tool_version)
-14. portals/install/install.sh               (Web/sh installer fallback echo)
+14. site/install/install.sh               (Web/sh installer fallback echo)
 15. README.md                               (Release badge link)
 16. PLAN.md                                 (Roadmap status line)
 17. docs/project/evaluator-guide.md         (Software release metadata)
@@ -182,8 +182,8 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
                 p.write_text(c2, encoding="utf-8")
             modified_files.append(p)
 
-    # 13. portals/install/install.sh (and tools/install.sh if not symlink)
-    p = REPO_ROOT / "portals/install" / "install.sh"
+    # 13. site/install/install.sh (and tools/install.sh if not symlink)
+    p = REPO_ROOT / "site/install" / "install.sh"
     if update_file_regex(p, r'(\|\|\s*echo\s*)"[^"]+"(\))', f'\\g<1>"{target_version}"\\g<2>', dry_run):
         modified_files.append(p)
 

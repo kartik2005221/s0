@@ -82,10 +82,10 @@ phase_ok
 # ── Phase 4: Verification Portal Assets ───────────────────────────────────────
 phase_start "Verifying Verification Portal Static Assets"
 PORTAL_FILES=(
-    "portals/verify/index.html"
-    "portals/verify/verify.js"
-    "portals/verify/vendor/crypto-bundle.js"
-    "portals/verify/keys.json"
+    "site/verify/index.html"
+    "site/verify/verify.js"
+    "site/verify/vendor/crypto-bundle.js"
+    "site/verify/keys.json"
     "tests/portal/test_runner.html"
 )
 ALL_OK=true

@@ -4,12 +4,12 @@
 
 ## 1. What to Deploy to a Public Domain
 
-The s0 Verification Portal is located in `portals/verify/`. It is engineered as a **100% client-side, zero-backend, static web application**.
+The s0 Verification Portal is located in `site/verify/`. It is engineered as a **100% client-side, zero-backend, static web application**.
 
 ### 1.1 Deployment Bundle
-Deploy the contents of the `portals/verify/` directory:
+Deploy the contents of the `site/verify/` directory:
 ```
-portals/verify/
+site/verify/
 ├── index.html              # Interactive verification UI (drag-and-drop, QR scanner, payload viewer)
 ├── css/portal.css          # Modular portal stylesheet with light/dark themes
 ├── js/portal.js            # Client-side controller (PDF rendering, optical QR decode, theme toggle)
@@ -28,20 +28,20 @@ Because the portal contains no server execution code (no Node, no Python, no PHP
 
 1. **Cloudflare Pages (Official Production):**
    - *Production instance live at:* [https://s0-verify.pages.dev/](https://s0-verify.pages.dev/)
-   - Connect repository or upload `portals/verify/` folder.
+   - Connect repository or upload `site/verify/` folder.
    - Build command: *(leave empty / static)*
-   - Output directory: `portals/verify`
+   - Output directory: `site/verify`
 2. **GitHub Pages:**
-   - In repo Settings -> Pages -> Source: Deploy from branch -> Folder: `/portals/verify` (or copy to root of a `gh-pages` branch).
+   - In repo Settings -> Pages -> Source: Deploy from branch -> Folder: `/site/verify` (or copy to root of a `gh-pages` branch).
 3. **Static Edge / Netlify Hosting:**
    - Framework preset: *Other / Static HTML*
-   - Root directory: `portals/verify`
+   - Root directory: `site/verify`
 4. **Self-Hosted Air-Gapped / Intranet Nginx:**
    ```nginx
    server {
        listen 80;
        server_name verify.s0.gov.in;
-       root /var/www/s0/portals/verify;
+       root /var/www/s0/site/verify;
        index index.html;
        add_header X-Content-Type-Options nosniff;
        add_header Content-Security-Policy "default-src 'self' 'unsafe-inline' data: blob:;";
@@ -112,7 +112,7 @@ s0 solves this by separating **Attestation** from **Verification** using asymmet
 An auditor or judge in an air-gapped court or SCIF has three offline options:
 
 1. **Option A — Offline Web Browser (No Server Needed):**
-   - Double-click `portals/verify/index.html` (opens via `file:///` protocol in Chrome, Firefox, or Edge).
+   - Double-click `site/verify/index.html` (opens via `file:///` protocol in Chrome, Firefox, or Edge).
    - Drag and drop `certificate.json`.
    - `verify.js` executes purely in client memory and renders the green verification badge.
 2. **Option B — Command-Line Offline Verifier:**

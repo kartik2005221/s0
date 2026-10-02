@@ -1,7 +1,7 @@
 # s0 Canonical JSON v1
 
 Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`)
-and the static verification portal (`portals/verify/verify.js`) — MUST produce byte-identical canonical
+and the static verification portal (`site/verify/verify.js`) — MUST produce byte-identical canonical
 form for the same logical object. This document is the contract. Each implementation is tested against the
 golden vectors in `tests/core/data/canonical_vectors.json` and against certificates produced by the reference
 implementation.

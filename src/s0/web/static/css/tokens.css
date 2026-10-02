@@ -8,7 +8,7 @@
    ==========================================================================
 
    This file is canonical. It is copied verbatim into each surface that needs
-   it (portals/install/css/, portals/verify/css/, src/s0/web/static/css/) because
+   it (site/install/css/, site/verify/css/, src/s0/web/static/css/) because
    every portal is a static site deployed from its own directory, and a
    build step would be a worse trade than three identical copies that a test
    holds in place.
@@ -18,8 +18,8 @@
 
    The three vocabularies this replaces:
 
-     portals/install      --bg-canvas  --bg-card  --primary   --text-muted
-     portals/verify --bg-canvas  --bg-card  --primary   --text-muted
+     site/install      --bg-canvas  --bg-card  --primary   --text-muted
+     site/verify --bg-canvas  --bg-card  --primary   --text-muted
      web dashboard       --bg-base    --bg-panel --accent-cyan --text-dim
 
    All three now read the semantic names below. A colour is chosen once, here,

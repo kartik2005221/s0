@@ -32,7 +32,7 @@ graph TB
         PDF["PDF + QR Generator<br/><code>pdfgen.py</code>"]
     end
 
-    subgraph VERIFY["Verification Portal  <code>portals/verify/</code>"]
+    subgraph VERIFY["Verification Portal  <code>site/verify/</code>"]
         VP_JS["Ed25519 Verifier<br/><code>verify.js</code> — TweetNaCl"]
         VP_KEYS["Key Pinning<br/><code>keys.json</code>"]
         VP_CRYPTO["Offline Crypto Bundle<br/><code>vendor/crypto-bundle.js</code>"]
@@ -112,8 +112,8 @@ s0/
 │   ├── core/  cli/  web/  portal/
 │   └── platform_windows/  platform_macos/
 │
-├── portals/install/             #   Static installation portal
-├── portals/verify/              #   100% static Ed25519 verifier
+├── site/install/             #   Static installation portal
+├── site/verify/              #   100% static Ed25519 verifier
 │   ├── verify.js
 │   ├── keys.json
 │   └── vendor/crypto-bundle.js
@@ -750,7 +750,7 @@ The QR code is generated with `qrcode` and embedded as a vector path in the Repo
 
 ---
 
-## Verification Portal (`portals/verify/`)
+## Verification Portal (`site/verify/`)
 
 The verification portal is a **100% static website** — no server, no API, no cloud dependency. It can be opened directly from a USB drive in any modern browser with `file:///path/to/index.html`.
 

@@ -59,7 +59,7 @@ End-Phase
 
 # ── Phase 2: Pytest Suites ────────────────────────────────────────────────────
 Start-Phase "Executing Automated Pytest Suites"
-$Suites = @("core\tests", "linux\cli\tests", "web\tests", "windows\cli\tests", "macos\cli\tests", "portals/verify\tests")
+$Suites = @("core\tests", "linux\cli\tests", "web\tests", "windows\cli\tests", "macos\cli\tests", "site/verify\tests")
 foreach ($s in $Suites) {
     if (Test-Path $s) { Write-Step "Will run: $s" }
 }
@@ -71,11 +71,11 @@ End-Phase
 # ── Phase 3: Verification Portal ──────────────────────────────────────────────
 Start-Phase "Verifying Verification Portal Static Assets"
 $PortalFiles = @(
-    "portals/verify\index.html",
-    "portals/verify\verify.js",
-    "portals/verify\vendor\crypto-bundle.js",
-    "portals/verify\keys.json",
-    "portals/verify\tests\test_runner.html"
+    "site/verify\index.html",
+    "site/verify\verify.js",
+    "site/verify\vendor\crypto-bundle.js",
+    "site/verify\keys.json",
+    "site/verify\tests\test_runner.html"
 )
 foreach ($f in $PortalFiles) {
     if (Test-Path $f) { Write-StepOk $f }

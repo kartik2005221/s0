@@ -1,7 +1,7 @@
 @echo off
 REM Helper script to launch the static Verification Portal locally on Windows (CMD)
 
-cd /d "%~dp0..\portals/verify"
+cd /d "%~dp0..\site/verify"
 set "PORT=%~1"
 if "%PORT%"=="" set "PORT=8080"
 

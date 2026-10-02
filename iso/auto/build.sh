@@ -22,8 +22,13 @@ trap 'rm -rf "$STAGING_DIR"' EXIT INT TERM
   cp -r "$REPO_ROOT/src" "$STAGING_DIR/"
   find "$STAGING_DIR/src" -type f \( -name '*private*.pem' -o -name '*private*.key' \) -delete
   find "$STAGING_DIR/src" -type d -name '__pycache__' -prune -exec rm -rf {} +
-if [ -d "$REPO_ROOT/portals" ]; then
-    cp -r "$REPO_ROOT/portals" "$STAGING_DIR/"
+# The air-gapped verifier only. site/ also holds the landing page and the web
+# installer, neither of which belongs on a bare-metal sanitization appliance.
+# The site/ prefix is preserved so PORTAL_DIR (repo_root / "site/verify")
+# resolves the same way here as it does in a working tree.
+if [ -d "$REPO_ROOT/site/verify" ]; then
+    mkdir -p "$STAGING_DIR/site"
+    cp -r "$REPO_ROOT/site/verify" "$STAGING_DIR/site/"
 fi
 if [ -d "$REPO_ROOT/vendor" ]; then
     cp -r "$REPO_ROOT/vendor" "$STAGING_DIR/"

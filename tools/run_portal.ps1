@@ -7,7 +7,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PortalDir = Join-Path (Split-Path -Parent $ScriptDir) "portals/verify"
+$PortalDir = Join-Path (Split-Path -Parent $ScriptDir) "site/verify"
 Set-Location $PortalDir
 
 Write-Host "=================================================================" -ForegroundColor Cyan

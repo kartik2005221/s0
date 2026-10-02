@@ -57,7 +57,7 @@ If the verifier and signer disagree on a single byte of serialization, the signa
 
 ### The Seven Rules of s0 Canonical JSON v1
 
-Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`) and the static verification portal (`portals/verify/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `tests/core/data/canonical_vectors.json`.
+Every component that signs or verifies an s0 certificate — the Python core (`src/s0/canonical.py`) and the static verification portal (`site/verify/verify.js`) — MUST produce a byte-identical canonical form for the same logical object. Each implementation is tested against the golden vectors in `tests/core/data/canonical_vectors.json`.
 
 Given a parsed JSON value, serialize as follows:
 

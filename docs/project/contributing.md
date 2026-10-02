@@ -58,7 +58,7 @@ s0/
 ├── windows/                            # Windows native file/folder sanitizer (Win32 FlushFileBuffers, ADS)
 ├── macos/                              # macOS native file/folder sanitizer (F_FULLFSYNC, xattr cleansing)
 ├── src/s0/web/                                # FastAPI unified web dashboard (4 forensic tabs)
-├── portals/verify/                # 100% client-side zero-backend static verifier
+├── site/verify/                # 100% client-side zero-backend static verifier
 ├── docs/                               # GitBook technical documentation suite
 └── tools/                            # Master build, test, and installer orchestrators
 ```
@@ -185,6 +185,6 @@ When contributing to documentation:
 Before submitting your PR:
 - [ ] Code is formatted cleanly and includes type hints (`from __future__ import annotations`).
 - [ ] All 190+ automated tests pass (`pytest` runs 100% green).
-- [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `portals/verify/verify.js` and `src/s0/`.
+- [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `site/verify/verify.js` and `src/s0/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
 - [ ] Any added pages are linked in `SUMMARY.md`.

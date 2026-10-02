@@ -17,7 +17,7 @@ s0 unifies five core operational requirements in digital forensics, intelligence
 2. **Offensive Digital Forensics & Evidence Recovery (Module 2):** Extracting, carving, and reconstructing deleted or concealed files from formatted, corrupted, or raw storage media (ext4, NTFS, FAT32, exFAT) with strict chain of custody and 4-factor Shannon entropy scoring.
 3. **Forensic Bit-Stream Acquisition & Physical Cloning (Module 3):** Sector-by-sector fault-tolerant raw image acquisition (`s0 image`) and target cloning (`s0 clone`) with simultaneous dual SHA-256 and MD5 hashing, ddrescue-style bad-sector zero filling, and signed acquisition manifest emission.
 4. **Cryptographic Chain of Custody & Audit Trail:** Providing an immutable, append-only **RFC 8785 Canonical JSON block hash-chained SQLite ledger** (`~/.s0/s0_audit.db`) for all wipe, erase, carve, and acquisition operations, verifiable offline without network connectivity.
-5. **Universal Multi-Platform Operation:** Native CLI parity and platform-optimized execution across Linux (`s0`), Windows (`windows/cli`), and macOS (`macos/cli`), accompanied by a local loopback FastAPI Web Dashboard (`src/s0/web/`), an air-gapped Verification Portal (`portals/verify/`), and automated Bare-Metal Live ISO builds.
+5. **Universal Multi-Platform Operation:** Native CLI parity and platform-optimized execution across Linux (`s0`), Windows (`windows/cli`), and macOS (`macos/cli`), accompanied by a local loopback FastAPI Web Dashboard (`src/s0/web/`), an air-gapped Verification Portal (`site/verify/`), and automated Bare-Metal Live ISO builds.
 
 ---
 
@@ -34,7 +34,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 4** | Advanced File Carver (Module 2) | **DONE** | Multi-format sliding-window carver (`engine.py`), ext4 inode extent tree parser (`ext4_carver.py`), NTFS $MFT non-resident runlist carver (`ntfs_carver.py`), FAT32/exFAT carvers, 4-factor Shannon entropy scoring | `tests/cli/test_carver.py`<br>`tests/cli/test_ntfs_carver.py`<br>`tools/demo/e2e_ntfs.sh` |
 | **Phase 5** | Forensic Drive Imager (Module 3) | **DONE** | Fault-tolerant bit-stream acquisition & drive-to-drive cloning (`imager.py`), bad sector zero-fill recovery, dual SHA-256/MD5 hashing, signed acquisition manifest | `tests/cli/test_imager.py` |
 | **Phase 6** | Hash-Chained Audit Ledger | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `tests/cli/test_audit.py` |
-| **Phase 7** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`src/s0/web/`) with session auth token (`X-S0-Auth-Token`, mode 0640), zero-backend static Verification Portal (`portals/verify/`) with WebCrypto and pinned key registry | `tests/src/s0/web/test_gui.py`<br>`tests/portal/` |
+| **Phase 7** | Unified Web Dashboard & Verifier | **DONE** | FastAPI 4-tab visual console (`src/s0/web/`) with session auth token (`X-S0-Auth-Token`, mode 0640), zero-backend static Verification Portal (`site/verify/`) with WebCrypto and pinned key registry | `tests/src/s0/web/test_gui.py`<br>`tests/portal/` |
 | **Phase 8** | Cross-Platform Parity & Automation | **DONE** | Full CLI subcommand parity on Windows & macOS (`s0` wrapper suites), automated GitHub Actions Live ISO builder (`build-iso.yml`), automated GitHub release assets, GitBook documentation suite (`docs/`), Agentic AI Skill (`skills/s0-forensics/`) | `pytest`<br>`bash tools/build-docs.sh` (100% green) |
 | **Phase 9** | Live Media & USB Station (`s0 live`) | **DONE** | Native `s0 live` command suite (`download`, `devices`, `flash`, `build`), automated safe USB discovery, versioned release ISO naming, and progress bar burning | `tests/cli/test_live_manager.py` |
 
@@ -65,8 +65,8 @@ s0/
 ├── iso/                          # Bare-metal Debian 12 Live bootable ISO recipe
 │   ├── config/                         # live-build chroot hooks, packages & systemd units
 │   └── auto/build.sh                   # ISO compilation script
-├── portals/verify/                # 100% client-side WebCrypto verifier (s0-verify.pages.dev)
-├── portals/install/                     # Resilient web installer portal (s0-install.pages.dev)
+├── site/verify/                # 100% client-side WebCrypto verifier (s0-verify.pages.dev)
+├── site/install/                     # Resilient web installer portal (s0-install.pages.dev)
 ├── docs/                       # Production documentation suite (s0-docs.gitbook.io)
 ├── skills/s0-forensics/                # Agentic AI Skill specification & reference manuals
 └── tools/                            # Master build, test, install & release orchestrators

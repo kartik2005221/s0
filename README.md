@@ -172,7 +172,7 @@ When internal or system drives cannot be unmounted within a running host OS:
 ### 3. Verification Portal ([s0-verify.pages.dev](https://s0-verify.pages.dev/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
 - Zero data ever leaves your browser.
-- Operates 100% offline — drag and drop `certificate.json` into `portals/verify/index.html`.
+- Operates 100% offline — drag and drop `certificate.json` into `site/verify/index.html`.
 - Accredited authority public keys are pinned; untrusted keys trigger immediate visual warnings.
 
 ---

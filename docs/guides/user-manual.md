@@ -332,7 +332,7 @@ Output:
 ```
 
 ### 8.2 Air-Gapped Web Verification
-1. Double-click `portals/verify/index.html` on any offline computer.
+1. Double-click `site/verify/index.html` on any offline computer.
 2. Drag and drop `certificate_a8f3b201.json`.
 3. The portal executes pure WebCrypto validation in browser memory and displays the verified green banner.
 

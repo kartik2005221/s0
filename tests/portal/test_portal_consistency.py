@@ -29,22 +29,22 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SHARED_TOKENS = REPO / "shared" / "tokens.css"
 TOKEN_COPIES = [
-    REPO / "portals/install" / "css" / "tokens.css",
-    REPO / "portals/verify" / "css" / "tokens.css",
+    REPO / "site/install" / "css" / "tokens.css",
+    REPO / "site/verify" / "css" / "tokens.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
 ]
 SURFACE_CSS = [
-    REPO / "portals/install" / "css" / "install.css",
-    REPO / "portals/verify" / "css" / "portal.css",
+    REPO / "site/install" / "css" / "install.css",
+    REPO / "site/verify" / "css" / "portal.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "dashboard.css",
 ]
 PUBLIC_HTML = [
-    REPO / "portals/install" / "index.html",
-    REPO / "portals/verify" / "index.html",
+    REPO / "site/install" / "index.html",
+    REPO / "site/verify" / "index.html",
 ]
 HEADERS = [
-    REPO / "portals/install" / "_headers",
-    REPO / "portals/verify" / "_headers",
+    REPO / "site/install" / "_headers",
+    REPO / "site/verify" / "_headers",
 ]
 
 # Tokens a surface may declare as a *literal value*. A surface declaring one of
@@ -212,8 +212,8 @@ def test_no_unsafe_inline_csp_in_the_document(html):
 
 
 def test_vendored_javascript_is_pinned_with_sri():
-    html = (REPO / "portals/verify" / "index.html").read_text(encoding="utf-8")
-    vendor = REPO / "portals/verify" / "vendor"
+    html = (REPO / "site/verify" / "index.html").read_text(encoding="utf-8")
+    vendor = REPO / "site/verify" / "vendor"
     tools = re.findall(r'<script src="(vendor/[^"]+)"', html)
     assert tools, "no vendored tools found in the verification portal"
     for rel in tools:
@@ -242,16 +242,16 @@ def test_vendored_assets_have_licence_attribution():
 
 
 def test_every_vendored_file_is_listed_in_the_manifest():
-    manifest = REPO / "portals/verify" / "vendor" / "manifest.json"
+    manifest = REPO / "site/verify" / "vendor" / "manifest.json"
     assert manifest.is_file(), "vendor/manifest.json is required to pin re-vendoring"
     import json
     data = json.loads(manifest.read_text(encoding="utf-8"))
     listed = {e["path"] for e in data["files"]}
-    on_disk = {f"vendor/{p.name}" for p in (REPO / "portals/verify" / "vendor").iterdir()
+    on_disk = {f"vendor/{p.name}" for p in (REPO / "site/verify" / "vendor").iterdir()
                if p.is_file() and p.suffix in (".js",)}
     assert on_disk <= listed, f"unlisted vendored files: {sorted(on_disk - listed)}"
     for entry in data["files"]:
-        actual = hashlib.sha256((REPO / "portals/verify" / entry["path"]).read_bytes()).hexdigest()
+        actual = hashlib.sha256((REPO / "site/verify" / entry["path"]).read_bytes()).hexdigest()
         assert actual == entry["sha256"], f"{entry['path']}: manifest hash is stale"
 
 
@@ -276,20 +276,20 @@ def test_no_third_party_font_or_cdn_reference_anywhere():
 
 
 def test_every_surface_self_hosts_its_fonts():
-    for html in PUBLIC_HTML + [REPO / "portals/verify" / "tests" / "test_runner.html"]:
+    for html in PUBLIC_HTML + [REPO / "site/verify" / "tests" / "test_runner.html"]:
         text = html.read_text(encoding="utf-8")
         assert "fonts/fonts.css" in text or "../fonts/fonts.css" in text, (
             f"{html.relative_to(REPO)} does not load the self-hosted font sheet")
 
 
 def test_install_portal_fonts_are_present_on_disk():
-    d = REPO / "portals/install" / "fonts"
+    d = REPO / "site/install" / "fonts"
     assert (d / "fonts.css").is_file()
     woff2 = list(d.glob("*.woff2"))
     assert len(woff2) >= 4, "the install portal needs the woff2 files it references"
     for face in (d / "fonts.css").read_text(encoding="utf-8").split("@font-face"):
         for url in re.findall(r"url\('([^']+)'\)", face):
-            assert (d / url).is_file(), f"portals/install/fonts/{url} is referenced but missing"
+            assert (d / url).is_file(), f"site/install/fonts/{url} is referenced but missing"
 
 
 # --------------------------------------------------------------------------- #

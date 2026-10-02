@@ -7,12 +7,14 @@ set -e
 
 echo "==> installing the s0 distribution into /opt/s0"
 mkdir -p /opt/s0
-# One importable package plus the static portals it serves. The web dashboard
+# One importable package plus the static verifier it serves. The web dashboard
 # now lives inside the package (s0/web), so there is no separate top-level web
-# directory to copy.
+# directory to copy. Only site/verify is staged: the rest of site/ is the
+# landing page and the web installer, which have no place on the appliance.
 cp -r /root/repo-snapshot/src /opt/s0/
-if [ -d /root/repo-snapshot/portals ]; then
-    cp -r /root/repo-snapshot/portals /opt/s0/
+if [ -d /root/repo-snapshot/site/verify ]; then
+    mkdir -p /opt/s0/site
+    cp -r /root/repo-snapshot/site/verify /opt/s0/site/
 fi
 if [ -f /root/repo-snapshot/pyproject.toml ]; then
     cp /root/repo-snapshot/pyproject.toml /opt/s0/

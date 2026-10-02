@@ -27,10 +27,10 @@ REPO = Path(__file__).resolve().parents[1]
 # (html, _headers, extra directives) -- `extra` is appended verbatim so each
 # surface keeps the directives it genuinely needs (pdf.js needs worker-src).
 SURFACES = [
-    (REPO / "portals/install" / "index.html",
-     REPO / "portals/install" / "_headers", ""),
-    (REPO / "portals/verify" / "index.html",
-     REPO / "portals/verify" / "_headers",
+    (REPO / "site/install" / "index.html",
+     REPO / "site/install" / "_headers", ""),
+    (REPO / "site/verify" / "index.html",
+     REPO / "site/verify" / "_headers",
      "worker-src 'self' blob:; "),
 ]
 

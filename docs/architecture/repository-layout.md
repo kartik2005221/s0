@@ -50,8 +50,8 @@ s0/
 │   ├── core/  cli/  web/  portal/
 │   └── platform_windows/  platform_macos/
 │
-├── portals/install/             # Static installation portal
-├── portals/verify/              # 100% static, offline Ed25519 verifier
+├── site/install/             # Static installation portal
+├── site/verify/              # 100% static, offline Ed25519 verifier
 ├── iso/                         # Debian Live ISO build
 ├── tools/                       # build_all, build_iso, benchmark_perf, release, demo/
 ├── docs/  skills/  shared/  vendor/
@@ -86,10 +86,10 @@ s0/
 | `linux/iso/` | `iso/` |
 | `web/` | `src/s0/web/` (now ships inside the package) |
 | `web/tests/` | `tests/web/` |
-| `verification-portal/` | `portals/verify/` |
+| `verification-portal/` | `site/verify/` |
 | `verification-portal/tests/*.py` | `tests/portal/` |
-| `verification-portal/tests/*.html|json` | `portals/verify/tests/` (browser assets, not pytest) |
-| `install-portal/` | `portals/install/` |
+| `verification-portal/tests/*.html|json` | `site/verify/tests/` (browser assets, not pytest) |
+| `install-portal/` | `site/install/` |
 | `scripts/` | `tools/` |
 | `windows/cli/tests/` | `tests/platform_windows/` |
 | `macos/cli/tests/` | `tests/platform_macos/` |

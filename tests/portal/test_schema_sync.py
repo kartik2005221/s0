@@ -3,7 +3,7 @@ cannot drift.
 
     src/s0/data/cert_schema.json                     -> the normative JSON Schema
     src/s0/certificate.py        -> the Python validator (no jsonschema dep)
-    portals/verify/verify.js             -> the browser verifier (no bundler)
+    site/verify/verify.js             -> the browser verifier (no bundler)
 
 If these three ever disagree, a certificate the CLI happily issues is rejected by
 the portal that is supposed to prove it authentic — which is exactly the class of
@@ -22,7 +22,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = REPO / "src" / "s0" / "data" / "cert_schema.json"
-VERIFY_JS = REPO / "portals/verify" / "verify.js"
+VERIFY_JS = REPO / "site/verify" / "verify.js"
 
 
 @pytest.fixture(scope="module")
@@ -183,14 +183,14 @@ def test_verification_fields_have_no_floats(schema):
 
 def test_portal_js_has_no_unsafe_only_invert_qr_attempt():
     """The vendored jsQR build throws on inversionAttempts:'onlyInvert'."""
-    src = (REPO / "portals/verify" / "js" / "portal.js").read_text(encoding="utf-8")
+    src = (REPO / "site/verify" / "js" / "portal.js").read_text(encoding="utf-8")
     assert '"onlyInvert"' not in src and "'onlyInvert'" not in src, (
         "portal.js must not request jsQR's onlyInvert mode; it throws in the vendored build"
     )
 
 
 def test_portal_scans_all_pdf_pages_for_qr():
-    src = (REPO / "portals/verify" / "js" / "portal.js").read_text(encoding="utf-8")
+    src = (REPO / "site/verify" / "js" / "portal.js").read_text(encoding="utf-8")
     assert "getPage(1)" not in src, (
         "portal.js must scan every page: s0 certificates overflow the QR onto page 2"
     )

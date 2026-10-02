@@ -12,7 +12,7 @@ import pytest
 
 from s0.resources import repo_root
 
-PORTAL = repo_root() / "portals" / "verify"
+PORTAL = repo_root() / "site" / "verify"
 
 # Probe for node
 def find_node() -> str | None:

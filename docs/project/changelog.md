@@ -235,7 +235,7 @@ Landed on `agent/harness`; not yet tagged.
 - **MEDIUM — QR Verification Portal URL Validation:** Enforced strict URL scheme and hostname sanitization on custom `portal_url` parameters in `pdfgen.py` and API request models, restricting redirection to HTTPS and local loopback.
 - **MEDIUM — Configuration Path Hijacking Remediation:** Removed `Path.cwd()` from `s0_config.json` candidate discovery list, preventing untrusted local directories from overriding cryptographic key paths and authority settings.
 - **LOW — Metadata Pipe & Delimiter Sanitization:** Enforced strict Pydantic model validation rejecting pipe (`|`) and markup characters across operator and organization metadata fields.
-- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `portals/verify/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
+- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `site/verify/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
 
 ### Fixed
 - **Mobile Documentation Navigation & Back Button:** Overhauled the mobile drawer header and sub-menu navigation layout in `extra.css`. Fixed back button arrow alignment, eliminated duplicate text clipping and unnecessary "(Tap to return)" annotations, and restored clean horizontal centering for root branding.
@@ -316,7 +316,7 @@ Landed on `agent/harness`; not yet tagged.
 ### Fixed
 - **Windows Startup Crash (`fcntl`):** Implemented lazy-import guards for POSIX-only `fcntl` calls in `blkdiscard.py`, resolving startup failures on Windows systems.
 - **Stored XSS Remediation:** Hardened the Web Dashboard audit ledger and Verification Portal against stored cross-site scripting by strictly sanitizing operator metadata, device serial numbers, and notes before DOM insertion.
-- **Portal Layout Stability:** Fixed flexbox layout blowout in `portals/verify/index.html` when rendering large multi-fragment certificate payloads.
+- **Portal Layout Stability:** Fixed flexbox layout blowout in `site/verify/index.html` when rendering large multi-fragment certificate payloads.
 
 ---
 
@@ -374,7 +374,7 @@ Landed on `agent/harness`; not yet tagged.
   - `s0 Canonical JSON v1` deterministic serializer (`canonical.py`) forbidding float values to eliminate multi-language formatting divergences.
   - Official certificate schema definition (`src/s0/data/cert_schema.json`).
   - High-resolution ReportLab PDF certificate generator with embedded optical QR codes (`pdfgen.py`).
-- **Static Verification Portal (`portals/verify/`):**
+- **Static Verification Portal (`site/verify/`):**
   - Zero-backend, 100% client-side WebCrypto / TweetNaCl verification engine.
   - Drag-and-drop certificate JSON verification.
   - Pinned trusted public key registry (`keys.json`).

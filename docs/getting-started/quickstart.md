@@ -417,7 +417,7 @@ Expected output on a valid certificate:
 {% endtab %}
 {% tab title="Browser (Drag & Drop)" %}
 
-1. Open [s0-verify.pages.dev](https://s0-verify.pages.dev/) — or open `portals/verify/index.html` locally for full air-gap operation.
+1. Open [s0-verify.pages.dev](https://s0-verify.pages.dev/) — or open `site/verify/index.html` locally for full air-gap operation.
 2. Drag and drop `certificate_a3f19c22.json` onto the portal.
 3. The portal verifies the Ed25519 signature using pure WebCrypto — **no data is ever uploaded to a server**.
 {% endtab %}
@@ -429,7 +429,7 @@ Scan the QR code from the PDF certificate (or `certificate_a3f19c22.qr.png`) wit
 
 {% hint style="success" %}
 **Air-gap verification**
-For classified environments with no internet access, copy the `portals/verify/` directory to your air-gapped machine and open `index.html` directly in any browser. The portal is a static single-page application with zero external dependencies.
+For classified environments with no internet access, copy the `site/verify/` directory to your air-gapped machine and open `index.html` directly in any browser. The portal is a static single-page application with zero external dependencies.
 {% endhint %}
 
 ---

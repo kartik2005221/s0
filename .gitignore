@@ -38,7 +38,7 @@ skills-lock.json
 .env*
 
 # Local test artifacts produced by portal PDF verification runs
-portals/verify/tests/x*.pdf
+site/verify/tests/x*.pdf
 
 # Stray package downloads
 *.whl

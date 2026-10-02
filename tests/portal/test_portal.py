@@ -18,7 +18,7 @@ from s0.resources import repo_root
 
 REPO_ROOT = repo_root()
 assert REPO_ROOT is not None, "portal tests require a source checkout"
-PORTAL_DIR = REPO_ROOT / "portals" / "verify"
+PORTAL_DIR = REPO_ROOT / "site" / "verify"
 
 
 def test_portal_static_assets_exist():

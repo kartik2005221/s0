@@ -18,7 +18,7 @@ project has ever issued, so it is treated as unacceptable rather than unlikely.
   organization's key-management policy. Losing it means re-keying; leaking it means
   distrusting every prior certificate.
 - The **public key** is what gets distributed: pinned in the verification portal
-  (`portals/verify/keys.json`) and shipped read-only with verifiers.
+  (`site/verify/keys.json`) and shipped read-only with verifiers.
 - Rotation: publish the new public key alongside the old during a transition window;
   certificates record `public_key_fingerprint`, so old certs stay verifiable against the
   old pinned key.

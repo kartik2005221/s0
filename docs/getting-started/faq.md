@@ -93,7 +93,7 @@ No. Proper modern encryption algorithms (AES-XTS) produce ciphertext that is mat
 ### Do I need an active internet connection to verify a certificate?
 **No.** s0 is engineered from the ground up for **air-gapped defense and crime laboratory environments**:
 - **Offline CLI:** Run `s0 verify certificate.json --key pubkey.pem`
-- **Offline Browser:** Double-click `portals/verify/index.html` on any air-gapped machine. It uses pure in-browser JavaScript (TweetNaCl WebCrypto) without external network requests or CDN dependencies.
+- **Offline Browser:** Double-click `site/verify/index.html` on any air-gapped machine. It uses pure in-browser JavaScript (TweetNaCl WebCrypto) without external network requests or CDN dependencies.
 
 ### What does the amber warning badge mean in the Verification Portal?
 The Verification Portal distinguishes between mathematical authenticity and organizational accreditation:

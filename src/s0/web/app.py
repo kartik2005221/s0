@@ -168,7 +168,7 @@ async def security_headers(request: Request, call_next):
     )
     return response
 
-PORTAL_DIR = REPO / "portals/verify"
+PORTAL_DIR = REPO / "site/verify"
 if PORTAL_DIR.is_dir():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
 

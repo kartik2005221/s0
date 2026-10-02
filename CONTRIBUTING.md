@@ -76,8 +76,8 @@ s0/
 ├── macos/                        # Native macOS Darwin APFS & F_FULLFSYNC drivers
 ├── docs/                 # GitBook documentation site (5 sections, 28 pages)
 ├── gitbook-docs.yaml             # GitBook site-wide Git Sync configuration
-├── portals/verify/          # Standalone client-side zero-trust verifier
-└── portals/install/               # Cross-platform installation tools
+├── site/verify/          # Standalone client-side zero-trust verifier
+└── site/install/               # Cross-platform installation tools
 ```
 
 ---
@@ -143,7 +143,7 @@ Before submitting your pull request, please verify:
 
 - [ ] Code follows PEP 8 conventions, includes strict type annotations (`from __future__ import annotations`), and docstrings.
 - [ ] All 190+ automated unit and integration tests pass (`.venv/bin/pytest`).
-- [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `portals/verify/verify.js` and `src/s0/`.
+- [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `site/verify/verify.js` and `src/s0/`.
 - [ ] New CLI flags, methods, or limitations are documented in `docs/guides/cli-reference.md` and related guides.
 - [ ] Added documentation pages are registered in `docs/SUMMARY.md`.
 - [ ] `bash tools/build_all.sh` completes cleanly with zero errors.
