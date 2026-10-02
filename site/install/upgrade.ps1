@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     S0 (Sector Zero) — Resilient Upgrader for Windows (PowerShell)
-    Usage: irm https://s0-install.pages.dev/upgrade-ps1 | iex
+    Usage: irm https://sector-zero.pages.dev/upgrade-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }
@@ -26,7 +26,7 @@ Write-Step "Checking existing installation"
 if (-not (Test-Path $InstallDir)) {
     Write-Host "`n`n[WARNING] S0 is not installed at $InstallDir." -ForegroundColor Yellow
     Write-Host "To install S0, run in PowerShell:" -ForegroundColor White
-    Write-Host "  irm https://s0-install.pages.dev/ps1 | iex`n" -ForegroundColor Cyan
+    Write-Host "  irm https://sector-zero.pages.dev/ps1 | iex`n" -ForegroundColor Cyan
     return
 }
 if (-not (Test-Path (Join-Path $InstallDir ".git"))) {

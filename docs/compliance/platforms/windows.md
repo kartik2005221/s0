@@ -53,6 +53,6 @@ Due to active system file locks, the pagefile, and VSS shadows, wiping the prima
 
 - **Making Bootable USB on Windows:**
   - Build ISO locally using Docker Desktop or WSL2: `.\tools\build_iso.ps1`
-  - Download verified release ISO: `irm https://s0-install.pages.dev/download-iso-ps1 | iex`
+  - Download verified release ISO: `irm https://sector-zero.pages.dev/download-iso-ps1 | iex`
   - Write to USB using **Rufus** (select **"Write in DD Image mode"**) or **Ventoy**.
 - Detailed guide: [Live ISO Guide](../../guides/live-iso.md).

@@ -302,4 +302,4 @@ Every completed operation creates three linked artifacts in the specified `--out
 2. **Human-Readable PDF (`certificate_<uuid8>.pdf`):**  
    An official sanitization certificate rendered using ReportLab with the forensic color theme, device metadata tables, operator signatures, NIST compliance declaration, and an embedded optical QR code.
 3. **Standalone QR Code (`certificate_<uuid8>.qr.png`):**  
-   A high-density QR code encoding the verification portal URL with the certificate UUID preloaded (`https://s0-verify.pages.dev/?cert=<uuid>`), allowing instant optical verification via a mobile camera.
+   A high-density QR code encoding the verification portal URL with the certificate UUID preloaded (`https://sector-zero.pages.dev/verify/?cert=<uuid>`), allowing instant optical verification via a mobile camera.

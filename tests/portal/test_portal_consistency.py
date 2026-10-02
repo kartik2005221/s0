@@ -422,19 +422,44 @@ def test_every_surface_declares_font_weight_ranges(d):
 # --------------------------------------------------------------------------- #
 
 
+# All three surfaces deploy from one origin, so the links between them are
+# paths rather than hostnames. Docs stays on GitBook and the repository stays on
+# GitHub, so those two remain absolute.
 EXPECTED_NAV = {
-    "docs": "s0-docs.gitbook.io",
-    "install": "s0-install.pages.dev",
-    "verify": "s0-verify.pages.dev",
+    "docs": "sector-zero.gitbook.io",
+    "install": "/install/",
+    "verify": "/verify/",
     "github": "github.com/kartik2005221/s0",
 }
 
 
+# Each surface's own address, so the navigation test can exempt it: a page does
+# not link to itself. This only became a question when the three moved onto one
+# origin -- before that every surface was a separate domain and linking to your
+# own host was neither possible nor meaningful.
+SELF_PATH = {
+    REPO / "site" / "index.html": "/",
+    REPO / "site" / "install" / "index.html": "/install/",
+    REPO / "site" / "verify" / "index.html": "/verify/",
+}
+
+
 @pytest.mark.parametrize("html", PUBLIC_HTML, ids=lambda p: p.parent.name)
-def test_navigation_links_to_every_s0_surface(html):
+def test_navigation_links_to_every_other_s0_surface(html):
     text = html.read_text(encoding="utf-8")
-    for label, host in EXPECTED_NAV.items():
-        assert host in text, f"{html.relative_to(REPO)} does not link to {label} ({host})"
+    me = SELF_PATH[html]
+    for label, target in EXPECTED_NAV.items():
+        if target == me:
+            continue
+        assert target in text, f"{html.relative_to(REPO)} does not link to {label} ({target})"
+
+
+def test_every_s0_surface_is_reachable_from_somewhere():
+    """A destination nobody links to is invisible. With the surfaces now sharing
+    an origin it is easy to leave one orphaned while tidying another."""
+    combined = "\n".join(html.read_text(encoding="utf-8") for html in PUBLIC_HTML)
+    for label, target in EXPECTED_NAV.items():
+        assert target in combined, f"no surface links to {label} ({target})"
 
 
 def test_every_external_link_is_safe():

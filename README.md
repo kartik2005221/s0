@@ -6,10 +6,10 @@
 
 [![Release](https://img.shields.io/badge/Release-v2.4.4-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://s0-site.pages.dev/)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://s0-docs.gitbook.io/COMPLIANCE/)
-[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://s0-docs.gitbook.io/CANONICAL_JSON/)
-[![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://s0-docs.gitbook.io/)
+[![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://sector-zero.pages.dev/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://sector-zero.gitbook.io/compliance/)
+[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://sector-zero.gitbook.io/architecture/canonical-json/)
+[![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://sector-zero.gitbook.io/)
 
 *One unified toolchain. Five forensic capabilities. Cryptographic chain-of-custody.*
 
@@ -19,10 +19,10 @@
 
 | Service | Live URL | Purpose |
 |---|---|---|
-| **Official Website** | [s0-site.pages.dev](https://s0-site.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
-| **Documentation Portal** | [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
-| **Verification Portal** | [s0-verify.pages.dev](https://s0-verify.pages.dev/) | 100% client-side, air-gapped Ed25519 certificate verifier |
-| **Installation Portal** | [s0-install.pages.dev](https://s0-install.pages.dev/) | One-line installation scripts, checksums & release packages |
+| **Official Website** | [sector-zero.pages.dev](https://sector-zero.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
+| **Documentation Portal** | [sector-zero.gitbook.io](https://sector-zero.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
+| **Verification Portal** | [sector-zero.pages.dev/verify](https://sector-zero.pages.dev/verify/) | 100% client-side, air-gapped Ed25519 certificate verifier |
+| **Installation Portal** | [sector-zero.pages.dev](https://sector-zero.pages.dev/install/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
 
 </div>
@@ -55,27 +55,27 @@ Only operate on storage media, physical drives, or files that you **legally own*
 - **India:** Information Technology Act 2000, §§ 43, 66
 - **International:** Budapest Convention on Cybercrime
 
-Consult the [Documentation Legal FAQ](https://s0-docs.gitbook.io/faq/) for responsible use policies.
+Consult the [Documentation Legal FAQ](https://sector-zero.gitbook.io/getting-started/faq/) for responsible use policies.
 
 ---
 
 ## Quick Installation
 
-Full installation instructions and verification guides are hosted at [s0-install.pages.dev](https://s0-install.pages.dev/).
+Full installation instructions and verification guides are hosted at [sector-zero.pages.dev](https://sector-zero.pages.dev/install/).
 
 ### Linux/MacOS
 ```bash
-curl -fsSL https://s0-install.pages.dev/sh | bash
+curl -fsSL https://sector-zero.pages.dev/sh | bash
 ```
 
 ### Windows (PowerShell)
 ```powershell
-irm https://s0-install.pages.dev/ps1 | iex
+irm https://sector-zero.pages.dev/ps1 | iex
 ```
 
 ### Windows (Command Prompt)
 ```cmd
-curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+curl -fsSL https://sector-zero.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 ```
 
 After installation, `s0` is immediately registered on your system `PATH`:
@@ -167,9 +167,9 @@ When internal or system drives cannot be unmounted within a running host OS:
    ```bash
    sudo s0 live flash --target /dev/sdb
    ```
-3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) for details.
+3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://sector-zero.gitbook.io/guides/live-iso/) for details.
 
-### 3. Verification Portal ([s0-verify.pages.dev](https://s0-verify.pages.dev/))
+### 3. Verification Portal ([sector-zero.pages.dev/verify](https://sector-zero.pages.dev/verify/))
 Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
 - Zero data ever leaves your browser.
 - Operates 100% offline — drag and drop `certificate.json` into `site/verify/index.html`.
@@ -183,7 +183,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 - **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) (also mirrored in `.agents/skills/s0-forensics/SKILL.md`)
 - **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience (no premature aborts during controller sanitization), and post-execution certificate verification.
 - **Reference Manuals:** Comprehensive technical guides covering NIST/IEEE method mappings, hardware safety rules, magic-byte signatures, and cryptographic audit specifications.
-- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://s0-docs.gitbook.io/agentic-ai/) on the docs portal.
+- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://sector-zero.gitbook.io/project/agentic-ai/) on the docs portal.
 
 ---
 
@@ -197,7 +197,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 | **RFC 8785** | Canonical JSON (JCS) | Deterministic cryptographic certificate serialization and block hashing. |
 | **RFC 8032** | Digital Signatures | High-performance Ed25519 public-key signature system. |
 
-Full compliance details: [docs/compliance/nist-compliance.md](https://s0-docs.gitbook.io/COMPLIANCE/)
+Full compliance details: [docs/compliance/nist-compliance.md](https://sector-zero.gitbook.io/compliance/)
 
 ---
 
@@ -205,14 +205,14 @@ Full compliance details: [docs/compliance/nist-compliance.md](https://s0-docs.gi
 
 | Guide | Online URL | Local File |
 |---|---|---|
-| **User & Operator Manual** | [s0-docs.gitbook.io/USER_MANUAL](https://s0-docs.gitbook.io/USER_MANUAL/) | [`docs/guides/user-manual.md`](docs/guides/user-manual.md) |
-| **Architecture Specification** | [s0-docs.gitbook.io/ARCHITECTURE](https://s0-docs.gitbook.io/ARCHITECTURE/) | [`docs/architecture/system-architecture.md`](docs/architecture/system-architecture.md) |
-| **CLI Complete Reference** | [s0-docs.gitbook.io/cli-reference](https://s0-docs.gitbook.io/cli-reference/) | [`docs/guides/cli-reference.md`](docs/guides/cli-reference.md) |
-| **Forensic Carving Guide** | [s0-docs.gitbook.io/forensic-carving-guide](https://s0-docs.gitbook.io/forensic-carving-guide/) | [`docs/guides/forensic-carving.md`](docs/guides/forensic-carving.md) |
-| **Live ISO Build Guide** | [s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE](https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/) | [`docs/guides/live-iso.md`](docs/guides/live-iso.md) |
-| **Agentic AI Guide** | [s0-docs.gitbook.io/agentic-ai](https://s0-docs.gitbook.io/agentic-ai/) | [`docs/project/agentic-ai.md`](docs/project/agentic-ai.md) |
-| **Standards Compliance** | [s0-docs.gitbook.io/COMPLIANCE](https://s0-docs.gitbook.io/COMPLIANCE/) | [`docs/compliance/nist-compliance.md`](docs/compliance/nist-compliance.md) |
-| **Engineering Handover** | [s0-docs.gitbook.io/HANDOVER](https://s0-docs.gitbook.io/HANDOVER/) | [`docs/project/evaluator-guide.md`](docs/project/evaluator-guide.md) |
+| **User & Operator Manual** | [sector-zero.gitbook.io/guides/user-manual](https://sector-zero.gitbook.io/guides/user-manual/) | [`docs/guides/user-manual.md`](docs/guides/user-manual.md) |
+| **Architecture Specification** | [sector-zero.gitbook.io/architecture](https://sector-zero.gitbook.io/architecture/) | [`docs/architecture/system-architecture.md`](docs/architecture/system-architecture.md) |
+| **CLI Complete Reference** | [sector-zero.gitbook.io/guides/cli-reference](https://sector-zero.gitbook.io/guides/cli-reference/) | [`docs/guides/cli-reference.md`](docs/guides/cli-reference.md) |
+| **Forensic Carving Guide** | [sector-zero.gitbook.io/guides/forensic-carving](https://sector-zero.gitbook.io/guides/forensic-carving/) | [`docs/guides/forensic-carving.md`](docs/guides/forensic-carving.md) |
+| **Live ISO Build Guide** | [sector-zero.gitbook.io/guides/live-iso](https://sector-zero.gitbook.io/guides/live-iso/) | [`docs/guides/live-iso.md`](docs/guides/live-iso.md) |
+| **Agentic AI Guide** | [sector-zero.gitbook.io/project/agentic-ai](https://sector-zero.gitbook.io/project/agentic-ai/) | [`docs/project/agentic-ai.md`](docs/project/agentic-ai.md) |
+| **Standards Compliance** | [sector-zero.gitbook.io/compliance](https://sector-zero.gitbook.io/compliance/) | [`docs/compliance/nist-compliance.md`](docs/compliance/nist-compliance.md) |
+| **Engineering Handover** | [sector-zero.gitbook.io/project/evaluator-guide](https://sector-zero.gitbook.io/project/evaluator-guide/) | [`docs/project/evaluator-guide.md`](docs/project/evaluator-guide.md) |
 
 ---
 

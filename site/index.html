@@ -10,15 +10,15 @@
   <meta name="author" content="Kartik (@kartik2005221)">
   
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://s0-site.pages.dev/">
+  <meta property="og:url" content="https://sector-zero.pages.dev/">
   <meta property="og:title" content="s0 — Sector Zero: Unified Forensic Suite">
   <meta property="og:description" content="NIST SP 800-88 compliant sanitization, deep evidence carving, bit-stream acquisition & Ed25519 cryptographic certificates.">
-  <meta property="og:image" content="https://s0-site.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
+  <meta property="og:image" content="https://sector-zero.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="s0 — Sector Zero: Unified Forensic Suite">
   <meta name="twitter:description" content="Forensic sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
-  <meta name="twitter:image" content="https://s0-site.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
+  <meta name="twitter:image" content="https://sector-zero.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
 
   <!-- Instant Theme Bootstrapping -->
   <script>
@@ -71,7 +71,7 @@
 <!-- Header — Minimal & Clean -->
 <header class="site-header">
   <div class="site-header-inner">
-    <a href="#" class="site-logo-link">
+    <a href="/" class="site-logo-link">
       <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
       <span class="site-logo-title"><span class="logo-name">s0</span><span class="logo-sub"> — Sector Zero</span></span>
     </a>
@@ -111,11 +111,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span>Get Started &amp; Install</span>
         </a>
-        <a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
+        <a href="https://sector-zero.gitbook.io/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           <span>Documentation ↗</span>
         </a>
-        <a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
+        <a href="/verify/" class="btn-cta btn-cta-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
           <span>Offline Verifier ↗</span>
         </a>
@@ -129,7 +129,7 @@
           <button class="platform-pill-btn" id="heroPlatformWin" data-platform="win">Windows</button>
         </div>
         <div class="code-box">
-          <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
+          <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://sector-zero.pages.dev/sh | bash</span>
           <button class="copy-btn" data-copy-target="hero-quick-cmd">Copy</button>
         </div>
       </div>
@@ -225,7 +225,7 @@
         </div>
         <h3>Zero-Trust Verification Portal</h3>
         <p>
-          100% client-side WebCrypto validator at <a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener">s0-verify.pages.dev</a>. Drag and drop JSON certificates, PDFs, or QR images with zero data leaving your machine.
+          100% client-side WebCrypto validator at <a href="/verify/">sector-zero.pages.dev/verify</a>. Drag and drop JSON certificates, PDFs, or QR images with zero data leaving your machine.
         </p>
       </div>
     </div>
@@ -279,7 +279,7 @@
           <span class="platform-tag">Bash / Zsh</span>
         </div>
         <div class="code-box">
-          <span class="code-box-content" id="cmd-inst-sh">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
+          <span class="code-box-content" id="cmd-inst-sh">curl -fsSL https://sector-zero.pages.dev/sh | bash</span>
           <button class="copy-btn" data-copy-target="cmd-inst-sh">Copy</button>
         </div>
       </div>
@@ -291,7 +291,7 @@
           <span class="platform-tag">PowerShell</span>
         </div>
         <div class="code-box">
-          <span class="code-box-content" id="cmd-inst-ps1">irm https://s0-install.pages.dev/ps1 | iex</span>
+          <span class="code-box-content" id="cmd-inst-ps1">irm https://sector-zero.pages.dev/ps1 | iex</span>
           <button class="copy-btn" data-copy-target="cmd-inst-ps1">Copy</button>
         </div>
       </div>
@@ -303,7 +303,7 @@
           <span class="platform-tag">Command Prompt</span>
         </div>
         <div class="code-box">
-          <span class="code-box-content" id="cmd-inst-cmd">curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
+          <span class="code-box-content" id="cmd-inst-cmd">curl -fsSL https://sector-zero.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
           <button class="copy-btn" data-copy-target="cmd-inst-cmd">Copy</button>
         </div>
       </div>
@@ -322,8 +322,8 @@
     </div>
 
     <div class="install-cta">
-      <a class="install-cta-link" href="https://s0-install.pages.dev/" target="_blank" rel="noopener">
-        Visit full Installation &amp; Upgrade Portal (s0-install.pages.dev) →
+      <a class="install-cta-link" href="https://sector-zero.pages.dev/install/" target="_blank" rel="noopener">
+        Visit full Installation &amp; Upgrade Portal (sector-zero.pages.dev) →
       </a>
     </div>
   </section>
@@ -458,14 +458,14 @@
         <div class="footer-col">
           <h5>Documentation</h5>
           <ul>
-            <li><a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/USER_MANUAL/" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/ARCHITECTURE/" target="_blank" rel="noopener">System Architecture ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/cli-reference/" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/forensic-carving-guide/" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/COMPLIANCE/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/agentic-ai/" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/guides/user-manual/" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/architecture/" target="_blank" rel="noopener">System Architecture ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/guides/cli-reference/" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/guides/forensic-carving/" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/guides/live-iso/" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/compliance/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/project/agentic-ai/" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
           </ul>
         </div>
 
@@ -473,10 +473,10 @@
         <div class="footer-col">
           <h5>Ecosystem</h5>
           <ul>
-            <li><a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener">Verification Portal ↗</a></li>
-            <li><a href="https://s0-install.pages.dev/" target="_blank" rel="noopener">Installation Portal ↗</a></li>
+            <li><a href="/verify/">Verification Portal</a></li>
+            <li><a href="/install/">Installation Portal</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
-            <li><a href="https://s0-docs.gitbook.io/CANONICAL_JSON/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
+            <li><a href="https://sector-zero.gitbook.io/architecture/canonical-json/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
           </ul>
         </div>
 
@@ -486,7 +486,7 @@
           <ul>
             <li><a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener">GitHub (kartik2005221/s0) ↗</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Releases &amp; Changelogs ↗</a></li>
-            <li><a href="https://github.com/kartik2005221/s0/blob/main/LICENSE" target="_blank" rel="noopener">MIT License ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/blob/master/LICENSE" target="_blank" rel="noopener">MIT License ↗</a></li>
             <li><a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221 ↗</a></li>
           </ul>
         </div>

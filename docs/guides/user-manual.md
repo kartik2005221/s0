@@ -26,19 +26,19 @@ The **s0 (Sector Zero)** suite unifies offensive and defensive storage operation
 {% tabs %}
 {% tab title="Linux/MacOS" %}
 ```bash
-curl -fsSL https://s0-install.pages.dev/sh | bash
+curl -fsSL https://sector-zero.pages.dev/sh | bash
 s0 --version
 ```
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-irm https://s0-install.pages.dev/ps1 | iex
+irm https://sector-zero.pages.dev/ps1 | iex
 s0 --version
 ```
 {% endtab %}
 {% tab title="Windows (CMD)" %}
 ```cmd
-curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+curl -fsSL https://sector-zero.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 s0 --version
 ```
 {% endtab %}
@@ -64,17 +64,17 @@ s0 upgrade --force
 {% endtab %}
 {% tab title="Linux/MacOS" %}
 ```bash
-curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash
+curl -fsSL https://sector-zero.pages.dev/upgrade-sh | bash
 ```
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-irm https://s0-install.pages.dev/upgrade-ps1 | iex
+irm https://sector-zero.pages.dev/upgrade-ps1 | iex
 ```
 {% endtab %}
 {% tab title="Windows (CMD)" %}
 ```cmd
-curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
+curl -fsSL https://sector-zero.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 ```
 {% endtab %}
 {% endtabs %}

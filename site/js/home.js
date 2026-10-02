@@ -68,8 +68,8 @@ function copyText(elementId, btn) {
 
 // Platform Detection and Switching for Hero Command
 const PLATFORM_COMMANDS = {
-  nix: "curl -fsSL https://s0-install.pages.dev/sh | bash",
-  win: "irm https://s0-install.pages.dev/ps1 | iex"
+  nix: "curl -fsSL https://sector-zero.pages.dev/sh | bash",
+  win: "irm https://sector-zero.pages.dev/ps1 | iex"
 };
 
 function setHeroPlatform(platform) {

@@ -112,7 +112,7 @@ Landed on `agent/harness`; not yet tagged.
 ### Added
 - **Standardized Bracketed CLI Output:** Unified command line outputs across all modules (`s0 wipe`, `s0 image`, `s0 carve`, `s0 verify`, `s0 audit`, `s0 plan`, `s0 live`, `s0 upgrade`) to standard bracketed `[s0 <cmd>]` layout.
 - **Zero-Dependency Live ISO Downloader:** Added `download_iso.sh` (Linux/macOS) and `download_iso.ps1` (Windows) hosted directly on the install portal for air-gapped bootstrapping.
-- **Portal & Website Synchronization:** Unified headers, footers, SVG logo brand assets, and favicon manifests across Web Dashboard, Install Portal, Verification Portal, and the official project website (`s0-site.pages.dev`).
+- **Portal & Website Synchronization:** Unified headers, footers, SVG logo brand assets, and favicon manifests across Web Dashboard, Install Portal, Verification Portal, and the official project website (`sector-zero.pages.dev`).
 - **Comprehensive Release Tooling (`tools/release.py`):** Enhanced release automation to synchronize 25 core files, configuration schemas, CLI engines, benchmark harnesses, and documentation suites automatically.
 
 ### Changed
@@ -138,7 +138,7 @@ Landed on `agent/harness`; not yet tagged.
 - **Documentation Overhaul & Navigation:** Restored left navigation sidebar on the documentation home page (`tableOfContents.visible: true`), removed badge chips, normalized repetitive compliance terminology, transitioned "blockchain" to "hash-chained audit ledger", and updated all command outputs to match actual CLI outputs.
 - **Carving Signature Specification:** Documented all 19 binary signature rules across 16 file formats in forensic carving documentation.
 - **Install Portal Code Organization:** Extracted inline CSS and JavaScript into modular `css/install.css` and `js/install.js` files, significantly reducing `index.html` size.
-- **Cloudflare Pages Routing:** Updated CLI upgrade notices and documentation links to use `s0-install.pages.dev` endpoints.
+- **Cloudflare Pages Routing:** Updated CLI upgrade notices and documentation links to use `sector-zero.pages.dev` endpoints.
 
 ---
 
@@ -171,7 +171,7 @@ Landed on `agent/harness`; not yet tagged.
 - **Graceful Signal Handling:** Implemented clean `SIGINT` / Ctrl+C cancellation handlers across all commands (`s0 wipe`, `s0 image`, `s0 carve`, `s0 live flash/download`, `s0 web`), restoring cursor state and terminating workers safely.
 - **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
 - **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
-- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`s0-docs.gitbook.io`, `s0-verify.pages.dev`, `s0-install.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
+- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`sector-zero.gitbook.io`, `sector-zero.pages.dev/verify`, `sector-zero.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
 - **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/MacOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
 - **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Hash-Chained Cryptographic Audit Ledger.
 
@@ -258,7 +258,7 @@ Landed on `agent/harness`; not yet tagged.
 
 ### Added
 - **`s0 uninstall` CLI Subcommand:** Added native uninstallation command that removes `~/.s0/`, `/usr/local/bin/s0`, and shell environment PATH entries, featuring interactive safety confirmation (`--yes` bypass) and optional blockchain audit ledger preservation (`--keep-audit`).
-- **Install Portal Redesign:** Redesigned `s0-install.pages.dev` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
+- **Install Portal Redesign:** Redesigned `sector-zero.pages.dev` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
 - **Automated CI/CD Workflows:** Configured GitHub Actions workflows: `ci.yml` running pytest test suites across Python 3.11 and 3.12 matrices on push and pull requests, and `release.yml` automating release artifact packaging (`.tar.gz`, `SHA256SUMS.txt`), changelog extraction, and GitHub Releases publication.
 
 ### Changed
@@ -302,7 +302,7 @@ Landed on `agent/harness`; not yet tagged.
 ## [2.0.0] — 2026-09-09
 
 ### Added
-- **Production Documentation Suite:** Deployed complete technical documentation at [s0-docs.gitbook.io](https://s0-docs.gitbook.io/) with GitBook Site Git Sync.
+- **Production Documentation Suite:** Deployed complete technical documentation at [sector-zero.gitbook.io](https://sector-zero.gitbook.io/) with GitBook Site Git Sync.
 - **Forensic Color Theme:** Integrated high-contrast forensic styling with customized code blocks, admonitions, and typography.
 - **Bare-Metal Bootable Live ISO (`iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
 - **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.

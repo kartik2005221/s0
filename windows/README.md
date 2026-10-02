@@ -51,7 +51,7 @@ Instead, operators boot from an **s0 Bare-Metal Live USB**:
 
 1. **Download the Verified ISO directly:**
    ```powershell
-   irm https://s0-install.pages.dev/download-iso-ps1 | iex
+   irm https://sector-zero.pages.dev/download-iso-ps1 | iex
    ```
    *Or build from source on Windows via Docker Desktop / WSL2:*
    ```powershell

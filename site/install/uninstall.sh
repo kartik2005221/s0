@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # S0 (Sector Zero) — Resilient Uninstaller for Linux/MacOS
-# Usage: curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash
+# Usage: curl -fsSL https://sector-zero.pages.dev/uninstall-sh | bash
 set -euo pipefail
 
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"

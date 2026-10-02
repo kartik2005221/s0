@@ -27,7 +27,7 @@ site/verify/
 Because the portal contains no server execution code (no Node, no Python, no PHP, no SQL):
 
 1. **Cloudflare Pages (Official Production):**
-   - *Production instance live at:* [https://s0-verify.pages.dev/](https://s0-verify.pages.dev/)
+   - *Production instance live at:* [https://sector-zero.pages.dev/verify/](https://sector-zero.pages.dev/verify/)
    - Connect repository or upload `site/verify/` folder.
    - Build command: *(leave empty / static)*
    - Output directory: `site/verify`

@@ -322,12 +322,12 @@ If you do not have Docker or local build tools installed, you can download the l
 {% tabs %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-irm https://s0-install.pages.dev/download-iso-ps1 | iex
+irm https://sector-zero.pages.dev/download-iso-ps1 | iex
 ```
 {% endtab %}
 {% tab title="Linux/MacOS (Bash)" %}
 ```bash
-curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash
+curl -fsSL https://sector-zero.pages.dev/download-iso-sh | bash
 ```
 {% endtab %}
 {% endtabs %}
