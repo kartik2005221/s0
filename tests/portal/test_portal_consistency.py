@@ -282,14 +282,45 @@ def test_every_surface_self_hosts_its_fonts():
             f"{html.relative_to(REPO)} does not load the self-hosted font sheet")
 
 
-def test_install_portal_fonts_are_present_on_disk():
-    d = REPO / "site/install" / "fonts"
-    assert (d / "fonts.css").is_file()
-    woff2 = list(d.glob("*.woff2"))
-    assert len(woff2) >= 4, "the install portal needs the woff2 files it references"
-    for face in (d / "fonts.css").read_text(encoding="utf-8").split("@font-face"):
-        for url in re.findall(r"url\('([^']+)'\)", face):
-            assert (d / url).is_file(), f"site/install/fonts/{url} is referenced but missing"
+FONT_DIRS = [
+    REPO / "site" / "fonts",
+    REPO / "site" / "install" / "fonts",
+    REPO / "site" / "verify" / "fonts",
+    REPO / "src" / "s0" / "web" / "static" / "fonts",
+]
+
+
+@pytest.mark.parametrize("d", FONT_DIRS, ids=lambda p: str(p.parent.name))
+def test_every_surface_font_sheet_resolves_to_real_files(d):
+    """A surface whose font sheet names a file that is not there renders in a
+    fallback face, silently. Check both directions: nothing referenced is
+    missing, and nothing shipped is unreferenced."""
+    sheet = d / "fonts.css"
+    assert sheet.is_file(), f"{d.relative_to(REPO)} has no fonts.css"
+    referenced = set(re.findall(r"url\('([^']+)'\)", sheet.read_text(encoding="utf-8")))
+    assert referenced, f"{sheet.relative_to(REPO)} declares no @font-face src"
+    for url in sorted(referenced):
+        assert (d / url).is_file(), f"{d.relative_to(REPO)}/{url} is referenced but missing"
+    shipped = {p.name for p in d.glob("*.woff2")}
+    orphans = shipped - referenced
+    assert not orphans, (
+        f"{d.relative_to(REPO)} ships woff2 files nothing loads, which means one "
+        f"variable font was copied out per weight again:\n  " + "\n  ".join(sorted(orphans)))
+
+
+@pytest.mark.parametrize("d", FONT_DIRS, ids=lambda p: str(p.parent.name))
+def test_every_surface_declares_font_weight_ranges(d):
+    """Rubik and JetBrains Mono are variable fonts. Declaring one file per
+    weight instead of one file with a range makes a browser download the same
+    bytes once per weight, because it keys its font cache on URL rather than
+    content -- nine files that were really two."""
+    sheet = (d / "fonts.css").read_text(encoding="utf-8")
+    ranges = re.findall(r"font-weight:\s*(\d+)\s+(\d+)\s*;", sheet)
+    assert len(ranges) >= 2, (
+        f"{d.relative_to(REPO)} declares single-weight faces; both families ship "
+        "as variable fonts and must be declared with a range")
+    for lo, hi in ranges:
+        assert lo < hi, f"{d.relative_to(REPO)} has a degenerate weight range {lo} {hi}"
 
 
 # --------------------------------------------------------------------------- #

@@ -15,7 +15,10 @@ __pycache__/
 build/
 dist/
 public/
-site/
+# `site/` was ignored here as the Sphinx/mkdocs HTML output convention. Nothing
+# in this repo builds to it -- the docs are GitBook, hosted, validated by
+# tools/build-docs.sh with no local build -- and it is now the Cloudflare Pages
+# deploy root (landing page, installer, verifier), so it must stay tracked.
 .venv/
 
 # Wipe test artifacts (disk images can be large)

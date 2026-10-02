@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO & Social Meta Tags -->
+  <title>s0 — Unified Forensic Data Sanitization, Acquisition & Carving Suite</title>
+  <meta name="description" content="s0 (Sector Zero) is an open-source digital forensic and media sanitization suite. NIST SP 800-88 compliant with Ed25519 cryptographic certification.">
+  <meta name="author" content="Kartik (@kartik2005221)">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://s0-site.pages.dev/">
+  <meta property="og:title" content="s0 — Sector Zero: Unified Forensic Suite">
+  <meta property="og:description" content="NIST SP 800-88 compliant sanitization, deep evidence carving, bit-stream acquisition & Ed25519 cryptographic certificates.">
+  <meta property="og:image" content="https://s0-site.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="s0 — Sector Zero: Unified Forensic Suite">
+  <meta name="twitter:description" content="Forensic sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
+  <meta name="twitter:image" content="https://s0-site.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
+
+  <!-- Instant Theme Bootstrapping -->
+  <script>
+    (function() {
+      var t = localStorage.getItem("s0_theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+
+  <!-- Typography & Fonts -->
+  <link rel="stylesheet" href="fonts/fonts.css">
+
+  <!-- Favicons and App Icons -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/favicons/s0-dark/apple-touch-icon.png">
+  <link rel="manifest" href="assets/favicons/s0-dark/site.webmanifest">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+
+<!-- Header — Minimal & Clean -->
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="#" class="site-logo-link">
+      <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
+      <span class="site-logo-title"><span class="logo-name">s0</span><span class="logo-sub"> — Sector Zero</span></span>
+    </a>
+
+    <div class="site-header-right">
+      <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
+        <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="github-repo-text">kartik2005221/s0</span>
+      </a>
+
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+        <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <span id="themeToggleLabel">Light</span>
+      </button>
+
+      <div class="sys-pill">
+        <div class="dot-live"></div>
+        <span class="s0-release-version">v2.4.3</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Hero Section — Fullscreen & Grand -->
+  <section class="hero">
+    <div class="container">
+      <h1>S0 — <span class="highlight">Sector Zero</span></h1>
+
+      <p class="hero-subtitle">
+        Unified forensic data sanitization, bit-stream acquisition &amp; evidence carving suite with cryptographic chain-of-custody.
+      </p>
+
+      <div class="hero-actions">
+        <a href="#install" class="btn-cta btn-cta-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Get Started &amp; Install</span>
+        </a>
+        <a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span>Documentation ↗</span>
+        </a>
+        <a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <span>Offline Verifier ↗</span>
+        </a>
+      </div>
+
+      <!-- Platform-Aware Quick Command -->
+      <div class="hero-installer">
+        <div class="platform-switch-bar">
+          <button class="platform-pill-btn active" id="heroPlatformNix" onclick="setHeroPlatform('nix')">Linux / macOS</button>
+          <span style="color: var(--border-subtle);">|</span>
+          <button class="platform-pill-btn" id="heroPlatformWin" onclick="setHeroPlatform('win')">Windows</button>
+        </div>
+        <div class="code-box">
+          <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
+          <button class="copy-btn" onclick="copyText('hero-quick-cmd', this)">Copy</button>
+        </div>
+      </div>
+
+      <!-- Subtle Animated Scroll Down Indicator -->
+      <a href="#features" class="hero-scroll-indicator" aria-label="Scroll to explore features">
+        <span class="scroll-mouse-icon">
+          <span class="scroll-mouse-wheel"></span>
+        </span>
+        <span>Scroll to Explore</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Capabilities Section (Core 3 + Side 2) -->
+  <section class="container section-spacer reveal-on-scroll" id="features">
+    <div class="section-header">
+      <span class="section-label">[ Core Capabilities ]</span>
+      <h2 class="section-title">Forensic Capabilities</h2>
+      <p class="section-desc">
+        Deterministic, hardware-level forensic workflows with mathematical non-repudiation.
+      </p>
+    </div>
+
+    <!-- 3 Core Capabilities -->
+    <div class="core-features-grid">
+      <!-- 01: Sanitization -->
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="feature-tag">01 · DEFENSIVE</span>
+          </div>
+        </div>
+        <h3>Media &amp; File Sanitization</h3>
+        <p>
+          Purge physical drives, SSDs, and files per NIST SP 800-88 Rev. 1 &amp; IEEE 2883-2022 via NVMe Sanitize, ATA Secure Erase, or multi-pass CSPRNG overwriting. Emits Ed25519-signed PDF/JSON certificates.
+        </p>
+      </div>
+
+      <!-- 02: Carving -->
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span class="feature-tag">02 · OFFENSIVE</span>
+          </div>
+        </div>
+        <h3>Forensic Evidence Carving</h3>
+        <p>
+          Reconstruct deleted evidence from raw images across ext4, NTFS, FAT32, and exFAT. Evaluates structural confidence using 4-factor Shannon entropy scoring and bifragment cluster reassembly.
+        </p>
+      </div>
+
+      <!-- 03: Acquisition -->
+      <div class="feature-card">
+        <div class="feature-card-header">
+          <div class="feature-icon-badge">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            <span class="feature-tag">03 · ACQUISITION</span>
+          </div>
+        </div>
+        <h3>Bit-Stream Acquisition &amp; Cloning</h3>
+        <p>
+          Fault-tolerant raw image acquisition (<code>.raw</code> / <code>.dd</code>) and drive cloning per ISO/IEC 27037. Performs simultaneous live SHA-256 and MD5 hashing with ddrescue-style bad sector zero-filling.
+        </p>
+      </div>
+    </div>
+
+    <!-- 2 Side Features -->
+    <div class="side-features-grid">
+      <!-- 04: Audit Ledger -->
+      <div class="feature-card feature-card-side">
+        <div class="feature-card-header">
+          <div class="feature-icon-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            <span class="feature-tag">SUPPORTING FEATURE</span>
+          </div>
+        </div>
+        <h3>Hash-Chained Audit Ledger</h3>
+        <p>
+          Records every laboratory operation into an append-only, SHA-256 hash-chained SQLite ledger (<code>~/.s0/s0_audit.db</code>) for tamper-evident chain of custody verifiable in milliseconds.
+        </p>
+      </div>
+
+      <!-- 05: Verification Portal -->
+      <div class="feature-card feature-card-side">
+        <div class="feature-card-header">
+          <div class="feature-icon-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span class="feature-tag">SUPPORTING FEATURE</span>
+          </div>
+        </div>
+        <h3>Zero-Trust Verification Portal</h3>
+        <p>
+          100% client-side WebCrypto validator at <a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener">s0-verify.pages.dev</a>. Drag and drop JSON certificates, PDFs, or QR images with zero data leaving your machine.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Terminal CLI Showcase — Centered, Fixed Height -->
+  <section class="container section-spacer reveal-on-scroll" id="demo">
+    <div class="section-header">
+      <span class="section-label">[ Live Demo ]</span>
+      <h2 class="section-title">See S0 in Action</h2>
+      <p class="section-desc">
+        Real output simulation: 1-line installation, disk enumeration, evidence recovery, NIST media erasing, audit ledger, and cryptographic verification.
+      </p>
+    </div>
+
+    <div class="terminal-wrapper">
+      <div class="terminal-window">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
+          </div>
+          <div class="terminal-title">s0 — Forensic CLI Session</div>
+          <div class="terminal-actions">
+            <button class="terminal-replay-btn" onclick="window.restartTerminalShowcase()">↺ Replay</button>
+          </div>
+        </div>
+        <div class="terminal-body" id="terminalBody">
+          <div class="terminal-line"><span class="term-prompt">analyst@s0:~$ </span><span class="term-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Installation Commands — Expansive & Wide -->
+  <section class="container section-spacer reveal-on-scroll" id="install">
+    <div class="section-header">
+      <span class="section-label">[ Installation ]</span>
+      <h2 class="section-title">Quick Installation</h2>
+      <p class="section-desc">
+        One command configures an isolated virtual environment and registers s0 on your system PATH.
+      </p>
+    </div>
+
+    <div class="install-list">
+      <!-- Linux & macOS -->
+      <div class="install-item-card">
+        <div class="install-item-header">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <div class="code-box">
+          <span class="code-box-content" id="cmd-inst-sh">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
+          <button class="copy-btn" onclick="copyText('cmd-inst-sh', this)">Copy</button>
+        </div>
+      </div>
+
+      <!-- Windows PowerShell -->
+      <div class="install-item-card">
+        <div class="install-item-header">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <div class="code-box">
+          <span class="code-box-content" id="cmd-inst-ps1">irm https://s0-install.pages.dev/ps1 | iex</span>
+          <button class="copy-btn" onclick="copyText('cmd-inst-ps1', this)">Copy</button>
+        </div>
+      </div>
+
+      <!-- Windows Command Prompt -->
+      <div class="install-item-card">
+        <div class="install-item-header">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <div class="code-box">
+          <span class="code-box-content" id="cmd-inst-cmd">curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
+          <button class="copy-btn" onclick="copyText('cmd-inst-cmd', this)">Copy</button>
+        </div>
+      </div>
+
+      <!-- Live Bootable ISO -->
+      <div class="install-item-card">
+        <div class="install-item-header">
+          <h3>Bare-Metal Bootable ISO</h3>
+          <span class="platform-tag">Debian 12 Kiosk</span>
+        </div>
+        <div class="code-box">
+          <span class="code-box-content" id="cmd-inst-iso">s0 live download &amp;&amp; sudo s0 live flash --target /dev/sdb</span>
+          <button class="copy-btn" onclick="copyText('cmd-inst-iso', this)">Copy</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <a href="https://s0-install.pages.dev/" target="_blank" rel="noopener" style="font-size: 0.88rem; font-weight: 500;">
+        Visit full Installation &amp; Upgrade Portal (s0-install.pages.dev) →
+      </a>
+    </div>
+  </section>
+
+  <!-- Forensic Suite Comparison Table -->
+  <section class="container section-spacer reveal-on-scroll" id="comparison">
+    <div class="section-header">
+      <span class="section-label">[ Evaluation ]</span>
+      <h2 class="section-title">Forensic Suite Comparison</h2>
+      <p class="section-desc">
+        How s0 compares to existing data sanitization and forensic carving utilities.
+      </p>
+    </div>
+
+    <div class="comparison-wrapper">
+      <div class="comparison-table-scroll">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Forensic Capability</th>
+              <th class="s0-col-head">s0 (Sector Zero)</th>
+              <th>DBAN</th>
+              <th>Autopsy</th>
+              <th>Foremost</th>
+              <th>dd / shred</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>NIST SP 800-88 &amp; IEEE 2883</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> Purge &amp; Clear</td>
+              <td><span class="partial-icon">~</span> Clear Only</td>
+              <td><span class="cross-icon">✗</span> None</td>
+              <td><span class="cross-icon">✗</span> None</td>
+              <td><span class="cross-icon">✗</span> Non-compliant</td>
+            </tr>
+            <tr>
+              <td>Ed25519 Cryptographic Certificates</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> JSON &amp; PDF + QR</td>
+              <td><span class="cross-icon">✗</span> None</td>
+              <td><span class="cross-icon">✗</span> None</td>
+              <td><span class="cross-icon">✗</span> None</td>
+              <td><span class="cross-icon">✗</span> None</td>
+            </tr>
+            <tr>
+              <td>RFC 8785 Canonical JSON (JCS)</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> Pure JCS</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+            </tr>
+            <tr>
+              <td>Forensic Evidence Carving</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> 5 Inode/MFT Engines</td>
+              <td><span class="cross-icon">✗</span> Destructive Only</td>
+              <td><span class="check-icon">✓</span> Analysis GUI</td>
+              <td><span class="check-icon">✓</span> Header Only</td>
+              <td><span class="cross-icon">✗</span> No</td>
+            </tr>
+            <tr>
+              <td>Shannon Entropy Scoring</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> 3-Point Sampled</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> Heuristic</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+            </tr>
+            <tr>
+              <td>Simultaneous Dual Hashing</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> Single Pass</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="partial-icon">~</span> Post-hoc</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> Requires tee</td>
+            </tr>
+            <tr>
+              <td>Hash-Chained Audit Ledger</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> SHA-256 SQLite</td>
+              <td><span class="cross-icon">✗</span> Plain text</td>
+              <td><span class="cross-icon">✗</span> Case DB</td>
+              <td><span class="cross-icon">✗</span> Plain text</td>
+              <td><span class="cross-icon">✗</span> None</td>
+            </tr>
+            <tr>
+              <td>Zero-Trust Web Verifier</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> Pure WebCrypto</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+              <td><span class="cross-icon">✗</span> No</td>
+            </tr>
+            <tr>
+              <td>Cross-Platform Native</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> Linux, macOS, Win</td>
+              <td><span class="cross-icon">✗</span> Bootable Only</td>
+              <td><span class="partial-icon">~</span> Win Focused</td>
+              <td><span class="partial-icon">~</span> POSIX Only</td>
+              <td><span class="cross-icon">✗</span> POSIX Only</td>
+            </tr>
+            <tr>
+              <td>Open Source License</td>
+              <td class="s0-col-cell"><span class="check-icon">✓</span> MIT</td>
+              <td><span class="check-icon">✓</span> GPL</td>
+              <td><span class="check-icon">✓</span> Apache 2.0</td>
+              <td><span class="check-icon">✓</span> Public Domain</td>
+              <td><span class="check-icon">✓</span> GPL</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Footer with Extended Documentation Links -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-brand-title">
+          <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" width="22" height="22">
+          <span>s0 — Sector Zero</span>
+        </div>
+        <p class="footer-brand-desc">
+          Unified digital forensic media sanitization, offensive evidence carving, bit-stream acquisition &amp; cryptographic audit suite.
+        </p>
+      </div>
+
+      <div class="footer-links-group">
+        <!-- Documentation Column -->
+        <div class="footer-col">
+          <h5>Documentation</h5>
+          <ul>
+            <li><a href="https://s0-docs.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/USER_MANUAL/" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/ARCHITECTURE/" target="_blank" rel="noopener">System Architecture ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/cli-reference/" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/forensic-carving-guide/" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/LIVE_ISO_BUILD_GUIDE/" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/COMPLIANCE/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/agentic-ai/" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Ecosystem Column -->
+        <div class="footer-col">
+          <h5>Ecosystem</h5>
+          <ul>
+            <li><a href="https://s0-verify.pages.dev/" target="_blank" rel="noopener">Verification Portal ↗</a></li>
+            <li><a href="https://s0-install.pages.dev/" target="_blank" rel="noopener">Installation Portal ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
+            <li><a href="https://s0-docs.gitbook.io/CANONICAL_JSON/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Repository Column -->
+        <div class="footer-col">
+          <h5>Repository</h5>
+          <ul>
+            <li><a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener">GitHub (kartik2005221/s0) ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Releases &amp; Changelogs ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/blob/main/LICENSE" target="_blank" rel="noopener">MIT License ↗</a></li>
+            <li><a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221 ↗</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-legal-notice">
+        ⚖ <strong>Legal Advisory:</strong> s0 is a certified digital forensic tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+      </div>
+      <div>
+        Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script src="js/home.js"></script>
+<script src="js/terminal.js"></script>
+</body>
+</html>

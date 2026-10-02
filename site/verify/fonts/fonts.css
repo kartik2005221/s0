@@ -1,64 +1,40 @@
-/* s0 Self-Hosted Offline Fonts: Rubik & JetBrains Mono */
+/* s0 Self-Hosted Offline Fonts: Rubik & JetBrains Mono
+ *
+ * Both families ship as one variable font each, declared with a weight range.
+ * A range is what lets one file serve every weight: a browser keys its font
+ * cache on URL, not content, so declaring four separate files for four weights
+ * of the same font makes it download the same bytes four times. That is what
+ * these nine weight-suffixed copies used to do -- all four JetBrains Mono files
+ * shared one checksum, all five Rubik files shared another.
+ *
+ *   Rubik         wght 300-900   (7 named instances)
+ *   JetBrains Mono wght 400-800   (4 named instances)
+ *
+ * Self-hosted so no surface makes a third-party request: the verifier's entire
+ * claim is that it runs with no network, and the install page is the one a user
+ * pastes into a root shell -- it should not phone home either. The live ISO has
+ * no egress at all.
+ *
+ * Rubik and JetBrains Mono are licensed under the SIL Open Font License 1.1;
+ * see THIRD_PARTY_NOTICES.md.
+ *
+ * Sync: this file is copied to each surface's fonts/ by the layout below.
+ * Every surface keeps its own copy so it stays self-contained and usable from
+ * file:/// with no server, which the verifier and the ISO dashboard both do.
+ */
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url('rubik-var.woff2') format('woff2');
+}
+
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 800;
   font-display: swap;
-  src: url('jetbrains-mono-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('jetbrains-mono-500.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('jetbrains-mono-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('jetbrains-mono-700.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Rubik';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('rubik-400.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Rubik';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('rubik-500.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Rubik';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('rubik-600.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Rubik';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('rubik-700.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Rubik';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url('rubik-800.woff2') format('woff2');
+  src: url('jetbrains-mono-var.woff2') format('woff2');
 }
