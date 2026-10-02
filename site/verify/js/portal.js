@@ -804,5 +804,33 @@ function toggleTheme() {
   applyTheme(current === "dark" ? "light" : "dark");
 }
 
+/* Interaction wiring.
+ *
+ * The theme toggle, the two result tabs and the two copy buttons used to carry
+ * inline onclick attributes. This page's policy is script-src 'self' with no
+ * 'unsafe-inline' -- inline handlers require 'unsafe-inline', so the browser
+ * blocked all five. A verifier whose copy button silently does nothing is
+ * worse than one without the button, so they are bound here instead.
+ */
+function wireInteractions() {
+  document.addEventListener("click", function (event) {
+    var btn = event.target.closest("button");
+    if (!btn) return;
+
+    if (btn.dataset.copyTarget) {
+      copyCode(btn.dataset.copyTarget);
+      return;
+    }
+    if (btn.dataset.tab) {
+      switchTab(btn.dataset.tab);
+      return;
+    }
+    if (btn.dataset.action === "toggle-theme") {
+      toggleTheme();
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", initTheme);
+document.addEventListener("DOMContentLoaded", wireInteractions);
 

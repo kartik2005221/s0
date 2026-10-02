@@ -1177,3 +1177,34 @@ footer.site-footer {
     font-size: 0.72rem;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Classes that replaced inline style attributes.
+   Inline styles need 'unsafe-inline' in style-src to survive the page's CSP.
+   These four did not, so they are here instead.
+   --------------------------------------------------------------------------- */
+
+/* The comparison-matrix icon sprite. Taken out of flow so its zero-size box
+   cannot affect layout, and hidden from sight entirely. */
+.icon-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Separator between the platform commands in the hero quick-install line. */
+.cmd-sep {
+  color: var(--border-subtle);
+}
+
+/* Closing call to action under the install command cards. */
+.install-cta {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.install-cta-link {
+  font-size: 0.88rem;
+  font-weight: 500;
+}

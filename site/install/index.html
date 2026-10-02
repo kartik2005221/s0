@@ -34,7 +34,7 @@
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span>kartik2005221/s0</span>
       </a>
-      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" data-action="toggle-theme" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
@@ -80,7 +80,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-install-sh">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
-        <button class="copy-btn" onclick="copyText('cmd-install-sh', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-install-sh">Copy</button>
       </div>
     </div>
 
@@ -91,7 +91,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-install-ps1">irm https://s0-install.pages.dev/ps1 | iex</span>
-        <button class="copy-btn" onclick="copyText('cmd-install-ps1', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-install-ps1">Copy</button>
       </div>
     </div>
 
@@ -102,7 +102,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-install-cmd">curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
-        <button class="copy-btn" onclick="copyText('cmd-install-cmd', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-install-cmd">Copy</button>
       </div>
     </div>
   </div>
@@ -116,7 +116,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-upg-sh">curl -fsSL https://s0-install.pages.dev/upgrade-sh | bash</span>
-        <button class="copy-btn" onclick="copyText('cmd-upg-sh', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-upg-sh">Copy</button>
       </div>
     </div>
 
@@ -127,7 +127,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-upg-ps1">irm https://s0-install.pages.dev/upgrade-ps1 | iex</span>
-        <button class="copy-btn" onclick="copyText('cmd-upg-ps1', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-upg-ps1">Copy</button>
       </div>
     </div>
 
@@ -138,7 +138,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-upg-cmd">curl -fsSL https://s0-install.pages.dev/upgrade-cmd -o s0-upgrade.cmd &amp;&amp; s0-upgrade.cmd &amp;&amp; del s0-upgrade.cmd</span>
-        <button class="copy-btn" onclick="copyText('cmd-upg-cmd', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-upg-cmd">Copy</button>
       </div>
     </div>
 
@@ -149,7 +149,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-upg-cli">s0 upgrade</span>
-        <button class="copy-btn" onclick="copyText('cmd-upg-cli', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-upg-cli">Copy</button>
       </div>
     </div>
   </div>
@@ -163,7 +163,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-un-sh">curl -fsSL https://s0-install.pages.dev/uninstall-sh | bash</span>
-        <button class="copy-btn" onclick="copyText('cmd-un-sh', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-un-sh">Copy</button>
       </div>
     </div>
 
@@ -174,7 +174,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-un-ps1">irm https://s0-install.pages.dev/uninstall-ps1 | iex</span>
-        <button class="copy-btn" onclick="copyText('cmd-un-ps1', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-un-ps1">Copy</button>
       </div>
     </div>
 
@@ -185,7 +185,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-un-cmd">curl -fsSL https://s0-install.pages.dev/uninstall-cmd -o s0-uninstall.cmd &amp;&amp; s0-uninstall.cmd &amp;&amp; del s0-uninstall.cmd</span>
-        <button class="copy-btn" onclick="copyText('cmd-un-cmd', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-un-cmd">Copy</button>
       </div>
     </div>
 
@@ -196,7 +196,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-un-cli">s0 uninstall</span>
-        <button class="copy-btn" onclick="copyText('cmd-un-cli', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-un-cli">Copy</button>
       </div>
     </div>
   </div>
@@ -210,7 +210,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-iso-sh">curl -fsSL https://s0-install.pages.dev/download-iso-sh | bash</span>
-        <button class="copy-btn" onclick="copyText('cmd-iso-sh', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-iso-sh">Copy</button>
       </div>
     </div>
 
@@ -221,7 +221,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-iso-ps1">irm https://s0-install.pages.dev/download-iso-ps1 | iex</span>
-        <button class="copy-btn" onclick="copyText('cmd-iso-ps1', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-iso-ps1">Copy</button>
       </div>
     </div>
 
@@ -232,7 +232,7 @@
       </div>
       <div class="code-box">
         <span id="cmd-iso-cli">s0 live download</span>
-        <button class="copy-btn" onclick="copyText('cmd-iso-cli', this)">Copy</button>
+        <button class="copy-btn" data-copy-target="cmd-iso-cli">Copy</button>
       </div>
     </div>
   </div>

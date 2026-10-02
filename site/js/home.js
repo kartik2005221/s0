@@ -150,10 +150,48 @@ function initScrollReveal() {
 }
 
 // Initialization
+// Interaction wiring.
+//
+// Every control used to carry an inline onclick attribute. Those cannot be
+// allowed under the page's Content-Security-Policy, and more to the point an
+// inline handler is script that had to be hashed into the policy by hand: one
+// drifted character and the button stops working. Delegating once from
+// document keeps the behaviour in this file, where the test suite can see it,
+// and lets the markup carry intent as data attributes instead of code.
+function wireInteractions() {
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest("button");
+    if (!btn) return;
+
+    if (btn.dataset.copyTarget) {
+      copyText(btn.dataset.copyTarget, btn);
+      return;
+    }
+    if (btn.dataset.platform) {
+      setHeroPlatform(btn.dataset.platform);
+      return;
+    }
+    switch (btn.dataset.action) {
+      case "toggle-theme":
+        toggleTheme();
+        break;
+      case "replay-terminal":
+        // Defined by terminal.js, which may not have loaded.
+        if (typeof window.restartTerminalShowcase === "function") {
+          window.restartTerminalShowcase();
+        }
+        break;
+      default:
+        break;
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const initialTheme = getPreferredTheme();
   applyTheme(initialTheme);
   detectPlatform();
   fetchLatestReleaseVersion();
   initScrollReveal();
+  wireInteractions();
 });

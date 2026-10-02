@@ -53,7 +53,7 @@
   already carries the meaning, so announcing the mark as well would only repeat
   it.
 -->
-<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+<svg class="icon-sprite" width="0" height="0" aria-hidden="true" focusable="false">
   <symbol id="i-check-icon" viewBox="0 0 16 16">
     <path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -82,7 +82,7 @@
         <span class="github-repo-text">kartik2005221/s0</span>
       </a>
 
-      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" data-action="toggle-theme" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
@@ -124,13 +124,13 @@
       <!-- Platform-Aware Quick Command -->
       <div class="hero-installer">
         <div class="platform-switch-bar">
-          <button class="platform-pill-btn active" id="heroPlatformNix" onclick="setHeroPlatform('nix')">Linux / macOS</button>
-          <span style="color: var(--border-subtle);">|</span>
-          <button class="platform-pill-btn" id="heroPlatformWin" onclick="setHeroPlatform('win')">Windows</button>
+          <button class="platform-pill-btn active" id="heroPlatformNix" data-platform="nix">Linux / macOS</button>
+          <span class="cmd-sep" aria-hidden="true">|</span>
+          <button class="platform-pill-btn" id="heroPlatformWin" data-platform="win">Windows</button>
         </div>
         <div class="code-box">
           <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
-          <button class="copy-btn" onclick="copyText('hero-quick-cmd', this)">Copy</button>
+          <button class="copy-btn" data-copy-target="hero-quick-cmd">Copy</button>
         </div>
       </div>
 
@@ -251,7 +251,7 @@
           </div>
           <div class="terminal-title">s0 — Forensic CLI Session</div>
           <div class="terminal-actions">
-            <button class="terminal-replay-btn" onclick="window.restartTerminalShowcase()">↺ Replay</button>
+            <button class="terminal-replay-btn" data-action="replay-terminal">↺ Replay</button>
           </div>
         </div>
         <div class="terminal-body" id="terminalBody">
@@ -280,7 +280,7 @@
         </div>
         <div class="code-box">
           <span class="code-box-content" id="cmd-inst-sh">curl -fsSL https://s0-install.pages.dev/sh | bash</span>
-          <button class="copy-btn" onclick="copyText('cmd-inst-sh', this)">Copy</button>
+          <button class="copy-btn" data-copy-target="cmd-inst-sh">Copy</button>
         </div>
       </div>
 
@@ -292,7 +292,7 @@
         </div>
         <div class="code-box">
           <span class="code-box-content" id="cmd-inst-ps1">irm https://s0-install.pages.dev/ps1 | iex</span>
-          <button class="copy-btn" onclick="copyText('cmd-inst-ps1', this)">Copy</button>
+          <button class="copy-btn" data-copy-target="cmd-inst-ps1">Copy</button>
         </div>
       </div>
 
@@ -304,7 +304,7 @@
         </div>
         <div class="code-box">
           <span class="code-box-content" id="cmd-inst-cmd">curl -fsSL https://s0-install.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
-          <button class="copy-btn" onclick="copyText('cmd-inst-cmd', this)">Copy</button>
+          <button class="copy-btn" data-copy-target="cmd-inst-cmd">Copy</button>
         </div>
       </div>
 
@@ -316,13 +316,13 @@
         </div>
         <div class="code-box">
           <span class="code-box-content" id="cmd-inst-iso">s0 live download &amp;&amp; sudo s0 live flash --target /dev/sdb</span>
-          <button class="copy-btn" onclick="copyText('cmd-inst-iso', this)">Copy</button>
+          <button class="copy-btn" data-copy-target="cmd-inst-iso">Copy</button>
         </div>
       </div>
     </div>
 
-    <div style="text-align: center; margin-top: 24px;">
-      <a href="https://s0-install.pages.dev/" target="_blank" rel="noopener" style="font-size: 0.88rem; font-weight: 500;">
+    <div class="install-cta">
+      <a class="install-cta-link" href="https://s0-install.pages.dev/" target="_blank" rel="noopener">
         Visit full Installation &amp; Upgrade Portal (s0-install.pages.dev) →
       </a>
     </div>

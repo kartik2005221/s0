@@ -38,9 +38,32 @@ function toggleTheme() {
   updateFavicon(next);
 }
 
+/* Interaction wiring.
+ *
+ * These controls used to carry inline onclick attributes. This page's policy is
+ * script-src 'self' with no 'unsafe-inline' -- inline handlers need
+ * 'unsafe-inline', so every one of them was blocked by the browser and the
+ * copy buttons did nothing. Binding here is what makes them work at all.
+ */
+function wireInteractions() {
+  document.addEventListener('click', function(event) {
+    const btn = event.target.closest('button');
+    if (!btn) return;
+
+    if (btn.dataset.copyTarget) {
+      copyText(btn.dataset.copyTarget, btn);
+      return;
+    }
+    if (btn.dataset.action === 'toggle-theme') {
+      toggleTheme();
+    }
+  });
+}
+
 (function() {
   const saved = localStorage.getItem('s0_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
   updateThemeBtn(saved);
   updateFavicon(saved);
+  wireInteractions();
 })();

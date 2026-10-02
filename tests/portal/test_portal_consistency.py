@@ -84,6 +84,34 @@ ALL_CSP_BLOCKS = [
     for block in blocks
 ]
 
+# Every public page. The loopback dashboard is deliberately absent: its policy
+# allows 'unsafe-inline' by design and its inline handlers are tracked in
+# docs/compliance/limitations.md, so asserting otherwise here would report a
+# decision the project has already made as if it were an oversight.
+ALL_PAGES = PUBLIC_HTML
+
+
+@pytest.mark.parametrize("html", ALL_PAGES, ids=lambda p: p.parent.name)
+def test_no_inline_event_handlers(html):
+    """An inline onclick needs 'unsafe-inline' in script-src, and every public
+    page here denies it. A handler left in the markup is therefore not merely
+    untidy: the browser blocks it, and the button silently does nothing. That is
+    not hypothetical -- the install portal's copy buttons were all in this state,
+    and the install portal exists to hand people a command to copy.
+
+    Inline *style* attributes are a separate matter. All three policies carry
+    style-src 'self' 'unsafe-inline' deliberately, so a style attribute is
+    permitted rather than blocked, and clearing those is tracked as its own
+    cleanup rather than folded in here.
+    """
+    rel = html.relative_to(REPO)
+    text = re.sub(r"<!--.*?-->", "", html.read_text(encoding="utf-8"), flags=re.S)
+    handlers = sorted(set(re.findall(r'\son[a-z]+\s*=\s*"[^"]*"', text, flags=re.I)))
+    assert not handlers, (
+        f"{rel} has inline event handlers, which this page's script-src blocks: "
+        f"{handlers[:3]}. Bind them in JS and pass the argument through a data- "
+        f"attribute instead.")
+
 # Tokens a surface may declare as a *literal value*. A surface declaring one of
 # these in its own :root is bypassing the shared file.
 TOKEN_NAME_RE = re.compile(r"^\s*(--[a-z0-9-]+)\s*:", re.I)
