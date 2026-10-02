@@ -180,7 +180,7 @@
               <div class="input-with-button">
                 <input type="text" id="driveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
                 <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('driveKeyUpload').click()">Upload Key</button>
-                <input type="file" id="driveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('driveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+                <input type="file" id="driveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('driveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the drive wipe">
               </div>
             </div>
           </div>
@@ -195,7 +195,7 @@
           <p class="safety-guard-text">
             To arm, type <strong id="driveConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">target device path</strong> below:
           </p>
-          <input type="text" id="driveConfirm" placeholder="Type target device path to confirm" class="safety-guard-input">
+          <input type="text" id="driveConfirm" placeholder="Type target device path to confirm" class="safety-guard-input" aria-label="Type the target device path to confirm the wipe">
         </div>
 
         <button class="btn btn-danger" onclick="startDriveWipe()">
@@ -268,7 +268,7 @@
         <p class="panel-subtitle">Overwrites allocated clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.</p>
 
         <!-- Hidden browser file input -->
-        <input type="file" multiple id="fileBrowseInput" style="display:none" onchange="handleFileBrowseSelect(event)">
+        <input type="file" multiple id="fileBrowseInput" style="display:none" onchange="handleFileBrowseSelect(event)" aria-label="Choose files or folders to erase">
 
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -331,7 +331,7 @@
               <div class="input-with-button">
                 <input type="text" id="fileKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
                 <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('fileKeyUpload').click()">Upload Key</button>
-                <input type="file" id="fileKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('fileKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+                <input type="file" id="fileKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('fileKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the file erasure">
               </div>
             </div>
           </div>
@@ -480,7 +480,7 @@
               <div class="input-with-button">
                 <input type="text" id="carveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
                 <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('carveKeyUpload').click()">Upload Key</button>
-                <input type="file" id="carveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('carveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+                <input type="file" id="carveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('carveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the carving manifest">
               </div>
             </div>
           </div>
@@ -609,7 +609,7 @@
           <p class="safety-guard-text">
             To arm bit-stream duplication, type <strong id="cloneConfirmPromptPath" style="font-family: var(--font-mono); color: #fff;">destination block device path</strong> below:
           </p>
-          <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" class="safety-guard-input">
+          <input type="text" id="cloneConfirmInput" placeholder="Type destination path to confirm" class="safety-guard-input" aria-label="Type the destination image path to confirm the clone">
         </div>
 
         <!-- Operator & Organization -->
@@ -638,7 +638,7 @@
               <div class="input-with-button">
                 <input type="text" id="imageKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
                 <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('imageKeyUpload').click()">Upload Key</button>
-                <input type="file" id="imageKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('imageKeyPath').value='[Uploaded: ' + this.files[0].name + ']'">
+                <input type="file" id="imageKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('imageKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the acquisition manifest">
               </div>
             </div>
           </div>
@@ -745,7 +745,7 @@
 
       <!-- Filter & Search Controls Bar -->
       <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: center; flex-wrap: wrap;">
-        <select id="auditFilterOp" onchange="applyAuditFilters()" style="max-width: 200px;">
+        <select id="auditFilterOp" aria-label="Filter audit entries by operation type" onchange="applyAuditFilters()" style="max-width: 200px;">
           <option value="ALL">All Operations</option>
           <option value="DRIVE_ERASE">DRIVE_ERASE</option>
           <option value="FILE_ERASE">FILE_ERASE</option>
@@ -753,7 +753,7 @@
           <option value="GENESIS">GENESIS</option>
         </select>
         <div style="flex: 1; min-width: 240px;">
-          <input type="text" id="auditSearch" placeholder="Filter by Target ID, Operator, or Block Hash..." oninput="applyAuditFilters()">
+          <input type="text" id="auditSearch" placeholder="Filter by Target ID, Operator, or Block Hash..." oninput="applyAuditFilters()" aria-label="Search audit entries">
         </div>
         <div class="sys-pill" id="auditStatsPill">
           <span>Blocks: <strong id="auditBlockCount" style="color: var(--accent-cyan);">0</strong></span>

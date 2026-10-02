@@ -196,10 +196,31 @@ def test_portal_scans_all_pdf_pages_for_qr():
     )
 
 
-def test_dashboard_index_serves_auth_token():
-    """Opening the dashboard without ?token= must still work."""
+def test_dashboard_does_not_hand_out_the_session_token():
+    """`GET /` must not embed the live session token in unauthenticated HTML.
+
+    This test used to assert the opposite -- that app.py *must* inject
+    `<meta name="s0-auth-token">` -- because without it a bookmarked dashboard 401'd
+    on every click. But the injection was unconditional and unauthenticated, so any
+    page in the operator's browser could fetch `http://127.0.0.1:8669/`, scrape the
+    token, and use it on all 14 protected endpoints. A UX problem is not a reason to
+    serve the credential to whoever asks.
+
+    The correct fix, which is what exists now: `/?token=X` validates, returns the
+    token as an HttpOnly cookie, and redirects to a clean `/`. The bookmarked-URL
+    case gets a 401 that explains how to get the token.
+    """
     app = (REPO / "src" / "s0" / "web" / "app.py").read_text(encoding="utf-8")
-    assert "s0-auth-token" in app, (
-        "src/s0/web/app.py must inject the session auth token into index.html; the dashboard "
-        "JS reads <meta name=\"s0-auth-token\"> and otherwise 401s on every API call"
+    assert "s0-auth-token" not in app, (
+        "src/s0/web/app.py must not inject the session token into index.html -- "
+        "serve it as an HttpOnly cookie via the ?token= bootstrap redirect instead"
+    )
+    # The bootstrap path must still exist so `s0 web` and the ISO kiosk work.
+    assert "RedirectResponse" in app, (
+        "the ?token= bootstrap must redirect to a clean URL so the token stays out "
+        "of browser history and Referer headers"
+    )
+    assert "samesite=\"strict\"" in app or "samesite=\"Strict\"" in app or "samesite" in app, (
+        "the auth cookie needs an explicit SameSite policy so cookie auth does not "
+        "reintroduce CSRF"
     )

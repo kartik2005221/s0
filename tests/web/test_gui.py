@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from s0.audit import init_audit_db
@@ -48,15 +49,103 @@ def small_image(tmp_path):
 
 
 def test_index_serves(client):
+    """The dashboard shell renders for an authenticated caller.
+
+    It used to assert the opposite: that `GET /` injected the session token into a
+    `<meta>` tag without requiring any authentication. That made the token
+    obtainable by anything able to reach the loopback port, and the token unlocks
+    every protected endpoint. The meta injection is gone; see
+    `test_index_never_hands_out_the_token_without_auth`.
+    """
     r = client.get("/")
     assert r.status_code == 200
     assert b"s0" in r.content.lower()
-    # The session token is deliberately injected into <head> so the dashboard
-    # works when reached without the ?token= query string (bookmark, reopened
-    # tab, live-ISO kiosk, restarted server). It is a loopback-only, per-session
-    # capability and must never be echoed by an API response or written to disk.
-    assert '<meta name="s0-auth-token"' in r.text
-    assert gui_app._SESSION_AUTH_TOKEN in r.text
+    assert gui_app._SESSION_AUTH_TOKEN not in r.text
+
+
+def test_index_never_hands_out_the_token_without_auth():
+    """Regression: `GET /` must not serve the session token to an unauthenticated caller.
+
+    Before the fix this returned 200 with the live token embedded in the HTML, and
+    that token satisfied `X-S0-Auth-Token` on all 14 guarded endpoints.
+    """
+    anon = TestClient(gui_app.app)
+    r = anon.get("/")
+    assert r.status_code == 401
+    assert gui_app._SESSION_AUTH_TOKEN not in r.text
+    # And the 401 body tells the operator how to get in, rather than 401ing silently.
+    assert "token" in r.text.lower()
+
+
+def test_query_token_is_exchanged_for_a_cookie_then_redirected():
+    """`?token=` is a one-shot bootstrap, then the URL is scrubbed.
+
+    A token left in the URL leaks into browser history, `Referer` headers and proxy
+    logs, so the server redirects to a clean `/` and carries the credential in an
+    HttpOnly cookie instead.
+    """
+    anon = TestClient(gui_app.app)
+    r = anon.get(
+        "/",
+        params={"token": gui_app._SESSION_AUTH_TOKEN},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/"
+    cookie = r.headers.get("set-cookie", "")
+    assert gui_app.AUTH_COOKIE in cookie
+    assert "httponly" in cookie.lower()
+    # SameSite=Strict is what keeps cookie auth from reintroducing CSRF.
+    assert "samesite=strict" in cookie.lower()
+
+
+def test_a_bad_query_token_is_refused():
+    anon = TestClient(gui_app.app)
+    assert anon.get("/", params={"token": "0" * 64}, follow_redirects=False).status_code == 401
+
+
+def test_cookie_authenticates_without_the_header():
+    """The browser attaches the cookie by itself; no JS needs to read it."""
+    c = TestClient(gui_app.app)
+    c.get("/", params={"token": gui_app._SESSION_AUTH_TOKEN}, follow_redirects=False)
+    assert c.get("/api/devices").status_code == 200
+
+
+def test_security_headers_are_present():
+    """The Cloudflare `_headers` file does nothing for the FastAPI server."""
+    c = TestClient(gui_app.app)
+    r = c.get("/", params={"token": gui_app._SESSION_AUTH_TOKEN}, follow_redirects=False)
+    assert "no-store" in r.headers.get("cache-control", "")
+    c2 = TestClient(gui_app.app)
+    c2.get("/", params={"token": gui_app._SESSION_AUTH_TOKEN}, follow_redirects=False)
+    h = c2.get("/api/devices").headers
+    assert h["x-content-type-options"] == "nosniff"
+    assert h["x-frame-options"] == "DENY"
+    assert h["referrer-policy"] == "no-referrer"
+    csp = h["content-security-policy"]
+    assert "object-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "base-uri 'none'" in csp
+
+
+def test_openapi_schema_is_not_served():
+    """/docs and /redoc were already off; the schema itself was still public."""
+    anon = TestClient(gui_app.app)
+    assert anon.get("/openapi.json").status_code == 404
+
+
+def test_signing_key_cannot_escape_via_repo_relative_traversal():
+    """Regression: the system-path check ran *before* the REPO-relative fallback.
+
+    uvicorn runs with cwd=src/s0/web, so `../../../../etc/hostname` resolved to
+    `<repo>/etc/hostname` (absent, so safe-looking) and the unchecked fallback then
+    produced `/etc/hostname` -- a real file, accepted, and passed to the CLI as
+    `--key`. Containment is now checked on the final resolved path.
+    """
+    for probe in ("../../../../etc/hostname", "/etc/hostname", "../../../../../../etc/passwd"):
+        with pytest.raises(HTTPException) as exc:
+            gui_app._resolve_key(probe, None)
+        assert exc.value.status_code in (400, 403), probe
 
 
 def test_index_does_not_leak_token_to_sub_resources(client):

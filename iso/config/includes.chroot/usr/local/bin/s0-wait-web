@@ -1,8 +1,14 @@
 #!/bin/sh
 # Wait until the local s0 web dashboard answers (max ~30 s), then hand over to kiosk.
+#
+# This polls /healthz, not /api/devices. /api/devices requires the session token,
+# and an unauthenticated GET returns 401 -- urllib raises HTTPError, the `if` test
+# was therefore always false, and this script always burned the full 30 s and then
+# failed. /healthz is the one deliberately unauthenticated route, and it returns a
+# literal rather than anything about the host.
 i=0
 while [ "$i" -lt 60 ]; do
-    if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8669/api/devices', timeout=1)" 2>/dev/null; then
+    if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8669/healthz', timeout=1)" 2>/dev/null; then
         exit 0
     fi
     i=$((i + 1))

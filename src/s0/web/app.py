@@ -16,8 +16,8 @@ Endpoints:
 
 from __future__ import annotations
 
-import html
 import json
+import logging
 import os
 import secrets
 import shutil
@@ -28,11 +28,12 @@ import threading
 import time
 import urllib.parse
 import uuid
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.staticfiles import StaticFiles
 
@@ -82,6 +83,15 @@ IMAGE_DIRS = [
     REPO / "demo-out",
 ]
 
+_LOG = logging.getLogger("s0.web")
+
+#: Auth cookie. HttpOnly because no script needs to read it -- the browser
+#: attaches it to same-origin requests by itself. SameSite=Strict is what stops
+#: cookie auth from reintroducing CSRF: a cross-site request never carries it.
+#: Secure is deliberately NOT set: the dashboard is plain HTTP on loopback, and
+#: a Secure cookie would be dropped there, breaking the only real deployment.
+AUTH_COOKIE = "s0_session"
+
 _SYSTEM_PATHS = (
     "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64",
     "/boot", "/proc", "/sys", "/run", "/var", "/root", "/opt",
@@ -103,11 +113,60 @@ def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
         return False, f"Invalid target path: {target_path}"
 
 
-app = FastAPI(title="s0 Forensic & Sanitization Dashboard", docs_url=None, redoc_url=None)
+# openapi_url is disabled as well: /docs and /redoc were already off, but leaving
+# the schema live handed an unauthenticated caller the full route and field list.
+app = FastAPI(
+    title="s0 Forensic & Sanitization Dashboard",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "*.local", "testserver"])
+# `*.local` matches any mDNS name, so `http://attacker.local` was an accepted Host
+# header -- a DNS-rebinding foothold. Only literal loopback names are needed;
+# `testserver` remains for TestClient.
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
+)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Apply the response headers the Cloudflare portals get from their _headers.
+
+    That file is a Cloudflare Pages directive and does nothing for the FastAPI
+    server, so the dashboard -- which serves evidence from the host -- was running
+    with no nosniff, no frame protection, and no referrer policy.
+
+    `script-src` still allows 'unsafe-inline'. The dashboard carries 45 inline
+    `onclick`/`onchange` attributes (index.html), which a hash-based policy cannot
+    cover without `'unsafe-hashes'` and a hash per handler. The dangerous vectors
+    are closed regardless: `object-src 'none'`, `base-uri 'none'`, no plugins, no
+    framing, forms same-origin only. Migrating the handlers to `addEventListener`
+    is tracked in docs/compliance/limitations.md; until then this is the honest
+    strictness, not a claim of full strictness.
+    """
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    # HSTS is deliberately absent: the dashboard is plain HTTP on loopback, where
+    # browsers ignore it anyway.
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "object-src 'none'; "
+        "base-uri 'none'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'",
+    )
+    return response
 
 PORTAL_DIR = REPO / "portals/verify"
 if PORTAL_DIR.is_dir():
@@ -116,7 +175,33 @@ if PORTAL_DIR.is_dir():
 STATIC_DIR = STATIC_ROOT / "static"
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-_jobs: dict[str, dict] = {}
+#: Job records are held for the process lifetime. Unbounded growth matters most
+#: on the live-ISO kiosk, which runs for the whole session, so the store is a
+#: capped LRU: oldest job is evicted once the cap is reached. Capped at a size
+#: that comfortably covers a UI polling several concurrent operations.
+#: Hard cap on a single job's captured log lines. `[s0 ...]` progress lines are
+#: collapsed in place already; this bounds the diagnostic lines that are not.
+_MAX_LOG_LINES = 500
+
+#: Wall-clock budget for a CLI subprocess started by the web tier. `communicate()`
+#: had no timeout, so a child wedged on a bad block device kept its thread and its
+#: job record alive forever. Wiping a multi-TB device legitimately takes hours, so
+#: this is generous: the point is to stop a *hung* job, not a slow one.
+_JOB_TIMEOUT_SECONDS = 6 * 60 * 60
+
+#: Job records live for the process lifetime. Unbounded growth matters most on the
+#: live-ISO kiosk, which runs a whole session, so the store is a capped LRU.
+_MAX_JOBS = 200
+_jobs: OrderedDict[str, dict] = OrderedDict()
+
+
+def _record_job(job_id: str, record: dict) -> None:
+    """Store a job record, evicting the oldest once the cap is reached."""
+    with _lock:
+        _jobs[job_id] = record
+        _jobs.move_to_end(job_id)
+        while len(_jobs) > _MAX_JOBS:
+            _jobs.popitem(last=False)
 _lock = threading.Lock()
 
 _SESSION_AUTH_TOKEN = os.environ.get("S0_WEB_AUTH_TOKEN") or secrets.token_hex(32)
@@ -159,12 +244,39 @@ def _init_session_auth_token() -> None:
 _init_session_auth_token()
 
 
+def _token_matches(candidate: str | None) -> bool:
+    """Constant-time comparison of a candidate token against the session token."""
+    if not candidate:
+        return False
+    try:
+        return secrets.compare_digest(candidate, _SESSION_AUTH_TOKEN)
+    except (TypeError, ValueError):
+        return False
+
+
+def _set_auth_cookie(response: Response) -> Response:
+    response.set_cookie(AUTH_COOKIE, _SESSION_AUTH_TOKEN, httponly=True, samesite="strict", path="/")
+    # The bootstrap response carries the credential in a Set-Cookie header; a
+    # shared cache must not keep it.
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 def verify_auth_token(
+    request: Request,
     x_s0_auth_token: str | None = Header(None, alias="X-S0-Auth-Token"),
     token: str | None = Query(None),
 ) -> None:
-    """Verify per-session authentication token on protected endpoints."""
-    tok = x_s0_auth_token or token
+    """Verify per-session authentication token on protected endpoints.
+
+    Accepted from, in order: the ``X-S0-Auth-Token`` header (what the dashboard JS
+    sends), the auth cookie (what the browser attaches on its own), then ``?token=``
+    (the one-shot bootstrap ``s0 web`` and the ISO kiosk use to open a browser).
+    The query form is a bootstrap only -- a token in a URL leaks into browser
+    history, ``Referer`` and proxy logs -- so ``GET /`` converts it to a cookie and
+    redirects to a clean URL.
+    """
+    tok = x_s0_auth_token or request.cookies.get(AUTH_COOKIE) or token
     if not tok:
         raise HTTPException(
             status_code=401,
@@ -250,14 +362,23 @@ def _resolve_key(key_path: str | None, key_data: str | None, out_dir: Path | Non
         return custom_key_file, is_demo_key(custom_key_file)
 
     if key_path and key_path.strip():
-        kp = Path(key_path.strip()).resolve()
+        raw = key_path.strip()
+        # Resolve to ONE final candidate *before* any policy check. This used to
+        # check `_SYSTEM_PATHS` against the CWD-relative resolve and only then fall
+        # back to a REPO-relative resolve *without rechecking*. uvicorn runs with
+        # cwd=src/s0/web, so `../../../../etc/hostname` resolved to
+        # `<repo>/etc/hostname` (harmless, not a file) and the fallback then
+        # resolved it to `/etc/hostname` -- a real file, accepted, and passed to the
+        # CLI as `--key`. Checking after resolution makes the base irrelevant.
+        kp = Path(raw)
+        if not kp.is_absolute():
+            kp = REPO / kp
+        kp = kp.resolve()
         for sp in _SYSTEM_PATHS:
             if str(kp) == sp or str(kp).startswith(sp + "/"):
-                raise HTTPException(403, f"Access to system key path is forbidden: {key_path}")
+                raise HTTPException(403, f"Access to system key path is forbidden: {raw}")
         if not kp.is_file():
-            kp = (REPO / key_path.strip()).resolve()
-        if not kp.is_file():
-            raise HTTPException(400, f"Specified signing key not found: {key_path}")
+            raise HTTPException(400, f"Specified signing key not found: {raw}")
         return kp, is_demo_key(kp)
 
     default_key_rel = CONFIG.get("default_key_path", "src/s0/data/keys/demo_issuer_private.pem")
@@ -284,7 +405,14 @@ class WipeRequest(BaseModel):
     )
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     key_path: str | None = None
-    key_data: str | None = None
+    key_data: str | None = Field(
+        default=None,
+        max_length=16_384,
+        description=(
+            "PEM signing key pasted into the UI. Bounded because it is written "
+            "to disk verbatim; a PEM is under 4 KiB."
+        ),
+    )
     out_dir: str | None = None
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
@@ -348,7 +476,14 @@ class FileEraseRequest(BaseModel):
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     key_path: str | None = None
-    key_data: str | None = None
+    key_data: str | None = Field(
+        default=None,
+        max_length=16_384,
+        description=(
+            "PEM signing key pasted into the UI. Bounded because it is written "
+            "to disk verbatim; a PEM is under 4 KiB."
+        ),
+    )
     out_dir: str | None = None
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
@@ -416,7 +551,14 @@ class CarveRequest(BaseModel):
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     out_dir: str | None = None
     key_path: str | None = None
-    key_data: str | None = None
+    key_data: str | None = Field(
+        default=None,
+        max_length=16_384,
+        description=(
+            "PEM signing key pasted into the UI. Bounded because it is written "
+            "to disk verbatim; a PEM is under 4 KiB."
+        ),
+    )
     no_pdf: bool = False
     custom_signatures: list[dict[str, Any]] | None = None
 
@@ -470,7 +612,14 @@ class ImageRequest(BaseModel):
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     out_dir: str | None = None
     key_path: str | None = None
-    key_data: str | None = None
+    key_data: str | None = Field(
+        default=None,
+        max_length=16_384,
+        description=(
+            "PEM signing key pasted into the UI. Bounded because it is written "
+            "to disk verbatim; a PEM is under 4 KiB."
+        ),
+    )
     no_pdf: bool = False
 
     @field_validator("out_dir")
@@ -523,30 +672,83 @@ def _find_target(path: str):
         raise HTTPException(404, f"no such image file: {path}") from None
 
 
-@app.get("/")
-def index() -> HTMLResponse:
-    """Serve the dashboard, injecting the per-session auth token.
+@app.get("/healthz")
+def healthz() -> JSONResponse:
+    """Unauthenticated readiness probe.
 
-    The dashboard JS reads the token from, in order: the ``?token=`` query string,
-    sessionStorage, ``<meta name="s0-auth-token">``, then ``window.appConfig``.
-    Only the first is populated by ``s0 web`` when it opens a browser, so any
-    other way of reaching the dashboard — a bookmark, a reopened tab, the live-ISO
-    kiosk, or a server restarted under a new token — left every API call
-    returning 401 with no visible error. Injecting the meta tag server-side makes
-    ``http://127.0.0.1:8669/`` self-sufficient.
+    Deliberately the only unauthenticated data route, and deliberately returns
+    nothing about the host: no paths, no device list, no version-dependent detail
+    beyond a literal. Readiness checks are conventionally unauthenticated, and the
+    ISO kiosk needs one -- `s0-wait-web` used to poll `/api/devices` with no token,
+    which returns 401, so its `if` test was always false and the kiosk always
+    waited the full 30 s and then failed. Coupling a wait script to the auth
+    token file's permissions is the wrong fix; a probe that exposes nothing does
+    not need one.
+    """
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/")
+def index(
+    request: Request,
+    x_s0_auth_token: str | None = Header(None, alias="X-S0-Auth-Token"),
+    token: str | None = Query(None),
+) -> Response:
+    """Serve the dashboard shell.
+
+    This route used to inject the live session token into a ``<meta>`` tag in
+    unauthenticated HTML. That handed the token to anything able to reach the
+    loopback port -- a top-level navigation from any page in the operator's
+    browser, another local account, a container sharing the network namespace --
+    and the token unlocks every protected endpoint. The reason given was that a
+    bookmark or reopened tab would otherwise 401 with no visible error. That is a
+    real problem, but serving the credential to whoever asks is the wrong fix.
+
+    So the token is never embedded:
+
+    * ``/?token=X`` validates X, returns it as an ``HttpOnly`` cookie, and
+      redirects to a clean ``/``. That is the path ``s0 web`` and the ISO kiosk use,
+      and the redirect is what keeps the token out of history and ``Referer``.
+    * A request already holding a valid cookie or header gets the plain shell.
+    * Anything else gets 401 plus instructions, rather than a dashboard that
+      silently 401s on every click.
     """
     index_path = Path(__file__).parent / "static" / "index.html"
-    content = index_path.read_text(encoding="utf-8")
-    meta = (
-        '<meta name="s0-auth-token" content="'
-        + html.escape(_SESSION_AUTH_TOKEN, quote=True)
-        + '">'
+
+    if token is not None:
+        if not _token_matches(token):
+            return HTMLResponse(_auth_required_page(), status_code=401)
+        return _set_auth_cookie(RedirectResponse(url="/", status_code=303))
+
+    if not _token_matches(x_s0_auth_token) and not _token_matches(
+        request.cookies.get(AUTH_COOKIE)
+    ):
+        return HTMLResponse(_auth_required_page(), status_code=401)
+
+    return HTMLResponse(
+        index_path.read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-store"},
     )
-    if "<head>" in content:
-        content = content.replace("<head>", "<head>\n  " + meta, 1)
-    else:  # pragma: no cover - index.html always has a head
-        content = meta + content
-    return HTMLResponse(content)
+
+
+def _auth_required_page() -> str:
+    """A 401 that says what to do, instead of a dead dashboard."""
+    return (
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<title>s0 - authentication required</title><style>body{font:16px/1.6 "
+        "system-ui,sans-serif;max-width:44rem;margin:4rem auto;padding:0 1.5rem;"
+        "color:#0f172a}code{background:#f1f5f9;padding:.15em .4em;border-radius:3px}"
+        "pre{background:#f1f5f9;padding:1rem;border-radius:6px;overflow:auto}</style>"
+        "</head><body><h1>Authentication required</h1><p>This dashboard serves "
+        "evidence from your machine, so it requires the per-session token that "
+        "<code>s0 web</code> prints at startup.</p><p>Open the authenticated URL, "
+        "which looks like:</p><pre>http://127.0.0.1:8669/?token=&lt;token&gt;</pre>"
+        "<p>The token is also written to <code>~/.s0/web_auth_token</code> (mode "
+        "0600) and printed on the terminal running <code>s0 web</code>. It is "
+        "regenerated every time the server starts.</p><p>If you arrived from a "
+        "bookmark, the server has probably restarted and the token has changed."
+        "</p></body></html>"
+    )
 
 
 @app.get("/api/devices", dependencies=[Depends(verify_auth_token)])
@@ -643,8 +845,14 @@ def api_browse(path: str = ".") -> JSONResponse:
                 "is_dir": entry.is_dir(),
                 "size": entry.stat().st_size if entry.is_file() else 0,
             })
-    except Exception as exc:
-        return JSONResponse({"error": str(exc), "current": str(target), "items": []})
+    except Exception:
+        # The OSError text names server-side directories ("[Errno 13] Permission
+        # denied: '/home/operator/...'"). `current` is already constrained by
+        # _is_safe_browse_path, so the exception string adds leakage, not context.
+        _LOG.exception("browse failed for an already-vetted path")
+        return JSONResponse(
+            {"error": "directory not readable", "current": str(target), "items": []}
+        )
     return JSONResponse({
         "current": str(target),
         "parent": str(target.parent) if target.parent != target and _is_safe_browse_path(target.parent) else None,
@@ -736,14 +944,16 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     if req.portal_url and req.portal_url.strip():
         cmd += ["--portal-url", req.portal_url.strip()]
 
-    with _lock:
-        _jobs[job_id] = {
+    _record_job(
+        job_id,
+        {
             "status": "running",
             "log": [],
             "cmd": cmd[1:],
             "out_dir": str(out_dir),
             "demo_key_warning": is_demo,
-        }
+        },
+    )
 
     def run() -> None:
         try:
@@ -756,14 +966,30 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                     if not clean:
                         continue
                     with _lock:
-                        if clean.startswith("[s0 wipe]") and _jobs[job_id]["log"] and _jobs[job_id]["log"][-1].startswith("[s0 wipe]"):
-                            _jobs[job_id]["log"][-1] = clean
-                        else:
-                            _jobs[job_id]["log"].append(clean)
+                        log = _jobs[job_id]["log"]
+                        if clean.startswith("[s0 wipe]") and log and log[-1].startswith("[s0 wipe]"):
+                            log[-1] = clean
+                        elif len(log) < _MAX_LOG_LINES:
+                            log.append(clean)
+                        elif log[-1] != "... log truncated":
+                            log.append("... log truncated")
 
             pumper = threading.Thread(target=pump_stderr, daemon=True)
             pumper.start()
-            out, _ = proc.communicate()
+            try:
+                out, _ = proc.communicate(timeout=_JOB_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, _ = proc.communicate()
+                _LOG.error("job %s exceeded %ss; killed", job_id, _JOB_TIMEOUT_SECONDS)
+                with _lock:
+                    _jobs[job_id]["status"] = "error"
+                    _jobs[job_id]["result"] = {
+                        "returncode": -1,
+                        "error": "timeout",
+                        "error_id": uuid.uuid4().hex[:12],
+                    }
+                return
             pumper.join(timeout=5)
 
             result: dict = {"returncode": proc.returncode}
@@ -806,9 +1032,14 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
             status = "done" if proc.returncode == 0 else "error"
             with _lock:
                 _jobs[job_id].update(status=status, result=result)
-        except Exception as exc:
+        except Exception:
+            # The client gets a stable code plus a correlation id; the detail
+            # (routinely absolute server paths from OSError and subprocess failures)
+            # goes to the log, where it stays useful.
+            error_id = uuid.uuid4().hex[:12]
+            _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
+                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -828,13 +1059,15 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
-    with _lock:
-        _jobs[job_id] = {
+    _record_job(
+        job_id,
+        {
             "status": "running",
             "log": [f"Sanitizing {len(req.targets)} file/folder targets..."],
             "out_dir": str(out_dir),
             "demo_key_warning": is_demo,
-        }
+        },
+    )
 
     def run() -> None:
         try:
@@ -889,11 +1122,21 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 try:
                     record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key)
                     audit_ledger_recorded = True
-                except Exception as exc:
-                    audit_ledger_error = str(exc)
-                    print(f"Warning: Failed to append to audit ledger: {exc}", file=_sys.stderr)
+                except Exception:
+                    # The operator must know the ledger append failed -- it is the
+                    # tamper-evident record -- but the exception text is not shown:
+                    # it routinely carries absolute paths. Detail goes to the log.
+                    _LOG.exception("audit ledger append failed for job %s", job_id)
+                    audit_ledger_error = "audit_ledger_append_failed"
+                    print(
+                        "Warning: Failed to append to the audit ledger "
+                        "(see the s0 web server log for detail)",
+                        file=_sys.stderr,
+                    )
                     with _lock:
-                        _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {exc}")
+                        _jobs[job_id]["log"].append(
+                            "Warning: Failed to append to the audit ledger"
+                        )
                 cert_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
                 cert_file.write_text(json.dumps(summary.certificate, indent=2))
                 cert_filename = cert_file.name
@@ -928,9 +1171,14 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         "audit_ledger_error": audit_ledger_error,
                     },
                 )
-        except Exception as exc:
+        except Exception:
+            # The client gets a stable code plus a correlation id; the detail
+            # (routinely absolute server paths from OSError and subprocess failures)
+            # goes to the log, where it stays useful.
+            error_id = uuid.uuid4().hex[:12]
+            _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
+                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -951,13 +1199,15 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
-    with _lock:
-        _jobs[job_id] = {
+    _record_job(
+        job_id,
+        {
             "status": "running",
             "log": [f"Scanning {req.target} for carved artifacts..."],
             "out_dir": str(out_dir),
             "demo_key_warning": is_demo,
-        }
+        },
+    )
 
     def run() -> None:
         try:
@@ -1025,11 +1275,21 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 try:
                     record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key)
                     audit_ledger_recorded = True
-                except Exception as exc:
-                    audit_ledger_error = str(exc)
-                    print(f"Warning: Failed to append to audit ledger: {exc}", file=_sys.stderr)
+                except Exception:
+                    # The operator must know the ledger append failed -- it is the
+                    # tamper-evident record -- but the exception text is not shown:
+                    # it routinely carries absolute paths. Detail goes to the log.
+                    _LOG.exception("audit ledger append failed for job %s", job_id)
+                    audit_ledger_error = "audit_ledger_append_failed"
+                    print(
+                        "Warning: Failed to append to the audit ledger "
+                        "(see the s0 web server log for detail)",
+                        file=_sys.stderr,
+                    )
                     with _lock:
-                        _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {exc}")
+                        _jobs[job_id]["log"].append(
+                            "Warning: Failed to append to the audit ledger"
+                        )
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
                 m_file.write_text(json.dumps(summary.manifest_certificate, indent=2))
                 manifest_filename = m_file.name
@@ -1071,9 +1331,14 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                         ],
                     },
                 )
-        except Exception as exc:
+        except Exception:
+            # The client gets a stable code plus a correlation id; the detail
+            # (routinely absolute server paths from OSError and subprocess failures)
+            # goes to the log, where it stays useful.
+            error_id = uuid.uuid4().hex[:12]
+            _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
+                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1113,13 +1378,15 @@ def start_image(req: ImageRequest) -> JSONResponse:
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
-    with _lock:
-        _jobs[job_id] = {
+    _record_job(
+        job_id,
+        {
             "status": "running",
             "log": [f"Acquiring forensic bit-stream from {req.source} to {req.destination}..."],
             "out_dir": str(out_dir),
             "demo_key_warning": is_demo,
-        }
+        },
+    )
 
     def run() -> None:
         try:
@@ -1187,16 +1454,21 @@ def start_image(req: ImageRequest) -> JSONResponse:
                         "error": img_result.error,
                     },
                 )
-        except Exception as exc:
+        except Exception:
+            # The client gets a stable code plus a correlation id; the detail
+            # (routinely absolute server paths from OSError and subprocess failures)
+            # goes to the log, where it stays useful.
+            error_id = uuid.uuid4().hex[:12]
+            _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": str(exc)})
+                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
 
 
 @app.get("/api/audit/blocks", dependencies=[Depends(verify_auth_token)])
-def get_audit_blocks(limit: int = 100, offset: int = 0) -> JSONResponse:
+def get_audit_blocks(limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0)) -> JSONResponse:
     blocks = list_audit_blocks(limit=limit, offset=offset)
     return JSONResponse({
         "total": len(blocks),

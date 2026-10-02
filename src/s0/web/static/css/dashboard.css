@@ -1324,3 +1324,28 @@ details.advanced-panel[open] summary {
   to { opacity: 1; }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Keyboard focus visibility.
+
+   Several rules above set `outline: none` for styling reasons -- nav tabs, the
+   range slider thumb, close buttons. Only the text/number/select/textarea focus
+   state had a replacement (border + glow); everything else was left with no
+   visible indicator at all, so a keyboard user could not tell where they were on
+   a page whose controls include irreversible wipe confirmations.
+
+   `:focus-visible` (rather than `:focus`) keeps the ring off mouse clicks, which
+   is what `outline: none` was usually reaching for in the first place.
+   --------------------------------------------------------------------------- */
+:where(a, button, select, input, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Safety-guard inputs get a stronger ring: they gate irreversible operations. */
+#driveConfirm:focus-visible,
+#cloneConfirmInput:focus-visible {
+  outline: 3px solid var(--accent-red, #ef4444);
+  outline-offset: 2px;
+}
