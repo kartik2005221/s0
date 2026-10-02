@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -298,6 +299,95 @@ def test_no_unsafe_inline_csp_in_the_document(html):
     assert 'http-equiv="Content-Security-Policy"' not in stripped, (
         f"{rel} ships a meta CSP; the _headers policy is the one that counts, and "
         f"having both means only the weaker is applied by some clients.")
+
+
+# --------------------------------------------------------------------------- #
+# asset resolution
+# --------------------------------------------------------------------------- #
+
+SITE = REPO / "site"
+
+_SKIP_SCHEME = re.compile(r"^(?:[a-z]+:|//|#)", re.I)
+
+
+def _local_refs(text: str) -> list[str]:
+    """href/src values that name a file in this repository."""
+    out = []
+    for value in re.findall(r'(?:href|src)="([^"]+)"', text):
+        if _SKIP_SCHEME.match(value):
+            continue
+        out.append(value.split("#", 1)[0].split("?", 1)[0])
+    return [v for v in out if v]
+
+
+def _resolve(base: Path, ref: str) -> Path:
+    """Where a reference points on disk. A leading / is site root, not /."""
+    return (SITE / ref.lstrip("/")) if ref.startswith("/") else (base / ref)
+
+
+@pytest.mark.parametrize("page", sorted(SITE.rglob("*.html")),
+                         ids=lambda p: str(p.relative_to(SITE)))
+def test_every_local_reference_resolves(page):
+    """A 404 for a stylesheet is invisible: the page renders unstyled and the
+    console says nothing an operator would read. The move to one deploy root
+    changed the base every relative path resolves against, so this is checked
+    rather than trusted."""
+    broken = []
+    for ref in _local_refs(page.read_text(encoding="utf-8")):
+        target = _resolve(page.parent, ref)
+        if target.is_dir():
+            if not (target / "index.html").is_file():
+                broken.append(f"{ref} (directory without index.html)")
+        elif not target.exists():
+            broken.append(ref)
+    assert not broken, (
+        f"{page.relative_to(REPO)} references files that do not exist: "
+        f"{sorted(set(broken))}")
+
+
+@pytest.mark.parametrize("sheet", sorted(SITE.rglob("*.css")),
+                         ids=lambda p: str(p.relative_to(SITE)))
+def test_every_local_url_resolves(sheet):
+    broken = []
+    for url in re.findall(r"url\(['\"]?([^'\")]+)", sheet.read_text(encoding="utf-8")):
+        if _SKIP_SCHEME.match(url):
+            continue
+        if not (sheet.parent / url.split("#", 1)[0]).is_file():
+            broken.append(url)
+    assert not broken, (
+        f"{sheet.relative_to(REPO)} references fonts or images that do not exist: "
+        f"{sorted(set(broken))}")
+
+
+MANIFESTS = sorted(
+    p for p in REPO.glob("**/site.webmanifest")
+    if not {".venv", "node_modules", "demo-out", "build", ".git"} & set(p.parts))
+
+
+@pytest.mark.parametrize("manifest", MANIFESTS, ids=lambda p: p.parent.parent.name)
+def test_web_manifests_are_usable(manifest):
+    """Every manifest shipped empty name, empty short_name, a white canvas on a
+    dark interface, and root-absolute icon paths pointing at the site root
+    instead of the directory the icons are in. Installed to a home screen that
+    is an unnamed white tile."""
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    rel = manifest.relative_to(REPO)
+    assert data.get("name"), f"{rel} has no name"
+    assert data.get("short_name"), f"{rel} has no short_name"
+    for key in ("theme_color", "background_color"):
+        colour = data.get(key, "")
+        assert re.fullmatch(r"#[0-9A-Fa-f]{6}", colour), f"{rel}: {key} is {colour!r}"
+        assert colour.lower() not in ("#ffffff", "#fff"), (
+            f"{rel}: {key} is white, which flashes white behind a dark interface. "
+            f"Use the canvas colour for the theme this manifest is for.")
+    icons = data.get("icons") or []
+    assert icons, f"{rel} declares no icons"
+    for icon in icons:
+        src = icon.get("src", "")
+        assert not src.startswith("/"), (
+            f"{rel}: icon {src!r} is root-absolute and resolves to the site root, "
+            f"not to {manifest.parent}")
+        assert (manifest.parent / src).is_file(), f"{rel}: icon {src!r} does not exist"
 
 
 # --------------------------------------------------------------------------- #

@@ -1,0 +1,12 @@
+# sector-zero.pages.dev
+#
+# /verify/ is excluded because it is the only page reached with a query string:
+# a shared verification link carries the certificate in ?cert=, and indexing
+# those would put certificate contents into search results. The verifier itself
+# stays crawlable at /verify/ via its canonical link.
+
+User-agent: *
+Allow: /
+Disallow: /verify/
+
+Sitemap: https://sector-zero.pages.dev/sitemap.xml
