@@ -10,8 +10,16 @@ ExecStart=/usr/bin/python3 -m uvicorn s0.web.app:app --host 127.0.0.1 --port 866
 Restart=always
 RestartSec=3
 
+# /run is a tmpfs, so the chroot hook creating /run/s0 at build time had no effect
+# at boot. systemd owns it now: correct owner, correct mode, and removed on stop.
+# s0-kiosk needs to read the token inside it, hence the group + 0750.
+RuntimeDirectory=s0
+RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=no
+
 # Loopback bind is a hard requirement: a wipe tool must not expose an
 # erase-the-disk API to the network. Root execution is required on bare-metal
 # live media to issue raw disk ioctls (BLKDISCARD, ATA Security Erase, NVMe Sanitize).
+
 [Install]
 WantedBy=multi-user.target

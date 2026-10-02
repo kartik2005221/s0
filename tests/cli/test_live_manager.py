@@ -7,6 +7,7 @@ import sys
 from unittest.mock import MagicMock, patch
 
 from s0.live.live_manager import (
+    EX_NOINPUT,
     _format_size,
     cmd_live_build,
     cmd_live_devices,
@@ -38,13 +39,64 @@ def test_register_live_parser():
     assert args_dl.allow_older is True
 
 
-def test_cmd_live_devices_empty():
+def test_cmd_live_devices_empty_is_a_failure():
+    """Finding no target must be a non-zero exit.
+
+    This asserted `== 0` originally, which enshrined the bug: `s0 live devices &&
+    s0 live flash -t /dev/sdb` chained straight into a flash against a path that
+    was never enumerated. "Found nothing" is a failure to do what was asked.
+    """
     with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]):
         args = argparse.Namespace(json=False)
-        assert cmd_live_devices(args) == 0
+        assert cmd_live_devices(args) == EX_NOINPUT
 
         args_json = argparse.Namespace(json=True)
-        assert cmd_live_devices(args_json) == 0
+        assert cmd_live_devices(args_json) == EX_NOINPUT
+
+
+def test_flash_dry_run_never_writes(tmp_path):
+    """Regression: `--dry-run` said "never write to the target" and wrote anyway.
+
+    `--dry-run` is attached to every subcommand by the shared argument group, and
+    `cmd_live_flash` never read it -- so the documented way to preview a flash
+    overwrote the device. This asserts no write path is reached at all.
+    """
+    iso = tmp_path / "fake.iso"
+    iso.write_bytes(b"\0" * (101 * 1024 * 1024))  # only the size check is bypassed
+
+    real_open = open
+
+    def exploding_open(path, mode="r", *a, **kw):
+        if "w" in mode or "a" in mode or "+" in mode:
+            raise AssertionError(f"dry-run attempted to open {path!r} for writing")
+        return real_open(path, mode, *a, **kw)
+
+    args = argparse.Namespace(
+        target="/dev/sdz", iso=str(iso), yes=True, force=True, dry_run=True,
+    )
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]), \
+         patch("builtins.open", side_effect=exploding_open), \
+         patch("sys.platform", "linux"), \
+         patch("os.geteuid", return_value=0):
+        assert cmd_live_flash(args) == 0
+
+
+def test_flash_force_still_requires_a_block_device(tmp_path):
+    """`--force` waives the removable-USB check, not basic sanity.
+
+    A typo like `--target sdb` previously created a regular file named `sdb` in
+    the working directory through `open(target, "wb")` and reported success.
+    """
+    missing = tmp_path / "not-a-device"
+    iso = tmp_path / "fake.iso"
+    iso.write_bytes(b"\0" * (101 * 1024 * 1024))
+    args = argparse.Namespace(
+        target=str(missing), iso=str(iso), yes=True, force=True, dry_run=False,
+    )
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]), \
+         patch("sys.platform", "linux"), \
+         patch("os.geteuid", return_value=0):
+        assert cmd_live_flash(args) == 2
 
 
 def test_cmd_live_devices_with_mocked_drives(capsys):

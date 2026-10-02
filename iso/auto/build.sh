@@ -14,7 +14,14 @@ STAGING_DIR="$(pwd)/config/includes.chroot/root/repo-snapshot"
 echo "==> staging repo snapshot ($REPO_ROOT) -> $STAGING_DIR"
 mkdir -p "$STAGING_DIR"
 trap 'rm -rf "$STAGING_DIR"' EXIT INT TERM
-cp -r "$REPO_ROOT/src" "$STAGING_DIR/"
+# src/s0/data/keys/README.md states the private signing key "never lives in
+  # this repository and is never shipped inside any application bundle. Not the
+  # Linux ISO". Copying src/ wholesale put the demo private key into every ISO,
+  # and the ISO config pointed default_key_path at it, so the appliance signed
+  # certificates with a key anyone can read. Stage src/ without private keys.
+  cp -r "$REPO_ROOT/src" "$STAGING_DIR/"
+  find "$STAGING_DIR/src" -type f \( -name '*private*.pem' -o -name '*private*.key' \) -delete
+  find "$STAGING_DIR/src" -type d -name '__pycache__' -prune -exec rm -rf {} +
 if [ -d "$REPO_ROOT/portals" ]; then
     cp -r "$REPO_ROOT/portals" "$STAGING_DIR/"
 fi
@@ -29,21 +36,30 @@ if [ -f "$REPO_ROOT/s0_config.json" ]; then
 fi
 
 
-echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
-if [ "$(id -u)" -eq 0 ]; then
-    lb clean --purge 2>/dev/null || true
-else
-    sudo lb clean --purge 2>/dev/null || true
-fi
-lb config noauto \
+  # One privilege prefix for every live-build call. `lb config` used to run
+  # unsudoed while `lb build` ran under `sudo`, and sudo does not inherit
+  # LB_DIR -- so the build came from /root/.live-build with none of the options
+  # below applied: not --binary-images iso-hybrid, not --distribution bookworm.
+  if [ "$(id -u)" -eq 0 ]; then
+      SUDO=""
+  else
+      SUDO="sudo"
+  fi
+
+  echo "==> configuring live-build (debian bookworm amd64, minimal + chromium)"
+  # Not silenced: a failed purge leaves the previous config in place and the
+  # build would continue against stale, mixed state.
+  $SUDO lb clean --purge || echo "WARN: 'lb clean --purge' failed; continuing with existing config" >&2
+  $SUDO lb config noauto \
     --architecture amd64 \
     --distribution bookworm \
-    --archive-areas "main contrib" \
+    --archive-areas "main contrib security" \
     --mode debian \
     --mirror-bootstrap "http://deb.debian.org/debian" \
     --mirror-chroot "http://deb.debian.org/debian" \
     --mirror-binary "http://deb.debian.org/debian" \
-    --security false \
+    --security true \
+    --security-mirror "http://security.debian.org/debian-security" \
     --apt-indices false \
     --binary-images iso-hybrid \
     --bootappend-live "boot=live components quiet splash hostname=s0" \
@@ -52,11 +68,16 @@ lb config noauto \
     "${@}"
 
 
-if [ "$(id -u)" -eq 0 ]; then
-    lb build
-else
-    sudo lb build
-fi
+  $SUDO lb build
 
-echo "==> done: $(pwd)/live-image-amd64.hybrid.iso"
+  # `lb build` returning 0 was the only success check, and the script then
+  # printed a path that need not exist. iso/container_build.sh already does this.
+  ISO="live-image-amd64.hybrid.iso"
+  if [ ! -s "$ISO" ]; then
+      echo "ERROR: 'lb build' reported success but produced no $ISO" >&2
+      echo "       Run 'lb build' by hand to see the failure." >&2
+      exit 1
+  fi
+
+  echo "==> done: $(pwd)/$ISO"
 echo "    smoke-test it headless: ./qemu-test.sh live-image-amd64.hybrid.iso"

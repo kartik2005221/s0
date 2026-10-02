@@ -15,6 +15,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import urllib.error
@@ -186,13 +187,31 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
 # 2. Command: s0 live devices
 # ---------------------------------------------------------------------------
 
+#: sysex(3) exit codes. Imported from neither `sysex` (absent from minimal and
+#: Windows Python builds) nor `os` (POSIX-only), so they are spelled out. The
+#: values are fixed by sysex.h.
+#:
+#: * `EX_NOINPUT` (66) - an input device does not exist. `s0 live devices`
+#:   finding no removable USB used to return 0, so `s0 live devices &&
+#:   s0 live flash -t /dev/sdb` chained into a flash against a path that was
+#:   never enumerated.
+#: * `EX_TEMPFAIL` (75) - a temporary failure such as the operator declining an
+#:   irreversible action. `s0 live flash` used to return 0 on abort, so
+#:   `s0 live flash ... && echo "USB ready"` printed "USB ready" after a refusal.
+EX_NOINPUT = 66
+EX_TEMPFAIL = 75
+
+
 def cmd_live_devices(args: argparse.Namespace) -> int:
     """List available removable USB drives safely."""
     devs = get_removable_usb_devices()
 
     if getattr(args, "json", False):
         print(json.dumps(devs, indent=2))
-        return 0
+        # Same rule in machine-readable mode: an empty list is a failure to find a
+        # target, not a successful listing. Returning 0 here while the text path
+        # returned EX_NOINPUT made `--json` the odd one out for scripts.
+        return EX_NOINPUT if not devs else 0
 
     print("[s0 live]  Detected Removable USB Target Drives:")
     print("━" * 68)
@@ -200,7 +219,10 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
         print("  (No removable USB drives detected)")
         print()
         print("  Tip: Insert a USB pendrive and ensure it is recognized by your OS.")
-        return 0
+        # Non-zero: "found no target" is a failure to do the job asked for.
+        # Returning 0 meant `s0 live devices && s0 live flash -t /dev/sdb`
+        # chained straight into a flash against a path never enumerated.
+        return EX_NOINPUT
 
     print(f"  {'#':<3} {'Target Device':<24} {'Capacity':<14} {'Model / Description'}")
     print(f"  {'-'*3} {'-'*24} {'-'*14} {'-'*22}")
@@ -646,6 +668,12 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
         print("    Run 's0 live devices' to see connected USB flash drives.", file=sys.stderr)
         return 2
 
+    # `--dry-run` is attached to every s0 subcommand with the help text "plan
+    # only; never write to the target", and `cmd_live_flash` never read it. So the
+    # documented way to preview a flash -- `s0 live flash --dry-run` -- wrote the
+    # ISO to the device. Honour it before anything is touched.
+    dry_run = bool(getattr(args, "dry_run", False))
+
     # Resolve ISO
     iso_path: Path | None = None
     if getattr(args, "iso", None):
@@ -665,6 +693,20 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
     if iso_size < 100 * 1024 * 1024:
         print(f"[s0 live]  ERROR : Selected file {iso_path.name} is too small ({_format_size(iso_size)}) to be a valid Live ISO.", file=sys.stderr)
         return 2
+
+    if dry_run:
+        print("[s0 live]  Dry run: no writes will be performed.")
+        print("━" * 68)
+        print(f"  Source ISO:       {iso_path.name} ({_format_size(iso_size)})")
+        print(f"  Target Device:    {target_arg}")
+        verified = any(
+            d["path"].lower() == target_arg.lower() for d in get_removable_usb_devices()
+        )
+        print(f"  Verified USB:     {'yes' if verified else 'no (--force would be required)'}")
+        print()
+        print("[s0 live]  Planned action: write the ISO to the target device.")
+        print("    Re-run without --dry-run, and answer the FLASH confirmation, to proceed.")
+        return 0
 
     # Check root privileges
     if sys.platform in ("linux", "darwin") and hasattr(os, "geteuid") and os.geteuid() != 0:
@@ -697,7 +739,32 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
             print("[s0 live]  ERROR : Refusing to write to unverified or potentially internal disk for safety.", file=sys.stderr)
             print("    If you are certain, pass '--force' alongside confirmation.", file=sys.stderr)
             return 2
-        matched_device = {"path": target_arg, "model": "Manual Target", "size_human": "Unknown", "platform": sys.platform}
+        # `--force` waives the removable-USB check, not basic existence. Without
+        # this, a typo like `--target sdb` created a regular file called `sdb` in
+        # the working directory via `open(target, "wb")` and reported success.
+        forced = Path(target_arg)
+        if not forced.exists():
+            print(f"[s0 live]  ERROR : Target '{target_arg}' does not exist.", file=sys.stderr)
+            print("    Check the path from 's0 live devices'.", file=sys.stderr)
+            return 2
+        if not stat.S_ISBLK(os.stat(forced).st_mode):
+            print(
+                f"[s0 live]  ERROR : Target '{target_arg}' is not a block device.",
+                file=sys.stderr,
+            )
+            print("    Refusing to write an ISO to a regular file or directory.", file=sys.stderr)
+            return 2
+        try:
+            forced_size = os.stat(forced).st_size
+        except OSError:
+            forced_size = 0
+        matched_device = {
+            "path": target_arg,
+            "model": "Manual Target (unverified)",
+            "size_human": _format_size(forced_size),
+            "size_bytes": forced_size,
+            "platform": sys.platform,
+        }
 
     target_capacity = matched_device.get("size_bytes", 0)
     if target_capacity and target_capacity < iso_size:
@@ -718,11 +785,13 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
         try:
             confirm = input("Type 'FLASH' to proceed with writing to USB: ").strip()
             if confirm != "FLASH":
+                # Non-zero: `s0 live flash ... && echo "USB ready"` printed
+                # "USB ready" after the operator declined to flash.
                 print("[s0 live]  Aborted: Confirmation did not match 'FLASH'.")
-                return 0
+                return EX_TEMPFAIL
         except (KeyboardInterrupt, EOFError):
             print("\n[s0 live]  Aborted by user.")
-            return 0
+            return EX_TEMPFAIL
 
     print("[s0 live]  Unmounting existing filesystems on target drive...")
     _unmount_partitions(matched_device["path"])

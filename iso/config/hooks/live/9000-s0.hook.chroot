@@ -48,11 +48,23 @@ EOF
 chmod 0755 /usr/local/bin/s0 /usr/local/bin/s0-verify
 
 echo "==> kiosk user and security group (s0-kiosk)"
-groupadd -r s0-kiosk 2>/dev/null || true
-useradd -m -s /bin/bash -G video,input,render,s0-kiosk s0 2>/dev/null || usermod -aG s0-kiosk s0 2>/dev/null || true
-mkdir -p /run/s0
-chown root:s0-kiosk /run/s0 2>/dev/null || true
-chmod 0750 /run/s0 2>/dev/null || true
+# No `|| true` here. These swallowed every failure: if groupadd failed, the
+# useradd -G failed, the usermod failed, and the hook exited 0 having created no
+# kiosk user at all. The web tier then fell back to a 0600 root-owned token, the
+# `s0` user could not read it, app.py swallowed that, and s0-kiosk.service sat in
+# a Restart=always loop with nothing on the console. A build that cannot make the
+# kiosk work should fail at build time, not at boot.
+getent group s0-kiosk >/dev/null || groupadd -r s0-kiosk
+if getent passwd s0 >/dev/null; then
+    usermod -aG video,input,render,s0-kiosk s0
+else
+    useradd -m -s /bin/bash -G video,input,render,s0-kiosk s0
+fi
+
+# /run is a tmpfs: a directory created here does not exist at boot, so the
+# 0750/root:s0-kiosk posture below never applied. s0-web.service now declares
+# RuntimeDirectory=s0 with RuntimeDirectoryMode=0750, which systemd creates at
+# boot with correct ownership and cleans up on stop.
 
 echo "==> systemd services: local web dashboard server + chromium kiosk autostart"
 # (unit files ship via config/includes.chroot)
