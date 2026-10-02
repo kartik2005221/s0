@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "cert_uuid": "ed0ef1cf-dcc3-4996-888a-bfdf9836270d",
+  "issued_at": "2026-10-02T13:31:38Z",
+  "issuer": {
+    "organization": "Digital Forensics & Data Sanitization Lab",
+    "operator_id": "op-forensic"
+  },
+  "tool": {
+    "name": "s0-erase",
+    "version": "2.4.4",
+    "platform": "linux"
+  },
+  "device": {
+    "device_id": "batch-files-e94200043986f7a5",
+    "device_type": "folder_tree",
+    "storage_type": "folder_tree",
+    "capacity_bytes": 10
+  },
+  "wipe": {
+    "method": "OVERWRITE_ZERO_1PASS",
+    "nist_category": "Clear",
+    "start_time": "2026-10-02T13:31:38Z",
+    "end_time": "2026-10-02T13:31:38Z",
+    "bytes_processed": 10,
+    "passes": 1,
+    "pattern": "zero"
+  },
+  "result": {
+    "status": "success",
+    "verification": {
+      "method": "post_erase_absence_and_overwrite_readback",
+      "samples_checked": 2,
+      "sample_bytes_each": 0,
+      "all_samples_match_wipe_pattern": true,
+      "planted_pattern_hits_after": 0,
+      "population_blocks": 2,
+      "confidence_percent": 100,
+      "attestation": "exhaustive re-stat of every path supplied to this operation; this is not a statistical sample and carries no residual bound",
+      "sample_strategy": "exhaustive_over_supplied_paths; note that the supplied list cannot itself be verified complete, so this attests absence for the paths given and not for the volume"
+    }
+  },
+  "notes": [
+    "Batch sanitized 2/2 files (10 bytes overwritten).",
+    "Target classification: folder_tree \u2014 0 director(ies), 1 file(s) supplied.",
+    "Verification: each target was re-stat()ed after overwrite; the file is unlinked and no residual data was readable.",
+    "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
+    "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
+    "Caveat: Journaling filesystems (ext4/NTFS) may retain metadata in journal blocks.",
+    "Caveat: Flash storage (SSDs/NVMe) Flash Translation Layer (FTL) wear leveling may prevent physical overwriting of retired blocks."
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "public_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
+    "signature_base64url": "-cKXb776h94GKbxPg3E_OLe0Ul4itJauUf9WlITg1F9vLaT9Zna8yOkvX9MhOw4FQXjjXcpioPWLpOSRu1b-Bg",
+    "signed_payload_hash": "sha256:494dc1080a80b6571c3144e73030f0fe5fbd53bbdadd1cf07f63fd411b7e6bb1"
+  }
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -53,15 +54,78 @@ def find_config_file() -> Path | None:
 def load_config() -> dict[str, Any]:
     cfg = dict(DEFAULT_CONFIG)
     cfg_file = find_config_file()
+
+    env_path = os.environ.get("S0_CONFIG_PATH")
+    if env_path and not Path(env_path).is_file():
+        # Set explicitly but pointing nowhere: that is a mistake worth naming.
+        print(
+            f"[s0 config]  WARNING: S0_CONFIG_PATH={env_path!r} does not exist; "
+            "ignoring it and using defaults.",
+            file=sys.stderr,
+        )
+
     if cfg_file:
         try:
             with open(cfg_file, encoding="utf-8") as f:
                 user_cfg = json.load(f)
-                if isinstance(user_cfg, dict):
-                    cfg.update(user_cfg)
-        except Exception:
-            pass
+        except json.JSONDecodeError as exc:
+            # Previously swallowed by `except Exception: pass`, so a config with a
+            # typo produced defaults and no diagnostic at all.
+            print(
+                f"[s0 config]  ERROR: {cfg_file} is not valid JSON ({exc}).\n"
+                "             Fix the file, or unset S0_CONFIG_PATH to use defaults.\n"
+                "             Continuing with built-in defaults.",
+                file=sys.stderr,
+            )
+        except OSError as exc:
+            print(
+                f"[s0 config]  WARNING: cannot read {cfg_file} ({exc}); "
+                "using built-in defaults.",
+                file=sys.stderr,
+            )
+        else:
+            if not isinstance(user_cfg, dict):
+                print(
+                    f"[s0 config]  ERROR: {cfg_file} must contain a JSON object, "
+                    f"got {type(user_cfg).__name__}; using built-in defaults.",
+                    file=sys.stderr,
+                )
+            else:
+                _warn_on_type_mismatches(cfg_file, cfg, user_cfg)
+                cfg.update(user_cfg)
     return cfg
+
+
+def _warn_on_type_mismatches(path, defaults, supplied) -> None:
+    """Flag config values whose type contradicts the built-in default.
+
+    Values are otherwise trusted blindly, which let `{"version": {"a": 1}}` reach
+    the machine-readable envelope as `"{'a': 1}"` and `{"api_port":
+    "not-a-number"}` flow into `s0 web --port`. Typing them is a separate change;
+    saying so is cheap and prevents the silent nonsense.
+    """
+    for key, value in supplied.items():
+        if key not in defaults:
+            print(
+                f"[s0 config]  WARNING: unknown key {key!r} in {path}; it will be "
+                "ignored by s0 but kept in the merged config.",
+                file=sys.stderr,
+            )
+            continue
+        expected = type(defaults[key])
+        if expected is bool:
+            if not isinstance(value, bool):
+                print(
+                    f"[s0 config]  WARNING: {key!r} should be a boolean, got "
+                    f"{type(value).__name__} in {path}.",
+                    file=sys.stderr,
+                )
+        elif isinstance(value, bool) or not isinstance(value, expected):
+            print(
+                f"[s0 config]  WARNING: {key!r} should be {expected.__name__}, got "
+                f"{type(value).__name__} in {path}.",
+                file=sys.stderr,
+            )
 
 
 CONFIG = load_config()

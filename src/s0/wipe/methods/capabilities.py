@@ -500,7 +500,43 @@ def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> dict
     """
     methods = caps.available_methods()
     purge = [m for m in methods if m[1] in (Tiers.FIRMWARE_PURGE, Tiers.CRYPTOGRAPHIC_ERASE)]
-    satisfiable = bool(purge) if requested_tier == "Purge" else True
+
+    # Tiers are ordered. A request for a *higher* tier can only be satisfied by
+    # something at least that high, so it reduces to "is Purge available?".
+    #
+    # This used to be `if requested_tier == "Purge" else True`, so
+    # `--require-tier Destroy` was reported satisfiable on any device and s0 went
+    # ahead and wiped at Clear. `--require-tier` is a promise to the operator that
+    # the tier they named is the tier they get; silently substituting a lower one is
+    # the exact failure `--allow-downgrade` exists to make explicit. main.py's own
+    # docstring promises "never a silent one".
+    if requested_tier == "Clear":
+        satisfiable = True
+    elif requested_tier in ("Purge", "Destroy"):
+        satisfiable = bool(purge)
+    else:
+        satisfiable = False
+
+    if satisfiable:
+        refusal_reason = None
+    elif requested_tier == "Destroy":
+        refusal_reason = (
+            f"{caps.path} offers no technique at or above the requested tier "
+            f"Destroy. Destroy is a physical/destructive category: no software "
+            f"command can satisfy it, and s0 will not report otherwise. Available "
+            f"techniques reach at most {caps.best_tier()}. Choose --require-tier "
+            f"Purge with --allow-downgrade to record an explicit, signed decision "
+            f"to accept a lower tier."
+        )
+    else:
+        refusal_reason = (
+            f"{caps.path} reports no firmware-mediated Purge method (no ATA Sanitize, "
+            f"no NVMe Sanitize, no SCSI SANITIZE, no FDE key destruction). The only "
+            f"available techniques are Clear-equivalent. s0 will not issue a Purge "
+            f"claim it cannot substantiate; use --allow-downgrade to record an "
+            f"explicit, signed decision to accept Clear instead."
+        )
+
     return {
         "requested_tier": requested_tier,
         "satisfiable": satisfiable,
@@ -509,11 +545,5 @@ def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> dict
         "ladder": [
             {"method": m, "tier": t, "mechanism": mech} for m, t, mech in methods
         ],
-        "refusal_reason": None if satisfiable else (
-            f"{caps.path} reports no firmware-mediated Purge method (no ATA Sanitize, "
-            f"no NVMe Sanitize, no SCSI SANITIZE, no FDE key destruction). The only "
-            f"available techniques are Clear-equivalent. s0 will not issue a Purge "
-            f"claim it cannot substantiate; use --allow-downgrade to record an "
-            f"explicit, signed decision to accept Clear instead."
-        ),
+        "refusal_reason": refusal_reason,
     }

@@ -790,6 +790,23 @@ def cmd_wipe(args) -> int:
 
     plan = candidate.method.plan(target)
 
+    if getattr(args, "dry_run", False):
+        # `--dry-run` is attached to every subcommand with the help text "plan
+        # only; never write to the target", and only `s0 live flash` ever read it.
+        # So the documented way to preview a wipe actually wiped the target.
+        # Verified by probe: a 4 MB image's md5 changed under `s0 wipe --dry-run`.
+        ui.line("[s0 wipe]  Dry run: nothing will be written.")
+        ui.note(f"target:  {target.path}")
+        ui.note(f"kind:    {target.kind}")
+        if getattr(target, "capacity_bytes", None):
+            ui.note(f"size:    {target.capacity_bytes} bytes")
+        ui.note(f"method:  {plan.method_id}")
+        ui.note(f"tier:    {plan.nist_category}")
+        for w in warnings:
+            ui.note(f"warning: {w}")
+        ui.note("Re-run without --dry-run to perform this operation.")
+        return 0
+
     hpa_dco = None
     is_virtual_block = target.path.startswith(("/dev/loop", "/dev/ram", "/dev/zram"))
     if target.kind == "block" and not target.path.startswith("/dev/nvme") and not is_virtual_block:
@@ -839,14 +856,32 @@ def cmd_wipe(args) -> int:
                     "and fixture-tested here, but real-world behaviour varies by vendor "
                     "and firmware revision. Verify device support before relying on it.")
         try:
-            answer = input(
+            # The prompt goes to stderr: stdout is reserved for records, and a
+            # prompt is chrome. `input()` writes to stdout by default.
+            print(
                 f"\nType '{target.path}' to confirm permanent erasure "
-                f"({plan.method_id}, NIST {plan.nist_category}): ")
+                f"({plan.method_id}, NIST {plan.nist_category}): ",
+                end="", file=sys.stderr, flush=True,
+            )
+            answer = input()
         except (EOFError, KeyboardInterrupt):
-            answer = ""
+            # An interrupt is not a success. Previously a Ctrl-C here was
+            # swallowed into answer="" and then exited 0, so
+            # `s0 wipe --yes-less && next_step` ran the next step.
+            ui.note("Aborted by interrupt - nothing was written.")
+            return EX_TEMPFAIL
+        except RuntimeError:
+            # `input()` raises RuntimeError("lost sys.stdin") when fd 0 is closed,
+            # which is what happens under `s0 wipe --target X <&-`. It was not
+            # caught, so that produced a raw traceback.
+            ui.note("Cannot confirm: standard input is closed. Refusing to write.")
+            return EX_TEMPFAIL
         if answer.strip() != str(target.path):
+            # Non-zero: an operator abort is not a completed operation.
+            # `s0 wipe --target X && echo "wipe succeeded"` printed "succeeded"
+            # after the operator deliberately declined.
             ui.note("Aborted - nothing was written.")
-            return EX_OK
+            return EX_TEMPFAIL
     else:
         ui.note(f"[s0 wipe plan] target={target.path} method={plan.method_id} "
                 f"tier={plan.nist_category}")
@@ -1080,7 +1115,7 @@ def cmd_erase_files(args) -> int:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
         return 2
 
-    print("==> S0: Secure File & Folder Sanitization")
+    print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
 
     key_path = default_issuer_key(getattr(args, "key", None))
     _warn_if_demo_key(key_path)
@@ -1097,7 +1132,7 @@ def cmd_erase_files(args) -> int:
         print("WARNING: --no-certificate specified. No compliance certificate or audit log will be generated.", file=sys.stderr)
 
     targets = [Path(t) for t in args.targets]
-    print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}")
+    print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
 
     total_est = sum(p.stat().st_size for p in targets if p.is_file()) * getattr(args, "passes", 1)
     bar = ProgressBar(max(total_est, 1024), operation="s0 wipe") if total_est > 0 else None
@@ -1126,15 +1161,15 @@ def cmd_erase_files(args) -> int:
         print("\n⚠  Erasure interrupted by user (Ctrl+C). Some files may be partially erased.", file=sys.stderr)
         return 130
 
-    print(f"\n[s0 erase-file]  Files Processed : {summary.total_files}")
-    print(f"[s0 erase-file]  Successful      : {summary.successful_files}")
-    print(f"[s0 erase-file]  Failed          : {summary.failed_files}")
-    print(f"[s0 erase-file]  Bytes Sanitized : {summary.total_bytes_processed} bytes")
+    print(f"\n[s0 erase-file]  Files Processed : {summary.total_files}", file=sys.stderr)
+    print(f"[s0 erase-file]  Successful      : {summary.successful_files}", file=sys.stderr)
+    print(f"[s0 erase-file]  Failed          : {summary.failed_files}", file=sys.stderr)
+    print(f"[s0 erase-file]  Bytes Sanitized : {summary.total_bytes_processed} bytes", file=sys.stderr)
 
     if summary.certificate:
         try:
             blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key_path)
-            print(f"[s0 erase-file]  Audit Ledger    : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)")
+            print(f"[s0 erase-file]  Audit Ledger    : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)", file=sys.stderr)
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -1142,7 +1177,7 @@ def cmd_erase_files(args) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         cert_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
         cert_p.write_text(json.dumps(summary.certificate, indent=2) + "\n")
-        print(f"[s0 erase-file]  Certificate     : {cert_p}")
+        print(f"[s0 erase-file]  Certificate     : {cert_p}", file=sys.stderr)
 
         if not getattr(args, "no_pdf", False):
             try:
@@ -1155,7 +1190,7 @@ def cmd_erase_files(args) -> int:
                 qr_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(summary.certificate, qr_p)
-                print(f"[s0 erase-file]  PDF Certificate : {pdf_p}")
+                print(f"[s0 erase-file]  PDF Certificate : {pdf_p}", file=sys.stderr)
             except Exception:
                 pass
         if getattr(args, "json", False):
@@ -1163,7 +1198,7 @@ def cmd_erase_files(args) -> int:
                 "status": "success" if summary.failed_files == 0 else "failure",
                 "successful_files": summary.successful_files,
                 "failed_files": summary.failed_files,
-                "bytes_overwritten": summary.bytes_overwritten,
+                "bytes_overwritten": summary.total_bytes_processed,
                 "certificate": str(cert_p) if summary.certificate else None,
                 "cert_uuid": summary.certificate.get("cert_uuid") if summary.certificate else None
             }, indent=2))

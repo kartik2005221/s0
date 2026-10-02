@@ -1248,9 +1248,29 @@ All `s0` subcommands follow a consistent three-value exit code contract, compati
 
 | Code | Symbolic | Meaning | Typical Triggers |
 |------|----------|---------|-----------------|
-| `0` | `SUCCESS` | Operation completed successfully. | Wipe done, cert issued; audit chain valid; verification passed. |
-| `1` | `OPERATION_FAILURE` | Operation was attempted but failed at runtime. | Hardware command rejected; signature mismatch; post-wipe verification found non-zero blocks. |
-| `2` | `USAGE_SAFETY_ERROR` | Refused to run due to bad arguments or a safety interlock. | Missing required flag; target is mounted (without `--force`); target is the root device; invalid flag value. |
+| `0` | `EX_OK` | Operation completed successfully. | Wipe done, cert issued; audit chain valid; verification passed. |
+| `1` | `EX_FAILURE` | Operation was attempted but failed at runtime. | Hardware command rejected; signature mismatch; post-wipe verification found non-zero blocks. |
+| `2` | usage/safety | Refused to run due to a safety interlock. | Target is mounted (without `--force`); target is the root device; target is not a block device; ISO too small for the device. |
+| `64` | `EX_USAGE` | Bad flags or arguments. | Missing required flag; unparseable subcommand. |
+| `65` | `EX_DATAERR` | User-supplied data is malformed. | Certificate is not valid JSON; signature payload does not match the schema. |
+| `66` | `EX_NOINPUT` | Input file missing or unreadable. | `--target` does not exist; `s0 live devices` found no removable USB drive. |
+| `69` | `EX_UNAVAILABLE` | A required program or service is unavailable. | A required helper binary is not installed and no fallback exists. |
+| `70` | `EX_SOFTWARE` | An internal invariant failed. | Should not occur; please report. |
+| `73` | `EX_CANTCREAT` | Output could not be created. | `--out-dir` is not writable or does not exist. |
+| `74` | `EX_IOERR` | I/O error while reading or writing. | Source image unreadable; write failed part-way. |
+| `75` | `EX_TEMPFAIL` | Temporary failure, including operator abort. | Requested tier not satisfiable and `--allow-downgrade` was not given; the confirmation prompt did not match; Ctrl-C at a prompt. |
+| `77` | `EX_NOPERM` | Insufficient privileges. | Wipe without root; key file not readable. |
+| `78` | `EX_CONFIG` | Configuration error. | No issuer signing key configured and `--no-certificate` was not given. |
+| `130` | `EX_INTERRUPTED` | Interrupted by SIGINT. | Ctrl-C during a wipe, carve or acquisition. The target may be partially written and must not be released. |
+
+> **A non-zero exit is never a success.** Operator abort and "found no target"
+> both return non-zero, so `s0 <cmd> && next_step` cannot run `next_step` after a
+> refusal. Before this was fixed, `s0 live flash ... && echo "USB ready"` printed
+> "USB ready" after the operator declined to flash.
+
+Only `0` and `1` are safe to treat as "ran but failed" in a CI gate. `2` means a
+safety interlock refused the operation, and `66` may mean the input never existed.
+Distinguish them if your pipeline needs to.
 
 ```bash
 s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (exit $?)"
@@ -1357,21 +1377,42 @@ jq -r '.files[] | select(.extension == "sqlite") | .path' \
   done
 ```
 
-### --json event stream schema
+### --json output envelope
 
-When `--json` is passed to `s0 wipe`, each event is a newline-delimited JSON object (ndjson):
+`--json` emits **exactly one** JSON document on stdout, not a stream of events. The
+documented ndjson event stream (`"event": "start" | "progress" | "verify" |
+"complete" | "error"`) never existed -- there is no `event` key in any envelope, so
+`grep '"event":"complete"'` matched nothing, forever.
 
-| `event` value | Additional fields | Description |
-|---------------|-------------------|-------------|
-| `"start"` | `target`, `method`, `nist_category` | Emitted before the erase command runs. |
-| `"progress"` | `stage`, `elapsed_s`, and method-specific fields | Periodic progress updates. |
-| `"verify"` | `samples`, `hits`, `lba_list` | Post-wipe verification result. |
-| `"complete"` | `nist_category`, `cert_uuid`, `cert_path` | Emitted after certificate is written. |
-| `"error"` | `code`, `message` | Emitted on any failure; exit code will be non-zero. |
+Every subcommand that supports `--json` emits the same envelope:
+
+| Key | Meaning |
+|---|---|
+| `schema` | `s0.<command>/1` |
+| `schema_version` | Semantic version of the envelope shape |
+| `tool` | `name`, `version`, `platform` |
+| `invocation` | `command`, `args`, and timing fields |
+| `status` | `success` or `failure` |
+| `warnings`, `errors` | Non-fatal warnings and fatal errors |
+| `result` | Command-specific payload |
+| `artifacts` | Files written, with absolute paths. Omitted when empty. |
+| `audit` | Audit-ledger record. Omitted when not recorded. |
+| `signature` | Certificate signature block. Omitted when unsigned. |
+
+Numbers are integers only: Canonical JSON v1 forbids floats, so percentages and
+sizes are emitted as integer fields. A document carries no floats.
+
+Human output -- banners, progress, tables, warnings -- always goes to **stderr**, so
+piping stdout yields only the JSON document:
 
 ```bash
-grep '"event":"complete"' wipe.log | jq -r '.cert_path'
+s0 wipe --target disk.img --yes --json 2>/dev/null | jq -r '.artifacts[]?.path'
+s0 wipe --target disk.img --json --dry-run   # plan only; nothing is written
 ```
+
+> `--format csv` is currently emitted by `s0 list` only. Other subcommands accept
+> the flag and emit nothing on stdout, which is a bug rather than a contract --
+> prefer `--json`.
 
 ---
 

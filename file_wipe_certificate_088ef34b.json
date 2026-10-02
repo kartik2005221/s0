@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "cert_uuid": "088ef34b-7204-416a-bf9a-052b2d079243",
+  "issued_at": "2026-10-02T13:19:37Z",
+  "issuer": {
+    "organization": "Digital Forensics & Data Sanitization Lab",
+    "operator_id": "op-forensic"
+  },
+  "tool": {
+    "name": "s0-erase",
+    "version": "2.4.4",
+    "platform": "linux"
+  },
+  "device": {
+    "device_id": "batch-files-1947bb835a56e3f9",
+    "device_type": "file",
+    "storage_type": "file",
+    "capacity_bytes": 0
+  },
+  "wipe": {
+    "method": "OVERWRITE_ZERO_1PASS",
+    "nist_category": "Clear",
+    "start_time": "2026-10-02T13:19:37Z",
+    "end_time": "2026-10-02T13:19:37Z",
+    "bytes_processed": 0,
+    "passes": 1,
+    "pattern": "zero"
+  },
+  "result": {
+    "status": "failure",
+    "errors": [
+      "Target is not an existing regular file"
+    ],
+    "verification": {
+      "method": "post_erase_absence_and_overwrite_readback",
+      "samples_checked": 1,
+      "sample_bytes_each": 0,
+      "all_samples_match_wipe_pattern": false,
+      "planted_pattern_hits_after": 1,
+      "population_blocks": 1,
+      "confidence_percent": 100,
+      "attestation": "exhaustive re-stat of every path supplied to this operation; this is not a statistical sample and carries no residual bound",
+      "sample_strategy": "exhaustive_over_supplied_paths; note that the supplied list cannot itself be verified complete, so this attests absence for the paths given and not for the volume"
+    }
+  },
+  "notes": [
+    "Batch sanitized 0/1 files (0 bytes overwritten).",
+    "Target classification: file \u2014 0 director(ies), 1 file(s) supplied.",
+    "Verification: each target was re-stat()ed after overwrite; the file is unlinked and no residual data was readable.",
+    "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
+    "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
+    "Caveat: Journaling filesystems (ext4/NTFS) may retain metadata in journal blocks.",
+    "Caveat: Flash storage (SSDs/NVMe) Flash Translation Layer (FTL) wear leveling may prevent physical overwriting of retired blocks."
+  ],
+  "signature": {
+    "algorithm": "Ed25519",
+    "public_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06",
+    "signature_base64url": "GGAUcucD-MERJDZV7AeaG6HCdkNcV-nn2RAKuWcJLPNJ78YmdKDqdQV5eD75lko8YCr_0ZfmKlpa47r5YBmeBg",
+    "signed_payload_hash": "sha256:faccd035b8050a9c6a21464ad2c091257301ce3ea81c8c6b3c6e54911da38d83"
+  }
+}

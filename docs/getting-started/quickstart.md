@@ -499,7 +499,6 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "version": "2.4.4",
   "tool_name": "s0",
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
-  "website_url": "https://s0-site.pages.dev/",
   "documentation_url": "https://s0-docs.gitbook.io/",
   "verification_portal_url": "https://s0-verify.pages.dev/",
   "install_portal_url": "https://s0-install.pages.dev/",
