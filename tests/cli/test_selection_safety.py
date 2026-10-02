@@ -212,7 +212,7 @@ def test_is_os_device_detection(monkeypatch):
     assert is_os_device("/dev/sdb") is False
 
 
-def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys):
+def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys, tmp_path):
     from pathlib import Path
     from types import SimpleNamespace
 
