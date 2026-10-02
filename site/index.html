@@ -42,6 +42,32 @@
 </head>
 <body>
 
+<!--
+  Comparison-matrix icon sprite.
+
+  The marks in the feature table used to be tick, cross and tilde characters.
+  They are glyphs rather than emoji, but they read out unpredictably, they do
+  not align in a monospace table, and they break the rule the rest of the
+  product holds itself to: geometric Unicode only, drawn as SVG like the portals
+  do. Each is aria-hidden -- the cell's own text ("Purge & Clear", "None", "No")
+  already carries the meaning, so announcing the mark as well would only repeat
+  it.
+-->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <symbol id="i-check-icon" viewBox="0 0 16 16">
+    <path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-cross-icon" viewBox="0 0 16 16">
+    <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-partial-icon" viewBox="0 0 16 16">
+    <path d="M4 8h8" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
 <!-- Header — Minimal & Clean -->
 <header class="site-header">
   <div class="site-header-inner">
@@ -328,83 +354,83 @@
           <tbody>
             <tr>
               <td>NIST SP 800-88 &amp; IEEE 2883</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> Purge &amp; Clear</td>
-              <td><span class="partial-icon">~</span> Clear Only</td>
-              <td><span class="cross-icon">✗</span> None</td>
-              <td><span class="cross-icon">✗</span> None</td>
-              <td><span class="cross-icon">✗</span> Non-compliant</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Purge &amp; Clear</td>
+              <td><svg class="partial-icon" aria-hidden="true" focusable="false"><use href="#i-partial-icon"></use></svg> Clear Only</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Non-compliant</td>
             </tr>
             <tr>
               <td>Ed25519 Cryptographic Certificates</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> JSON &amp; PDF + QR</td>
-              <td><span class="cross-icon">✗</span> None</td>
-              <td><span class="cross-icon">✗</span> None</td>
-              <td><span class="cross-icon">✗</span> None</td>
-              <td><span class="cross-icon">✗</span> None</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> JSON &amp; PDF + QR</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
             </tr>
             <tr>
               <td>RFC 8785 Canonical JSON (JCS)</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> Pure JCS</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Pure JCS</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
             </tr>
             <tr>
               <td>Forensic Evidence Carving</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> 5 Inode/MFT Engines</td>
-              <td><span class="cross-icon">✗</span> Destructive Only</td>
-              <td><span class="check-icon">✓</span> Analysis GUI</td>
-              <td><span class="check-icon">✓</span> Header Only</td>
-              <td><span class="cross-icon">✗</span> No</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> 5 Inode/MFT Engines</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Destructive Only</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Analysis GUI</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Header Only</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
             </tr>
             <tr>
               <td>Shannon Entropy Scoring</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> 3-Point Sampled</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> Heuristic</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> 3-Point Sampled</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Heuristic</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
             </tr>
             <tr>
               <td>Simultaneous Dual Hashing</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> Single Pass</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="partial-icon">~</span> Post-hoc</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> Requires tee</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Single Pass</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="partial-icon" aria-hidden="true" focusable="false"><use href="#i-partial-icon"></use></svg> Post-hoc</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Requires tee</td>
             </tr>
             <tr>
               <td>Hash-Chained Audit Ledger</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> SHA-256 SQLite</td>
-              <td><span class="cross-icon">✗</span> Plain text</td>
-              <td><span class="cross-icon">✗</span> Case DB</td>
-              <td><span class="cross-icon">✗</span> Plain text</td>
-              <td><span class="cross-icon">✗</span> None</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> SHA-256 SQLite</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Plain text</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Case DB</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Plain text</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
             </tr>
             <tr>
               <td>Zero-Trust Web Verifier</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> Pure WebCrypto</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
-              <td><span class="cross-icon">✗</span> No</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Pure WebCrypto</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
             </tr>
             <tr>
               <td>Cross-Platform Native</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> Linux, macOS, Win</td>
-              <td><span class="cross-icon">✗</span> Bootable Only</td>
-              <td><span class="partial-icon">~</span> Win Focused</td>
-              <td><span class="partial-icon">~</span> POSIX Only</td>
-              <td><span class="cross-icon">✗</span> POSIX Only</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Linux, macOS, Win</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> Bootable Only</td>
+              <td><svg class="partial-icon" aria-hidden="true" focusable="false"><use href="#i-partial-icon"></use></svg> Win Focused</td>
+              <td><svg class="partial-icon" aria-hidden="true" focusable="false"><use href="#i-partial-icon"></use></svg> POSIX Only</td>
+              <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> POSIX Only</td>
             </tr>
             <tr>
               <td>Open Source License</td>
-              <td class="s0-col-cell"><span class="check-icon">✓</span> MIT</td>
-              <td><span class="check-icon">✓</span> GPL</td>
-              <td><span class="check-icon">✓</span> Apache 2.0</td>
-              <td><span class="check-icon">✓</span> Public Domain</td>
-              <td><span class="check-icon">✓</span> GPL</td>
+              <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> MIT</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> GPL</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Apache 2.0</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Public Domain</td>
+              <td><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> GPL</td>
             </tr>
           </tbody>
         </table>
@@ -469,7 +495,7 @@
 
     <div class="footer-bottom">
       <div class="footer-legal-notice">
-        ⚖ <strong>Legal Advisory:</strong> s0 is a certified digital forensic tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+        <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
       </div>
       <div>
         Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License

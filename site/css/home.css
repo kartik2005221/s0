@@ -932,9 +932,21 @@ header.site-header {
   font-weight: 700;
 }
 
+/* Comparison-matrix marks. Drawn as SVG (see the sprite in index.html) rather
+   than as ✓/✗/~ characters: the glyphs read out unpredictably and do not hold
+   alignment in a monospace table. aria-hidden on the element means the cell's
+   text is the only thing a screen reader announces. */
+.check-icon,
+.cross-icon,
+.partial-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  margin-right: 0.35em;
+}
+
 .check-icon {
   color: var(--success);
-  font-weight: 700;
 }
 
 .cross-icon {
@@ -944,7 +956,6 @@ header.site-header {
 
 .partial-icon {
   color: var(--warning);
-  font-weight: 700;
 }
 
 /* Footer — With Expanded Documentation Links */

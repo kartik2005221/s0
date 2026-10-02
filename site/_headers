@@ -1,0 +1,153 @@
+# Cloudflare Pages response headers for sector-zero.pages.dev.
+#
+# One deployment serves three surfaces: the landing page at /, the installer at
+# /install/ and the certificate verifier at /verify/. Pages reads _headers from
+# the output root only, so this one file carries every policy, and the per-portal
+# copies are gone.
+#
+# HOW THE CSP BLOCKS WORK -- read this before adding a block.
+#
+# A request is matched against every rule whose path pattern it satisfies, and
+# it inherits the headers of all of them. Where two matching rules set the same
+# header, the values are combined rather than one overriding the other. So a
+# Content-Security-Policy under /* would be *added to* the per-section policy
+# below, producing two policies that both have to pass. That is why no CSP
+# appears under /*: each surface owns exactly one, and nothing else emits one.
+#
+# The same reasoning is why every baseline header is restated nowhere but here.
+# The seven headers under /* are byte-identical across all three surfaces (they
+# were compared; that is how they ended up shared) and are emitted once.
+#
+# /index.html is listed beside / because Pages matches on the literal request
+# path. A request for /index.html does not match /, so without that second entry
+# the landing page would be served with no policy at all.
+#
+# Regenerate the inline-script hashes with: python tools/sync_csp.py --write
+
+/*
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# The landing page. Hash-based, no 'unsafe-inline' in script-src: the one inline
+# block is the pre-paint theme resolver, hashed at build time. connect-src names
+# api.github.com because the release badge fetches the latest release version.
+# Nothing else on this origin is third-party.
+/
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com/; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+/index.html
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com/; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+# The install portal is the page a user pastes into a root shell. No
+# 'unsafe-inline' anywhere: nothing on it may execute script or evaluate style
+# that was not hashed here at build time.
+/install/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-4deiL2HqY9CkQzMfv2OmjkFD5LAvnGHDhCcWMGzERww='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+# The verification portal exists to prove a certificate is authentic. Shipping it
+# with 'unsafe-inline' in script-src would undercut the point: any injected inline
+# script could rewrite the verdict. The vendored libraries are additionally pinned
+# with Subresource Integrity in the HTML, and worker-src is required because
+# pdf.js runs a worker from a blob.
+#
+# Note for whoever moves the verifier: it now shares an origin with the landing
+# page, so its independence rests on the CSP above rather than on being a separate
+# domain. Do not loosen it to match the landing page.
+/verify/*
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-4deiL2HqY9CkQzMfv2OmjkFD5LAvnGHDhCcWMGzERww='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+
+# ---------------------------------------------------------------------------
+# Installer scripts, at their real paths.
+#
+# These are served as text/plain with nosniff so that opening one in a browser
+# shows the source instead of executing it. The short URLs at the site root are
+# the same files under friendlier names; they are rewritten by _redirects and
+# matched by the rules further down.
+# ---------------------------------------------------------------------------
+
+/install/*.sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/install/*.ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/install/*.cmd
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/sh
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/ps1
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/cmd
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/upgrade*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/uninstall*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/download-iso*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+/iso*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+# ---------------------------------------------------------------------------
+# Caching.
+#
+# /assets/* is revalidated daily rather than immutable on purpose: the favicon
+# set is switched per theme at runtime, so a one-year immutable header on a
+# changed favicon leaves visitors holding the old one. Fonts are the content-
+# stable case and keep the long max-age.
+# ---------------------------------------------------------------------------
+
+# Vendored assets: the media type must be declared or browsers refuse to
+# execute them under a strict CSP.
+/verify/vendor/*
+  Cache-Control: public, max-age=86400, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/install/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/verify/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=86400
+
+/install/assets/*
+  Cache-Control: public, max-age=86400
+
+/verify/assets/*
+  Cache-Control: public, max-age=86400

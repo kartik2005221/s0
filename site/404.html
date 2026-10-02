@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>404 &middot; Sector Zero</title>
+
+<!--
+  This page carries its own Content-Security-Policy in a meta tag because a
+  404 response matches only the /* rule in site/_headers, which deliberately
+  carries no CSP of its own -- see the comment in that file. There is nothing
+  to inherit here, so the policy travels with the page.
+
+  It exists at all because without it Pages treats a project with no 404.html as
+  a single-page app and answers every unknown path with index.html and a 200.
+  That matters most for `curl ... | sudo bash`: a mistyped script URL would
+  return the landing page as a 200, and curl would pipe a web page into a root
+  shell instead of failing. A 404 is what makes `curl -f` exit non-zero.
+
+  No script, by policy and by design. Links only.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
+
+<link rel="stylesheet" href="/css/404.css">
+</head>
+<body>
+<main class="wrap">
+  <p class="code">404</p>
+  <h1>That page is not here.</h1>
+  <p class="lede">
+    The address you asked for does not exist on this site. Nothing is wrong with
+    your command &mdash; but if you reached this from a copy-pasted install line,
+    stop and check the spelling before running anything with root.
+  </p>
+  <ul class="links">
+    <li><a href="/">Sector Zero home</a></li>
+    <li><a href="/install/">Install s0</a></li>
+    <li><a href="/verify/">Verify a certificate</a></li>
+    <li><a href="https://sector-zero.gitbook.io/">Documentation</a></li>
+  </ul>
+</main>
+</body>
+</html>

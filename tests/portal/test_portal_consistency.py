@@ -39,12 +39,49 @@ SURFACE_CSS = [
     REPO / "src" / "s0" / "web" / "static" / "css" / "dashboard.css",
 ]
 PUBLIC_HTML = [
-    REPO / "site/install" / "index.html",
-    REPO / "site/verify" / "index.html",
+    REPO / "site" / "index.html",
+    REPO / "site" / "install" / "index.html",
+    REPO / "site" / "verify" / "index.html",
 ]
-HEADERS = [
-    REPO / "site/install" / "_headers",
-    REPO / "site/verify" / "_headers",
+
+# One deployment serves every surface, and Pages reads _headers from the output
+# root only, so there is a single _headers and each page owns the blocks its
+# request paths match. Kept in step with tools/sync_csp.py, which writes the same
+# mapping; if they disagree the hashes land in the wrong policy.
+HEADERS = REPO / "site" / "_headers"
+
+CSP_BLOCKS = {
+    REPO / "site" / "index.html": ("/", "/index.html"),
+    REPO / "site" / "install" / "index.html": ("/install/*",),
+    REPO / "site" / "verify" / "index.html": ("/verify/*",),
+}
+
+
+def headers_blocks(text: str) -> dict[str, list[str]]:
+    """Parse a _headers file into {path pattern: [header lines]}."""
+    out: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line in text.split("\n"):
+        if line.startswith("/") and line.strip():
+            current = []
+            out[line.strip()] = current
+        elif current is not None and line.startswith("  ") and line.strip():
+            current.append(line.strip())
+    return out
+
+
+def csp_for_block(text: str, pattern: str) -> str:
+    """The Content-Security-Policy that a given path block sets, or ''."""
+    for header in headers_blocks(text).get(pattern, []):
+        if header.startswith("Content-Security-Policy:"):
+            return header
+    return ""
+
+
+ALL_CSP_BLOCKS = [
+    (html, block)
+    for html, blocks in CSP_BLOCKS.items()
+    for block in blocks
 ]
 
 # Tokens a surface may declare as a *literal value*. A surface declaring one of
@@ -129,16 +166,12 @@ def test_shared_tokens_disable_animation_for_reduced_motion():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("headers", HEADERS, ids=lambda p: p.parent.name)
-def test_every_public_surface_has_a_strict_csp(headers):
-    rel = headers.relative_to(REPO)
-    text = headers.read_text(encoding="utf-8")
-    csp_lines = [
-        line for line in text.splitlines()
-        if line.strip().startswith("Content-Security-Policy:")
-    ]
-    assert csp_lines, f"{rel} serves no Content-Security-Policy"
-    csp = csp_lines[0]
+@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
+                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+def test_every_public_surface_has_a_strict_csp(html, block):
+    rel = f"{HEADERS.relative_to(REPO)} [{block}]"
+    csp = csp_for_block(HEADERS.read_text(encoding="utf-8"), block)
+    assert csp, f"{rel} serves no Content-Security-Policy"
 
     assert "default-src 'none'" in csp, f"{rel}: default-src must be 'none', not '*'"
     assert "object-src 'none'" in csp
@@ -155,10 +188,36 @@ def test_every_public_surface_has_a_strict_csp(headers):
         f"{rel}: the inline theme resolver is unhashed, so it would be blocked")
 
 
-@pytest.mark.parametrize("headers", HEADERS, ids=lambda p: p.parent.name)
-def test_every_public_surface_sends_the_baseline_security_headers(headers):
-    rel = headers.relative_to(REPO)
-    text = headers.read_text(encoding="utf-8")
+def test_no_csp_is_declared_under_the_catch_all_block():
+    """A request inherits the headers of every block it matches, and where two
+    blocks set the same header the values combine. A Content-Security-Policy
+    under /* would therefore be *added to* each surface's own policy instead of
+    being overridden by it, and the reader would have to satisfy both."""
+    text = HEADERS.read_text(encoding="utf-8")
+    catch_all = headers_blocks(text).get("/*", [])
+    offenders = [h for h in catch_all if h.startswith("Content-Security-Policy:")]
+    assert not offenders, (
+        f"{HEADERS.relative_to(REPO)}: /* must not set a CSP, it would be "
+        f"combined with the per-surface policy rather than replaced by it")
+
+
+def test_every_csp_block_belongs_to_a_surface():
+    """A CSP nobody claims is a policy for a page that does not exist, or one
+    that lost its owner in a rename. Either way it ships."""
+    text = HEADERS.read_text(encoding="utf-8")
+    declared = {p for p, hs in headers_blocks(text).items()
+                if any(h.startswith("Content-Security-Policy:") for h in hs)}
+    claimed = {b for blocks in CSP_BLOCKS.values() for b in blocks}
+    assert declared == claimed, (
+        f"unclaimed: {sorted(declared - claimed)}; "
+        f"missing: {sorted(claimed - declared)}")
+
+
+@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
+                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+def test_every_public_surface_sends_the_baseline_security_headers(html, block):
+    rel = HEADERS.relative_to(REPO)
+    text = HEADERS.read_text(encoding="utf-8")
     for header in ("X-Content-Type-Options: nosniff",
                    "Referrer-Policy:",
                    "Permissions-Policy:",
@@ -167,29 +226,36 @@ def test_every_public_surface_sends_the_baseline_security_headers(headers):
     assert "Strict-Transport-Security" in text, f"{rel}: no HSTS"
 
 
-@pytest.mark.parametrize("html", PUBLIC_HTML, ids=lambda p: p.parent.name)
-def test_csp_hashes_match_the_inline_blocks(html):
+def test_the_landing_page_is_covered_by_a_policy_at_both_urls():
+    """Pages matches the literal request path, so /index.html does not match /
+    and would otherwise be served with no CSP at all."""
+    text = HEADERS.read_text(encoding="utf-8")
+    for pattern in ("/", "/index.html"):
+        assert csp_for_block(text, pattern), (
+            f"{HEADERS.relative_to(REPO)}: no CSP for {pattern}. A direct request "
+            f"for {pattern} must not fall back to a policy-free response.")
+
+
+@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
+                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+def test_csp_hashes_match_the_inline_blocks(html, block):
     """A hash-based CSP is only correct if the hash matches. Drift makes the
     whole page stop executing, which is loud -- but it must not happen in a
     release, so it is checked here."""
     rel = html.relative_to(REPO)
-    headers_path = html.parent / "_headers"
-    text = headers_path.read_text(encoding="utf-8")
-    csp = next(
-        line for line in text.splitlines()
-        if line.strip().startswith("Content-Security-Policy:")
-    )
+    csp = csp_for_block(HEADERS.read_text(encoding="utf-8"), block)
+    assert csp, f"{HEADERS.relative_to(REPO)} has no CSP for {block}"
     listed = set(re.findall(r"'?(sha256-[A-Za-z0-9+/=]+)'?", csp))
 
     source = html.read_text(encoding="utf-8")
     blocks = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
     assert blocks, f"{rel} has no inline script to hash"
-    for block in blocks:
+    for inline in blocks:
         digest = "sha256-" + base64.b64encode(
-            hashlib.sha256(block.encode("utf-8")).digest()).decode("ascii")
+            hashlib.sha256(inline.encode("utf-8")).digest()).decode("ascii")
         assert digest in listed, (
-            f"{rel}: inline script is not covered by the CSP hash {digest}. "
-            f"Run: python tools/sync_csp.py --write")
+            f"{rel}: inline script is not covered by the CSP hash {digest} in "
+            f"block {block}. Run: python tools/sync_csp.py --write")
 
 
 @pytest.mark.parametrize("html", PUBLIC_HTML, ids=lambda p: p.parent.name)
@@ -368,8 +434,12 @@ def test_async_status_regions_are_announced():
         text = html.read_text(encoding="utf-8")
         if 'aria-live' in text:
             continue
-        offenders = list(re.findall(r'id="([A-Za-z0-9_]*(?:status|progress|log|result)[A-Za-z0-9_]*)"',
-                                           text, flags=re.I))
+        # 'log' must not match inside 'logo'. The header brand mark is a static
+        # image whose src follows the theme; it is not a status region, and
+        # reading its id as one would mean every page with a logo fails here.
+        offenders = list(re.findall(
+            r'id="([A-Za-z0-9_]*(?:status|progress|log(?!o)|result)[A-Za-z0-9_]*)"',
+            text, flags=re.I))
         assert not offenders, (
             f"{html.relative_to(REPO)} has {offenders} but declares no aria-live region; "
             f"screen-reader users will not hear the outcome")
