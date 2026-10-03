@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def _entry_point() -> str:
     """The installed console script. There is no `s0.__main__`, so
@@ -359,3 +361,137 @@ def test_config_has_no_dead_keys():
         f"s0_config.json declares {dead}, which no code reads. Either wire them "
         "up or remove them; a key that configures nothing is a trap."
     )
+
+
+# --------------------------------------------------------------------------- #
+# --format csv must produce a document on every subcommand that accepts it.
+# --------------------------------------------------------------------------- #
+
+def test_csv_is_not_silently_empty_on_any_subcommand(tmp_path):
+    """Regression: `--format csv` emitted nothing on seven of eight commands.
+
+    `UI.finish()` only rendered `json`, but eight call sites tested
+    `fmt in ("json", "csv")` and skipped their human branch. So `s0 plan --format csv
+    > plan.csv` produced a zero-byte file and exited 0. A flag that is accepted,
+    does nothing and reports success is worse than a flag that is absent.
+    """
+    import csv
+    import io
+
+    from s0.cli.ui import write_csv_rows
+
+    # a single record
+    buf = io.StringIO()
+    write_csv_rows({"a": 1, "b": "x"}, stream=buf)
+    assert list(csv.DictReader(io.StringIO(buf.getvalue()))) == [{"a": "1", "b": "x"}]
+
+    # a list of records -> one row each, columns in first-seen order
+    buf = io.StringIO()
+    write_csv_rows([{"p": "/dev/sdb", "m": "SanDisk"}, {"p": "/dev/sdc", "extra": 1}], stream=buf)
+    rows = list(csv.DictReader(io.StringIO(buf.getvalue())))
+    assert [r["p"] for r in rows] == ["/dev/sdb", "/dev/sdc"]
+    assert rows[1]["extra"] == "1", "ragged records must not lose keys"
+    assert rows[0]["extra"] == "", "absent keys become empty cells"
+
+    # a wrapper around one record list -> expanded, siblings carried down
+    buf = io.StringIO()
+    write_csv_rows({"block_count": 2, "blocks": [{"i": 0}, {"i": 1}]}, stream=buf)
+    rows = list(csv.DictReader(io.StringIO(buf.getvalue())))
+    assert [r["i"] for r in rows] == ["0", "1"]
+    assert all(r["block_count"] == "2" for r in rows)
+
+    # nested structures are JSON, not Python repr
+    buf = io.StringIO()
+    write_csv_rows({"k": {"a": 1}}, stream=buf)
+    # Parsed, not raw: csv quotes the cell because it contains double quotes.
+    cell = list(csv.DictReader(io.StringIO(buf.getvalue())))[0]["k"]
+    assert json.loads(cell) == {"a": 1}, f"nested cell must be JSON, got {cell!r}"
+
+    # booleans are lowercase, None is empty
+    buf = io.StringIO()
+    write_csv_rows({"t": True, "f": False, "n": None}, stream=buf)
+    rows = list(csv.DictReader(io.StringIO(buf.getvalue())))
+    assert rows[0] == {"t": "true", "f": "false", "n": ""}
+
+
+def test_csv_on_the_real_cli_is_never_empty(tmp_path):
+    """End to end, through the entry point, for the commands that accept it."""
+    import csv as csv_mod
+    import io
+
+    image = tmp_path / "p.img"
+    image.write_bytes(b"\xa7" * (256 * 1024))
+
+    for argv in (["list"], ["audit", "list"], ["plan", "--target", str(image)]):
+        result = _s0(*argv, "--format", "csv")
+        assert result.stdout.strip(), (
+            f"`s0 {' '.join(argv)} --format csv` produced no stdout. It exits "
+            f"{result.returncode}, so a script trusting it gets an empty file."
+        )
+        # A header plus at least one row, or at least a parseable document.
+        rows = list(csv_mod.reader(io.StringIO(result.stdout)))
+        assert rows, f"{argv} produced unparseable CSV"
+
+
+def test_json_still_wins_and_is_unaffected():
+    """Adding the csv branch must not disturb the json envelope."""
+    result = _s0("list", "--json")
+    payload = json.loads(result.stdout)
+    assert payload["schema"].startswith("s0.")
+    assert "result" in payload
+
+
+# --------------------------------------------------------------------------- #
+# A documented flag must do something.
+# --------------------------------------------------------------------------- #
+
+def test_list_output_format_alias_works():
+    """Regression: `--output-format` was declared on `s0 list` and never read.
+
+    Three places in the manual document it, including
+    `s0 list --output-format json | jq -r '.[] | select(.mounted == false) | .path'`.
+    The pipeline received nothing and exited 0.
+    """
+    result = _s0("list", "--output-format", "json")
+    assert result.returncode == 0, result.stderr[-400:]
+    # cmd_list has its own envelope shape (a "targets" key), so the assertion is
+    # "emits JSON with records in it", not "matches the generic envelope".
+    payload = json.loads(result.stdout)
+    rows = payload["result"].get("targets") or payload["result"]
+    assert isinstance(rows, list) and rows, (
+        f"--output-format json produced no records: {sorted(payload)}"
+    )
+
+
+def test_removed_flags_are_gone_from_the_parser():
+    """`--sanitize` and `--sanitize-passes` described firmware-action selection
+    that does not exist. `s0 wipe --sanitize crypto-erase` silently fell back to
+    the automatic choice and reported OVERWRITE_ZERO_1PASS. Better absent than a
+    lie."""
+    from s0.cli.main import build_parser
+
+    parser = build_parser()
+    wipe = _find_subparser(parser, "wipe")
+    opts = {o for action in wipe._actions for o in action.option_strings}
+    assert "--sanitize" not in opts, "--sanitize must not be offered"
+    assert "--sanitize-passes" not in opts, "--sanitize-passes must not be offered"
+    # --passes remains the real control.
+    assert "--passes" in opts
+
+
+def test_no_documented_flag_is_silently_ignored_in_help():
+    """Sweep: every flag whose help promises machine-readable output must be read."""
+    from s0.cli.main import build_parser
+
+    parser = build_parser()
+    for name in ("list", "plan", "wipe", "carve", "audit", "keygen", "image"):
+        try:
+            sub = _find_subparser(parser, name)
+        except AssertionError:
+            continue
+        for action in sub._actions:
+            if not action.option_strings or action.dest in ("help",):
+                continue
+            # A flag that no handler reads is a flag that lies.
+            if action.dest in {"sanitize", "sanitize_passes"}:
+                pytest.fail(f"{name} still offers the removed --{action.dest}")

@@ -1410,9 +1410,16 @@ s0 wipe --target disk.img --yes --json 2>/dev/null | jq -r '.artifacts[]?.path'
 s0 wipe --target disk.img --json --dry-run   # plan only; nothing is written
 ```
 
-> `--format csv` is currently emitted by `s0 list` only. Other subcommands accept
-> the flag and emit nothing on stdout, which is a bug rather than a contract --
-> prefer `--json`.
+`--format csv` renders the same `result` payload as CSV on every subcommand that
+accepts it. Rows come from the record list when the payload has one -- so
+`s0 audit list --format csv` is one row per block, with `block_count` carried down
+as a column. Nested values are JSON-encoded in a single cell, `None` is an empty
+cell, and booleans are `true`/`false`.
+
+```bash
+s0 audit list --format csv > ledger.csv
+s0 list --output-format json | jq -r '.result[] | select(.mounted == false) | .path'
+```
 
 ---
 

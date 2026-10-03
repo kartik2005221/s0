@@ -15,6 +15,8 @@ Commands ask this module for a printer; they never call ``print()`` directly.
 
 from __future__ import annotations
 
+import csv
+import json
 import sys
 from collections.abc import Sequence
 from typing import Any
@@ -105,6 +107,12 @@ def policy_from_args(args, *, stdout=None, stderr=None) -> OutputPolicy:
         fmt = "json"
     elif getattr(args, "format", None):
         fmt = args.format
+    elif getattr(args, "output_format", None):
+        # `s0 list --output-format json` is documented in three places in the
+        # manual, including a `| jq` pipeline. The flag was declared and never
+        # read, so the pipeline received nothing and exited 0. Honour it as a
+        # per-command alias for the global --format.
+        fmt = args.output_format
     return OutputPolicy(
         color=colour,
         quiet=bool(getattr(args, "quiet", False)),
@@ -185,11 +193,99 @@ class UI:
                artifacts: list[dict[str, Any]] | None = None,
                errors: list[dict[str, Any]] | None = None,
                **kwargs) -> None:
-        """Emit the machine-readable envelope when a structured format is asked for."""
+        """Emit the machine-readable envelope when a structured format is asked for.
+
+        `csv` is rendered from the same `result` payload as `json`, generically,
+        rather than per command. Only `s0 list` had a CSV renderer; the other eight
+        call sites tested `fmt in ("json", "csv")`, skipped their human branch, and
+        then this method emitted nothing at all -- so `s0 plan --format csv > p.csv`
+        produced a zero-byte file and exited 0. A flag that is accepted, does
+        nothing, and reports success is worse than a flag that is absent.
+        """
         if self.policy.fmt == "json":
             self.policy.json(self.envelope(
                 result=result, status=status, artifacts=artifacts,
                 errors=errors, warnings=self._warnings, **kwargs))
+        elif self.policy.fmt == "csv":
+            write_csv_rows(result, stream=sys.stdout)
+
+
+
+def _csv_cell(value: Any) -> str:
+    """One CSV cell.
+
+    Nested structures are JSON-encoded rather than str()'d, because Python's repr
+    uses single quotes and is not valid JSON -- a CSV consumer would choke. `None`
+    is the empty cell, matching every spreadsheet's expectation.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, sort_keys=True, separators=(",", ":"))
+    return str(value)
+
+
+def write_csv_rows(result: Any, *, stream=None) -> None:
+    """Render an envelope `result` payload as CSV.
+
+    Three shapes, because subcommands return three shapes:
+
+    * a list of flat dicts -- the common "many records" case (`carve` files,
+      `audit` blocks, `image` artifacts). One row per record, columns are the
+      union of keys in first-seen order so the output is stable.
+    * a single dict -- one row, one column per key.
+    * anything else -- one row, one `value` column.
+
+    An empty result still emits a header, so a downstream `csv.DictReader` gets a
+    valid (if empty) document rather than an error.
+    """
+    out = stream if stream is not None else sys.stdout
+
+    if isinstance(result, list) and result and all(isinstance(r, dict) for r in result):
+        columns: list[str] = []
+        for row in result:
+            for key in row:
+                if key not in columns:
+                    columns.append(key)
+        writer = csv.writer(out, lineterminator="\n")
+        writer.writerow(columns)
+        for row in result:
+            writer.writerow([_csv_cell(row.get(c)) for c in columns])
+        return
+
+    if isinstance(result, dict):
+        # If the payload wraps a single list of records (the shape `audit list` uses:
+        # {"block_count": 50, "blocks": [...]}), expand that list to one row per
+        # record and carry the sibling scalars down as extra columns. Otherwise the
+        # entire ledger collapses into one unreadable JSON cell.
+        record_lists = [
+            (k, v) for k, v in result.items()
+            if isinstance(v, list) and v and all(isinstance(r, dict) for r in v)
+        ]
+        if len(record_lists) == 1:
+            key, records = record_lists[0]
+            siblings = [k for k in result if k != key]
+            columns: list[str] = list(records[0].keys()) + siblings
+            writer = csv.writer(out, lineterminator="\n")
+            writer.writerow(columns)
+            for row in records:
+                writer.writerow(
+                    [_csv_cell(row.get(c)) for c in columns[:len(records[0])]]
+                    + [_csv_cell(result[s]) for s in siblings]
+                )
+            return
+
+        columns = list(result.keys())
+        writer = csv.writer(out, lineterminator="\n")
+        writer.writerow(columns)
+        writer.writerow([_csv_cell(result[c]) for c in columns])
+        return
+
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(["value"])
+    writer.writerow([_csv_cell(result)])
 
 
 def fail(ui: UI, code: int, message: str, *, hint: str = "") -> int:

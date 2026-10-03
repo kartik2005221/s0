@@ -2468,13 +2468,14 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument("--allow-downgrade", action="store_true",
                     help="if --require-tier cannot be met, proceed with the best "
                          "available method and record the downgrade on the certificate")
-    wp.add_argument("--sanitize", choices=("block-erase", "crypto-erase", "overwrite"),
-                    default=None,
-                    help="force a specific firmware sanitize action (ATA 0xB4 / "
-                         "NVMe 0x84 / SCSI 0x48) instead of the automatic choice")
-    wp.add_argument("--sanitize-passes", type=int, default=1,
-                    help="pass count for --sanitize overwrite (1-255; 0 is refused "
-                         "because the specification reads 0 as SIXTEEN passes)")
+    # --sanitize and --sanitize-passes were declared here and read nowhere, so
+    # `s0 wipe --sanitize crypto-erase` silently fell back to the automatic
+    # choice and reported OVERWRITE_ZERO_1PASS. Their help described ATA 0xB4 /
+    # NVMe 0x84 selection and a 1-255 range check for a value never validated.
+    # Removed rather than left as a lie: forcing a specific firmware sanitize
+    # action is a real feature and is not implemented. Until it is, method
+    # selection stays automatic, and --require-tier is how an operator asserts a
+    # tier rather than naming a command.
     wp.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
     wp.add_argument("--key", "--signing-key", help="issuer private key PEM (default: demo issuer key)")
     wp.add_argument("--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)")
