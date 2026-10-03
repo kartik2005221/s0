@@ -142,6 +142,35 @@ def verify_audit_ledger(
         )
 
     effective_keys = list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
+
+    # Fail closed. The block hash is plain SHA-256 over fields anyone can
+    # recompute, so the per-block and per-certificate signatures are the *only*
+    # authenticity this chain has. With no trusted key, both signature checks
+    # were skipped entirely (`if effective_keys:`) and the ledger was still
+    # reported valid -- meaning a ledger whose signatures had been replaced with
+    # arbitrary bytes verified as continuous and authentic.
+    #
+    # An empty trust set is not "nothing to check"; it is "nothing can be checked",
+    # and saying so is the only honest answer.
+    if not effective_keys:
+        return ChainAuditReport(
+            is_valid=False,
+            total_blocks_verified=0,
+            broken_block_index=None,
+            reason=(
+                "UNVERIFIABLE: no trusted issuer key is available, so no signature "
+                "in this ledger can be checked. The hash chain still verifies, but "
+                "continuity is not authenticity: anyone can recompute a SHA-256 "
+                "block hash. Supply a trusted public key with --key, or place one "
+                f"in {Path.home() / '.s0' / 'keys'}."
+            ),
+            details=[
+                f"Trusted key set is empty ({len(blocks)} block(s) read, "
+                "0 signatures checked).",
+                "This is a refusal, not a pass. Do not treat this ledger as verified.",
+            ],
+        )
+
     expected_prev = GENESIS_PREV_HASH
     details = []
     is_demo_signed = False

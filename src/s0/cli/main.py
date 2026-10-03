@@ -1680,10 +1680,36 @@ def cmd_audit(args) -> int:
         return EX_OK
 
     if action == "verify":
+        from s0.crypto import load_public_pem
+
+        # `--key` was a single path passed straight to `load_public_pem`, so
+        # `--key <directory>` raised IsADirectoryError as a raw traceback, and a
+        # ledger signed by more than one key could not be verified at all. It is
+        # now repeatable and accepts a directory of *.pem, matching the
+        # `~/.s0/keys/` convention the default loader already uses.
+        raw_keys = getattr(args, "key", None)
+        if isinstance(raw_keys, str):
+            raw_keys = [raw_keys]
+        key_paths: list[Path] = []
+        for entry in raw_keys or []:
+            candidate = Path(entry)
+            if candidate.is_dir():
+                key_paths.extend(sorted(candidate.glob("*.pem")))
+            else:
+                key_paths.append(candidate)
+        if raw_keys and not key_paths:
+            ui.error(f"no *.pem public keys found in {raw_keys}")
+            return EX_NOINPUT
         trusted_keys = None
-        if getattr(args, "key", None):
-            from s0.crypto import load_public_pem
-            trusted_keys = [load_public_pem(args.key)]
+        if key_paths:
+            trusted_keys = []
+            for candidate in key_paths:
+                try:
+                    trusted_keys.append(load_public_pem(candidate))
+                except Exception as exc:
+                    ui.error(f"cannot load public key {candidate}: {exc}")
+                    return EX_DATAERR
+            ui.note(f"Loaded {len(trusted_keys)} trusted issuer key(s).")
 
         report = verify_audit_ledger(trusted_public_keys=trusted_keys)
         reason = report.reason or ""
@@ -2605,7 +2631,17 @@ def build_parser() -> argparse.ArgumentParser:
     aud = sub.add_parser("audit", help="cryptographic audit ledger and hash-chain continuity management")
     aud.add_argument("audit_action", choices=["list", "verify"], help="list audit blocks or verify hash chain")
     aud.add_argument("--limit", type=int, default=50, help="limit number of records displayed")
-    aud.add_argument("--key", help="path to trusted public key PEM for strict signature verification")
+    aud.add_argument(
+        "--key",
+        nargs="+",
+        metavar="KEY",
+        help=(
+            "trusted issuer public key(s): one or more PEM files, and/or a\n"
+            "directory of *.pem. Repeatable. A ledger signed by more than one\n"
+            "key needs every signer supplied, or verification stops at the\n"
+            "first block it cannot attribute."
+        ),
+    )
     aud.set_defaults(func=cmd_audit)
 
     # 4. Offline Verification Subcommand
