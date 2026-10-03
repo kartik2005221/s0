@@ -382,21 +382,27 @@
     need(UUID_RE.test(String(cert.cert_uuid || "")), "cert_uuid: not a lowercase UUID");
     need(DATETIME_RE.test(String(cert.issued_at || "")), "issued_at: must be ISO 8601 UTC 'YYYY-MM-DDTHH:MM:SSZ'");
 
-    var issuer = cert.issuer || {};
-    if (typeof issuer === "object" && !Array.isArray(issuer)) {
+    var issuer = cert.issuer;
+    need(issuer !== null && typeof issuer === "object" && !Array.isArray(issuer),
+         "issuer: must be a JSON object");
+    if (issuer !== null && typeof issuer === "object" && !Array.isArray(issuer)) {
       checkObj(issuer, "issuer", ["organization", "operator_id"], ["organization", "operator_id"]);
       need(typeof issuer.organization === "string" && issuer.organization.length > 0, "issuer.organization: non-empty string required");
       need(typeof issuer.operator_id === "string" && issuer.operator_id.length > 0, "issuer.operator_id: non-empty string required");
     }
 
-    var tool = cert.tool || {};
-    if (typeof tool === "object" && !Array.isArray(tool)) {
+    var tool = cert.tool;
+    need(tool !== null && typeof tool === "object" && !Array.isArray(tool),
+         "tool: must be a JSON object");
+    if (tool !== null && typeof tool === "object" && !Array.isArray(tool)) {
       checkObj(tool, "tool", ["name", "version", "platform"], ["name", "version", "platform", "os_kernel"]);
       need(PLATFORMS.indexOf(tool.platform) !== -1, "tool.platform: invalid");
     }
 
-    var device = cert.device || {};
-    if (typeof device === "object" && !Array.isArray(device)) {
+    var device = cert.device;
+    need(device !== null && typeof device === "object" && !Array.isArray(device),
+         "device: must be a JSON object");
+    if (device !== null && typeof device === "object" && !Array.isArray(device)) {
       checkObj(device, "device",
         ["device_id", "device_type", "storage_type", "capacity_bytes"],
         ["device_id", "device_type", "storage_type", "model", "serial_number", "capacity_bytes", "sector_size"]
@@ -411,8 +417,10 @@
       }
     }
 
-    var wipe = cert.wipe || {};
-    if (typeof wipe === "object" && !Array.isArray(wipe)) {
+    var wipe = cert.wipe;
+    need(wipe !== null && typeof wipe === "object" && !Array.isArray(wipe),
+         "wipe: must be a JSON object");
+    if (wipe !== null && typeof wipe === "object" && !Array.isArray(wipe)) {
       checkObj(wipe, "wipe",
         ["method", "nist_category", "start_time", "end_time", "bytes_processed"],
         ["method", "nist_category", "passes", "pattern", "start_time", "end_time", "bytes_processed"]
@@ -440,8 +448,10 @@
       need(Number.isInteger(wipe.bytes_processed) && wipe.bytes_processed >= 0, "wipe.bytes_processed: non-negative integer required");
     }
 
-    var result = cert.result || {};
-    if (typeof result === "object" && !Array.isArray(result)) {
+    var result = cert.result;
+    need(result !== null && typeof result === "object" && !Array.isArray(result),
+         "result: must be a JSON object");
+    if (result !== null && typeof result === "object" && !Array.isArray(result)) {
       checkObj(result, "result", ["status"], ["status", "errors", "verification"]);
       need(STATUSES.indexOf(result.status) !== -1, "result.status: invalid");
       if (result.errors !== undefined && result.errors !== null) {

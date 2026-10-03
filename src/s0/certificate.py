@@ -183,18 +183,21 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
     need(bool(_DATETIME_RE.match(str(cert.get("issued_at", "")))),
          "issued_at: must be ISO 8601 UTC 'YYYY-MM-DDTHH:MM:SSZ'")
 
-    issuer = cert.get("issuer") or {}
+    issuer = cert.get("issuer")
+    need(isinstance(issuer, dict), "issuer: must be a JSON object")
     if isinstance(issuer, dict):
         check_obj(issuer, "issuer", {"organization", "operator_id"}, {"organization", "operator_id"})
         for f in ("organization", "operator_id"):
             need(isinstance(issuer.get(f), str) and issuer.get(f), f"issuer.{f}: non-empty string required")
 
-    tool = cert.get("tool") or {}
+    tool = cert.get("tool")
+    need(isinstance(tool, dict), "tool: must be a JSON object")
     if isinstance(tool, dict):
         check_obj(tool, "tool", {"name", "version", "platform"}, {"name", "version", "platform", "os_kernel"})
         need(tool.get("platform") in PLATFORMS, "tool.platform: invalid")
 
-    device = cert.get("device") or {}
+    device = cert.get("device")
+    need(isinstance(device, dict), "device: must be a JSON object")
     if isinstance(device, dict):
         check_obj(device, "device",
                   {"device_id", "device_type", "storage_type", "capacity_bytes"},
@@ -209,7 +212,8 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
         need(sector is None or (isinstance(sector, int) and not isinstance(sector, bool) and sector >= 1),
              "device.sector_size: must be a positive integer (minimum 1)")
 
-    wipe = cert.get("wipe") or {}
+    wipe = cert.get("wipe")
+    need(isinstance(wipe, dict), "wipe: must be a JSON object")
     if isinstance(wipe, dict):
         check_obj(wipe, "wipe",
                   {"method", "nist_category", "start_time", "end_time", "bytes_processed"},
@@ -238,7 +242,8 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
         need(isinstance(bp, int) and not isinstance(bp, bool) and bp >= 0,
              "wipe.bytes_processed: non-negative integer required")
 
-    result = cert.get("result") or {}
+    result = cert.get("result")
+    need(isinstance(result, dict), "result: must be a JSON object")
     if isinstance(result, dict):
         check_obj(result, "result", {"status"}, {"status", "errors", "verification"})
         need(result.get("status") in STATUSES, "result.status: invalid")
