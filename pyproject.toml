@@ -67,8 +67,16 @@ s0-cert-pdf = "s0.certcli:pdf_main"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["s0*"]
+# `src` for the library, `.` for the agent skill directory that sits beside it.
+# `namespaces = true` is what lets `skills/` and `skills/s0-forensics` be found
+# without an `__init__.py` in either -- the skill is a document tree an agent
+# reads, not an importable package, and adding `__init__.py` to make the packager
+# happy would misdescribe it. `include` is the filter that keeps the repository's
+# other top-level directories (`docs`, `tests`, `tools`, `site`, `iso`, ...) out
+# of the distribution.
+where = ["src", "."]
+include = ["s0*", "skills*"]
+namespaces = true
 
 [tool.setuptools.package-data]
 # Resolved at runtime through s0.resources / the module's own directory, never
@@ -84,6 +92,15 @@ include = ["s0*"]
     "static/js/*",
     "static/assets/**/*",
 ]
+# The agent skill ships with the distribution, not only with the git clone. A
+# `pip install s0` user and a curl-one-liner user both need SKILL.md, its
+# references, its eval prompts and the standalone certificate verifier, and
+# without this a wheel carries `s0` alone and the skill simply does not exist for
+# them. `skills/` is found as a top-level namespace package (`where = ["src",
+# "."]` above), so its files need naming here: `*.md` and `evals/*.json` are
+# plain data, and `scripts/*.py` is data too even though build_py has already
+# claimed it as a module.
+"skills.s0-forensics" = ["*.md", "evals/*.json", "references/*.md", "scripts/*.py"]
 
 [tool.pytest.ini_options]
 # CI runs a bare `pytest`, so this list is the contract for what gets tested.

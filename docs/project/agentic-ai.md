@@ -35,7 +35,7 @@ flowchart TD
     E --> G[Step 4: Patient Monitored Execution<br>Do NOT send kill / abort signals during write cycles]
     F --> G
     
-    G --> H[Step 5: Post-Operation Cryptographic Verification<br>Verify 64-block sample readback & Ed25519 signature]
+    G --> H[Step 5: Post-Operation Cryptographic Verification<br>Read result.verification.attestation + Ed25519 signature<br>Never relay the sample count as the claim]
 ```
 
 ### Protocol 1: Always Execute `s0 plan` Before Any Wipe
@@ -84,10 +84,27 @@ skills/s0-forensics/
 │   ├── device-safety-rules.md        # Mount guards, OS device paths, and HPA/DCO handling
 │   ├── carving-signatures.md         # Magic bytes, headers, footers & entropy scoring
 │   └── audit-and-crypto.md           # Canonical JSON v1, Ed25519 signing & hash chain formulas
-├── tools/
+├── scripts/
 │   └── verify_cert.py                # Standalone certificate verification helper
 └── evals/
     └── evals.json                    # Benchmark evaluation prompts & expected agent behavior
 ```
 
-When invoking subagents or utilizing AI coding assistants (such as Antigravity, Claude Code, or custom forensic agents), point the agent directly to `skills/s0-forensics/SKILL.md`. The agent will automatically load the critical patience directives, execute dry-runs before destructive operations, select optimal parameters, and verify issued certificates.
+### Shipping
+
+`skills/` is packaged as data inside the `s0` distribution, so the skill is
+present for every install path, not just a clone:
+
+- `pip install s0` / wheel: `<site-packages>/skills/s0-forensics/SKILL.md`
+- git clone, and the one-line installer (which clones to `~/.s0` and
+  editable-installs from it): `~/.s0/skills/s0-forensics/SKILL.md`
+
+To locate it without guessing:
+
+```bash
+python3 -c "import importlib.util, pathlib; \
+  s = importlib.util.find_spec('skills'); \
+  print(pathlib.Path(s.submodule_search_locations[0]).resolve())"
+```
+
+When invoking subagents or utilizing AI coding assistants (such as Antigravity, Claude Code, or custom forensic agents), point the agent directly at that `SKILL.md`. The agent will automatically load the critical patience directives, execute dry-runs before destructive operations, select optimal parameters, and verify issued certificates.

@@ -1198,7 +1198,22 @@ def test_gif_with_extension_blocks_reaches_its_trailer():
         img = b"\x2C" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
         return out + (gce + img if animated else img) + b"\x3B"
 
-    for label, data in (("static", build(False)), ("animated", build(True))):
+    # An application extension as ffmpeg writes it: 0x21 0xFF, a 12-byte block
+    # (size byte + "NETSCAPE2.0" + auth code), then the sub-blocks. Getting that
+    # 12 wrong by one desynchronises the walk and the rest of the file reads as
+    # garbage, so it is pinned here explicitly.
+    with_app = b"\x21\xFF\x0BNETSCAPE2.0\x03\x01\x00\x00\x00"
+
+    def build_app(animated: bool) -> bytes:
+        out = b"GIF89a" + struct.pack("<HH", 2, 2) + bytes([0x80, 0, 0]) + b"\x00" * 6
+        out += with_app
+        gce = b"\x21\xF9\x04\x00\x00\x00\x00\x00"
+        img = b"\x2C" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
+        return out + (gce + img if animated else img) + b"\x3B"
+
+    cases = [("static", build(False)), ("animated", build(True)),
+             ("app-extension", build_app(False)), ("app-ext + GCE", build_app(True))]
+    for label, data in cases:
         boundary = _gif_end(Src(data), 0, 1 << 20)
         assert boundary.end == len(data), (
             f"GIF ({label}) did not reach its trailer: end={boundary.end}, "

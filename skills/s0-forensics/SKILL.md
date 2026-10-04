@@ -7,24 +7,48 @@ description: Execute forensic-grade media sanitization, bit-stream disk imaging,
 
 This skill guides an AI agent through safely, accurately, and patiently executing operations using **s0 (Sector Zero)** — the NIST SP 800-88 **Rev. 2** compliant forensic sanitization, imaging, carving, and cryptographic verification suite.
 
-!!! warning "Never relay a sanitization tier as fact unless the certificate states it"
-    s0 refuses to claim a tier its evidence does not support, and it will not
-    accept one on request. If you find yourself about to tell a user that a
-    drive "is sanitized" because the tool exited zero, stop and read the
-    certificate's `result.verification.attestation` instead. An exit code is not a
-    claim; the attestation is.
+**Contents**
+
+1. [Subcommands & Capabilities](#1-subcommands--capabilities) — every command and its safety level
+2. [Core Decision Recommendations](#2-core-decision-recommendations) — when to use which parameter, and why
+3. [Standard Operational Workflows](#3-standard-operational-workflows) — seven worked procedures, survey through Live ISO
+4. [Refusals Are Correct Behaviour](#4-refusals-are-correct-behaviour--do-not-work-around-them) — **read before routing around anything**
+5. [Reading a Certificate Attestation](#5-reading-a-certificate-attestation) — what the exit code does not tell you
+6. [Error Handling & Edge Cases](#6-error-handling--edge-cases) — the strings s0 actually prints, and the exit codes
+7. [Reference Documentation & Where This Skill Lives](#7-detailed-reference-documentation--where-this-skill-lives) — bundled references and install locations
+
+> **WARNING — never relay a sanitization tier as fact unless the certificate
+> states it.**
+>
+> s0 refuses to claim a tier its evidence does not support, and it will not accept
+> one on request. If you find yourself about to tell a user that a drive "is
+> sanitized" because the tool exited zero, stop and read the certificate's
+> `result.verification.attestation` instead. An exit code is not a claim; the
+> attestation is.
 
 ---
 
 ## CRITICAL SAFETY & PATIENCE DIRECTIVE: HIGH-RISK OPERATIONS
 
-!!! danger "Irreversible Destruction & Hardware Locking Risk"
-    Operations executed by `s0` involve **permanent, non-recoverable destruction of digital storage media** or long-running forensic acquisitions. Adhere strictly to the four non-negotiable invariants:
-
-    1. **Patience is mandatory.** Never terminate, abort, or send `SIGKILL` / `SIGINT` to a running `s0 wipe` or `s0 image` process. Interrupting a controller-level firmware erase (`NVME_SANITIZE` or `ATA_SECURE_ERASE`) can lock the drive into a permanently bricked or frozen state. Always wait for completion.
-    2. **Never wipe without a dry-run.** ALWAYS run `s0 plan --target <path>` first. Inspect the chosen method and warnings before taking any destructive action.
-    3. **Identify the device explicitly.** Run `s0 list` and report the drive **Model**, **Serial Number**, and **Capacity** to the user. Demand explicit user confirmation of the target before executing destructive commands.
-    4. **Verify certificates immediately.** After any destructive wipe, file erase, or image acquisition, execute `s0 verify` on the emitted certificate to confirm cryptographic non-repudiation.
+> **DANGER — irreversible destruction and hardware locking risk.**
+>
+> Operations executed by `s0` involve **permanent, non-recoverable destruction of
+> digital storage media** or long-running forensic acquisitions. Adhere strictly
+> to the four non-negotiable invariants:
+>
+> 1. **Patience is mandatory.** Never terminate, abort, or send `SIGKILL` /
+>    `SIGINT` to a running `s0 wipe` or `s0 image` process. Interrupting a
+>    controller-level firmware erase (`NVME_SANITIZE` or `ATA_SECURE_ERASE`) can
+>    lock the drive into a permanently bricked or frozen state. Always wait for
+>    completion.
+> 2. **Never wipe without a dry-run.** ALWAYS run `s0 plan --target <path>` first.
+>    Inspect the chosen method and warnings before taking any destructive action.
+> 3. **Identify the device explicitly.** Run `s0 list` and report the drive
+>    **Model**, **Serial Number**, and **Capacity** to the user. Demand explicit
+>    user confirmation of the target before executing destructive commands.
+> 4. **Verify certificates immediately.** After any destructive wipe, file erase,
+>    or image acquisition, execute `s0 verify` on the emitted certificate to
+>    confirm cryptographic non-repudiation.
 
 ---
 
@@ -73,8 +97,39 @@ When configuring parameters for `s0`, follow these engineering rules:
 - **Rationale**: Firmware commands (NVMe Sanitize, ATA Secure Erase) operate at the internal controller level, purging flash cells, over-provisioned blocks, and reallocated bad blocks that host LBA overwriting cannot reach. This achieves NIST **Purge** tier in seconds to minutes. Use `--no-firmware` only if connected through an unstable USB-to-SATA bridge that drops connections during SCSI/ATA pass-through.
 
 ### D. Carver Confidence Threshold (`--min-confidence 50`)
-- **Recommendation**: Use `50` for standard triage, `25`–`35` for heavily corrupted media, and `75`–`90` for court-admissible automated pipelines.
-- **Rationale**: A score of 50 requires matching magic headers, plausible length fields, and expected entropy distributions, while allowing recovery of truncated files that lack closing footers.
+- **Recommendation**: Use `50` (the CLI default) for standard triage and
+  `75`–`90` for court-admissible automated pipelines. **Lowering it does not
+  recover anything the structural gates rejected** — see the warning below.
+- **Rationale**: A score of 50 requires a magic header, an independently
+  resolved end of file, and a plausible size; above that, entropy and boundary
+  method separate a good recovery from a merely possible one.
+
+> **WARNING — `--min-confidence` is a rank, not an override.**
+>
+> Two gates run *before* any candidate is scored, and neither is a score
+> component:
+>
+> 1. **Boundary resolution.** A candidate whose end cannot be derived is dropped
+>    before it is ever read.
+> 2. **Structural validation** (`s0.carve.boundary.validate_structure`). A
+>    candidate that does not parse as its claimed format is dropped.
+>
+> `--min-confidence 0` changes neither. A truncated or corrupted file is refused
+> with a reason in `recovery_index.json`, not admitted at zero confidence. So
+> there is **no confidence value that recovers a structurally damaged file**:
+> lower the number only to admit *well-formed but lower-scoring* files — a small
+> text document, a truncated-but-valid container, a repetitive image.
+>
+> **What actually helps on corrupted media:**
+>
+> - Read `recovery_index.json` → `rejection_summary` and
+>   `rejected_candidates_sample`. They name the gate and the reason, so you can
+>   tell a damaged file from a signature that was never there.
+> - Narrow `--extensions` to the formats present, so the budget is not spent on
+>   2-byte magics like MP3 frame sync that match inside random data.
+> - Re-acquire the source from the original medium. A carve cannot restore bytes
+>   the image does not contain.
+> - Report the refusal. Do not tune a threshold until something appears.
 
 ### E. Acquisition Buffer Size (`--block-size 1048576`)
 - **Recommendation**: Use `1048576` (1MB, default) for general acquisition; use `4194304` (4MB) when capturing PCIe Gen4/Gen5 NVMe targets.
@@ -100,7 +155,11 @@ s0 plan --target /dev/sdb
 ```
 
 **Agent Validation Protocol:**
-1. Review the output table of `s0 list`. Check `MOUNTED?`. If `yes`, refuse to proceed until unmounted.
+1. Review the inventory table `s0 list` prints. The column is headed `MOUNTED`
+   and a mounted target shows `YES` (an unmounted one shows `-`). In
+   `--format csv` the same column is `mounted` with lowercase `yes`/`no`, and in
+   `--format json` it is the boolean `mounted`. If a target is mounted, refuse to
+   proceed until it is unmounted.
 2. Review the plan summary: note the selected method (e.g. `NVME_SANITIZE_CRYPTO_ERASE` or `OVERWRITE_ZERO_1PASS`) and the NIST category (`Purge` or `Clear`).
 3. Communicate the Target Path, Model, Serial Number, Capacity, and NIST Category to the user and request confirmation.
 
@@ -153,7 +212,20 @@ sudo s0 image \
 
 **Agent Protocol:**
 - Confirm the source device is write-blocked.
-- Review the generated `acquisition_manifest_<UUID8>.json` for `source_sha256`, `source_md5`, `bad_sectors_count`, and `speed_mbps`.
+- Read the manifest the run prints as `Manifest file`. Its name is
+  `acquisition_manifest_<unix_start_seconds>_<source_basename>.json` — **not**
+  `acquisition_manifest_<UUID8>.json`; there is no UUID in it. The fields are
+  nested, so read them at the right depth:
+  - `cryptographic_hashes.sha256` and `cryptographic_hashes.md5`
+  - `integrity_recovery.bad_sectors_encountered`, `bad_bytes_zero_filled`,
+    `bad_sector_ranges`
+  - `average_speed_mbps`, `duration_seconds`, `source.capacity_bytes`,
+    `destination.bytes_written`
+  - `operator.operator_id`, `operator.organization`
+- A `bad_sectors_encountered` above zero is not a failed acquisition: those
+  sectors were zero-filled and logged in `bad_sector_ranges`. Report the count
+  and the ranges; the image is incomplete in exactly those extents and nowhere
+  else.
 
 ---
 
@@ -170,21 +242,53 @@ s0 carve \
     --operator "examiner.carter"
 ```
 
-**What s0 can now recover that a forward-scanning carver cannot:**
+**What s0 does that a forward-scanning carver does not** — verified against the
+live signature table in `src/s0/carve/signatures.py`, which is 62 signatures
+across 51 extensions. 38 of those extensions have a **structural boundary
+rule**: the end of the file comes from the format's own structure, not from a
+ceiling. The other 13 are named in
+[Carving Signatures](references/carving-signatures.md) and are sized from a
+declared field or footer where the format has one.
 
-- **Fragmented files, out of order.** Fragments are ordered by the key *inside*
-  each one — ISO-BMFF `mfhd.sequence_number` and `tfdt` decode time, Matroska
-  `Cluster.Timestamp` — not by where they sit on the volume. 46% of real fragmented
-  recordings are laid out out of order, which is why no shipping tool recovers
-  them. You do not need to do anything special to benefit; it happens on every
-  carve.
+- **Exact lengths for containers that previously had none.** A structural
+  boundary rule exists for each of: AIFF (`FORM` declared size), TIFF (IFD chain
+  plus strip extents), JPEG 2000 (box walk to EOC), MIDI (`MTrk` chunk walk), RTF
+  (group nesting must close), Java `.class` (constant pool and member tables),
+  RAR5 (block chain to end-of-archive), registry hives (the `hbin` chain),
+  Matroska/WebM (below), and the compressed-stream formats in the next bullet.
+  AIFF, uncompressed TIFF, JPEG 2000, MIDI, RTF, `.class`, bzip2, xz, zstd and
+  tar were each recovered byte-exactly from a purpose-built fixture on this
+  branch; RAR5, registry hives and LZ4 are covered by the test suite in
+  `tests/cli/test_containers.py` rather than by a fixture built here.
+  **A rule existing is not a guarantee of recovery** — compressed TIFF is
+  refused outright (see section 4), and the boundary notes on every recovered
+  file say which rule actually bound it.
+- **Compressed-stream ends, by two different mechanisms — do not conflate
+  them.** `bzip2` and `xz` get an exact, *decompressor-reported* end (the
+  decoder says how much it consumed). `zstd` and `lz4` get an exact end from a
+  *frame and block header walk*, with no decoder involved. There is **no `.lzma`
+  signature**, so a legacy alone-format `.lzma` file is not carved at all; the
+  `xz` signature covers the XZ container only.
 - **Matroska and WebM**, including recordings with an unknown-size Segment,
-  which is what most in-car cameras write.
-- **Twelve container formats** that previously had a signature but no way to
-  establish a length, and so were carved to `max_size` — a file with unrelated
-  evidence glued to the end. AIFF, TIFF, JPEG 2000, MIDI, RTF, Java `.class`,
-  RAR5, registry hives, and exact decompression-derived lengths for bzip2, xz,
-  lzma, zstd and lz4.
+  which is what most in-car cameras write, and unknown-size Clusters, where the
+  cluster ends where the next element ID appears.
+- **Fragmented ISO-BMFF, out of order.** For `mp4`, `mov` and `m4v`,
+  fragments are ordered by the key *inside* each one —
+  `mfhd.sequence_number`, cross-checked against `tfdt` base media decode time —
+  not by where they sit on the volume. Assemblies are checked three ways
+  (key contiguity, decode-time projection, reparse through the format's own
+  parser) and a hole is reported as a hole rather than bridged. This happens on
+  every carve; there is no flag for it.
+  **Scope, precisely:** Matroska cluster ordering by `Cluster.Timestamp` exists
+  in `s0.carve.reassembly` and is exercised by the test suite, but it is **not
+  wired into the `s0 carve` path**, which only reassembles ISO-BMFF. Do not tell a
+  user that `s0 carve` reassembles a fragmented Matroska file; report the
+  clusters it derives individually.
+- **The formats that are *not* structural are named, not implied.** 13
+  extensions — `avif`, `db`, `doc`, `docx`, `heic`, `ini`, `lnk`, `mdb`, `mp3`,
+  `pf`, `pptx`, `url`, `xlsx` — have no boundary rule and are carved from a
+  declared field, a footer, or the signature's `max_size`. Read
+  `boundary_method` on each recovered file and say which kind it is.
 
 **Useful options worth knowing:**
 
@@ -273,9 +377,11 @@ When you see one, the correct action is to report it, not to find a way around i
 | Refusal | Why | What to do |
 |---|---|---|
 | Compressed TIFF (LZW, Deflate, PackBits) | A compressed strip's length is not its byte count, so the strip geometry gives a confident *wrong* answer | Report it as not sized. Uncompressed TIFF is exact. |
+| BigTIFF (8-byte IFD offsets) | The offset width is doubled and the reader does not decode it | Report it as not sized. |
 | Multi-page TIFF whose IFD chain leaves the file | The chain cannot be followed, so no bound can be proven | Report it. |
 | Registry hive with no terminating empty block | A truncated hive and a complete one are otherwise indistinguishable | Report it as truncated. |
 | Windows INI, Berkeley DB | Text with no length and no terminator; no magic to size by | Report it. |
+| Windows prefetch that is not version 3 | Only v3 declares the original file's size; the prefetcher routinely truncates the container | Report it as not sized. |
 | A fragment whose header was overwritten | No in-band key survives, so any position is a guess | Report the bytes as unassigned. |
 | No original path on exFAT/FAT32/ext4 | A deleted record holds no parent pointer | Report the filename and say the path is unavailable. |
 | A sanitize tier the device did not support | Invariant 2: never claim a tier the evidence does not support | Report the downgrade with its reason. |
@@ -292,19 +398,58 @@ genuinely needs doing, say so to the user — do not bypass it.
 The certificate is the evidence; the exit code is not. For any wipe:
 
 ```bash
-python3 -c "import json,sys; v=json.load(open(sys.argv[1]))['result']['verification']; \
-print('sampled:', v.get('samples_checked'), 'of', v.get('population_blocks')); \
-print('confidence:', str(v.get('confidence_percent'))+'%'); \
-print('residue bound:', (v.get('residual_fraction_upper_bound_ppm') or 0)/10000, '%'); \
-print(v.get('attestation'))" /evidence/certs/certificate_*.json
+# Device wipes emit certificate_<uuid8>.json; file/folder erases emit
+# file_wipe_certificate_<uuid8>.json. The leading * is required: a glob of
+# `certificate_*.json` alone matches nothing for a file erase, and the shell
+# then passes the literal pattern to python.
+python3 - /evidence/certs/*certificate_*.json <<'PY'
+import json, sys
+
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as fh:
+        cert = json.load(fh)
+    result = cert.get("result") or {}
+    v = result.get("verification") or {}
+    print(f"== {path}")
+    print(f"  result.status    : {result.get('status')}")
+    print(f"  method           : {cert.get('wipe', {}).get('method')}"
+          f" (NIST {cert.get('wipe', {}).get('nist_category')})")
+    checked = v.get("samples_checked")
+    population = v.get("population_blocks")
+    print(f"  readbacks checked: {checked}"
+          + (f" of {population}" if population is not None else ""))
+    print(f"  sample strategy  : {v.get('sample_strategy') or '(not recorded)'}")
+    if "residual_fraction_upper_bound_ppm" in v:
+        ppm = v["residual_fraction_upper_bound_ppm"]
+        print(f"  residual bound   : {ppm / 10000:.4f}% of the medium at"
+              f" {v.get('confidence_percent')}% confidence")
+    else:
+        print("  residual bound   : NONE RECORDED -- this was not a statistical"
+              " sample, so there is no bound. Read the attestation below.")
+    print(f"  attestation      : {v.get('attestation') or '(not recorded)'}")
+PY
 ```
+
+Two things that snippet deliberately does not do, because doing them is how a
+reader ends up reporting a number the certificate never produced:
+
+- **It never prints `0` for an absent bound.** `residual_fraction_upper_bound_ppm`
+  is optional in the schema and is genuinely *absent* on a file/folder erase,
+  where the operation was exhaustive rather than sampled. A missing bound means
+  "no bound applies", which is not the same claim as "the residue is zero", and
+  an exhaustive re-stat of a file list is not a measurement of a medium.
+- **It never calls a file list a "sample".** `samples_checked` on a file erase
+  counts the paths that were re-stat()ed; `sample_strategy` says
+  `exhaustive_over_supplied_paths` so you can tell.
 
 Three cases, and they are not interchangeable:
 
-- **Sampled readback** (device wipe). Carries a statistical bound. The default
-  64 samples bound the residue at ~4.5% at 95% confidence — weak. Raise
+- **Sampled readback** (device wipe, `method: sampled_readback`). Carries a
+  statistical bound in `residual_fraction_upper_bound_ppm`. The default 64
+  samples bound the residue at ~4.5% at 95% confidence — weak. Raise
   `--verify-samples` when the bound is load-bearing.
-- **Exhaustive over supplied paths** (file/folder erase). Not a sample, so no
+- **Exhaustive over supplied paths** (file/folder erase, `method:
+  post_erase_absence_and_overwrite_readback`). Not a sample, so no
   residual bound applies. It attests absence *for the paths you supplied* — s0
   cannot verify that your list was complete.
 - **NVMe sanitize** (`s0.wipe.attest`). The strongest available: the
@@ -317,20 +462,76 @@ Three cases, and they are not interchangeable:
 
 ## 6. Error Handling & Edge Cases
 
-| Failure Scenario | Root Cause | Mandatory Agent Remediation |
-|---|---|---|
-| `SafetyError: Target is mounted` | A partition is in active use | Refuse to wipe. Instruct user to run `umount /dev/sdX*` or use a bootable Live USB. Never use `--force` on system mounts. |
-| `ATA Security State: Frozen` | BIOS/UEFI locked security register on boot | Instruct user to sleep/suspend system for 5 seconds or power-cycle drive via SATA power hot-plug to clear frozen lock. |
-| `NVMe Sanitize Not Supported` | Drive firmware lacks Sanitize opcode | s0 automatically cascades to NVMe Format with Crypto Erase (Purge) or BLKDISCARD. |
-| `Audit Verify: BROKEN / TAMPER DETECTED` | SQLite database modified out-of-band | Immediately alert operator. Cease issuing certificates from this station until investigated. |
-| `Verification Hits > 0` | Post-wipe readback detected non-zero data | Sanitization failed! Drive may have reallocated bad blocks or ignored discard. Fall back to software overwrite. |
+Every string in the "as printed" column below was checked against
+`src/s0/cli/main.py`, `src/s0/cli/devices.py`, `src/s0/safety.py` and
+`src/s0/audit/verify.py`. Quote them back to the user as they appear; do not
+paraphrase them into a different failure.
+
+| As printed | Exit | Root cause | Mandatory agent remediation |
+|---|---|---|---|
+| `REFUSED: <path> has mounted filesystems (<hits>). Unmount them first, or pass --force if you truly mean it.` | 2 | A partition on the target is in active use | Refuse to wipe. Ask the user to unmount (`umount /dev/sdX*`) or boot the s0 Live ISO. **Never** supply `--force` on a system mount. `s0 plan` prints the same refusal and exits 0 — it is a dry run, so the refusal is in the `Warnings` block. |
+| `REFUSED: <path> hosts the running ROOT filesystem. The tool refuses this without --force; if you mean it, boot the s0 ISO instead.` | 2 | The target hosts `/` | Refuse. The only correct path is the Live ISO. Do not pass `--force`. |
+| `REFUSED: Refusing to target system path: <path>` | 2 (`s0 wipe --target`); the same text prefixed `error:` with exit 77 on `s0 wipe --targets` | The shared path guard protects `/etc`, `/usr`, the filesystem root, `$HOME` itself and s0's own state directory | Refuse. Report which guard fired; do not retry with `--force`. |
+| `Cannot verify whether <path> hosts the running ROOT filesystem (findmnt unavailable and /proc/mounts could not be verified). Refusing to proceed without --force.` | 2 | `findmnt` and `/proc/mounts` both unreadable, so the root-filesystem check cannot be made | Refuse. Report that the guard could not evaluate, not that the target is safe. |
+| `<path> reports no firmware-mediated Purge method (no ATA Sanitize, no NVMe Sanitize, no SCSI SANITIZE, no FDE key destruction). … s0 will not issue a Purge claim it cannot substantiate …` | 75 | `--require-tier Purge` on a device that cannot reach Purge (`s0 wipe` and `s0 plan` both refuse) | Report the downgrade. Only proceed with `--allow-downgrade`, which records the decision on the certificate — and then report the **achieved** tier, not the requested one. |
+| `drive security state is FROZEN — BIOS froze it to block hot-attach attacks; warm-sleep/resume (suspend the machine, resume) then retry` | 1 | BIOS/UEFI issued an ATA Security Freeze Lock during POST | Ask the user to suspend and resume the machine, or power-cycle the drive on the SATA power header. Do not keep retrying in a loop. In `s0 plan` this appears as the alternative `ATA Security Erase unavailable: drive security state is FROZEN`. |
+| `controller lacks sanitize capability` / `nvme-cli not installed` / `crypto erase capability unconfirmed` (listed under `Alternatives` in `s0 plan`) | 0 | NVMe firmware does not advertise Sanitize, or `nvme-cli` is absent, or the probe was inconclusive | s0 falls back to NVMe Format, then to a single-pass overwrite. Report the **fallback that was chosen** and its tier. Do not describe the result as a Purge sanitize. |
+| `CHAIN INTEGRITY FAILURE` (`s0 audit verify`) | 1 | Hash-chain continuity or a block signature failed | Alert the operator immediately and stop issuing certificates from this station. Preserve the ledger; do not delete or rebuild it. |
+| `UNVERIFIABLE - SIGNING KEY NOT IN THE TRUST SET` (`s0 audit verify`) | 1 | The ledger hashes verify, but the signing key is not among the keys `--key` / `~/.s0/keys` supplied | **This is the first state most users hit, and it is a refusal, not a pass.** The chain is continuous; continuity is not authenticity, because anyone can recompute a SHA-256 block hash. Re-run with `--key <issuer_public.pem>` (repeatable; a directory of `*.pem` also works) and report the result. Never write "audit chain verified" on this state alone. |
+| `VALID & CONTINUOUS - SIGNED WITH UNACCREDITED DEMO KEY` (`s0 audit verify`) | 0 | The chain is intact but was signed with the bundled `demo_issuer_private.pem` | Report it as cryptographically continuous **and** unusable for legal chain of custody. |
+| `VERIFICATION FAILED` (`s0 verify`) | 1 | Signature does not match the payload, or the issuer fingerprint is not pinned | Treat the certificate as suspect. `Reason` distinguishes `signature does NOT match payload — the certificate content has been modified after signing` from `unknown issuer key fingerprint … — certificate was not issued by any pinned authority`. The second is an unknown *authority*, not tampering; say which one it is. |
+| `AUTHENTIC - but signed with an unaccredited demonstration key` (`s0 verify`) | 0 | Valid signature, demonstration key | Report it as authentic but not accredited. |
+| `no trusted public key available; pass --key <issuer_public.pem>` | 78 | No key at all, so nothing could be checked | Report that verification did not happen. Do not report it as a pass or a fail. |
+| `Verification  <n> read-back sample(s) - MISMATCH` followed by `sanitization did not complete cleanly: the certificate records the failure and must not be presented as a completed wipe.` | 1 | Post-wipe readback did not match the pattern | The wipe failed. Report the failure and the certificate's `result.status`. Do not re-run `s0 plan` and describe the retry as success until its own readback matches. |
+| `Planted markers  <n> hit(s) after sanitization` | 0 or 1 — the line is printed unconditionally, so read `result.status` and the `Verification` line above it for the verdict | A known pre-wipe needle is still readable. This is recorded on demo/test targets, where the pre-wipe content was known | Report it regardless of the exit code. It is the strongest single indication that data survived, and a wipe can still exit 0 with it present. |
+| `WIPE INTERRUPTED (Ctrl+C). The target may be partially overwritten and must not be released. Re-run s0 wipe to completion, or escalate to a physical destruction method.` | 130 | The operator interrupted the run | Report the target as **partially** sanitized. Never describe it as sanitized, and never release the media. |
 
 ---
 
-## 7. Detailed Reference Documentation
+## 7. Detailed Reference Documentation & Where This Skill Lives
 
-When deep technical domain context is needed, consult the bundled reference files:
-- [NIST SP 800-88 & IEEE 2883-2022 Method Mappings](references/nist-800-88-mapping.md)
-- [Device Safety, Mount Guards & OS Path Architecture](references/device-safety-rules.md)
-- [Carving Signatures, File Formats & Entropy Heuristics](references/carving-signatures.md)
-- [Canonical JSON v1, Ed25519 Signatures & Audit Ledger](references/audit-and-crypto.md)
+### 7.1 Bundled references
+
+When deep technical domain context is needed, consult the bundled reference
+files. All four paths are relative to this `SKILL.md`:
+
+| Reference | Use it for |
+|---|---|
+| [NIST SP 800-88 & IEEE 2883-2022 Method Mappings](references/nist-800-88-mapping.md) | Which method earns which tier, and the DRAT/RZAT rules for a Purge claim |
+| [Device Safety, Mount Guards & OS Path Architecture](references/device-safety-rules.md) | OS device paths, the four safety interlocks, ATA frozen state, HPA/DCO |
+| [Carving Signatures, File Formats & Entropy Heuristics](references/carving-signatures.md) | The live per-extension table: magic bytes, and whether an extension is **structural** (length derived from the format) or **sized from a declared field / footer** |
+| [Canonical JSON v1, Ed25519 Signatures & Audit Ledger](references/audit-and-crypto.md) | The serialization contract and the block-hash formula |
+
+`references/carving-signatures.md` is **generated** from
+`src/s0/carve/signatures.py` by `tools/gen_carving_reference.py`. Do not hand-edit
+it. If a format you need is missing from it, the signature registry is missing it
+too; check `python tools/gen_carving_reference.py --check` before believing
+anything either of them says about the format count.
+
+Also in this directory:
+
+- `scripts/verify_cert.py` — standalone certificate verifier. Runs with or
+  without s0 importable, and walks up from its own location looking for the
+  repository; if it is copied somewhere shallower it tells you to pass `--key`
+  rather than raising `IndexError`.
+- `evals/evals.json` — benchmark prompts and the behaviour each one is meant to
+  elicit.
+
+### 7.2 Where the skill is installed
+
+This skill ships **inside the distribution**, so a `pip install s0` user has it
+as well as a git clone:
+
+```bash
+python3 -c "import importlib.util, pathlib; \
+  s = importlib.util.find_spec('skills'); \
+  print(pathlib.Path(s.submodule_search_locations[0]).resolve())"
+```
+
+- **pip / wheel:** `<site-packages>/skills/s0-forensics/` — a real directory
+  inside the installed package, not a link back to a checkout.
+- **git clone and the curl one-liner** (which clones to `~/.s0` and editable-installs
+  from it): `~/.s0/skills/s0-forensics/`.
+
+Point an agent at that `SKILL.md`. If neither location exists, the install is
+broken, not merely incomplete — say so rather than improvising guidance.

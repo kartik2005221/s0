@@ -760,11 +760,15 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             # extension-free single-image case happened to survive.
             pos += 2                                    # introducer + label
             if label[0] == 0xFF:                        # application extension
-                # 8-byte app identifier + 3-byte auth code precede the sub-blocks.
-                pos += 11
-            elif label[0] == 0x01:                      # plain text extension
-                # 12-byte fixed header precedes the sub-blocks.
+                # 1 block-size byte + 8-byte identifier + 3-byte auth code = 12,
+                # then the sub-block chain. Skipping 11 desynchronises the walk by
+                # one byte and the rest of the file is misread as garbage, which is
+                # how an ffmpeg-produced animated GIF (21 ff 0b "NETSCAPE2.0" ...)
+                # still failed after the label fix.
                 pos += 12
+            elif label[0] == 0x01:                      # plain text extension
+                # 1 block-size byte + 12-byte fixed header = 13, then sub-blocks.
+                pos += 13
             # Then a data sub-block chain: length byte, that many bytes, repeated,
             # terminated by 0x00.
             for _ in range(1 << 20):
