@@ -1636,8 +1636,9 @@ trusting the summary instead of the table.
 |------|----------|---------|-----------------|
 | `0` | `EX_OK` | Operation completed successfully. | Wipe done, cert issued; audit chain valid; verification passed. |
 | `1` | `EX_FAILURE` | Operation was attempted but failed at runtime. | Hardware command rejected; signature mismatch; post-wipe verification found non-zero blocks. |
+| `2` | *(unnamed)* | A s0-internal guard refused, or a parameter was out of range. **Listed separately because it collides with a code that means something else.** It is what `wipe` returns for a mounted-filesystem refusal, an out-of-range `--passes`/`--verify-samples`, an operator declining the confirmation prompt, and a missing platform engine; and what `live` returns for a missing ISO or target. It is *not* argparse's usage error -- `main()` remaps argparse's own 2 to `64`. Read `2` as "s0 declined; the message says why", not as a usage error. |
 | `64` | `EX_USAGE` | Bad flags or arguments. | Missing required flag; unparseable subcommand. argparse's own exit 2 is remapped to this. |
-| `65` | `EX_DATAERR` | Supplied data is malformed, or verification failed. | Certificate is not valid JSON; the signature payload does not match the schema; `audit verify` cannot attribute a block (`UNVERIFIABLE`). |
+| `65` | `EX_DATAERR` | Supplied data is malformed. | Certificate is not valid JSON; the certificate payload does not match the schema; a malformed `signature` field. **Not** what `audit verify` returns when it cannot attribute a block -- that is `1`. |
 | `66` | `EX_NOINPUT` | Input file missing or unreadable. | `--target` does not exist; `s0 live devices` found no removable USB drive. |
 | `69` | `EX_UNAVAILABLE` | A required program or service is unavailable. | A required helper binary is not installed and no fallback exists. |
 | `70` | `EX_SOFTWARE` | An internal invariant failed. | Should not occur; please report. |

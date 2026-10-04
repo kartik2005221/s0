@@ -20,6 +20,7 @@ so a code that is neither documented nor real cannot survive.
 from __future__ import annotations
 
 import inspect
+import os
 import re
 import subprocess
 import sys
@@ -37,8 +38,45 @@ import s0.terminal as terminal
 REAL_CODES = {v for k, v in vars(terminal).items() if k.startswith("EX_") and isinstance(v, int)}
 
 
+#: Exit code 2 has no `EX_` constant: `s0.terminal` defines `EX_USAGE` as 64, so
+#: argparse's own 2 is remapped and 2 is left to whatever s0's internal guards return.
+#: It is reachable -- `wipe` returns it for a mounted-filesystem refusal and an
+#: out-of-range `--passes`, `live` for a missing ISO -- and a caller handling only
+#: named codes would mishandle it. Documented separately in the exit-code table.
+UNNAMED_BUT_REACHABLE = {2}
+
+
 def _documented_codes() -> set[int]:
     return {int(m) for m in re.findall(r"^\| `(\d+)`", REFERENCE.read_text(), re.M)}
+
+
+def _all_known_codes() -> set[int]:
+    return REAL_CODES | UNNAMED_BUT_REACHABLE
+
+
+#: Writes one real, demo-signed block into $S0_AUDIT_DB using the repo's own APIs, so
+#: the audit test drives real code rather than a hand-built SQLite row.
+SIGN_ONE_LEDGER_BLOCK = """
+import os
+from pathlib import Path
+from s0.audit.db import init_audit_db, record_audit_event
+from s0.certificate import build_certificate, sign_certificate
+from s0.crypto import load_private_pem
+
+repo = Path(os.environ["S0_REPO"])
+db = Path(os.environ["S0_AUDIT_DB"])
+init_audit_db(db)
+priv = load_private_pem(repo / "src/s0/data/keys/demo_issuer_private.pem")
+cert = build_certificate(
+    organization="Acme", operator_id="op-test", tool_name="s0",
+    tool_version="2.4.4", platform="linux", device_id="sha256:deadbeef",
+    device_type="removable_disk", storage_type="HDD",
+    method="OVERWRITE_ZERO_1PASS", nist_category="Clear",
+    start_time="2026-01-01T00:00:00Z", end_time="2026-01-01T00:01:00Z",
+    bytes_processed=4096, capacity_bytes=8192,
+)
+record_audit_event(sign_certificate(cert, priv), operation_type="DRIVE_ERASE", db_path=db)
+"""
 
 
 class TestTheExitCodeTableIsTrue:
@@ -46,9 +84,10 @@ class TestTheExitCodeTableIsTrue:
         assert _documented_codes(), "no exit codes parsed; the regex has drifted"
 
     def test_every_documented_code_is_a_real_one(self):
-        bogus = sorted(_documented_codes() - REAL_CODES)
+        bogus = sorted(_documented_codes() - _all_known_codes())
         assert not bogus, (
-            f"the reference documents exit codes the CLI cannot return: {bogus}. Real: {sorted(REAL_CODES)}"
+            f"the reference documents exit codes the CLI cannot return: {bogus}. "
+            f"Real: {sorted(_all_known_codes())}"
         )
 
     def test_every_real_code_is_documented(self):
@@ -65,10 +104,108 @@ class TestTheExitCodeTableIsTrue:
             "the reference still claims a three-value contract while listing thirteen codes"
         )
 
-    def test_arparsers_exit_two_is_documented_as_sixty_four(self):
-        assert "| `2` |" not in REFERENCE.read_text(), (
-            "the table still lists exit code 2, which main() remaps to EX_USAGE (64)"
+    def test_exit_two_is_documented_as_a_refusal_not_a_usage_error(self):
+        """`main()` remaps *argparse's* 2 to 64, but s0's own guards return 2.
+
+        The old assertion was `"| `2` |" not in the reference`, on the reasoning that
+        argparse's 2 is remapped. That conflated two different meanings of the number:
+        `wipe` returns 2 for a mounted-filesystem refusal and for an out-of-range
+        `--passes`, and `live` returns 2 for a missing ISO. Those are not usage
+        errors, and leaving them undocumented means a caller who handles the named
+        codes has no branch for them.
+
+        So 2 is now documented, and the row must not describe it as bad flags -- that
+        is 64, and conflating them is how a caller treats a refusal as a typo.
+        """
+        row = next(
+            (line for line in REFERENCE.read_text().splitlines() if line.startswith("| `2` |")),
+            "",
         )
+        assert row, "exit code 2 is reachable but undocumented"
+        assert "64" in row, (
+            f"the row for 2 must say it is NOT argparse's usage error, which is 64: {row.strip()}"
+        )
+        assert "Bad flags" not in row and "bad flags" not in row, (
+            f"the row for 2 describes it as bad flags, which is 64's meaning: {row.strip()}"
+        )
+
+    def test_an_untrusted_audit_key_exits_one_not_sixty_five(self):
+        """The 65 row claimed `audit verify` returns 65 when it cannot attribute a block.
+
+        Driven through the real command rather than by reading the source, because
+        `cmd_audit` does return `EX_DATAERR` for two unrelated cases (an unreadable
+        `--key`, an implausibly large ledger) -- so grepping the function would prove
+        nothing about the path in question.
+
+        The trust set is a directory holding a valid key that did not sign the ledger,
+        so the chain's hashes verify and the attribution step is what fails.
+        """
+        import pathlib as _pl
+        import shutil as _shutil
+        import subprocess as _sp
+        import sys as _sys
+        import tempfile as _tf
+
+        entry = _shutil.which("s0") or str(_pl.Path(_sys.executable).parent / "s0")
+        if not _pl.Path(entry).is_file():
+            pytest.skip("s0 entry point not available")
+
+        with _tf.TemporaryDirectory() as tmp:
+            root = _pl.Path(tmp)
+            # A *populated* directory holding a key that did not sign the ledger.
+            # An empty directory is rejected earlier with exit 66 ("no *.pem found"),
+            # which is a different question: it never reaches the attribution check.
+            env = {
+                **os.environ,
+                "HOME": str(root),
+                "S0_AUDIT_DB": str(root / "audit.db"),
+                "S0_REPO": str(REPO_ROOT),
+                "PYTHONPATH": str(REPO_ROOT / "src"),
+            }
+            other_keys = root / "other-keys"
+            other_keys.mkdir()
+            generated = _sp.run(
+                [entry, "keygen", "--out-dir", str(other_keys), "--name", "other"],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO_ROOT),
+                env=env,
+                timeout=180,
+            )
+            assert generated.returncode == 0, f"keygen failed: {generated.stderr[-300:]}"
+            # Keep only the public half: a trust directory is globbed for *.pem, and
+            # handing it the private key is rejected earlier as an unreadable key.
+            for private in other_keys.glob("*_private.pem"):
+                private.unlink()
+            assert list(other_keys.glob("*.pem")), "keygen produced no public key"
+            gen = _sp.run(
+                [_sys.executable, "-c", SIGN_ONE_LEDGER_BLOCK],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO_ROOT),
+                env=env,
+                timeout=180,
+            )
+            assert gen.returncode == 0, f"could not build a ledger: {gen.stderr[-400:]}"
+            assert (root / "audit.db").is_file(), "no ledger was written"
+
+            proc = _sp.run(
+                [entry, "audit", "verify", "--key", str(other_keys)],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO_ROOT),
+                env=env,
+                timeout=180,
+            )
+            text = proc.stdout + proc.stderr
+            assert "UNVERIFIABLE" in text, (
+                f"expected the untrusted-key state, got exit {proc.returncode}:\n{text[-400:]}"
+            )
+            assert proc.returncode == 1, (
+                f"`s0 audit verify` with an untrusted key exited {proc.returncode}. The "
+                f"table says 1 and the 65 row now says this path is not 65; if this "
+                f"fails, one of those is wrong and the message is:\n{text[-300:]}"
+            )
 
     def test_seventy_seven_says_it_can_mean_refused(self):
         """`image` onto an existing destination exits 77; that is not a privilege."""
