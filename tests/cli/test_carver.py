@@ -1095,3 +1095,73 @@ class TestScanThroughput:
         pngs = [f for f in out.iterdir() if f.suffix == ".png"]
         assert len(pngs) == 1
         assert pngs[0].read_bytes() == payload
+
+
+# --------------------------------------------------------------------------- #
+# Findings 2.1 and 2.2 from the adversarial pass on this branch.
+# --------------------------------------------------------------------------- #
+
+def test_valid_compressed_and_encrypted_containers_are_not_entropy_rejected():
+    """Regression: the entropy gate vetoed files whose container had validated.
+
+    It ran *before* the per-format validator, so a perfectly valid PNG was
+    rejected for having uniform 1 KiB blocks. Measured on a 480 KB noisy PNG:
+
+        mean 7.808  stdev 0.017   -> old gate rejected it
+        validate_structure(png, "png") -> True, 0 CRC mismatch
+
+    `--min-confidence 0` did not help, because the gate is a hard reject rather
+    than a score component. The docstring's premise -- that no format is uniformly
+    random throughout -- holds for uncompressed formats and is false for every
+    compressed or encrypted one, which is exactly what an examiner wants flagged.
+    """
+    import struct
+    import zlib
+
+    from s0.carve import scoring
+    from s0.carve.boundary import validate_structure
+
+    w = h = 400
+    raw = b"".join(b"\x00" + os.urandom(w * 3) for _ in range(h))
+
+    def chunk(tag: bytes, payload: bytes) -> bytes:
+        body = tag + payload
+        return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
+
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 1))
+        + chunk(b"IEND", b"")
+    )
+
+    mean, stdev = scoring.entropy_block_profile(png)
+    # The fixture must actually exercise the bug, or it proves nothing.
+    assert stdev < scoring._UNIFORM_STDEV_MAX and mean > scoring._UNIFORM_MEAN_MIN, (
+        f"fixture no longer reproduces the reported profile (mean={mean}, stdev={stdev})"
+    )
+
+    ok, reason = validate_structure(png, "png")
+    assert ok, f"a valid PNG with uniform block entropy was rejected: {reason}"
+
+
+def test_mp4_atom_walk_stops_at_zero_padding():
+    """Regression: a size-0 atom of any type was read as 'to end of window'.
+
+    Zero padding after a moov-last MP4 therefore parsed as one enormous box, so
+    the carver ran to the end of the search window, swallowed whatever file
+    followed, and reported "100%, declared size".
+
+    Size 0 now means end-of-file only for `mdat`, and every atom's fourcc must be
+    printable ASCII -- which zero padding is not.
+    """
+    from s0.carve.boundary import _is_media_payload_box, _is_printable_fourcc
+
+    assert _is_media_payload_box(b"mdat") is True
+    assert _is_media_payload_box(b"moov") is False
+    assert _is_media_payload_box(b"free") is False
+    assert _is_media_payload_box(b"\x00\x00\x00\x00") is False
+
+    assert _is_printable_fourcc(b"moov") is True
+    assert _is_printable_fourcc(b"\x00\x00\x00\x00") is False
+    assert _is_printable_fourcc(b"\x01\x02\x03\x04") is False

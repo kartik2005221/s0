@@ -973,6 +973,23 @@ def _flac_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                      f"{channels}ch/{bps}bit -> {audio_bytes} bytes of audio"])
 
 
+def _is_printable_fourcc(fourcc: bytes) -> bool:
+    """True when all four bytes are printable ASCII (0x20-0x7E).
+
+    Zero padding is not, which is the cheapest reliable way to stop an atom walk at
+    a padding run instead of trusting whatever size field happens to sit there.
+    """
+    return len(fourcc) == 4 and all(0x20 <= b <= 0x7E for b in fourcc)
+
+
+#: Boxes whose declared size of 0 legitimately means "to end of file".
+_MEDIA_PAYLOAD_BOXES = (b"mdat",)
+
+
+def _is_media_payload_box(fourcc: bytes) -> bool:
+    return fourcc in _MEDIA_PAYLOAD_BOXES
+
+
 def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """MP4/MOV/QuickTime: walk the atom tree until the top-level atom ends."""
     limit = min(src.size, start + max_size)
@@ -990,8 +1007,22 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             size = struct.unpack(">Q", ext)[0]
             header = 16
         elif size == 0:
-            size = limit - pos                      # extends to end of file
+            # Size 0 means "runs to end of file", and it is only meaningful for
+            # the media payload. Treating it as end-of-window for *any* type is
+            # what let zero padding after a moov-last file read as one enormous
+            # box: the carver ran to the end of the search window, swallowed
+            # whatever followed, and reported "100%, declared size".
+            #
+            # `mdat` is the one box legitimately allowed to run to EOF. Any other
+            # type must carry a real size, so reject it rather than guess.
+            if not _is_media_payload_box(head[4:8]):
+                return None
+            size = limit - pos
         if size < header or size >= (1 << 48):
+            return None
+        # A fourcc is four printable ASCII bytes. Zero padding is not, which
+        # stops the walk at a padding run instead of trusting the size field there.
+        if not _is_printable_fourcc(head[4:8]):
             return None
         return pos + size
 
@@ -1707,26 +1738,58 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
 # --------------------------------------------------------------------------- #
 
 
+
+#: Extensions with a real structural validator in `validate_structure`. A candidate
+#: for one of these is judged by that validator alone.
+_STRUCTURALLY_VALIDATED = frozenset({
+    "jpg", "jpeg", "png", "gif", "pdf", "zip", "bmp", "wav",
+})
+
+
+def _has_structural_validator(ext: str) -> bool:
+    return ext.lstrip(".").lower() in _STRUCTURALLY_VALIDATED
+
 def validate_structure(data: bytes, ext: str) -> tuple[bool, str]:
     """Decide whether `data` is a coherent instance of `.ext`.
 
-    This is a *gate*, not a score component. s0's scoring model used to award a
-    flat bonus for "the header matched and there is no footer", which is exactly
-    what let 2-byte magics through. A candidate that cannot be structurally
+    A *gate*, not a score component: a candidate that cannot be structurally
     validated is not recovered at any confidence.
+
+    Order matters, and getting it wrong was a real recall failure. The universal
+    entropy check used to run *first*, so it vetoed candidates whose container had
+    already validated perfectly. Measured rejections of valid files:
+
+        plasma PNG, 166 KB          mean 7.798  stdev 0.020
+        ImageMagick rose: at 400%   mean 7.777  stdev 0.032
+        photographic JPEG q95       mean 7.770  stdev 0.051
+        ZIP (deflate) of PNG+JPEG   mean 7.797  stdev 0.024
+        ZIP, stored random payload  mean 7.809  stdev 0.017
+        gzip of random data         mean 7.808  stdev 0.018
+
+    All rejected, and `--min-confidence 0` did not help, because the gate is a hard
+    reject rather than a score component. The docstring's claim that "no file
+    format has uniformly random 1 KiB blocks" is true of *uncompressed* formats
+    and false of every compressed or encrypted one -- which is exactly what an
+    examiner wants flagged, since an encrypted archive is a common and important
+    find.
+
+    So the order is now: a format's own structural validator decides, and the
+    statistical gate only applies to extensions that have no validator at all.
+    A validated container is proof; block-entropy uniformity is a suspicion.
     """
     ext = ext.lower().lstrip(".")
     n = len(data)
     if n < 16:
         return False, "too short to contain any complete structure"
 
-    # Universal gate, before any format-specific check. Random bytes satisfy a
-    # structural check often enough to matter, and no file format is uniformly
-    # random throughout, so this can only ever reject noise.
     from s0.carve import scoring as _scoring
-    complaint = _scoring.uniform_random_complaint(data)
-    if complaint is not None:
-        return False, complaint
+
+    # Statistical gate, for formats with no structural validator. Deliberately not
+    # a veto on a format that can prove itself.
+    if not _has_structural_validator(ext):
+        complaint = _scoring.uniform_random_complaint(data)
+        if complaint is not None:
+            return False, complaint
 
     if ext == "jpg" or ext == "jpeg":
         return _validate_jpeg(data)
