@@ -126,10 +126,20 @@ class TestCIInstallsRealPackages:
         """`httx` is not on PyPI; `httpx` is. Assert the typo cannot come back."""
         for name in ("ci.yml", "release.yml", "build-iso.yml"):
             text = self._workflow_text(name)
-            offenders = re.findall(r"(?<![\w.-])httx(?![\w-])", text)
+            # Command lines only. A comment *mentioning* httx -- which the workflows
+            # now do, to record why the hand-written lists were removed -- is the
+            # opposite of the problem: it is the history that stops it coming back.
+            offenders = []
+            for lineno, line in enumerate(text.splitlines(), 1):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    continue
+                if re.search(r"(?<![\w.-])httx(?![\w-])", stripped):
+                    offenders.append(f"{name}:{lineno}: {stripped}")
             assert not offenders, (
-                f"{name} installs 'httx', which does not exist on PyPI. pip aborts "
-                f"the whole install line, so the job cannot run")
+                f"these lines would install 'httx', which does not exist on PyPI. "
+                f"pip aborts the whole install line, so the job cannot run: "
+                f"{offenders}")
 
     def test_ci_installs_the_projects_own_extras(self):
         """One command, from pyproject: the hand-written list is what drifted."""

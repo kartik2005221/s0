@@ -31,8 +31,13 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install reportlab qrcode pillow fastapi uvicorn httpx pytest pytest-asyncio
+          # The declared extras, not a hand-written package list. This file had the
+          # same list ci.yml had, including a package that does not exist on PyPI --
+          # in ci.yml it was `httx`, which aborted the whole install line so the test
+          # job could not run at all while releases were tested. Two hand-written
+          # lists are two lists that drift, and a typo in either is a build that
+          # fails in a way that points nowhere near the cause.
+          pip install -e ".[web,test]"
 
       - name: Run Pytest Suite
         run: |
