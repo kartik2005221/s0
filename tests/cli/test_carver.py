@@ -113,9 +113,32 @@ def _pdf_bytes(title="Case 42"):
             f"trailer<</Root 1 0 R/Info<</Title({title})>>>>\n%%EOF\n").encode()
 
 
+def _deterministic_fill(size=1 << 20) -> bytes:
+    """Reproducible high-entropy padding.
+
+    This used to be ``os.urandom(1 << 20)``, which made the test flaky: random
+    bytes occasionally contain something that looks like a file signature, so an
+    extra candidate appeared at a random offset roughly once in some runs. The
+    padding block was also *repeated*, so one accidental magic byte produced several
+    copies of the same spurious candidate.
+
+    A carver's job is to find real signatures in noise, so the noise has to be
+    genuinely high-entropy -- but it does not have to be *different* every run. A
+    fixed seed keeps the test's purpose and removes the coin flip.
+
+    os.urandom was the wrong tool here for a second reason: a test that fails
+    intermittently cannot be debugged, because the failure is not reproducible from
+    the code that produced it.
+    """
+    import random
+
+    rng = random.Random(20240917)          # fixed on purpose; see docstring
+    return bytes(rng.getrandbits(8) for _ in range(size))
+
+
 def _write_image_with_payloads(tmp_path, payloads, total=48 * 1024 * 1024, fill=None):
     """Scatter payloads through a noisy image and return (path, {name: offset})."""
-    fill = fill if fill is not None else os.urandom(1 << 20)
+    fill = fill if fill is not None else _deterministic_fill()
     span = total // (len(payloads) + 2)
     buf = bytearray()
     placements = {}
@@ -375,6 +398,17 @@ def test_carve_recovers_every_planted_file_and_no_others(tmp_path):
 
     assert summary.files_recovered == len(payloads)
     assert all(c.confidence_score >= 60 for c in summary.carved_files)
+
+    # "and no others" was in the name but never asserted. Without this the test
+    # passed even when the carver emitted a file at an offset nobody planted, which
+    # is precisely the false-positive failure the carver must not have -- and it is
+    # also what the random padding used to trigger intermittently.
+    planted = set(placements.values())
+    spurious = sorted(c.offset for c in summary.carved_files if c.offset not in planted)
+    assert not spurious, (
+        f"the carver reported {len(spurious)} file(s) at offsets that were never "
+        f"planted: {spurious}. A forensic carver that invents files is worse than "
+        f"one that misses them, because the invention enters evidence.")
 
 
 @contextlib.contextmanager
