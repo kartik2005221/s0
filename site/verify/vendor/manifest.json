@@ -19,7 +19,8 @@
           "affects": "<= 4.2.66 (fixed in 4.2.67)",
           "impact": "Arbitrary JavaScript execution via a crafted font, through the font evaluator, which reaches eval.",
           "mitigation": "The only call site passes isEvalSupported: false, which removes the eval path the advisory depends on. Not upgraded: re-vendoring is a separate, hash-pinned step and this version is pinned in this manifest.",
-          "risk_if_mitigation_removed": "High. /portal is served from the same origin as the dashboard's destructive API, so script execution in the PDF viewer reaches /api/erase-files."
+          "risk_if_mitigation_removed": "High. /portal is served from the same origin as the dashboard's destructive API, so script execution in the PDF viewer reaches /api/erase-files.",
+          "upgrade_blocked_by": "pdf.js 4.x is ESM-only -- it ships .mjs and no UMD bundle. portal.js loads the library as a classic script and reads a `pdfjsLib` global, and the tag carries an SRI integrity attribute. Converting to an ES module import means the library loads asynchronously, so a PDF dropped in the first moments would hit the 'library is loading, try again' path on a verifier -- a real regression for the one job this page has. The migration needs a browser to verify, which this repository's test suite cannot provide (no browser runner, and the existing JS tests exercise verify.js, not the PDF path)."
         }
       ]
     },
