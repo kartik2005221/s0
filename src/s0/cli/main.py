@@ -1663,6 +1663,12 @@ def cmd_carve(args) -> int:
                 "recovery_rate_ppm": summary.recovery_rate_ppm(),
                 "output_budget_bytes": summary.output_budget_bytes,
                 "budget_stop_reason": summary.budget_stop_reason,
+                # Without the reasons, candidates_rejected is a bare number and a
+                # pipeline cannot distinguish a clean run from a lossy one.
+                "rejection_summary": [
+                    {"reason": reason, "count": count}
+                    for reason, count in (summary.rejection_summary or [])
+                ],
                 "by_category": summary.by_category,
                 "by_recovery_method": summary.by_method,
                 "allocation_aware_search": summary.free_space is not None,
@@ -1677,10 +1683,6 @@ def cmd_carve(args) -> int:
                 "suppressed_known_bytes": summary.suppressed_known_bytes,
                 "suppression_note": summary.suppression_note,
                 "bodyfiles": [str(p) for p in bodyfile_artifacts],
-                "rejection_summary": [
-                    {"reason": reason, "count": count}
-                    for reason, count in summary.rejection_summary
-                ],
                 "recovered_files": [
                     {
                         "file_id": c.file_id,
@@ -1720,6 +1722,25 @@ def cmd_carve(args) -> int:
     ui.key("Output written", human_bytes(summary.output_budget_bytes))
     if summary.budget_stop_reason:
         ui.key("Budget stopped", summary.budget_stop_reason)
+
+    # H4: a carve that recovers less than it saw used to report only the count,
+    # so the reasons lived exclusively in recovery_index.json. An examiner reading
+    # the terminal saw "Candidates rejected: 400" with no way to tell 400 rejected
+    # because they were duplicates from one file's worth of slack space apart from
+    # 400 that were the only copies of anything -- which is the difference between
+    # a clean result and a missed file.
+    if summary.rejection_summary:
+        ui.key("Why candidates were rejected", "")
+        for reason, count in summary.rejection_summary[:8]:
+            ui.note(f"    {human_int(count):>9}  {reason}")
+        remaining = sum(c for _r, c in summary.rejection_summary[8:])
+        if remaining:
+            ui.note(f"    {human_int(remaining):>9}  ... and "
+                    f"{len(summary.rejection_summary) - 8} more reason(s)")
+        ui.note("")
+        ui.note("Per-candidate detail, including the byte offset of each rejected "
+                "candidate, is in recovery_index.json.")
+        ui.note("")
     if summary.free_space:
         ui.key("Search space", (
             f"unallocated only ({human_bytes(summary.free_space['free_bytes'])} free in "
