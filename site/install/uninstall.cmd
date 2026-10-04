@@ -25,10 +25,17 @@ if /i not "%CONFIRM%"=="y" if /i not "%CONFIRM%"=="yes" (
 :do_uninstall
 
 REM 1. Remove from Persistent User PATH via PowerShell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = '%BIN_DIR%'; $s = '%INSTALL_DIR%\.venv\Scripts'; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($p) { $new = (($p -split ';') | Where-Object { $_ -ne '' -and $_ -ne $b -and $_ -ne $s }) -join ';'; [Environment]::SetEnvironmentVariable('Path', $new, 'User') }" >nul 2>&1
+REM The paths are passed through the environment rather than interpolated
+REM into the -Command string. A user directory containing an apostrophe --
+REM C:\Users\O'Brien -- terminated the PowerShell single-quoted string early,
+REM so everything after it was parsed as code: an installer that could be made
+REM to run arbitrary PowerShell by naming a folder. $env: is data, not syntax.
+set "S0_BIN_TO_PATH=%BIN_DIR%"
+set "S0_VENV_TO_PATH=%INSTALL_DIR%\.venv\Scripts"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = $env:S0_BIN_TO_PATH; $s = $env:S0_VENV_TO_PATH; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($p) { $new = (($p -split ';') | Where-Object { $_ -ne '' -and $_ -ne $b -and $_ -ne $s }) -join ';'; [Environment]::SetEnvironmentVariable('Path', $new, 'User') }" >nul 2>&1
 
 REM 2. Remove from Current Session PATH
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = '%BIN_DIR%'; $s = '%INSTALL_DIR%\.venv\Scripts'; $p = $env:PATH; $new = (($p -split ';') | Where-Object { $_ -ne '' -and $_ -ne $b -and $_ -ne $s }) -join ';'; Write-Output $new" > "%TEMP%\_s0_newpath.txt" 2>nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = $env:S0_BIN_TO_PATH; $s = $env:S0_VENV_TO_PATH; $p = $env:PATH; $new = (($p -split ';') | Where-Object { $_ -ne '' -and $_ -ne $b -and $_ -ne $s }) -join ';'; Write-Output $new" > "%TEMP%\_s0_newpath.txt" 2>nul
 if exist "%TEMP%\_s0_newpath.txt" (
     set /p PATH=<"%TEMP%\_s0_newpath.txt"
     del /f /q "%TEMP%\_s0_newpath.txt" >nul 2>&1

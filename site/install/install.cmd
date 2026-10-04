@@ -162,7 +162,13 @@ REM ── Step 8: Update PATH ────────────────�
 set /a STEP=STEP+1
 echo [%STEP%/%TOTAL%] Adding to PATH...
 set "PATH=%INSTALL_DIR%\bin;%PATH%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = '%INSTALL_DIR%\bin'; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); if (($p -split ';') -notcontains $b) { [Environment]::SetEnvironmentVariable('Path', $b + ';' + $p, 'User') }" >nul 2>&1
+REM The path is passed through the environment rather than interpolated into the
+REM -Command string. A user directory containing an apostrophe -- C:\Users\O'Brien --
+REM terminated the PowerShell single-quoted string early, so everything after it was
+REM parsed as code: an installer that could be made to run arbitrary PowerShell by
+REM naming a folder. $env: is data, not syntax, so no path can alter the command.
+set "S0_BIN_TO_PATH=%INSTALL_DIR%\bin"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$b = $env:S0_BIN_TO_PATH; $p = [Environment]::GetEnvironmentVariable('Path', 'User'); if (($p -split ';') -notcontains $b) { [Environment]::SetEnvironmentVariable('Path', $b + ';' + $p, 'User') }" >nul 2>&1
 echo   [OK] PATH updated
 
 echo.
