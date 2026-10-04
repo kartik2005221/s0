@@ -3515,7 +3515,7 @@ def _attach_global_arguments(root: argparse.ArgumentParser) -> None:
         for action in parser._actions:
             if isinstance(action, argparse._SubParsersAction):
                 for child in action.choices.values():
-                    add_global_arguments(child)
+                    add_global_arguments(child, suppress_defaults=True)
                     walk(child)
 
     walk(root)

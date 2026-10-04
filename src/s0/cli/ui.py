@@ -15,6 +15,7 @@ Commands ask this module for a printer; they never call ``print()`` directly.
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import sys
@@ -79,13 +80,23 @@ __all__ = [
 GLOBAL_HELP = "output and execution controls (available on every s0 subcommand)"
 
 
-def add_global_arguments(parser) -> None:
+def add_global_arguments(parser, *, suppress_defaults: bool = False) -> None:
     """Attach the global flags, skipping any a subcommand already declares.
 
     Idempotence matters: several subcommands already had a bespoke ``--json`` or
     ``--quiet`` of their own, and attaching a second definition would make
     argparse fail at import time. Partial application is therefore the
     correct behaviour, not a fallback.
+
+    ``suppress_defaults`` exists for the copies attached to subparsers. argparse
+    parses the top-level flags first and writes them into the namespace, then the
+    subparser parses and overwrites the same keys with *its own* defaults. So
+    ``s0 --json list`` set ``json=True`` and then had it silently reset to
+    ``False``: the command printed human text to stderr, wrote nothing to stdout,
+    and exited 0. A script piping to ``jq`` got empty input and no error, which is
+    the worst possible failure for this flag. ``SUPPRESS`` means "only set the key
+    if the user actually gave the flag here", so the parent's value survives and
+    both placements work.
     """
     existing = {opt for action in parser._actions for opt in action.option_strings}
 
@@ -94,6 +105,8 @@ def add_global_arguments(parser) -> None:
     def add(group, *flags, **kwargs):
         if any(f in existing for f in flags):
             return
+        if suppress_defaults:
+            kwargs["default"] = argparse.SUPPRESS
         group.add_argument(*flags, **kwargs)
         existing.update(flags)
 
