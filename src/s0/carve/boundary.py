@@ -749,10 +749,32 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                             [f"GIF trailer found after {images} image block(s), "
                              f"logical screen {w}x{h}"])
         if c == 0x21:                                  # extension block
-            size = src.read(pos + 1, 1)
-            if not size:
+            label = src.read(pos + 1, 1)
+            if not label:
                 break
-            pos = pos + 2 + size[0]
+            # 0x21 is the introducer and the next byte is the extension *label*,
+            # not a length. Reading it as one skipped 249 bytes for a Graphic
+            # Control Extension (label 0xF9), walked off into the middle of the
+            # stream, and every animated, ffmpeg-made or transparent GIF was
+            # rejected with "unexpected GIF block introducer". Only the
+            # extension-free single-image case happened to survive.
+            pos += 2                                    # introducer + label
+            if label[0] == 0xFF:                        # application extension
+                # 8-byte app identifier + 3-byte auth code precede the sub-blocks.
+                pos += 11
+            elif label[0] == 0x01:                      # plain text extension
+                # 12-byte fixed header precedes the sub-blocks.
+                pos += 12
+            # Then a data sub-block chain: length byte, that many bytes, repeated,
+            # terminated by 0x00.
+            for _ in range(1 << 20):
+                size = src.read(pos, 1)
+                if not size or size[0] == 0:
+                    break
+                pos += 1 + size[0]
+                if pos > limit:
+                    return Boundary(None, UNDETERMINED,
+                                    ["GIF extension sub-blocks overrun the window"])
             continue
         if c == 0x2C:                                  # image descriptor
             img = src.read(pos + 1, 10)

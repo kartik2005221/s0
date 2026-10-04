@@ -1165,3 +1165,42 @@ def test_mp4_atom_walk_stops_at_zero_padding():
     assert _is_printable_fourcc(b"moov") is True
     assert _is_printable_fourcc(b"\x00\x00\x00\x00") is False
     assert _is_printable_fourcc(b"\x01\x02\x03\x04") is False
+
+
+def test_gif_with_extension_blocks_reaches_its_trailer():
+    """Regression: the byte after the 0x21 introducer is a *label*, not a length.
+
+    The walker read it as a length and skipped 249 bytes for a Graphic Control
+    Extension (label 0xF9), landing in the middle of the stream. Every animated,
+    ffmpeg-made and transparent GIF was rejected with "unexpected GIF block
+    introducer"; only the extension-free single-image case survived, which is why
+    1 of 6 test GIFs recovered.
+
+    Verified against the pre-fix behaviour: the animated fixture below ends at 43
+    and the walker reported "GIF sub-blocks overrun the window".
+    """
+    import struct
+
+    from s0.carve.boundary import _gif_end
+
+    class Src:
+        def __init__(self, data: bytes):
+            self.d = data
+            self.size = len(data)
+
+        def read(self, offset: int, count: int) -> bytes:
+            return self.d[offset:offset + count] if 0 <= offset < len(self.d) else b""
+
+    def build(animated: bool) -> bytes:
+        # logical screen descriptor, 2-entry global colour table (flag 0x80, size 0)
+        out = b"GIF89a" + struct.pack("<HH", 2, 2) + bytes([0x80, 0, 0]) + b"\x00" * 6
+        gce = b"\x21\xF9\x04\x00\x00\x00\x00\x00"      # graphic control extension
+        img = b"\x2C" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
+        return out + (gce + img if animated else img) + b"\x3B"
+
+    for label, data in (("static", build(False)), ("animated", build(True))):
+        boundary = _gif_end(Src(data), 0, 1 << 20)
+        assert boundary.end == len(data), (
+            f"GIF ({label}) did not reach its trailer: end={boundary.end}, "
+            f"expected {len(data)}; notes={boundary.notes}"
+        )
