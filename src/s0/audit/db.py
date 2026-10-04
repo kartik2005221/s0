@@ -426,10 +426,21 @@ def list_audit_blocks(
     limit: int = 100,
     offset: int = 0,
 ) -> list[AuditBlock]:
-    """Retrieve audit blocks from the ledger with optional filtering and pagination."""
+    """Retrieve audit blocks from the ledger with optional filtering and pagination.
+
+    Reading does not create the ledger. `init_audit_db` used to run here, so simply
+    *listing* blocks on a machine that had never erased anything created an empty
+    chain of custody -- and under `--dry-run`, which promises to write nothing, it
+    wrote a database and a checkpoint. Creating the ledger on a read also means
+    "the ledger exists" stops meaning "something was recorded", which is the one
+    fact a verifier needs it to mean.
+
+    A missing ledger is an empty ledger.
+    """
     if db_path is None:
         db_path = get_default_audit_db()
-    init_audit_db(db_path)
+    if not Path(db_path).exists():
+        return []
     conn = get_db_connection(db_path)
 
     query = "SELECT * FROM audit_blocks"

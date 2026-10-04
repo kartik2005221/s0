@@ -535,11 +535,17 @@ def cmd_plan(args) -> int:
     )
     ladder = plan_ladder(caps, requested)
 
+    refused = False
     try:
         warnings = check_safety(target, force=args.force)
     except SafetyError as exc:
         ui.error(f"REFUSED: {exc}")
         warnings = [str(exc)]
+        # A refusal must not exit 0. `s0 plan --target /dev/vda` printed REFUSED and
+        # returned success, so an agent gating on the plan -- the documented first step
+        # -- concluded the device was safe to wipe. The capability ladder may well be
+        # satisfiable; the *plan* is not, because the target itself is refused.
+        refused = True
 
     candidate, alternatives = select_method(
         target,
@@ -619,6 +625,9 @@ def cmd_plan(args) -> int:
 
     ui.note("")
     ui.note("DRY RUN - nothing was written. Run `s0 wipe` when satisfied.")
+    # A refusal must not exit 0. See the note where `refused` is set.
+    if refused:
+        return EX_NOPERM
     return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
 
 
@@ -2143,8 +2152,17 @@ def cmd_audit(args) -> int:
         raw_keys = getattr(args, "key", None)
         if isinstance(raw_keys, str):
             raw_keys = [raw_keys]
-        key_paths: list[Path] = []
+        # With action="append" + nargs="+", each occurrence contributes a list, so
+        # `--key a.pem --key b.pem` arrives as [["a.pem"], ["b.pem"]]. Flatten, and
+        # accept a single string too so a programmatic caller is not punished for it.
+        flattened: list[str] = []
         for entry in raw_keys or []:
+            if isinstance(entry, (list, tuple)):
+                flattened.extend(str(item) for item in entry)
+            else:
+                flattened.append(str(entry))
+        key_paths: list[Path] = []
+        for entry in flattened:
             candidate = Path(entry)
             if candidate.is_dir():
                 key_paths.extend(sorted(candidate.glob("*.pem")))
@@ -2296,6 +2314,13 @@ def cmd_verify(args) -> int:
             return EX_TEMPFAIL
         return EX_OK if ok else EX_FAILURE
 
+    # Computed once so the verdict cannot depend on the output format. Text mode
+    # used to exit 0 for a demo-key certificate while --json exited 75 for the very
+    # same file, so a script on the human path treated a document the tool itself
+    # calls evidentially worthless as a pass -- purely because it had not asked for
+    # JSON.
+    _verify_exit = _verify_exit_code(ok, demo)
+
     if ok:
         state = "warn" if demo else "ok"
         label = (
@@ -2336,7 +2361,27 @@ def cmd_verify(args) -> int:
     if not ok:
         ui.note("")
         ui.key("Reason", reason)
-    return EX_OK if ok else EX_FAILURE
+    return _verify_exit
+
+
+def _verify_exit_code(ok: bool, demo: bool) -> int:
+    """The single source of truth for what `s0 verify` exits with.
+
+    Presentation must not change the verdict. Three cases:
+
+    * a genuine signature from a real issuer -- 0;
+    * no valid signature -- EX_FAILURE;
+    * a valid signature from the *published* demonstration key -- EX_TEMPFAIL.
+
+    The third used to be 75 for --json/--csv and 0 for text, so one certificate was
+    a pass or a failure depending on a formatting flag. It verifies
+    cryptographically and carries no evidentiary weight, so it is neither a success
+    nor an error; EX_TEMPFAIL is the closest fit, and it is non-zero so a pipeline
+    cannot read an unaccredited document as a pass.
+    """
+    if not ok:
+        return EX_FAILURE
+    return EX_TEMPFAIL if demo else EX_OK
 
 
 def cmd_keygen(args) -> int:
@@ -2395,7 +2440,7 @@ def cmd_keygen(args) -> int:
 # --------------------------------------------------------------------------- #
 
 
-def get_upgrade_branch(args) -> str:
+def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
     """Which upstream branch to track.
 
     The installed checkout's own branch is the right answer, not a hard-coded
@@ -2408,15 +2453,41 @@ def get_upgrade_branch(args) -> str:
     env = os.environ.get("S0_UPGRADE_BRANCH")
     if env:
         return env
+    # Must run *inside the checkout*. Run in the process CWD -- the ordinary case,
+    # since `s0 upgrade` is invoked from wherever the user happens to be -- `git`
+    # printed "fatal: not a git repository", the exception was swallowed, and the
+    # function returned "master". A contributor on a feature branch then had master
+    # pulled into their working tree, silently.
+    if repo_dir is not None:
+        try:
+            cur = subprocess.check_output(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=str(repo_dir),
+                text=True,
+                timeout=10,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+            if cur and cur != "HEAD":
+                return cur
+        except (OSError, subprocess.SubprocessError):
+            pass
+        # Deliberately NOT "master". This branch's installer pins a ref precisely
+        # because master is not installable, so falling back to it re-introduces the
+        # bug the installer fix removed.
+        return "agent/harness"
+
     try:
         cur = subprocess.check_output(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True, timeout=10
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            text=True,
+            timeout=10,
+            stderr=subprocess.DEVNULL,
         ).strip()
         if cur and cur != "HEAD":
             return cur
     except (OSError, subprocess.SubprocessError):
         pass
-    return "master"
+    return "agent/harness"
 
 
 def cmd_upgrade(args) -> int:
@@ -2458,7 +2529,7 @@ def cmd_upgrade(args) -> int:
             ["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_dir), text=True
         ).strip()
         ui.key("Current commit", cur_hash)
-        branch = get_upgrade_branch(args)
+        branch = get_upgrade_branch(args, repo_dir)
         ui.note(f"Fetching origin/{branch}...")
         subprocess.check_call(["git", "fetch", "origin", branch, "-q"], cwd=str(repo_dir))
         latest_hash = subprocess.check_output(
@@ -2469,21 +2540,50 @@ def cmd_upgrade(args) -> int:
             ui.key("Source", f"already up to date at commit {cur_hash}")
         else:
             subprocess.check_call(
-                ["git", "pull", "--ff-only", "origin", get_upgrade_branch(args), "-q"], cwd=str(repo_dir)
+                ["git", "pull", "--ff-only", "origin", get_upgrade_branch(args, repo_dir), "-q"],
+                cwd=str(repo_dir),
             )
             ui.key("Source", f"updated {cur_hash} -> {latest_hash}")
 
         py_bin = sys.executable
         ui.note("Refreshing dependencies...")
         subprocess.check_call([py_bin, "-m", "pip", "install", "--upgrade", "pip", "-q"])
-        for pkg in (".",):
-            subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir / pkg), "-q"])
-        subprocess.check_call([py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
-        ui.key("Dependencies", "refreshed")
+        subprocess.check_call([py_bin, "-m", "pip", "install", "-e", str(repo_dir), "-q"])
+        # The unpinned `pip install reportlab qrcode pillow` bypassed the lock file
+        # this branch added, so an upgrade silently resolved "newest at upgrade
+        # time" -- the exact non-reproducibility requirements.lock exists to remove.
+        # If the lock is present, use it and say so; otherwise fall back and say that
+        # too, rather than quietly diverging.
+        lock = repo_dir / "requirements.lock"
+        if lock.is_file():
+            subprocess.check_call([py_bin, "-m", "pip", "install", "--require-hashes", "-r", str(lock), "-q"])
+            ui.key("Dependencies", f"refreshed from {lock.name} (hash-pinned)")
+        else:
+            subprocess.check_call([py_bin, "-m", "pip", "install", "reportlab", "qrcode", "pillow", "-q"])
+            ui.key("Dependencies", "refreshed (no requirements.lock; versions unpinned)")
 
         ver = subprocess.check_output([py_bin, "-m", "s0.cli.main", "--version"], text=True).strip()
+
+        # Report where HEAD actually is, not where origin thinks it is. The old line
+        # printed `latest_hash` -- the remote's hash -- next to the *installed*
+        # version, so a run where the pull was a no-op still claimed "upgraded to
+        # <new hash>" while the checkout never moved. Reading HEAD back is the only
+        # way to make that sentence true.
+        head_after = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_dir), text=True, timeout=10
+        ).strip()
         ui.note("")
-        ui.key("Result", ui.status("ok", f"s0 upgraded to {ver} ({latest_hash})"))
+        if head_after != cur_hash:
+            ui.key("Result", ui.status("ok", f"s0 upgraded to {ver} ({head_after})"))
+        else:
+            ui.key(
+                "Result",
+                ui.status(
+                    "warn",
+                    f"s0 is at {ver} ({head_after}); the checkout did not move, so no "
+                    f"source upgrade happened",
+                ),
+            )
         return EX_OK
     except subprocess.CalledProcessError as exc:
         ui.error(f"upgrade failed while running {exc.cmd[0]}: {exc}")
@@ -3241,6 +3341,14 @@ def build_parser() -> argparse.ArgumentParser:
     aud.add_argument("--limit", type=int, default=50, help="limit number of records displayed")
     aud.add_argument(
         "--key",
+        # `append` + `nargs="+"` accepts both spellings the help advertises:
+        #   --key a.pem b.pem      (one flag, several values)
+        #   --key a.pem --key b.pem (repeated)
+        # Without `append`, repeating the flag silently overwrote the earlier
+        # value, so only the last key was trusted -- and the run then failed
+        # closed with UNVERIFIABLE, which reads as tampering rather than as a
+        # dropped argument.
+        action="append",
         nargs="+",
         metavar="KEY",
         help=(
@@ -3421,18 +3529,45 @@ def _hoist_audit_action(argv):
 # Enforced at the single point where a handler is invoked rather than inside each
 # handler. A per-handler check is a convention that the next command added will
 # forget; this is a property of the program.
-_DRY_RUN_WRITES = ("image", "clone", "carve")
+# Commands that change nothing, so --dry-run is a no-op for them.
+#
+# This was an allowlist of *writers* ("image", "clone", "carve") with everything
+# else falling through to its own handler. That shape fails open: any command not
+# named there is assumed safe, so `keygen` wrote a private key, `live download`
+# pulled 573 MB, `upgrade` ran a real git fetch and three pip installs, and
+# `uninstall` wrote a new database backup -- each while claiming to have written
+# nothing. Naming every future writer in a tuple is not a property anyone can rely
+# on; the next command added is wrong the day it lands.
+#
+# Inverted: everything is refused unless it is *known* read-only. A new command is
+# then safe by default and has to be opted out, which is the direction a mistake
+# should point.
+_DRY_RUN_READ_ONLY = ("list", "plan", "audit", "verify")
 
 
 def _dry_run_guard(args) -> int | None:
-    """Stop a writing command under --dry-run. Returns None to proceed."""
+    """Stop a state-changing command under --dry-run. Returns None to proceed.
+
+    `web` is included as read-only because it only serves the dashboard; it starts a
+    server but performs no wipe, image, download or install on the operator's behalf.
+    Commands that implement their own richer dry run -- `wipe`, which prints a full
+    per-target plan, and `live flash` -- keep doing so.
+    """
     if not getattr(args, "dry_run", False):
         return None
     command = getattr(args, "command", "")
-    if command not in _DRY_RUN_WRITES:
-        # Read-only commands (list, plan, audit, verify) and the ones that already
-        # implement a dry run (wipe, live) are left to their own handlers.
+    if command in _DRY_RUN_READ_ONLY or command in ("web", "wipe"):
         return None
+
+    # `live` is a command *group*, and its sub-actions differ: `live flash` performs
+    # its own careful dry run, while `live download` does not and will pull ~550 MB.
+    # Exempting the whole group -- which is what this did at first -- reinstates the
+    # exact bug the allowlist was meant to remove. So the exemption is per sub-action,
+    # and anything unrecognised falls through to the guard.
+    if command == "live":
+        sub = str(getattr(args, "live_action", "") or getattr(args, "action", "") or "")
+        if sub in ("flash", "devices"):
+            return None
 
     ui = getattr(args, "ui", None) or UI(policy_from_args(args), command=command)
     ui.line(f"[s0 {command}]  Dry run: nothing will be written.")
@@ -3449,7 +3584,12 @@ def _dry_run_guard(args) -> int | None:
         value = getattr(args, flag, None)
         if value:
             ui.note(f"{label}: {value}")
-    ui.note(f"Re-run without --dry-run to perform the {command}.")
+    label = command
+    if command == "live":
+        sub = str(getattr(args, "live_action", "") or "")
+        if sub:
+            label = f"live {sub}"
+    ui.note(f"Re-run without --dry-run to perform the {label}.")
     return EX_OK
 
 
