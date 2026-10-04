@@ -3155,7 +3155,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="shortcut for --require-tier Purge: only firmware-mediated Purge methods satisfy this request",
     )
-    pln.add_argument("--json", action="store_true", help="shorthand for --format json")
     pln.set_defaults(func=cmd_plan)
 
     wp = sub.add_parser(
@@ -3225,7 +3224,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="plant recoverable markers first, then require 0 grep hits afterwards",
     )
-    wp.add_argument("--json", action="store_true", help="machine-readable stdout")
     wp.add_argument(
         "--portal-url",
         default=CONFIG.get("verification_portal_url", "https://sector-zero.pages.dev/verify/"),

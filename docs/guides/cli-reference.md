@@ -272,9 +272,9 @@ s0 plan --target PATH \
 ```
 usage: s0 plan [-h] [--version] [--target TARGET] [--passes PASSES] [--pattern {zero,random}]
                [--no-firmware] [--discard-purge-justification TEXT] [--force]
-               [--require-tier {Clear,Purge,Destroy}] [--firmware] [--json]
-               [--format {text,json,csv}] [--quiet] [--verbose] [--color {auto,always,never}]
-               [--no-color] [--yes] [--dry-run]
+               [--require-tier {Clear,Purge,Destroy}] [--firmware] [--format {text,json,csv}]
+               [--json] [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+               [--dry-run]
 
 options:
   -h, --help            show this help message and exit
@@ -296,13 +296,13 @@ options:
                         when the device cannot achieve it
   --firmware            shortcut for --require-tier Purge: only firmware-mediated Purge methods
                         satisfy this request
-  --json                shorthand for --format json
 
 output:
   --format {text,json,csv}
                         output format. 'text' is for humans and is written to stderr, tables and
                         all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
                         that a script can read
+  --json                shorthand for --format json
   --quiet, -q           suppress progress bars and banners; results are unaffected
   --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
   --color {auto,always,never}
@@ -460,10 +460,9 @@ usage: s0 wipe [-h] [--version] [--target TARGET] [--passes PASSES] [--pattern {
                [--targets TARGETS [TARGETS ...]] [--require-tier {Clear,Purge,Destroy}]
                [--allow-downgrade] [--yes] [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
                [--organization ORGANIZATION] [--no-certificate] [--no-pdf]
-               [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--json]
-               [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
-               [--format {text,json,csv}] [--quiet] [--verbose] [--color {auto,always,never}]
-               [--no-color] [--dry-run]
+               [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--portal-url PORTAL_URL]
+               [--qr-url-template QR_URL_TEMPLATE] [--format {text,json,csv}] [--json] [--quiet]
+               [--verbose] [--color {auto,always,never}] [--no-color] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
@@ -505,7 +504,6 @@ options:
                         bound, or use --require-tier Purge to prefer a hardware erase. The bound
                         is recorded in the certificate.
   --plant-markers       plant recoverable markers first, then require 0 grep hits afterwards
-  --json                machine-readable stdout
   --portal-url PORTAL_URL
                         verification portal base URL (default: https://sector-
                         zero.pages.dev/verify/)
@@ -517,6 +515,7 @@ output:
                         output format. 'text' is for humans and is written to stderr, tables and
                         all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
                         that a script can read
+  --json                shorthand for --format json
   --quiet, -q           suppress progress bars and banners; results are unaffected
   --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
   --color {auto,always,never}
