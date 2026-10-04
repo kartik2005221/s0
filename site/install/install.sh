@@ -255,7 +255,11 @@ INSTALLED_VERSION=$(./.venv/bin/s0 --version 2>/dev/null | awk '{print $NF}')
 printf "${_bold}${_green}✅ S0 ${INSTALLED_VERSION} installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
 printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.4")"
-printf "   Web Console: sudo s0 web\n"
+# Not `sudo s0 web`. The dashboard serves a destructive API and writes its session
+# token to ~/.s0, so recommending root here contradicts the least-privilege advice
+# printed a few lines earlier in this same script -- and root on the loopback
+# dashboard is root over the evidence on that machine.
+printf "   Web Console: s0 web\n"
 echo ""
 
 # ── legal & authorized use notice ──────────────────────────────────────────

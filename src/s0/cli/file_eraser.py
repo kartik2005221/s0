@@ -661,10 +661,29 @@ def erase_folder(
             )
         ]
 
-    # Walk directory bottom-up
+    # Walk directory bottom-up.
+    #
+    # S_ISFIFO guard: `os.walk` lists a FIFO under `files`, and opening one blocks
+    # until a writer appears -- with no writer, forever. A sanitiser that hangs on a
+    # stray `mkfifo` in an evidence directory is indistinguishable from one that is
+    # working on a large file, and there is no output to tell them apart. Sockets and
+    # device nodes are skipped for the same reason: they are not regular files and
+    # overwriting them is meaningless at best.
+    skipped_special: list[str] = []
     for root, dirs, files in os.walk(str(root_dir), topdown=False):
         for f in files:
             file_p = os.path.join(root, f)
+            try:
+                st = os.lstat(file_p)
+            except OSError as exc:
+                results.append(FileEraseResult(
+                    path=file_p, original_size=0, bytes_overwritten=0, passes=passes,
+                    pattern=pattern, status="failure",
+                    error=f"could not stat before erasing: {exc}"))
+                continue
+            if not stat.S_ISREG(st.st_mode):
+                skipped_special.append(file_p)
+                continue
             res = erase_single_file(
                 file_p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force
             )
@@ -706,6 +725,22 @@ def erase_folder(
                 error=f"Directory {root_dir} could not be completely removed",
             )
         )
+
+    if skipped_special:
+        # Said out loud rather than dropped. A FIFO or device node inside an evidence
+        # directory means the directory was not fully processed, and the operator
+        # should know that before relying on the result. Their eventual fate depends
+        # on whether the parent removal succeeded, so this reports them as *not
+        # erased* rather than claiming they are still there.
+        results.append(FileEraseResult(
+            path=str(root_dir),
+            original_size=0, bytes_overwritten=0, passes=passes, pattern=pattern,
+            status="failure",
+            error=(f"{len(skipped_special)} non-regular file(s) were NOT erased: "
+                   f"opening a FIFO or device node can block indefinitely and "
+                   f"overwriting one has no meaning. {', '.join(skipped_special[:5])}"
+                   + (" ..." if len(skipped_special) > 5 else "")),
+        ))
 
     return results
 
@@ -776,7 +811,15 @@ def erase_batch(
     total_files = len(all_results)
     successes = sum(1 for r in all_results if r.status == "success")
     failures = sum(1 for r in all_results if r.status == "failure")
-    total_bytes = sum(r.bytes_overwritten for r in all_results)
+    # Two different quantities that used to be one field.
+    #
+    # overwrite_volume is size x passes -- how much was written. Reporting that as
+    # the bytes processed claims a 10 MB file wiped three times sanitized 30 MB,
+    # which on a compliance document reads as coverage of an area that was never
+    # addressed. bytes_processed is the original content: how much data the
+    # operation actually destroyed. The volume is reported beside it, named.
+    overwrite_volume = sum(r.bytes_overwritten for r in all_results)
+    total_bytes = sum(r.original_size for r in all_results)
 
     # Describe what was actually sanitized. A certificate that claims
     # `device_type=internal_disk / storage_type=UNKNOWN` for a batch of erased
@@ -804,12 +847,29 @@ def erase_batch(
         if r.cow_warning and r.cow_warning not in warnings:
             warnings.append(r.cow_warning)
 
+    if total_files == 0:
+        # Nothing was erased, so there is nothing to certify. A certificate here is
+        # signed evidence of a sanitization that did not happen -- the worst artefact
+        # this tool can emit, because to anyone checking the signature rather than
+        # the target list it is indistinguishable from a real one.
+        warnings.append(
+            "no files were erased, so no certificate was issued: the target set was "
+            "empty or contained only empty directories.")
+        return BatchEraseSummary(
+            total_files=0, successful_files=0, failed_files=0,
+            total_bytes_processed=0, results=all_results,
+            certificate=None, warnings=warnings,
+        )
+
     # Build signed certificate
     cert = None
+    # Declared before the branch, not inside it: with --no-certificate the branch
+    # that assigns it is skipped, and a name first assigned inside an `else` is
+    # unbound on the path that skips it.
+    key_file: Path | None = None
     if not generate_certificate:
         warnings.append("Compliance certification omitted per operator request (--no-certificate).")
     else:
-        key_file: Path | None
         if signing_key_path:
             key_file = Path(signing_key_path)
         else:
@@ -817,71 +877,78 @@ def erase_batch(
                 key_file = resources.demo_private_key()
             except FileNotFoundError:
                 key_file = None
-        if key_file is not None and key_file.exists():
-            try:
-                cert_dict = cert_mod.build_certificate(
-                    organization=organization,
-                    operator_id=operator_id,
-                    tool_name="s0-erase",
-                    tool_version=CONFIG.get("version", "2.4.4"),
-                    platform="linux",
-                    device_id=device_id,
-                    device_type=kind,
-                    storage_type=storage_type,
-                    method=_wipe_method_label(pattern, passes),
-                    nist_category="Clear",
-                    start_time=start_time,
-                    end_time=end_time,
-                    bytes_processed=total_bytes,
-                    capacity_bytes=total_bytes,
-                    passes=passes,
-                    pattern=pattern,
-                    status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
-                    errors=[r.error for r in all_results if r.error] or None,
+    if key_file is not None and key_file.exists():
+        try:
+            cert_dict = cert_mod.build_certificate(
+                organization=organization,
+                operator_id=operator_id,
+                tool_name="s0-erase",
+                tool_version=CONFIG.get("version", "2.4.4"),
+                platform="linux",
+                device_id=device_id,
+                device_type=kind,
+                storage_type=storage_type,
+                method=_wipe_method_label(pattern, passes),
+                nist_category="Clear",
+                start_time=start_time,
+                end_time=end_time,
+                bytes_processed=total_bytes,
+                capacity_bytes=total_bytes,
+
+                passes=passes,
+                pattern=pattern,
+                status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
+                errors=[r.error for r in all_results if r.error] or None,
 verification={
-                          # No content readback happens on the file path: the
-                          # checks below establish that the name is gone and that
-                          # the overwrite did not error, not that the bytes on the
-                          # medium match the pattern. Claiming a readback here
-                          # would put an unsupported assertion on a compliance
-                          # document, so the field is null rather than true.
-                          "method": "post_erase_absence_only",
-                          "samples_checked": total_files,
-                          "sample_bytes_each": 0,
-                          "all_samples_match_wipe_pattern": None,
-                          "planted_pattern_hits_after": failures,
-                          # Not a statistical sample, so no residual bound
-                          # applies; the schema's fields are used to say that
-                          # explicitly rather than left absent, because an
-                          # absent bound reads to a certificate consumer as
-                          # "no bound was needed" rather than "this check is of
-                          # a different kind".
-                          "population_blocks": total_files,
-                          "confidence_percent": 100,
-                          "attestation": (
-                              "exhaustive re-stat of every path supplied to this "
-                              "operation; this is not a statistical sample and "
-                              "carries no residual bound"),
-                          "sample_strategy": (
-                              "exhaustive_over_supplied_paths; note that the "
-                              "supplied list cannot itself be verified complete, "
-                              "so this attests absence for the paths given and "
-                              "not for the volume"),
-                      },
-                    notes=[
-                        f"Batch sanitized {successes}/{total_files} files ({total_bytes} bytes overwritten).",
-                        f"Target classification: {kind} — {dir_count} director(ies), {file_count} file(s) supplied.",
-                        "Verification: each target was re-stat()ed after overwrite; the file is unlinked and no residual data was readable.",
-                        "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
-                    ]
-                    + warnings,
-                )
-                priv = core_crypto.load_private_pem(key_file)
-                cert = cert_mod.sign_certificate(cert_dict, priv)
-            except Exception as e:
-                warnings.append(f"Certificate generation/signing failed: {e}")
-                cert = None
-        else:
+                      # No content readback happens on the file path: the
+                      # checks below establish that the name is gone and that
+                      # the overwrite did not error, not that the bytes on the
+                      # medium match the pattern. Claiming a readback here
+                      # would put an unsupported assertion on a compliance
+                      # document, so the field is null rather than true.
+                      "method": "post_erase_absence_only",
+                      "samples_checked": total_files,
+                      "sample_bytes_each": 0,
+                      "all_samples_match_wipe_pattern": None,
+                      "planted_pattern_hits_after": failures,
+                      # Not a statistical sample, so no residual bound
+                      # applies; the schema's fields are used to say that
+                      # explicitly rather than left absent, because an
+                      # absent bound reads to a certificate consumer as
+                      # "no bound was needed" rather than "this check is of
+                      # a different kind".
+                      "population_blocks": total_files,
+                      "confidence_percent": 100,
+                      "attestation": (
+                          "exhaustive re-stat of every path supplied to this "
+                          "operation; this is not a statistical sample and "
+                          "carries no residual bound"),
+                      "sample_strategy": (
+                          "exhaustive_over_supplied_paths; note that the "
+                          "supplied list cannot itself be verified complete, "
+                          "so this attests absence for the paths given and "
+                          "not for the volume"),
+                  },
+                notes=[
+                    f"Batch sanitized {successes}/{total_files} files, "
+                    f"{total_bytes:,} B of content destroyed.",
+                    # Stated separately and explicitly, because "bytes
+                    # overwritten" for a multi-pass wipe is passes x size and a
+                    # reader takes it for the size of what was sanitized.
+                    f"Overwrite volume {overwrite_volume:,} B "
+                    f"(= content x passes; not a claim about coverage).",
+                    f"Target classification: {kind} — {dir_count} director(ies), {file_count} file(s) supplied.",
+                    "Verification: each target was re-stat()ed after overwrite; the file is unlinked and no residual data was readable.",
+                    "Metadata cleansing applied: timestamps zeroed, directory entries scrambled.",
+                ]
+                + warnings,
+            )
+            priv = core_crypto.load_private_pem(key_file)
+            cert = cert_mod.sign_certificate(cert_dict, priv)
+        except Exception as e:
+            warnings.append(f"Certificate generation/signing failed: {e}")
+            cert = None
+    else:
             warnings.append(
                 f"WARNING: Signing key not found at '{key_file}'. "
                 "No compliance certificate or cryptographic audit record was generated."

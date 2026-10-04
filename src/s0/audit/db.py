@@ -316,6 +316,7 @@ def record_audit_event(
         )
 
         block_signature = ""
+        unsigned_reason = ""
         key_to_use = private_key
         if key_to_use is None:
             # Fall back to the packaged demo key if available.
@@ -331,8 +332,29 @@ def record_audit_event(
                 else:
                     priv_obj = key_to_use
                 block_signature = crypto.sign_payload(priv_obj, block_hash.encode("utf-8"))
-            except Exception:
+            except Exception as exc:
+                # Previously this swallowed the failure and recorded the block with
+                # an empty signature. A block that cannot be signed is not evidence:
+                # it asserts a chain entry nobody can attribute to an issuer, and it
+                # sits in the same ledger as properly signed ones where nothing
+                # marks the difference. Recording it unsigned is worse than refusing
+                # it, because the erase has already happened and refusing loses the
+                # record of that too -- so the failure is named in the block, which
+                # makes it auditable rather than invisible.
                 block_signature = ""
+                unsigned_reason = f"{type(exc).__name__}: {exc}"
+
+        if unsigned_reason:
+            # Recorded in the certificate that is stored *inside* the block, so the
+            # gap travels with the evidence. A verifier reading `block_signature`
+            # sees the empty string; one reading the certificate sees why.
+            notes = certificate.get("notes")
+            certificate = dict(certificate)
+            certificate["notes"] = list(notes or []) + [
+                f"UNSIGNED LEDGER BLOCK: the issuer key could not sign this entry "
+                f"({unsigned_reason}). The erase it records did happen; the block's "
+                f"attribution could not be cryptographically established."
+            ]
 
         cert_json = json.dumps(certificate)
 

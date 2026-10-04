@@ -1380,6 +1380,15 @@ def cmd_erase_files(args) -> int:
                 "certificate": str(cert_p) if summary.certificate else None,
                 "cert_uuid": summary.certificate.get("cert_uuid") if summary.certificate else None
             }, indent=2))
+    elif summary.total_files == 0:
+        # Not a failure, and not a signing problem: there was nothing to erase, so
+        # there is nothing to certify. Saying "certificate generation failed" here
+        # would send an operator looking for a key or a permissions problem that does
+        # not exist.
+        print("NOTE: nothing was erased, so no certificate was issued.", file=sys.stderr)
+        for w in summary.warnings:
+            if "no files were erased" in w:
+                print(f"  {w}", file=sys.stderr)
     elif not getattr(args, "no_certificate", False):
         print("WARNING: Sanitization completed, but certificate generation failed (see warnings).", file=sys.stderr)
 
