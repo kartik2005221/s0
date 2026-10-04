@@ -124,6 +124,48 @@ class TestTheContractStillHolds:
         assert lines, "csv mode wrote nothing to stdout"
         assert lines[0].startswith("path,"), f"unexpected csv header: {lines[0]!r}"
 
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["list"],
+            ["plan", "--target", "{img}"],
+            ["audit", "list"],
+            ["live", "devices"],
+            ["carve", "--target", "{img}", "--out", "{out}", "--no-certificate"],
+            ["image", "--source", "{img}", "--dest", "{dest}", "--no-certificate"],
+        ],
+        ids=["list", "plan", "audit-list", "live-devices", "carve", "image"],
+    )
+    def test_every_command_keeps_stdout_empty_in_text_mode(self, run, tmp_path, argv):
+        """The contract is stated per-flag in `--help`, so it applies to every command.
+
+        The existing check only covered `list`, which is the one command nobody would
+        expect to violate it. The reported breaches were elsewhere: `carve` printed an
+        `[s0 carve]  Audit Ledger : recorded block #3` line to stdout, and
+        `--dry-run` printed `Dry run: nothing will be written.` to stdout. Both looked
+        like a table; a user who ran `s0 carve --target x > report.txt` got a file
+        containing one audit line and nothing else.
+
+        Asserted across the command surface, so a future `print()` without `file=`
+        is caught by the suite instead of by a surprised user.
+        """
+        img = tmp_path / "src.bin"
+        img.write_bytes(bytes(range(256)) * 4096)
+        args = [a.format(img=img, out=tmp_path / "carved", dest=tmp_path / "copy.img") for a in argv]
+        proc = run(*args)
+        assert proc.stdout == "", (
+            f"`s0 {' '.join(args)}` wrote {len(proc.stdout)} bytes to stdout in text "
+            f"mode: {proc.stdout[:200]!r}. The documented contract is that stdout "
+            f"stays empty and carries only --json/--format output."
+        )
+
+    def test_dry_run_writes_nothing_to_stdout(self, run, tmp_path):
+        """`Dry run: nothing will be written.` was a stdout line, not a table."""
+        img = tmp_path / "src.bin"
+        img.write_bytes(b"x" * 4096)
+        proc = run("image", "--source", str(img), "--dest", str(tmp_path / "o.img"), "--dry-run")
+        assert proc.stdout == "", f"--dry-run wrote to stdout in text mode: {proc.stdout[:200]!r}"
+
     def test_redirecting_text_mode_produces_an_empty_file(self, tmp_path):
         """The exact surprise the old documentation set up.
 

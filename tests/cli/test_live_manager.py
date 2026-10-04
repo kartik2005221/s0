@@ -145,11 +145,45 @@ def test_cmd_live_devices_with_mocked_drives(capsys):
         }
     ]
     with patch("s0.live.live_manager.get_removable_usb_devices", return_value=mock_devs):
+        # No `ui`/`policy` on the namespace: the handler builds its own from args, so
+        # this also covers being called outside `main()`.
         args = argparse.Namespace(json=False)
         assert cmd_live_devices(args) == 0
         captured = capsys.readouterr()
-        assert "SanDisk Ultra 3.0" in captured.out
-        assert "/dev/sdb" in captured.out
+        # Human output is on stderr. It used to be on stdout, breaking the contract
+        # every --help screen states, so `s0 live devices > drives.txt` captured prose.
+        assert captured.out == "", (
+            f"`s0 live devices` wrote {len(captured.out)} bytes to stdout: {captured.out[:200]!r}"
+        )
+        assert "SanDisk Ultra 3.0" in captured.err
+        assert "/dev/sdb" in captured.err
+
+
+def test_cmd_live_devices_json_is_an_envelope_not_a_bare_list(capsys):
+    """`--json` emitted a bare list where every other command emits `s0.*`."""
+    mock_devs = [{"path": "/dev/sdb", "model": "X", "size_bytes": 1, "size_human": "1 B"}]
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=mock_devs):
+        assert cmd_live_devices(argparse.Namespace(json=True, fmt="json")) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["schema"].startswith("s0."), f"not an envelope: {sorted(payload)}"
+    assert payload["result"]["count"] == 1
+
+
+def test_cmd_live_devices_respects_format_csv(capsys):
+    """CSV is rendered generically from the envelope result, like every other command.
+
+    `UI.finish` flattens a list of dicts into columns, so the header comes from the
+    keys of the device records rather than being written by hand here. `--format csv`
+    used to be ignored entirely by this command.
+    """
+    mock_devs = [{"path": "/dev/sdb", "model": "X", "size_bytes": 1, "size_human": "1 B"}]
+    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=mock_devs):
+        assert cmd_live_devices(argparse.Namespace(format="csv")) == 0
+    out = capsys.readouterr().out
+    header = out.splitlines()[0].split(",")
+    assert {"path", "model", "size_human"} <= set(header), f"unexpected csv header: {header}"
+    assert "/dev/sdb" in out
 
 
 def test_cmd_live_build_platform_guard(monkeypatch, capsys):

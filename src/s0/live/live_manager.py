@@ -215,34 +215,62 @@ EX_TEMPFAIL = 75
 
 
 def cmd_live_devices(args: argparse.Namespace) -> int:
-    """List available removable USB drives safely."""
+    """List available removable USB drives safely.
+
+    This wrote the whole table to stdout with bare ``print()``, which broke the
+    contract every other command keeps and that every `--help` screen states: human
+    text goes to stderr and stdout stays empty so it can carry only machine-readable
+    output. A user running `s0 live devices > drives.txt` got a text table on stdout
+    and nothing on stderr, so `2>/dev/null` did not silence it and a script reading
+    stdout got prose.
+
+    It also read `args.json` directly, so `--format json` was ignored here and
+    `--json` emitted a bare list where every other command emits the `s0.*` envelope.
+    Both are fixed by routing through the resolved policy.
+    """
+    from s0.cli.ui import UI
+
+    ui = getattr(args, "ui", None) or UI(
+        getattr(args, "policy", None) or _fallback_policy(args), "live devices"
+    )
     devs = get_removable_usb_devices()
 
-    if getattr(args, "json", False):
-        print(json.dumps(devs, indent=2))
+    if ui.policy.fmt in ("json", "csv"):
+        # `ui.finish` emits the same `s0.*` envelope every other command emits. This
+        # used to `print(json.dumps(devs))`, a bare list with no schema, no status and
+        # no timestamp -- the one command whose machine output a caller could not
+        # parse the same way as the rest.
+        ui.finish(result={"devices": devs, "count": len(devs)})
         # Same rule in machine-readable mode: an empty list is a failure to find a
         # target, not a successful listing. Returning 0 here while the text path
         # returned EX_NOINPUT made `--json` the odd one out for scripts.
         return EX_NOINPUT if not devs else 0
 
-    print("[s0 live]  Detected Removable USB Target Drives:")
-    print("━" * 68)
+    ui.note("[s0 live]  Detected Removable USB Target Drives:")
+    ui.note("━" * 68)
     if not devs:
-        print("  (No removable USB drives detected)")
-        print()
-        print("  Tip: Insert a USB pendrive and ensure it is recognized by your OS.")
+        ui.note("  (No removable USB drives detected)")
+        ui.note("")
+        ui.note("  Tip: Insert a USB pendrive and ensure it is recognized by your OS.")
         # Non-zero: "found no target" is a failure to do the job asked for.
         # Returning 0 meant `s0 live devices && s0 live flash -t /dev/sdb`
         # chained straight into a flash against a path never enumerated.
         return EX_NOINPUT
 
-    print(f"  {'#':<3} {'Target Device':<24} {'Capacity':<14} {'Model / Description'}")
-    print(f"  {'-' * 3} {'-' * 24} {'-' * 14} {'-' * 22}")
+    ui.note(f"  {'#':<3} {'Target Device':<24} {'Capacity':<14} {'Model / Description'}")
+    ui.note(f"  {'-' * 3} {'-' * 24} {'-' * 14} {'-' * 22}")
     for idx, d in enumerate(devs):
-        print(f"  [{idx}] {d['path']:<24} {d['size_human']:<14} {d['model']}")
-    print("━" * 68)
-    print("  Use 's0 live flash --target <device>' to create bootable live media.")
+        ui.note(f"  [{idx}] {d['path']:<24} {d['size_human']:<14} {d['model']}")
+    ui.note("━" * 68)
+    ui.note("  Use 's0 live flash --target <device>' to create bootable live media.")
     return 0
+
+
+def _fallback_policy(args: argparse.Namespace):
+    """The output policy for a `live` invocation dispatched without one attached."""
+    from s0.cli.ui import policy_from_args
+
+    return policy_from_args(args)
 
 
 # ---------------------------------------------------------------------------

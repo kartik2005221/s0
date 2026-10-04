@@ -814,7 +814,7 @@ def cmd_wipe(args) -> int:
                     refused.append(str(exc))
         except ImportError:
             pass
-        ui.line("[s0 wipe]  Dry run: nothing will be written.")
+        ui.note("[s0 wipe]  Dry run: nothing will be written.")
         ui.note(
             f"mode:    file/folder erase ({len(args.targets)} target{'s' if len(args.targets) != 1 else ''})"
         )
@@ -1074,7 +1074,7 @@ def cmd_wipe(args) -> int:
         # only; never write to the target", and only `s0 live flash` ever read it.
         # So the documented way to preview a wipe actually wiped the target.
         # Verified by probe: a 4 MB image's md5 changed under `s0 wipe --dry-run`.
-        ui.line("[s0 wipe]  Dry run: nothing will be written.")
+        ui.note("[s0 wipe]  Dry run: nothing will be written.")
         ui.note(f"target:  {target.path}")
         ui.note(f"kind:    {target.kind}")
         if getattr(target, "capacity_bytes", None):
@@ -3621,7 +3621,7 @@ def _dry_run_guard(args) -> int | None:
             return None
 
     ui = getattr(args, "ui", None) or UI(policy_from_args(args), command=command)
-    ui.line(f"[s0 {command}]  Dry run: nothing will be written.")
+    ui.note(f"[s0 {command}]  Dry run: nothing will be written.")
     source = getattr(args, "source", None) or getattr(args, "target", None)
     if source:
         ui.note(f"source:      {source}")
