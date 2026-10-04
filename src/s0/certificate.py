@@ -20,6 +20,10 @@ SCHEMA_VERSION = "1.0.0"
 
 WIPE_METHODS = {
     "OVERWRITE_ZERO_1PASS",
+    "OVERWRITE_ZERO_2PASS",
+    "OVERWRITE_ZERO_3PASS",
+    "OVERWRITE_RANDOM_1PASS",
+    "SHRED_RANDOM_1PASS",
     "SHRED_RANDOM_NPASS",
     "BLKDISCARD",
     "ATA_SECURE_ERASE",
@@ -62,6 +66,10 @@ PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging
 # (validated as a notes-content check below).
 METHOD_TIERS = {
     "OVERWRITE_ZERO_1PASS": {"Clear"},
+    "OVERWRITE_ZERO_2PASS": {"Clear"},
+    "OVERWRITE_ZERO_3PASS": {"Clear"},
+    "OVERWRITE_RANDOM_1PASS": {"Clear"},
+    "SHRED_RANDOM_1PASS": {"Clear"},
     "SHRED_RANDOM_NPASS": {"Clear"},
     "BLKDISCARD": {"Clear", "Purge"},
     "ATA_SECURE_ERASE": {"Purge"},

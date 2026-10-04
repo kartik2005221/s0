@@ -62,7 +62,15 @@ def test_recursive_folder_erasure(tmp_path: Path):
     assert not sub_dir.exists()
     assert not root_dir.exists()
     assert summary.certificate is not None
-    assert summary.certificate["result"]["verification"]["all_samples_match_wipe_pattern"] is True
+    # The file path establishes that the names are gone and that the overwrite
+    # did not error. It does not read the medium back, so it must not claim a
+    # pattern match: sample_bytes_each is 0 and this field is null. It used to
+    # assert True here, which put an unsupported claim on every file-wipe
+    # certificate.
+    verification = summary.certificate["result"]["verification"]
+    assert verification["sample_bytes_each"] == 0
+    assert verification["all_samples_match_wipe_pattern"] is None
+    assert verification["method"] == "post_erase_absence_only"
 
 
 def test_cross_platform_cow_and_filesystem_detection(tmp_path: Path):

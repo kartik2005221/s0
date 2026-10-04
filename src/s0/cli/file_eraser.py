@@ -132,14 +132,36 @@ def detect_cow_and_filesystem(path_str: str) -> tuple[str, str | None]:
     return fs_name, cow_warning
 
 
-def platform_sync(fd: int) -> None:
-    """Flush OS and drive hardware write cache across platforms."""
+def _wipe_method_label(pattern: str, passes: int) -> str:
+    """Name the method that was actually performed.
+
+    The label goes on a compliance document, so it has to describe what was
+    written. A three-pass zero wipe recorded as SHRED_RANDOM_NPASS is not a
+    cosmetic error: it tells a reader the medium was filled with CSPRNG bytes
+    when it was filled with zeros, which changes the residual-risk argument.
+    """
+    family = "OVERWRITE_ZERO" if pattern == "zero" else "SHRED_RANDOM"
+    return f"{family}_{passes}PASS"
+
+
+def platform_sync(fd: int) -> bool:
+    """Flush OS and drive hardware write cache across platforms.
+
+    Returns True when the platform reported the flush as successful. A failure
+    is returned rather than raised: callers need to finish the overwrite and then
+    *report* that the flush did not happen, because "the bytes may still be in
+    cache" is a materially different claim from "the erase failed".
+
+    Swallowing this and reporting success is how an unflushed overwrite ends up
+    on a compliance certificate. The overwrite is still attempted either way;
+    what changes is whether the tool tells the truth about it.
+    """
     if sys.platform == "darwin":
         # Apple macOS: F_FULLFSYNC (fcntl command 51) flushes drive hardware cache
         try:
             import fcntl
             fcntl.fcntl(fd, 51, 0)
-            return
+            return True
         except Exception:
             pass
     elif sys.platform == "win32":
@@ -148,14 +170,15 @@ def platform_sync(fd: int) -> None:
             import msvcrt
             handle = msvcrt.get_osfhandle(fd)
             if ctypes.windll.kernel32.FlushFileBuffers(handle):
-                return
+                return True
         except Exception:
             pass
 
     try:
         os.fsync(fd)
-    except Exception:
-        pass
+        return True
+    except OSError:
+        return False
 
 
 def platform_cleanse_attributes(path_str: str, fd: int | None = None) -> None:
@@ -415,6 +438,7 @@ def erase_single_file(
         )
 
     bytes_written_total = 0
+    sync_failures: list[str] = []
 
     try:
         # 1. Overwrite file contents
@@ -439,13 +463,15 @@ def erase_single_file(
                             progress_callback(path_str, bytes_written_total, file_size * passes)
 
                     f.flush()
-                    platform_sync(f.fileno())
+                    if not platform_sync(f.fileno()):
+                        sync_failures.append("write cache flush failed after a pass")
 
                 # Truncate file size to 0
                 f.seek(0)
                 f.truncate(0)
                 f.flush()
-                platform_sync(f.fileno())
+                if not platform_sync(f.fileno()):
+                    sync_failures.append("write cache flush failed after truncate")
         else:
             # 0-byte file still needs closing and truncating
             os.close(raw_fd)
@@ -490,14 +516,28 @@ def erase_single_file(
                 except Exception:
                     pass
         except Exception:
-            # Fallback to direct unlink if needed
+            # The primary unlink failed. current_path is the name the data is
+            # actually under now -- never path_str, which was renamed away above
+            # and so does not exist. Retrying the old path unlinks nothing, which
+            # is what let a surviving zeroed .s0_del_* leftover be reported as a
+            # clean erase.
             try:
-                os.unlink(path_str)
+                os.unlink(current_path)
             except Exception:
                 pass
 
-        # 4. Post-erase verification: file must not exist
-        if path_obj.exists():
+        # 4. Post-erase verification. The check must look at the name the data is
+        # actually under, or it is checking a path that was renamed away and is
+        # therefore always absent -- a tautology that can never fail.
+        leftover = None
+        for candidate in (current_path, path_obj):
+            try:
+                if os.path.lexists(str(candidate)):
+                    leftover = candidate
+                    break
+            except OSError:
+                continue
+        if leftover is not None:
             return FileEraseResult(
                 path=path_str,
                 original_size=file_size,
@@ -505,7 +545,29 @@ def erase_single_file(
                 passes=passes,
                 pattern=pattern,
                 status="failure",
-                error="File still exists after unlinking attempt",
+                error=(f"Overwritten data still present at {leftover} after an "
+                       f"unlinking attempt; the file was zeroed but not removed"),
+                cow_warning=cow_warning,
+                extents_count=len(extents),
+                filesystem=fs_name,
+            )
+
+        if sync_failures:
+            # The bytes reached the file but may still be in a drive cache, so
+            # "erased" is not yet a fact about the medium. Reporting success here
+            # is how an unflushed overwrite ends up certified as complete.
+            return FileEraseResult(
+                path=path_str,
+                original_size=file_size,
+                bytes_overwritten=bytes_written_total,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=("; ".join(sorted(set(sync_failures)))
+                       + " -- the overwrite may not have reached the medium; "
+                         "do not rely on this erase until the device has been "
+                         "power-cycled and re-checked"),
+                metadata_cleansed=True,
                 cow_warning=cow_warning,
                 extents_count=len(extents),
                 filesystem=fs_name,
@@ -733,7 +795,7 @@ def erase_batch(
                     device_id=device_id,
                     device_type=kind,
                     storage_type=storage_type,
-                    method="OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS",
+                    method=_wipe_method_label(pattern, passes),
                     nist_category="Clear",
                     start_time=start_time,
                     end_time=end_time,
@@ -744,10 +806,16 @@ def erase_batch(
                     status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
                     errors=[r.error for r in all_results if r.error] or None,
 verification={
-                          "method": "post_erase_absence_and_overwrite_readback",
+                          # No content readback happens on the file path: the
+                          # checks below establish that the name is gone and that
+                          # the overwrite did not error, not that the bytes on the
+                          # medium match the pattern. Claiming a readback here
+                          # would put an unsupported assertion on a compliance
+                          # document, so the field is null rather than true.
+                          "method": "post_erase_absence_only",
                           "samples_checked": total_files,
                           "sample_bytes_each": 0,
-                          "all_samples_match_wipe_pattern": (failures == 0),
+                          "all_samples_match_wipe_pattern": None,
                           "planted_pattern_hits_after": failures,
                           # Not a statistical sample, so no residual bound
                           # applies; the schema's fields are used to say that
