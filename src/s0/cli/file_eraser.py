@@ -647,7 +647,24 @@ def erase_batch(
     all_results: list[FileEraseResult] = []
 
     for t in targets:
-        p = Path(t).resolve()
+        # Do NOT resolve() the top-level target before dispatch.
+        #
+        # `erase_single_file()` correctly refuses a symlink, but `.resolve()`
+        # followed the link first, so by the time the check ran it was looking at
+        # the real target. Confirmed: a top-level symlink passed to --targets had
+        # its *target* destroyed and was left dangling, with the certificate
+        # recording the resolved path as though that were what was asked for.
+        # Nested symlinks inside a folder were already refused -- only the
+        # top-level batch target had this gap.
+        p = Path(t)
+        if p.is_symlink():
+            raise SafetyError(
+                f"Refusing to follow symlink: {t} -> {os.readlink(p)}\n"
+                "       Erasing the target would destroy data you did not name. "
+                "Pass the real path,\n"
+                "       or pass --force if you genuinely mean to erase the link's target."
+            )
+        p = p.resolve()
         if p.is_dir():
             dir_res = erase_folder(
                 p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force

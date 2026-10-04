@@ -519,6 +519,64 @@ def cmd_plan(args) -> int:
     return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
 
 
+
+#: Suffixes that have historically meant "raw disk image" to this tool. Kept for
+#: the opt-out flag below and for backwards compatibility, but no longer used to
+#: decide behaviour on its own -- see `_looks_like_raw_image`.
+IMAGE_SUFFIXES = (".img", ".raw", ".iso", ".bin")
+
+
+def _looks_like_raw_image(path) -> bool:
+    """True when this regular file should be treated as a disk image.
+
+    Content, not suffix. A file is treated as a raw image when it carries a known
+    image signature, or when its size is a whole number of 512-byte sectors -- the
+    property that actually matters for a sector-addressed image. `s0 wipe
+    --target` on an image overwrites in place and keeps the file; on anything else
+    it erases, which deletes the file.
+
+    Guessing from the extension got this wrong in both directions: a 600 MB `.dat`
+    that really was a disk image was deleted, and a 40 KB `.img` that was a
+    spreadsheet was overwritten as though it were a device.
+    """
+    suffix = path.suffix.lower()
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return suffix in IMAGE_SUFFIXES
+
+    # Sector-aligned and non-trivial: the shape of a raw image.
+    if size >= 1024 * 1024 and size % 512 == 0:
+        head = _read_head_bytes(path, 512)
+        if _has_known_image_magic(head):
+            return True
+        # Sector-aligned with no recognised magic is still far more likely to be a
+        # raw image than a document. Require a whole number of 1 MiB or of 63-sector
+        # CD tracks to avoid claiming ordinary files.
+        return size % (1024 * 1024) == 0 or size % (2048 * 63) == 0
+
+    if suffix in IMAGE_SUFFIXES and _has_known_image_magic(_read_head_bytes(path, 512)):
+        return True
+    return False
+
+
+def _read_head_bytes(path, count: int) -> bytes:
+    try:
+        with open(path, "rb") as handle:
+            return handle.read(count)
+    except OSError:
+        return b""
+
+
+def _has_known_image_magic(head: bytes) -> bool:
+    if not head:
+        return False
+    # VMDK sparse extent header, qcow2, VDI, VHDX, VDI, raw dd, ISO 9660.
+    magics = (
+        b"QFI\xfb", b"conectix", b"vhdxfile", b"KDMV", b"\x1f\x8b",  # qcow2/vhdx/vdi/gz
+    )
+    return any(head.startswith(m) for m in magics) or head[257:262] == b"CD001"
+
 def cmd_wipe(args) -> int:
     """Sanitize a drive, image, file or folder, verify, and issue a certificate.
 
@@ -588,7 +646,20 @@ def cmd_wipe(args) -> int:
             if t_path.is_dir():
                 is_file_mode = True
                 args.targets = [target_arg]
-            elif t_path.is_file() and t_path.suffix.lower() not in (".img", ".raw", ".iso", ".bin"):
+            elif t_path.is_file() and not _looks_like_raw_image(t_path):
+                # A regular file that is not a recognised raw disk image takes the
+                # file-erase path.
+                #
+                # This used to be decided by extension alone -- anything not in
+                # (".img", ".raw", ".iso", ".bin") -- so the *same command* silently
+                # did two different destructive things:
+                #
+                #   s0 wipe --target evidence.bin --yes   -> overwritten, kept
+                #   s0 wipe --target evidence.dat --yes   -> ERASED
+                #
+                # Nothing in the help text, the manual or the AI skill said so. Two
+                # identical files differed only in their suffix, and the operator had
+                # no way to know which they had.
                 is_file_mode = True
                 args.targets = [target_arg]
 

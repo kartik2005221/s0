@@ -329,6 +329,39 @@
     return errs;
   }
 
+  var MAX_EXACT_INTEGER = 9007199254740991; // 2**53-1, see canonical.py
+
+  /**
+   * Reject integers a JS Number cannot hold exactly.
+   *
+   * JSON.parse rounds anything above 2**53-1, so re-serialising yields different
+   * bytes than the signer produced and the hash check fails -- the certificate
+   * reads as tampered when it is not. Python emits these values losslessly, so the
+   * two implementations of Canonical JSON v1 disagreed on the same signed bytes.
+   * Refusing the value makes both agree. At 512-byte sectors 2**53 bytes is 8 PiB,
+   * so no real medium is excluded.
+   */
+  function checkIntegerExactness(value, path, errs) {
+    if (typeof value === "number") {
+      if (!Number.isSafeInteger(value)) {
+        errs.push(path + ": integer " + value + " exceeds the interoperable " +
+                  "exact-integer range (+/-" + MAX_EXACT_INTEGER + ", 2^53-1); a " +
+                  "JavaScript verifier cannot represent it");
+        return;
+      }
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (var k in value) {
+        if (Object.prototype.hasOwnProperty.call(value, k)) {
+          checkIntegerExactness(value[k], (path ? path + "." : "") + k, errs);
+        }
+      }
+    } else if (Array.isArray(value)) {
+      for (var i = 0; i < value.length; i++) {
+        checkIntegerExactness(value[i], path + "[" + i + "]", errs);
+      }
+    }
+  }
+
   function validate(cert, options) {
     var requireSignature = (options && options.requireSignature !== undefined) ? options.requireSignature : true;
     var rawJson = (options && options.rawJson) ? options.rawJson : (typeof cert === "string" ? cert : null);
@@ -494,6 +527,7 @@
     }
 
     walkFloats(payloadOf(cert), "$", errs);
+    checkIntegerExactness(cert, "", errs);
     return errs;
   }
 

@@ -23,6 +23,11 @@ class CanonicalizationError(ValueError):
     """Raised when a value cannot be represented in s0 Canonical JSON v1."""
 
 
+#: Largest integer a JavaScript `Number` represents exactly. Beyond this,
+#: JSON.parse rounds and the canonical byte sequence changes.
+MAX_EXACT_INTEGER = 2**53 - 1
+
+
 def _canon(value: Any, out: list[str], _depth: int = 0) -> None:
     if _depth > 64:
         raise CanonicalizationError("data structure exceeds maximum nesting depth (64 levels)")
@@ -32,6 +37,23 @@ def _canon(value: Any, out: list[str], _depth: int = 0) -> None:
     elif value is None:
         out.append("null")
     elif isinstance(value, int):
+        # Interoperability limit, not a formatting preference.
+        #
+        # A JavaScript `Number` is an IEEE-754 double: integers above 2**53-1 are
+        # silently rounded, and re-serialising produces different bytes. So a
+        # certificate carrying 12345678901234567890 is hashed correctly by Python
+        # and "TAMPERED_OR_CORRUPT" by the browser portal, on the same signed
+        # bytes -- the two implementations of one spec disagreeing.
+        #
+        # Refusing the value outright makes both verifiers agree, which is the only
+        # interoperable answer. It costs nothing real: at 512-byte sectors 2**53
+        # bytes is 8 PiB, far beyond any medium that exists.
+        if abs(value) > MAX_EXACT_INTEGER:
+            raise CanonicalizationError(
+                f"integer {value} exceeds the interoperable exact-integer range "
+                f"(+/-{MAX_EXACT_INTEGER}, 2**53-1); a JavaScript verifier cannot "
+                f"represent it and would disagree about this payload's hash"
+            )
         # str(int) is minimal base-10: no leading zeros, optional '-', no exponent.
         out.append(str(value))
     elif isinstance(value, float):

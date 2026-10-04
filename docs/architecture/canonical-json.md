@@ -29,6 +29,17 @@ Given a parsed JSON value, serialize as follows:
    problem class. (Deliberate deviation from RFC 8785/JCS, which specifies ES6 number
    formatting — we chose schema-level avoidance over implementing ES6 double-formatting in four
    languages.)
+
+     **Integers are additionally bounded at 2^53 - 1 inclusive.** A JavaScript `Number` is an
+     IEEE-754 double, so `JSON.parse` silently rounds anything larger and re-serialising produces
+     different bytes. A certificate carrying `12345678901234567890` was therefore hashed
+     correctly by the Python verifier and reported `TAMPERED_OR_CORRUPT` by the browser portal:
+     two implementations of this specification giving opposite answers about the same signed
+     bytes. An implementation MUST refuse an integer outside +/-(2^53 - 1) rather than
+     canonicalize it. This costs nothing real: at 512-byte sectors, 2^53 bytes is 8 PiB, far
+     beyond any medium that exists. Both `src/s0/canonical.py` and `site/verify/verify.js`
+     enforce this, and the golden vector `integer_above_exact_range_is_refused` in
+     `tests/core/data/canonical_vectors.json` pins the behaviour.
 6. **Literals.** `true`, `false`, `null`.
 7. **Arrays.** Order preserved as-is (arrays are ordered by design).
 

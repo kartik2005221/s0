@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 
-from s0.canonical import canonicalize_str
+import pytest
+
+from s0.canonical import CanonicalizationError, canonicalize_str
 from s0.certificate import (
     NIST_CATEGORIES,
     WIPE_METHODS,
@@ -74,6 +76,11 @@ def test_js_canonical_json_spec_parity():
         vectors = json.load(f)["vectors"]
 
     for v in vectors:
+        if "error" in v:
+            # A refusal vector: both sides must refuse, for the same reason.
+            with pytest.raises(CanonicalizationError, match=v["error"]):
+                canonicalize_str(v["input"])
+            continue
         py_canon = canonicalize_str(v["input"])
         assert py_canon == v["canonical"], f"Vector {v['name']} failed"
 

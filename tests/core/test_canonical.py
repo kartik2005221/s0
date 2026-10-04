@@ -14,6 +14,14 @@ VECTORS = json.loads(
 
 @pytest.mark.parametrize("vector", VECTORS, ids=lambda v: v["name"])
 def test_golden_vectors(vector):
+    if "error" in vector:
+        # A refusal vector. Both implementations must refuse, and for the same
+        # reason, or they diverge on the same bytes.
+        with pytest.raises(CanonicalizationError, match=vector["error"]):
+            canonicalize_str(vector["input"])
+        with pytest.raises(CanonicalizationError, match=vector["error"]):
+            canonicalize(vector["input"])
+        return
     assert canonicalize_str(vector["input"]) == vector["canonical"]
     assert canonicalize(vector["input"]) == vector["canonical"].encode("utf-8")
 
