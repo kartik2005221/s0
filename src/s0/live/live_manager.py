@@ -237,6 +237,77 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
 # 3. Command: s0 live download
 # ---------------------------------------------------------------------------
 
+_SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _parse_sha256_document(text: str, iso_name: str) -> str | None:
+    """Extract the SHA-256 for *iso_name* from a checksum file, strictly.
+
+    Three ways the previous parsing could pick the wrong value, all of which end in
+    a *false mismatch* and the good ISO being deleted:
+
+    * ``text.split()[0]`` on the dedicated ``.sha256`` asset takes the first
+      whitespace-separated token of the whole body. An HTML error page -- which is
+      what a rate-limited or redirected request returns -- yields ``<html>`` or a
+      doctype fragment as the "expected hash".
+    * ``SHA256SUMS.txt`` was scanned for the first line merely *containing*
+      ``iso_name`` or ``live-amd64``. With several artefacts in the file, a
+      substring match hits the wrong line -- ``s0-live-amd64.iso.sha256`` matches
+      before ``s0-live-amd64.iso`` does, and the wrong file's hash is then used to
+      condemn a correct download.
+    * Neither checked that the result was a hash at all.
+
+    So the format is now parsed as the format it is: one line per artefact,
+    ``<64 hex> <two spaces or *><name>``. The name must match exactly (after the
+    ``./`` prefix some tools emit), and the digest must be 64 hex characters.
+    Anything else is not a checksum for this file, and returns None so the caller
+    fails closed with "no checksum" rather than "checksum mismatch".
+
+    A body that is *only* a digest is accepted directly, since that is what the
+    dedicated `.sha256` asset usually contains. Deciding that here rather than at
+    each call site means one place decides what counts as a hash.
+
+    This is integrity, not authenticity. The digest is fetched from the same host as
+    the ISO, so anyone who can replace the artefact can replace its checksum. A
+    correct parser makes "this file is internally consistent" reliable; it cannot
+    make the publisher trustworthy, and nothing here should be read as doing so.
+    """
+    stripped = text.strip()
+    if _SHA256_HEX.match(stripped.lower()):
+        return stripped.lower()
+
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Accept both `sha256sum` output forms: "<hash>  <name>" and "<hash> *<name>".
+        parts = line.split(None, 1)
+        if len(parts) != 2:
+            continue
+        digest, name = parts[0].strip().lower(), parts[1].strip()
+        if name.startswith("*"):
+            name = name[1:]
+        if name.startswith("./"):
+            name = name[2:]
+        # Some tools append a mode or size column; the basename is what identifies
+        # the artefact, and matching the basename is what a reader expects.
+        if os.path.basename(name) != iso_name:
+            continue
+        if _SHA256_HEX.match(digest):
+            return digest
+    return None
+
+
+def _parse_sha256_sums(text: str, iso_name: str) -> str | None:
+    """Find the ISO's digest in a multi-entry SHA256SUMS.txt.
+
+    Separate from _parse_sha256_document because a sums file lists many artefacts,
+    so a line for a *different* file must be skipped rather than accepted -- which
+    is exactly the case the substring match got wrong.
+    """
+    return _parse_sha256_document(text, iso_name)
+
+
 def _https_only(url: str, what: str = "URL") -> str:
     """Refuse anything that is not an https:// URL.
 
@@ -548,7 +619,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             req = urllib.request.Request(sha_asset["browser_download_url"], headers=dl_headers)
             with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
                 text = resp.read().decode("utf-8").strip()
-                expected_sha = text.split()[0].lower()
+                expected_sha = _parse_sha256_document(text, iso_name)
         except Exception:
             if shutil.which("gh"):
                 try:
@@ -558,7 +629,8 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                     )
                     local_sha = out_dir / sha_asset["name"]
                     if local_sha.is_file():
-                        expected_sha = local_sha.read_text(encoding="utf-8").strip().split()[0].lower()
+                        expected_sha = _parse_sha256_document(
+                            local_sha.read_text(encoding="utf-8"), iso_name)
                 except Exception:
                     pass
 
@@ -567,10 +639,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             req = urllib.request.Request(sha_sums_asset["browser_download_url"], headers=dl_headers)
             with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310 - literal https:// above
                 text = resp.read().decode("utf-8")
-                for line in text.splitlines():
-                    if iso_name in line or "live-amd64" in line:
-                        expected_sha = line.split()[0].lower()
-                        break
+                expected_sha = _parse_sha256_sums(text, iso_name)
         except Exception:
             if shutil.which("gh"):
                 try:
@@ -581,10 +650,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                     local_sums = out_dir / "SHA256SUMS.txt"
                     if local_sums.is_file():
                         text = local_sums.read_text(encoding="utf-8")
-                        for line in text.splitlines():
-                            if iso_name in line or "live-amd64" in line:
-                                expected_sha = line.split()[0].lower()
-                                break
+                        expected_sha = _parse_sha256_sums(text, iso_name)
                 except Exception:
                     pass
 
