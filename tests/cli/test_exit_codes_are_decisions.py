@@ -374,3 +374,83 @@ class TestRepeatedKeyFlagsAreAllTrusted:
                     f"{spaced.returncode}: {combined[-300:]}"
                 )
         assert repeated.returncode == spaced.returncode
+
+
+class TestMalformedSignatureIsRejectedNotCrashed:
+    """`s0 verify` must never print "This is a bug in s0" for a bad document.
+
+    `cert_data.get("signature", {})` supplies its default only when the key is
+    *absent*. A certificate carrying `"signature": null`, `[]`, `7` or a string
+    passed the key straight through, so the demo-key probe's next `.get(...)` raised
+    AttributeError. The top-level handler caught it and reported an internal error
+    with exit 70.
+
+    That fails closed, so nothing was exploitable -- but it is the wrong verdict for
+    a malformed document, it told the operator to report a bug rather than fix their
+    file, and it buried the real message. `verify_certificate` already rejects every
+    one of these shapes with "signature: required object"; the crash happened while
+    computing a *separate* fact, before that verdict could be printed.
+    """
+
+    @pytest.fixture
+    def real_cert(self, tmp_path) -> Path:
+        target = tmp_path / "t.txt"
+        target.write_bytes(b"evidence\n" * 40)
+        proc = _run(
+            "wipe",
+            "--targets",
+            str(target),
+            "--yes",
+            "--no-pdf",
+            "--out-dir",
+            str(tmp_path / "c"),
+            cwd=tmp_path,
+        )
+        assert proc.returncode == 0, proc.stderr
+        certs = list((tmp_path / "c").glob("*.json"))
+        assert certs, "no certificate produced"
+        return certs[0]
+
+    @pytest.mark.parametrize(
+        "value",
+        [None, [], 7, "not-an-object", {"public_key_fingerprint": None}],
+        ids=["null", "empty-list", "int", "string", "null-field"],
+    )
+    def test_a_non_object_signature_is_a_validation_error(self, real_cert, tmp_path, value):
+        import json
+
+        doc = json.loads(real_cert.read_text())
+        doc["signature"] = value
+        bad = tmp_path / "bad.json"
+        bad.write_text(json.dumps(doc))
+
+        proc = _run("verify", str(bad), cwd=tmp_path)
+        text = proc.stdout + proc.stderr
+        assert "bug in s0" not in text and "Traceback" not in text, (
+            f"a malformed `signature` produced an internal error instead of a "
+            f"validation verdict:\n{text[-600:]}"
+        )
+        assert proc.returncode not in (0, 70), (
+            f"expected a non-zero validation failure, got {proc.returncode}"
+        )
+
+    def test_every_output_format_agrees_on_a_malformed_signature(self, real_cert, tmp_path):
+        import json
+
+        doc = json.loads(real_cert.read_text())
+        doc["signature"] = 7
+        bad = tmp_path / "bad.json"
+        bad.write_text(json.dumps(doc))
+
+        codes = {
+            " ".join(flags) or "text": _run("verify", str(bad), *flags, cwd=tmp_path).returncode
+            for flags in ([], ["--json"], ["--format", "csv"])
+        }
+        assert len(set(codes.values())) == 1, f"the verdict changed with the format: {codes}"
+
+    def test_a_well_formed_certificate_still_verifies(self, real_cert, tmp_path):
+        """The fix must not have broken the normal path."""
+        proc = _run("verify", str(real_cert), cwd=tmp_path)
+        text = proc.stdout + proc.stderr
+        assert "AUTHENTIC" in text, f"a valid certificate stopped verifying:\n{text[-400:]}"
+        assert "bug in s0" not in text

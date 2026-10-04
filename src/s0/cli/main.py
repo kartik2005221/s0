@@ -2232,6 +2232,21 @@ def cmd_audit(args) -> int:
     return EX_USAGE
 
 
+def _signature_object(cert_data) -> dict:
+    """The certificate's `signature` member, or an empty dict if it is not an object.
+
+    `.get("signature", {})` only supplies its default when the key is *absent*. A
+    certificate carrying `"signature": null`, `[]`, `7` or a string passed the key
+    straight through, so the following `.get(...)` raised AttributeError and the
+    operator saw "This is a bug in s0" with exit 70 for what is simply a malformed
+    document. `verify_certificate` already rejects all of these with
+    "signature: required object"; this only stops the demo-key probe from crashing
+    before that verdict is printed.
+    """
+    value = cert_data.get("signature") if isinstance(cert_data, dict) else None
+    return value if isinstance(value, dict) else {}
+
+
 def cmd_verify(args) -> int:
     """Verify a signed certificate offline against a trusted public key."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "verify")
@@ -2274,7 +2289,7 @@ def cmd_verify(args) -> int:
 
     ok, reason = verify_certificate(cert_data, pub_keys)
     demo = (
-        cert_data.get("signature", {}).get("public_key_fingerprint")
+        _signature_object(cert_data).get("public_key_fingerprint")
         == "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06"
     )
 
@@ -2313,7 +2328,7 @@ def cmd_verify(args) -> int:
                 "device_id": cert_data.get("device", {}).get("device_id"),
                 "organization": cert_data.get("issuer", {}).get("organization"),
                 "operator_id": cert_data.get("issuer", {}).get("operator_id"),
-                "public_key_fingerprint": cert_data.get("signature", {}).get("public_key_fingerprint"),
+                "public_key_fingerprint": _signature_object(cert_data).get("public_key_fingerprint"),
                 "signature_verified": ok,
                 "unaccredited_demo_key": demo,
             },
@@ -2369,7 +2384,7 @@ def cmd_verify(args) -> int:
     )
     ui.key("Device", cert_data.get("device", {}).get("device_id", "-"))
     ui.key("Result", cert_data.get("result", {}).get("status", "-"))
-    ui.key("Key fingerprint", cert_data.get("signature", {}).get("public_key_fingerprint", "-"))
+    ui.key("Key fingerprint", _signature_object(cert_data).get("public_key_fingerprint", "-"))
     if not ok:
         ui.note("")
         ui.key("Reason", reason)
