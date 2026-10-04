@@ -641,9 +641,9 @@ def cmd_plan(args) -> int:
     return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
 
 
-#: Suffixes that have historically meant "raw disk image" to this tool. Kept for
-#: the opt-out flag below and for backwards compatibility, but no longer used to
-#: decide behaviour on its own -- see `_looks_like_raw_image`.
+#: Suffixes that suggest "raw disk image". These are a hint, never a decision:
+#: `_looks_like_raw_image` confirms with a signature or a sector-aligned size
+#: before treating a file as an image, because a suffix alone is not evidence.
 IMAGE_SUFFIXES = (".img", ".raw", ".iso", ".bin")
 
 

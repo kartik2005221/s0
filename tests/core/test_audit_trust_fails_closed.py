@@ -203,3 +203,163 @@ def test_get_default_trusted_keys_has_no_relative_candidate():
             f"get_default_trusted_keys() references {suspect!r}; a trust anchor "
             "must never be resolved relative to the working directory"
         )
+
+
+# --------------------------------------------------------------------------- #
+# A second accepted block-hash scheme.
+#
+# `verify_audit_ledger` used to fall back to an older, pipe-delimited hash when the
+# canonical one did not match, and accept the block if that matched instead. The
+# intent was to keep verifying ledgers written by older s0 versions. s0 has never
+# been released, so no such ledger exists and the fallback had no genuine data to
+# serve.
+#
+# Worth being precise about the risk, because it is easy to overstate: removing
+# this was a correctness fix, not a demonstrated exploit. Three checks already
+# covered the gap, and `test_the_fallback_never_reached` below pins that they did.
+# What was actually wrong is that a verifier accepting two algorithms for the same
+# field has no single answer to "is this block intact?", and a failure message
+# cannot say which scheme produced the number. One scheme, one verdict.
+# --------------------------------------------------------------------------- #
+
+
+from s0.certificate import build_certificate
+from s0.crypto import load_private_pem, load_public_pem
+
+
+def _legacy_pipe_hash(row) -> str:
+    """The removed scheme, reconstructed to prove it is no longer honoured."""
+    import hashlib
+
+    return hashlib.sha256(
+        "|".join(
+            str(row[k])
+            for k in (
+                "block_index",
+                "timestamp",
+                "operation_type",
+                "target_id",
+                "operator_id",
+                "organization",
+                "cert_uuid",
+                "payload_hash",
+                "signature",
+                "prev_hash",
+            )
+        ).encode()
+    ).hexdigest()
+
+
+def _genesis_row(db: Path) -> dict:
+    import sqlite3
+
+    con = sqlite3.connect(db)
+    con.row_factory = sqlite3.Row
+    try:
+        return dict(con.execute("SELECT * FROM audit_blocks WHERE operation_type = 'GENESIS'").fetchone())
+    finally:
+        con.close()
+
+
+def _rewrite_genesis_hash(db: Path, new_hash: str) -> None:
+    import sqlite3
+
+    con = sqlite3.connect(db)
+    try:
+        con.execute("UPDATE audit_blocks SET block_hash = ? WHERE block_index = 0", (new_hash,))
+        con.commit()
+    finally:
+        con.close()
+
+
+def test_the_genesis_ledger_is_valid_before_tampering(tmp_path):
+    from s0.audit.db import init_audit_db
+    from s0.audit.verify import verify_audit_ledger
+
+    db = tmp_path / "chain.db"
+    init_audit_db(db)
+    report = verify_audit_ledger(db)
+    assert report.is_valid, f"fixture does not verify: {report.reason}"
+
+
+def test_a_genesis_block_hashed_with_the_old_scheme_is_rejected(tmp_path):
+    """GENESIS is the one block whose signature check does not apply."""
+    from s0.audit.db import init_audit_db
+    from s0.audit.verify import verify_audit_ledger
+
+    db = tmp_path / "chain.db"
+    init_audit_db(db)
+    _rewrite_genesis_hash(db, _legacy_pipe_hash(_genesis_row(db)))
+
+    report = verify_audit_ledger(db)
+    assert not report.is_valid, "a GENESIS block carrying an old-scheme hash verified as intact"
+    assert "tampering" in (report.reason or "").lower(), f"unexpected reason: {report.reason}"
+
+
+def test_the_block_signature_covers_the_block_hash(tmp_path):
+    """The invariant that made the fallback harmless.
+
+    `record_audit_event` signs `block_hash`, so the block signature is a second,
+    independent check on the hash field. This is why removing the old-scheme
+    fallback was a correctness fix rather than an emergency: on any block that
+    carries a signature, an edit to the stored hash was already attributable.
+
+    An earlier draft of these tests claimed a forged ledger verified as intact.
+    It passed while the fallback was still in the source, because this signature
+    check had already rejected the forgery -- the claim was wrong, and this test
+    is the one that actually pins the reason.
+    """
+    from s0.audit.db import init_audit_db, record_audit_event
+    from s0.certificate import sign_certificate
+    from s0.crypto import verify_payload
+
+    db = tmp_path / "signed.db"
+    init_audit_db(db)
+    cert = build_certificate(
+        organization="Acme",
+        operator_id="op-test",
+        tool_name="s0",
+        tool_version="2.4.4",
+        platform="linux",
+        device_id="sha256:deadbeef",
+        device_type="removable_disk",
+        storage_type="HDD",
+        method="OVERWRITE_ZERO_1PASS",
+        nist_category="Clear",
+        start_time="2026-01-01T00:00:00Z",
+        end_time="2026-01-01T00:01:00Z",
+        bytes_processed=4096,
+        capacity_bytes=8192,
+    )
+    record_audit_event(
+        sign_certificate(cert, load_private_pem(DEMO_PUB.with_name("demo_issuer_private.pem"))),
+        operation_type="DRIVE_ERASE",
+        db_path=db,
+    )
+
+    import sqlite3
+
+    con = sqlite3.connect(db)
+    con.row_factory = sqlite3.Row
+    row = dict(con.execute("SELECT * FROM audit_blocks WHERE operation_type != 'GENESIS'").fetchone())
+    con.close()
+
+    pub = load_public_pem(DEMO_PUB)
+    assert row["block_signature"], "the data block was recorded unsigned; this test proves nothing"
+    assert verify_payload(pub, row["block_hash"].encode("utf-8"), row["block_signature"]), (
+        "the block signature does not verify against the stored block_hash"
+    )
+    assert not verify_payload(pub, _legacy_pipe_hash(row).encode("utf-8"), row["block_signature"]), (
+        "the block signature verified against an old-scheme hash -- the signature "
+        "is not actually bound to block_hash"
+    )
+
+
+def test_the_old_scheme_helper_is_gone():
+    """Removing the fallback but keeping the function would invite it back."""
+    from s0.audit import db as audit_db
+
+    assert not hasattr(audit_db, "compute_legacy_block_hash"), (
+        "compute_legacy_block_hash is still exported; nothing calls it, so it is "
+        "only waiting to be wired back into verification"
+    )

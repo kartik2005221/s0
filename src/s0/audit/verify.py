@@ -195,7 +195,7 @@ def verify_audit_ledger(
                 details=details,
             )
 
-        # Recompute block hash (supports Canonical JSON hash and legacy pipe hash)
+        # Recompute the block hash. One scheme only: see the note at the mismatch below.
         computed_hash = compute_block_hash(
             b["block_index"],
             b["timestamp"],
@@ -212,11 +212,21 @@ def verify_audit_ledger(
         if computed_hash != b["block_hash"]:
             # This used to retry with a second, older hash scheme and accept a block
             # whose stored hash matched *that* one. Every ledger s0 has ever written
-            # uses the canonical scheme, so the fallback could never fire on genuine
-            # data -- but it could fire on forged data, giving anyone who knew the
-            # old algorithm a way to write a block that verifies as intact. That is
-            # a second oracle for forgery, kept to accommodate a userbase that never
-            # existed. Removed: one scheme, one verdict.
+            # uses the canonical scheme, so the fallback had no genuine data to serve
+            # -- it existed to accommodate a userbase that never existed.
+            #
+            # To be accurate about the risk: removing it was a correctness fix, not
+            # a demonstrated exploit. The Ed25519 block signature covers `block_hash`,
+            # so on a signed block any edit to the stored hash is caught by the
+            # signature check; and the checkpoint independently pins the tip hash. The
+            # paths where neither applies -- a GENESIS row, or a block whose signing
+            # key failed to load -- were still rejected, but by those other checks
+            # rather than by this one.
+            #
+            # So the honest case for removal is that a verifier which accepts two
+            # different hash algorithms for the same field has no single answer to
+            # "is this block intact?", and a reader of a failure cannot tell which
+            # scheme produced the number it is looking at. One scheme, one verdict.
             return ChainAuditReport(
                 is_valid=False,
                 total_blocks_verified=idx,
