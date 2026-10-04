@@ -412,6 +412,16 @@ def cmd_list(args) -> int:
     """Inventory of block-device and image-file sanitization targets."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "list")
     targets = list_block_targets()
+
+    # Detection problems reach both streams. They already went to the log; without
+    # this they did not reach the envelope, so `s0 list --json` reported
+    # `"warnings": []` while the operator's terminal complained three times about
+    # the same device. The output meant for automation was the one that looked clean.
+    from s0.cli.devices import drain_detection_warnings
+
+    for message in drain_detection_warnings():
+        ui.warn(message)
+
     mounted = set()
     try:
         with open("/proc/mounts") as f:
@@ -3612,7 +3622,7 @@ def main(argv=None) -> int:
         args = parser.parse_args(_hoist_audit_action(raw_args))
 
         policy = policy_from_args(args)
-        args.ui = UI(policy, command=getattr(args, "command", "s0"))
+        args.ui = UI(policy, command=getattr(args, "command", "s0"), argv=raw_args[1:])
         args.policy = policy
 
         if not raw_args or raw_args in (["--help"], ["-h"]):

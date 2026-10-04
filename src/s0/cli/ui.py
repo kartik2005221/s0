@@ -18,7 +18,9 @@ from __future__ import annotations
 import csv
 import json
 import sys
+import time
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from typing import Any
 
 from s0.terminal import (  # re-exported so callers need one import
@@ -161,13 +163,63 @@ def policy_from_args(args, *, stdout=None, stderr=None) -> OutputPolicy:
     )
 
 
+def _utc_now() -> str:
+    """RFC 3339 UTC with a Z suffix, as the canonical-JSON rules require."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+#: Flags whose value must never reach stdout, because stdout is the envelope.
+_SECRET_BEARING = ("--key", "--signing-key", "--key-path", "--token", "--auth-token")
+
+
+def _redact_argv(argv: list[str]) -> dict[str, Any]:
+    """Summarise argv for the envelope, with secret-bearing values replaced.
+
+    Records the flags actually used, because that is what makes an envelope useful
+    for correlating a machine-readable result with what was run. A key *path* is not
+    itself a secret, but it is a filesystem detail that has no business in output
+    meant to be archived, and a `--key` value could be a literal PEM if a caller ever
+    allowed that.
+    """
+    recorded: dict[str, Any] = {}
+    redact_next = False
+    for token in argv:
+        if redact_next:
+            # Consumed as a value. It must not become a key: recording
+            # `{"/secret/path.pem": "<redacted>"}` puts the very value it was
+            # supposed to hide into the key position.
+            redact_next = False
+            continue
+        if token in _SECRET_BEARING:
+            recorded[token] = "<redacted>"
+            redact_next = True
+        elif token.startswith("--"):
+            recorded[token] = True
+        else:
+            # A positional or a flag value; count it without inventing structure.
+            recorded["_args"] = recorded.get("_args", 0) + 1
+    return recorded
+
+
 class UI:
     """A command-scoped printer bound to one :class:`OutputPolicy`."""
 
-    def __init__(self, policy: OutputPolicy, command: str):
+    def __init__(self, policy: OutputPolicy, command: str, argv: list[str] | None = None):
         self.policy = policy
         self.command = command
         self._warnings: list[str] = []
+        # Populated here rather than by each caller. The envelope has always
+        # advertised `invocation.args`, `started_at`, `finished_at` and
+        # `duration_seconds`, and every one of them was permanently null or `{}` --
+        # a field every call site has to remember is a field none of them remember,
+        # and the schema promised something the tool never emitted.
+        #
+        # `args` is the argv tail after the subcommand, with the signing key path and
+        # any other secret-bearing value redacted: this envelope goes to stdout, which
+        # is exactly where a key path must not appear.
+        self._argv = list(argv or [])
+        self._started_monotonic = time.monotonic()
+        self._started_at = _utc_now()
 
     # -- data (stdout) ----------------------------------------------------
     def line(self, text: str = "") -> None:
@@ -246,6 +298,11 @@ class UI:
         nothing, and reports success is worse than a flag that is absent.
         """
         if self.policy.fmt == "json":
+            finished_at = _utc_now()
+            kwargs.setdefault("args", _redact_argv(self._argv))
+            kwargs.setdefault("started_at", self._started_at)
+            kwargs.setdefault("finished_at", finished_at)
+            kwargs.setdefault("duration_seconds", int(time.monotonic() - self._started_monotonic))
             self.policy.json(
                 self.envelope(
                     result=result,

@@ -149,11 +149,29 @@ def get_block_device_size(device_path: str | Path) -> int:
         except Exception:
             pass
 
-    logger.warning(
-        "Could not determine size of block device %s — all detection methods failed; falling back to 0 bytes",
-        p,
+    message = (
+        f"Could not determine size of block device {p} — all detection methods "
+        f"failed; falling back to 0 bytes"
     )
+    logger.warning(message)
+    # Also recorded for the machine-readable envelope. A warning that only reaches
+    # stderr means `s0 list --json` reports `"warnings": []` while the operator's
+    # terminal scrolls three complaints about the same device -- so the one output
+    # meant for automation is the one that looks clean. `drain_detection_warnings`
+    # is called by the command handlers that surface devices.
+    _DETECTION_WARNINGS.append(message)
     return 0
+
+
+#: Human-readable detection problems, drained into the envelope by the handlers.
+_DETECTION_WARNINGS: list[str] = []
+
+
+def drain_detection_warnings() -> list[str]:
+    """Return and clear the detection warnings recorded since the last drain."""
+    out = list(_DETECTION_WARNINGS)
+    _DETECTION_WARNINGS.clear()
+    return out
 
 
 def _flatten_devs(devs: list[dict]) -> list[dict]:

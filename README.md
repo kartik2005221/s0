@@ -7,11 +7,11 @@
 [![Release](https://img.shields.io/badge/Release-v2.4.4-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://sector-zero.pages.dev/)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88-Rev.1_Compliant-green.svg)](https://sector-zero.gitbook.io/compliance/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88_Rev.2_aligned-green.svg)](https://sector-zero.gitbook.io/compliance/)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://sector-zero.gitbook.io/architecture/canonical-json/)
 [![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://sector-zero.gitbook.io/)
 
-*One unified toolchain. Five forensic capabilities. Cryptographic chain-of-custody.*
+*One unified toolchain. Disk sanitization, forensic acquisition, file carving, audit-ledger verification and offline certificate validation. Cryptographic chain of custody throughout.*
 
 ---
 
@@ -180,7 +180,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 ## Agentic AI Skill (`skills/s0-forensics/`)
 
 `s0` includes a dedicated, high-assurance agentic skill conforming to the **Skill Creator** standard:
-- **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) (also mirrored in `.agents/skills/s0-forensics/SKILL.md`)
+- **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) — the single source of truth. Some agent tools look for a skill under `.agents/skills/`; that copy is generated at packaging time and is **not** committed, so do not link to a path that is absent from a fresh clone.
 - **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience (no premature aborts during controller sanitization), and post-execution certificate verification.
 - **Reference Manuals:** Comprehensive technical guides covering NIST/IEEE method mappings, hardware safety rules, magic-byte signatures, and cryptographic audit specifications.
 - **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://sector-zero.gitbook.io/project/agentic-ai/) on the docs portal.

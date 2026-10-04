@@ -64,8 +64,71 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 | `s0 verify` | Offline verification of Ed25519-signed certificate JSON | **Safe (Read-Only)** | Zero-trust verification of compliance reports |
 | `s0 keygen` | Generate Ed25519 keypair for an authority or operator | **Safe (Creates Files)** | Establishing laboratory cryptographic authority |
 | `s0 upgrade` | Pull latest release from GitHub and rebuild packages | **Maintenance** | Upgrading local toolchain and dependencies |
-| `sudo s0 web` | Launch unified forensic web dashboard (FastAPI loopback) | **Safe (Local UI)** | Interactive multi-tab browser dashboard (requires sudo for direct disk sanitization) |
+| `s0 web` | Launch the forensic web dashboard (FastAPI, loopback only) | **Safe to start; the API it serves is destructive** | Interactive dashboard. Runs as the invoking user — do **not** run it under `sudo`: the dashboard serves `/api/erase-files` and writes its session token to `~/.s0`, so root here is root over the evidence on the machine. |
+| `s0 uninstall` | Remove an s0 installation | **HIGH-RISK DESTRUCTIVE** | Only with `--purge-all`. See §1.1 — never pass this flag on an agent's own initiative. |
 | `s0 wipe` | Physical whole-drive sanitization & surgical file/folder erasure | **HIGH-RISK DESTRUCTIVE** | Decommissioning, repurposing, or sanitized file/folder disposal (auto-detects target type) |
+
+---
+
+### 1.1 Flags an agent must know exist, and must not reach for
+
+Naming these is the point: an agent that does not know a flag exists will invent a
+workflow to avoid it.
+
+| Flag | On | Rule |
+|---|---|---|
+| `--no-certificate` | `wipe`, `carve`, `image`, `clone` | Suppresses the signed certificate. Legitimate only when the operator explicitly asks for an uncertified run. **Never add it to make a command "succeed".** |
+| `--purge-all` | `uninstall` | Deletes `~/.s0` in full, including the audit ledger. **Never pass this.** It destroys the chain of custody for every past operation. Refuse and escalate. |
+| `--keep-audit` | `uninstall` | The default. Implies `--purge-all` must not be combined with it. |
+| `--discard-purge-justification` | `wipe` | Downgrades a Purge request to Clear with a recorded justification. **Never pass this.** The NIST tier is the operator's decision, not yours. |
+| `--force` | `wipe`, `image`, `clone` | Overrides a safety interlock: a mounted target, an existing destination, a system path. **Never pass this in response to a refusal.** A refusal is information. |
+| `--dry-run` | every subcommand | Changes nothing. Use it freely to preview. Note that a *refused* plan exits non-zero (77) — that is the refusal being reported, not a crash. |
+
+---
+
+## 1.2 Driving the dashboard over HTTP
+
+`s0 web` serves the same operations as a loopback JSON API. An agent may use it, but
+the dashboard is the most destructive surface s0 has: it can erase files on the host
+without a prompt once authenticated.
+
+**Authentication.** One token per run, written to `~/.s0/web_auth_token` (mode 0600).
+
+```bash
+s0 web --no-browser &            # or open the printed URL in a browser
+TOKEN=$(cat ~/.s0/web_auth_token)
+```
+
+The token is accepted two ways, and only two:
+
+* `X-S0-Auth-Token: $TOKEN` — **use this for anything scripted.**
+* `?token=...` — bootstrap only, accepted on `/` alone. It exists because the kiosk
+  cannot set a header. It is then moved into an HttpOnly cookie and the URL
+  redirected, because a token in a URL leaks into history, `Referer` and proxy logs.
+
+Passing `?token=` to an `/api/*` route returns 401. Do not work around this.
+
+**Routes.** Read-only: `GET /healthz`, `GET /api/list`, `/api/devices`, `/api/config`,
+`/api/capabilities`, `/api/browse`, `/api/audit/blocks`, `/api/audit/verify`,
+`GET /api/download/{job}/{artifact}`.
+
+State-changing, all `POST`, all returning a job id to poll:
+`/api/plan` (read-only despite the verb), `/api/wipe`, `/api/erase-files`,
+`/api/image`, `/api/clone`, `/api/carve`.
+
+**Rules when driving it:**
+
+* `/api/wipe` requires the **exact destination path** in `confirm_text`. It is not a
+  boolean and not an acknowledgement.
+* `/api/erase-files` runs **in-process**, not through the CLI. It applies the same
+  shared path guard, so `/etc` and s0's own state directory are refused — but the
+  guard is the only thing standing between a request and the filesystem. Confirm the
+  target list with the operator before sending it.
+* State-changing requests are rejected (403) when they carry a foreign `Origin` or
+  `Sec-Fetch-Site`, so a cross-site request cannot drive them.
+* `/api/download` refuses any filename that resolves outside the job's output
+  directory. Do not attempt traversal; it is refused, and trying is the wrong signal
+  to send.
 
 ---
 
@@ -471,7 +534,14 @@ paraphrase them into a different failure.
 |---|---|---|---|
 | `REFUSED: <path> has mounted filesystems (<hits>). Unmount them first, or pass --force if you truly mean it.` | 2 | A partition on the target is in active use | Refuse to wipe. Ask the user to unmount (`umount /dev/sdX*`) or boot the s0 Live ISO. **Never** supply `--force` on a system mount. `s0 plan` prints the same refusal and exits 0 — it is a dry run, so the refusal is in the `Warnings` block. |
 | `REFUSED: <path> hosts the running ROOT filesystem. The tool refuses this without --force; if you mean it, boot the s0 ISO instead.` | 2 | The target hosts `/` | Refuse. The only correct path is the Live ISO. Do not pass `--force`. |
-| `REFUSED: Refusing to target system path: <path>` | 2 (`s0 wipe --target`); the same text prefixed `error:` with exit 77 on `s0 wipe --targets` | The shared path guard protects `/etc`, `/usr`, the filesystem root, `$HOME` itself and s0's own state directory | Refuse. Report which guard fired; do not retry with `--force`. |
+| `error: Refusing to target system path: <path>` | 77, for both `--target` and `--targets` | The shared path guard protects `/etc`, `/usr`, the filesystem root, `$HOME` itself and s0's own state directory | Refuse. Report which guard fired; do not retry with `--force`. |
+
+> Quote these strings back as they appear. Both `--target` and `--targets` exit **77**
+> on a protected path, the message is prefixed `error:` (not `REFUSED:`), and a
+> `==> Target items (N): [...]` banner is printed first — so an agent expecting a
+> different exit code or prefix will misread a successful refusal as something else.
+> The code 77 means "s0 declined", not specifically "insufficient privilege": the
+> same code covers `image`/`clone` onto an existing destination without `--force`.
 | `Cannot verify whether <path> hosts the running ROOT filesystem (findmnt unavailable and /proc/mounts could not be verified). Refusing to proceed without --force.` | 2 | `findmnt` and `/proc/mounts` both unreadable, so the root-filesystem check cannot be made | Refuse. Report that the guard could not evaluate, not that the target is safe. |
 | `<path> reports no firmware-mediated Purge method (no ATA Sanitize, no NVMe Sanitize, no SCSI SANITIZE, no FDE key destruction). … s0 will not issue a Purge claim it cannot substantiate …` | 75 | `--require-tier Purge` on a device that cannot reach Purge (`s0 wipe` and `s0 plan` both refuse) | Report the downgrade. Only proceed with `--allow-downgrade`, which records the decision on the certificate — and then report the **achieved** tier, not the requested one. |
 | `drive security state is FROZEN — BIOS froze it to block hot-attach attacks; warm-sleep/resume (suspend the machine, resume) then retry` | 1 | BIOS/UEFI issued an ATA Security Freeze Lock during POST | Ask the user to suspend and resume the machine, or power-cycle the drive on the SATA power header. Do not keep retrying in a loop. In `s0 plan` this appears as the alternative `ATA Security Erase unavailable: drive security state is FROZEN`. |

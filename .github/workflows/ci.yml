@@ -119,6 +119,14 @@ jobs:
       # nobody runs is not a standard; it is a suggestion. The tree is now formatted
       # (verified by AST comparison: zero semantic changes across 69 files) and this
       # step keeps it that way.
+      # The ten "Help Screen" blocks in the CLI reference were pasted from --help by
+      # hand, so every one had drifted: none carried the global output flags, `s0
+      # image` was missing --force, `s0 audit` was missing --key. A pasted transcript
+      # is a snapshot that decays, and nothing noticed because nothing compared it to
+      # the parser. Regenerated, and gated from now on.
+      - name: Documented help screens are current
+        run: python tools/gen_help_reference.py --check
+
       - name: Ruff (format, blocking)
         run: ruff format --check --diff .
 

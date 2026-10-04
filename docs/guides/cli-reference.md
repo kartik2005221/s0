@@ -145,13 +145,30 @@ s0 list [--output-format {text,json}]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 list [-h] [--output-format {text,json}]
+```
+usage: s0 list [-h] [--output-format {text,json}] [--format {text,json,csv}] [--json] [--quiet]
+               [--verbose] [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
   --output-format {text,json}
                         output format (default: text)
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -254,42 +271,50 @@ s0 plan --target PATH \
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 plan [-h] [--version] [--target TARGET] [--passes PASSES]
-               [--pattern {zero,random}] [--no-firmware]
-               [--discard-purge-justification TEXT] [--force]
+```
+usage: s0 plan [-h] [--version] [--target TARGET] [--passes PASSES] [--pattern {zero,random}]
+               [--no-firmware] [--discard-purge-justification TEXT] [--force]
                [--require-tier {Clear,Purge,Destroy}] [--firmware] [--json]
+               [--format {text,json,csv}] [--quiet] [--verbose] [--color {auto,always,never}]
+               [--no-color] [--yes] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --target TARGET       target drive, image, file, or directory
-  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the
-                        Clear-tier technique in NIST SP 800-88 Rev. 2).
-                        Verification is by sampling, so this is a bound on
-                        residual data, not a guarantee the medium is blank --
-                        see --verify-samples
+  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the Clear-tier technique in
+                        NIST SP 800-88 Rev. 2). Verification is by sampling, so this is a bound on
+                        residual data, not a guarantee the medium is blank -- see --verify-samples
   --pattern {zero,random}
-                        overwrite pattern: 'zero' (single/multi-pass zeros) or
-                        'random' (CSPRNG bytes)
-  --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
-                        overwrite only
+                        overwrite pattern: 'zero' (single/multi-pass zeros) or 'random' (CSPRNG
+                        bytes)
+  --no-firmware         skip firmware methods (ATA SE/NVMe sanitize); overwrite only
   --discard-purge-justification TEXT
-                        record drive-spec deterministic-TRIM evidence to let
-                        BLKDISCARD claim Purge
+                        record drive-spec deterministic-TRIM evidence to let BLKDISCARD claim
+                        Purge
   --force               override mounted/root safety refusals
   --require-tier {Clear,Purge,Destroy}
-                        assert the minimum sanitization tier the medium must
-                        support; s0 refuses when the device cannot achieve it
-  --firmware            shortcut for --require-tier Purge: only firmware-
-                        mediated Purge methods satisfy this request
+                        assert the minimum sanitization tier the medium must support; s0 refuses
+                        when the device cannot achieve it
+  --firmware            shortcut for --require-tier Purge: only firmware-mediated Purge methods
+                        satisfy this request
   --json                shorthand for --format json
-```
 
-{% hint style="warning" %}
-**`--verify-samples` is a `wipe` flag, not a `plan` flag**
-The real `s0 plan --help` points at `--verify-samples` in the `--passes` description, but `plan` does not accept it — running `s0 plan --verify-samples 128` is a usage error. `--verify-samples` exists on `wipe` only. To raise the tier bar on a plan, use `--require-tier Purge` (or its shorthand `--firmware`), which is the lever `plan` actually exposes; the sampling bound itself is a property of the wipe that follows.
-{% endhint %}
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
+```
 {% endtab %}
 {% tab title="Recommendations" %}
 
@@ -431,73 +456,77 @@ s0 wipe --target PATH \
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 wipe [-h] [--version] [--target TARGET] [--passes PASSES]
-               [--pattern {zero,random}] [--no-firmware]
-               [--discard-purge-justification TEXT] [--force]
-               [--targets TARGETS [TARGETS ...]]
-               [--require-tier {Clear,Purge,Destroy}] [--allow-downgrade]
-               [--yes] [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
+```
+usage: s0 wipe [-h] [--version] [--target TARGET] [--passes PASSES] [--pattern {zero,random}]
+               [--no-firmware] [--discard-purge-justification TEXT] [--force]
+               [--targets TARGETS [TARGETS ...]] [--require-tier {Clear,Purge,Destroy}]
+               [--allow-downgrade] [--yes] [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
                [--organization ORGANIZATION] [--no-certificate] [--no-pdf]
                [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--json]
                [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
+               [--format {text,json,csv}] [--quiet] [--verbose] [--color {auto,always,never}]
+               [--no-color] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --target TARGET       target drive, image, file, or directory
-  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the
-                        Clear-tier technique in NIST SP 800-88 Rev. 2).
-                        Verification is by sampling, so this is a bound on
-                        residual data, not a guarantee the medium is blank --
-                        see --verify-samples
+  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the Clear-tier technique in
+                        NIST SP 800-88 Rev. 2). Verification is by sampling, so this is a bound on
+                        residual data, not a guarantee the medium is blank -- see --verify-samples
   --pattern {zero,random}
-                        overwrite pattern: 'zero' (single/multi-pass zeros) or
-                        'random' (CSPRNG bytes)
-  --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
-                        overwrite only
+                        overwrite pattern: 'zero' (single/multi-pass zeros) or 'random' (CSPRNG
+                        bytes)
+  --no-firmware         skip firmware methods (ATA SE/NVMe sanitize); overwrite only
   --discard-purge-justification TEXT
-                        record drive-spec deterministic-TRIM evidence to let
-                        BLKDISCARD claim Purge
+                        record drive-spec deterministic-TRIM evidence to let BLKDISCARD claim
+                        Purge
   --force               override mounted/root safety refusals
   --targets, -t TARGETS [TARGETS ...]
                         multiple target files or directories to sanitize
   --require-tier {Clear,Purge,Destroy}
-                        refuse to run unless the device can achieve this tier.
-                        s0 will not silently downgrade: without this flag the
-                        selected method is always reported, whatever it is
-  --allow-downgrade     if --require-tier cannot be met, proceed with the best
-                        available method and record the downgrade on the
-                        certificate
+                        refuse to run unless the device can achieve this tier. s0 will not
+                        silently downgrade: without this flag the selected method is always
+                        reported, whatever it is
+  --allow-downgrade     if --require-tier cannot be met, proceed with the best available method
+                        and record the downgrade on the certificate
   --yes, -y             skip interactive confirmation prompt
   --key, --signing-key KEY
                         issuer private key PEM (default: demo issuer key)
-  --out-dir OUT_DIR     directory to store certificate, PDF, and QR assets
-                        (default: .)
+  --out-dir OUT_DIR     directory to store certificate, PDF, and QR assets (default: .)
   --operator, --operator-id OPERATOR
                         operator identifier for certificate
   --organization ORGANIZATION
                         organization name for certificate
-  --no-certificate      explicitly run without generating an Ed25519
-                        compliance certificate
-  --no-pdf              skip generating human-readable PDF compliance
-                        certificate
+  --no-certificate      explicitly run without generating an Ed25519 compliance certificate
+  --no-pdf              skip generating human-readable PDF compliance certificate
   --verify-samples VERIFY_SAMPLES
-                        blocks sampled for readback verification (default:
-                        64). Sampling bounds residual data rather than
-                        eliminating it: 64 clean blocks mean under ~45,730 ppm
-                        (4.573%) residual at 95% confidence. Raise it for a
-                        tighter bound, or use --require-tier Purge to prefer a
-                        hardware erase. The bound is recorded in the
-                        certificate.
-  --plant-markers       plant recoverable markers first, then require 0 grep
-                        hits afterwards
+                        blocks sampled for readback verification (default: 64). Sampling bounds
+                        residual data rather than eliminating it: 64 clean blocks mean under
+                        ~45,730 ppm (4.573%) residual at 95% confidence. Raise it for a tighter
+                        bound, or use --require-tier Purge to prefer a hardware erase. The bound
+                        is recorded in the certificate.
+  --plant-markers       plant recoverable markers first, then require 0 grep hits afterwards
   --json                machine-readable stdout
   --portal-url PORTAL_URL
                         verification portal base URL (default: https://sector-
                         zero.pages.dev/verify/)
   --qr-url-template QR_URL_TEMPLATE
                         URL template for encoded verification QR code
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -704,11 +733,12 @@ s0 image --source SOURCE --destination DESTINATION \
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 image [-h] --source SOURCE --destination DESTINATION
-                [--block-size BLOCK_SIZE] [--no-recovery] [--out-dir OUT_DIR]
-                [--operator OPERATOR] [--organization ORGANIZATION]
-                [--key KEY] [--no-certificate] [--yes]
+```
+usage: s0 image [-h] --source SOURCE --destination DESTINATION [--block-size BLOCK_SIZE]
+                [--no-recovery] [--out-dir OUT_DIR] [--operator OPERATOR]
+                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf] [--yes]
+                [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                [--color {auto,always,never}] [--no-color] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
@@ -717,17 +747,33 @@ options:
                         path to destination image file or block device
   --block-size BLOCK_SIZE
                         buffer block size in bytes (default: 1048576 / 1MB)
-  --no-recovery         abort on I/O read error instead of zero-filling bad
-                        sectors
-  --out-dir OUT_DIR     directory to store acquisition manifest and
-                        certificate
-  --operator OPERATOR   operator ID
+  --no-recovery         abort on I/O read error instead of zero-filling bad sectors
+  --out-dir OUT_DIR     directory to store acquisition manifest and certificate
+  --operator, --operator-id OPERATOR
+                        operator ID
   --organization ORGANIZATION
                         organization name
-  --key KEY             path to Ed25519 issuer private key PEM
+  --key, --signing-key KEY
+                        path to Ed25519 issuer private key PEM
   --no-certificate      skip generating signed Ed25519 acquisition certificate
-  --yes                 skip interactive confirmation when cloning to a
-                        physical disk
+  --no-pdf              skip generating printable PDF certificate
+  --yes, -y             skip interactive confirmation when cloning to a physical disk
+  --force               overwrite destination image file if it already exists
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -854,69 +900,48 @@ s0 carve --target PATH \
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR
-                [--extensions EXTENSIONS] [--custom-sig CUSTOM_SIG]
-                [--min-confidence MIN_CONFIDENCE] [--session SESSION]
-                [--write-session WRITE_SESSION] [--hash-set HASH_SET]
-                [--hash-algorithms HASH_ALGORITHMS] [--bodyfile BODYFILE]
-                [--gaps-bodyfile GAPS_BODYFILE] [--operator OPERATOR]
-                [--organization ORGANIZATION] [--key KEY] [--no-certificate]
-                [--no-pdf] [--all-space]
+```
+usage: s0 clone [-h] --source SOURCE --destination DESTINATION [--block-size BLOCK_SIZE]
+                [--no-recovery] [--out-dir OUT_DIR] [--operator OPERATOR]
+                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf] [--yes]
+                [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                [--color {auto,always,never}] [--no-color] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
-  --target TARGET       raw disk image or block device to scan
-  --out-dir OUT_DIR     directory to store carved files
-  --extensions EXTENSIONS
-                        comma-separated extensions to carve (e.g.
-                        jpg,png,pdf,zip,mp4,mkv). Omit to carve everything in the
-                        registry
-  --custom-sig CUSTOM_SIG
-                        path to JSON file (or inline JSON) defining custom
-                        file signature(s) with header/footer hex magic bytes
-  --min-confidence MIN_CONFIDENCE
-                        minimum confidence score (0-100)
-  --session SESSION     resume from a session file written by an earlier run:
-                        extents it already recovered are not carved again
-                        (refused if the image has changed since)
-  --write-session WRITE_SESSION
-                        write a session file recording this run's recovered
-                        extents, so an interrupted carve can be resumed
-  --hash-set HASH_SET   suppress files already known: a hash list
-                        (md5/sha1/sha256/sha512, bare or NSRL-style) or a
-                        directory to hash in place
-  --hash-algorithms HASH_ALGORITHMS
-                        comma-separated algorithms to keep from --hash-set
-                        (default: all found)
-  --bodyfile BODYFILE   write a bodyfile of the recovered byte ranges, for a
-                        second tool to read the same bytes instead of the
-                        whole volume again
-  --gaps-bodyfile GAPS_BODYFILE
-                        write a bodyfile of the ranges that were searched but
-                        produced no file. For fragmented recovery the holes
-                        are the finding.
+  --source SOURCE       path to source block device or raw image file
+  --destination, --dest DESTINATION
+                        path to destination image file or block device
+  --block-size BLOCK_SIZE
+                        buffer block size in bytes (default: 1048576 / 1MB)
+  --no-recovery         abort on I/O read error instead of zero-filling bad sectors
+  --out-dir OUT_DIR     directory to store acquisition manifest and certificate
   --operator, --operator-id OPERATOR
-                        operator identifier for manifest
+                        operator ID
   --organization ORGANIZATION
-                        organization name for manifest
+                        organization name
   --key, --signing-key KEY
-                        signing key path (default: demo issuer key)
-  --no-certificate      explicitly run without generating an Ed25519 forensic
-                        manifest certificate
+                        path to Ed25519 issuer private key PEM
+  --no-certificate      skip generating signed Ed25519 acquisition certificate
   --no-pdf              skip generating printable PDF certificate
-  --all-space           search the whole volume instead of only unallocated
-                        space. By default the filesystem's own allocation map
-                        is read (ext4/FAT32/exFAT/NTFS) and carving is
-                        restricted to free space, so files that are still
-                        allocated are not reported as recoveries. Use this
-                        only when the allocation map cannot be trusted.
-```
+  --yes, -y             skip interactive confirmation when cloning to a physical disk
+  --force               overwrite destination image file if it already exists
 
-{% hint style="warning" %}
-**`s0 carve --help` points at a repository path you may not have**
-The `carve` help text says the supported-format table is in `skills/s0-forensics/references/carving-signatures.md`. That file lives in the git checkout and is **not** packaged into the wheel, so on a `pip install s0` machine the path does not exist. Use the [Forensic Carving Guide](forensic-carving.md) — its format table is generated from the same signature registry — or clone the repo for the per-format magic-byte matrix.
-{% endhint %}
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --dry-run             plan only; never write to the target
+```
 {% endtab %}
 {% tab title="Recommendations" %}
 
@@ -1017,12 +1042,81 @@ s0 audit list [--limit N]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 audit list [-h] [--limit LIMIT]
+```
+usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR [--extensions EXTENSIONS]
+                [--custom-sig CUSTOM_SIG] [--min-confidence 0-100] [--session SESSION]
+                [--write-session WRITE_SESSION] [--hash-set HASH_SET]
+                [--hash-algorithms HASH_ALGORITHMS] [--bodyfile BODYFILE]
+                [--gaps-bodyfile GAPS_BODYFILE] [--operator OPERATOR]
+                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf]
+                [--all-space] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+
+Carve files from a raw image or block device. Recovery is signature-anchored: a file is recovered
+from a header to a validated footer or an in-band end marker. Where no end marker survives, s0
+stops at the last validated boundary and says so rather than padding to a guess, because a wrong
+length yields a file that looks intact and is wrong. Container formats (MP4/HEIF, Matroska/WebM,
+ZIP, RAR, GZIP, and the decompression containers) are parsed rather than scanned, and fragmented
+files are reassembled by their in-band sequence numbers. Run `s0 carve --target IMG --out-dir OUT`
+with no --extensions to carve everything in the registry; the supported-format table is in
+skills/s0-forensics/references/carving-signatures.md.
 
 options:
-  -h, --help     show this help message and exit
-  --limit LIMIT  limit number of records displayed
+  -h, --help            show this help message and exit
+  --target TARGET       raw disk image or block device to scan
+  --out-dir OUT_DIR     directory to store carved files
+  --extensions EXTENSIONS
+                        comma-separated extensions to carve (e.g. jpg,png,pdf,zip,mp4,mkv). Omit
+                        to carve everything in the registry
+  --custom-sig CUSTOM_SIG
+                        path to JSON file (or inline JSON) defining custom file signature(s) with
+                        header/footer hex magic bytes
+  --min-confidence 0-100
+                        minimum confidence score (0-100); a value outside this range is rejected
+                        rather than silently carving nothing
+  --session SESSION     resume from a session file written by an earlier run: extents it already
+                        recovered are not carved again (refused if the image has changed since)
+  --write-session WRITE_SESSION
+                        write a session file recording this run's recovered extents, so an
+                        interrupted carve can be resumed
+  --hash-set HASH_SET   suppress files already known: a hash list (md5/sha1/sha256/sha512, bare or
+                        NSRL-style) or a directory to hash in place
+  --hash-algorithms HASH_ALGORITHMS
+                        comma-separated algorithms to keep from --hash-set (default: all found)
+  --bodyfile BODYFILE   write a bodyfile of the recovered byte ranges, for a second tool to read
+                        the same bytes instead of the whole volume again
+  --gaps-bodyfile GAPS_BODYFILE
+                        write a bodyfile of the ranges that were searched but produced no file.
+                        For fragmented recovery the holes are the finding.
+  --operator, --operator-id OPERATOR
+                        operator identifier for manifest
+  --organization ORGANIZATION
+                        organization name for manifest
+  --key, --signing-key KEY
+                        signing key path (default: demo issuer key)
+  --no-certificate      explicitly run without generating an Ed25519 forensic manifest certificate
+  --no-pdf              skip generating printable PDF certificate
+  --all-space           search the whole volume instead of only unallocated space. By default the
+                        filesystem's own allocation map is read (ext4/FAT32/exFAT/NTFS) and
+                        carving is restricted to free space, so files that are still allocated are
+                        not reported as recoveries. Use this only when the allocation map cannot
+                        be trusted.
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -1073,12 +1167,33 @@ s0 audit verify [--key PEM]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 audit verify [-h] [--key KEY]
+```
+usage: s0 verify [-h] [--key KEY] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                 [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+                 certificate
+
+positional arguments:
+  certificate           path to certificate JSON
 
 options:
-  -h, --help  show this help message and exit
-  --key KEY   trusted authority public key PEM to verify signatures
+  -h, --help            show this help message and exit
+  --key KEY             path to trusted public key PEM
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -1168,15 +1283,37 @@ s0 verify CERTIFICATE [--key PEM]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 verify [-h] [--key KEY] certificate
+```
+usage: s0 audit [-h] [--limit LIMIT] [--key KEY [KEY ...]] [--format {text,json,csv}] [--json]
+                [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+                [--dry-run]
+                {list,verify}
 
 positional arguments:
-  certificate  path to certificate JSON
+  {list,verify}         list audit blocks or verify hash chain
 
 options:
-  -h, --help   show this help message and exit
-  --key KEY    path to trusted public key PEM
+  -h, --help            show this help message and exit
+  --limit LIMIT         limit number of records displayed
+  --key KEY [KEY ...]   trusted issuer public key(s): one or more PEM files, and/or a directory of
+                        *.pem. Repeatable. A ledger signed by more than one key needs every signer
+                        supplied, or verification stops at the first block it cannot attribute.
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -1207,11 +1344,20 @@ s0 verify certificate_a1b2c3d4.json --key /etc/s0/authority_public.pem
 
 **Batch-verify all certificates in a directory**
 ```bash
+# Gate on the exit code, not on scraped text. In text mode the human output goes to
+# stderr and stdout is empty, so piping to grep silently matched nothing and every
+# certificate was reported FAILED. The exit code is the machine contract, and it is
+# the same whatever --format you pass.
 for cert in /evidence/certs/*.json; do
-    echo -n "$cert: "
-    s0 verify "$cert" --key /etc/s0/authority_public.pem \
-        | grep "Status" || echo "FAILED"
+    if s0 verify "$cert" --key /etc/s0/authority_public.pem --quiet >/dev/null 2>&1; then
+        echo "$cert: AUTHENTIC"
+    else
+        echo "$cert: FAILED (exit $?)"
+    fi
 done
+
+# To record the result rather than read it, --json gives a parseable envelope:
+#   s0 verify "$cert" --key ... --json | jq -r '.result.status' 
 ```
 {% endtab %}
 {% endtabs %}
@@ -1245,13 +1391,31 @@ s0 keygen [--out-dir DIR] [--name PREFIX]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 keygen [-h] [--out-dir OUT_DIR] [--name NAME]
+```
+usage: s0 keygen [-h] [--out-dir OUT_DIR] [--name NAME] [--format {text,json,csv}] [--json]
+                 [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+                 [--dry-run]
 
 options:
-  -h, --help         show this help message and exit
-  --out-dir OUT_DIR  directory to store private and public keys
-  --name NAME        key filename prefix
+  -h, --help            show this help message and exit
+  --out-dir OUT_DIR     directory to store private and public keys
+  --name NAME           key filename prefix
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -1308,14 +1472,36 @@ s0 upgrade [--force] [--branch BRANCH]
 {% endtab %}
 {% tab title="Help Screen" %}
 
-```text
-usage: s0 upgrade [-h] [--force] [--branch BRANCH]
+```
+usage: s0 live [-h] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+               [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+               {download,devices,flash,build} ...
+
+positional arguments:
+  {download,devices,flash,build}
+    download            download official s0 Live ISO with SHA-256 validation
+    devices             safely list connected removable USB flash drives
+    flash               write s0 Live ISO to removable USB drive
+    build               build s0 Live ISO from source (Linux native or Docker/WSL2)
 
 options:
-  -h, --help        show this help message and exit
-  --force           force re-installation of dependencies even if up to date
-  --branch BRANCH   upstream branch to track (default: this checkout's own
-                    branch)
+  -h, --help            show this help message and exit
+
+output:
+  --format {text,json,csv}
+                        output format. 'text' is for humans and is written to stderr, tables and
+                        all; stdout stays empty. Use 'json' or 'csv' to get anything on stdout
+                        that a script can read
+  --json                shorthand for --format json
+  --quiet, -q           suppress progress bars and banners; results are unaffected
+  --verbose, -v         increase diagnostic detail on stderr (-v info, -vv debug)
+  --color {auto,always,never}
+                        colour output; 'auto' honours NO_COLOR and TTY detection
+  --no-color            disable colour output (same as --color never)
+
+execution:
+  --yes, -y             assume yes for destructive confirmations
+  --dry-run             plan only; never write to the target
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -1456,22 +1642,27 @@ NVMe Sanitize is preferred because it operates in the background on the controll
 
 ## Exit Codes
 
-All `s0` subcommands follow a consistent three-value exit code contract, compatible with standard shell `&&` / `||` chaining and CI/CD pass/fail gates.
+Exit codes follow the `sysexits.h` convention, so `0` is success, `1` is "ran and
+failed", and everything in `64`–`78` distinguishes *why* it did not succeed.
+Compatible with standard shell `&&` / `||` chaining and CI/CD pass/fail gates.
+
+This table is the authoritative list. An earlier version claimed a "consistent
+three-value contract" and then listed thirteen codes, which is how a caller ends up
+trusting the summary instead of the table.
 
 | Code | Symbolic | Meaning | Typical Triggers |
 |------|----------|---------|-----------------|
 | `0` | `EX_OK` | Operation completed successfully. | Wipe done, cert issued; audit chain valid; verification passed. |
 | `1` | `EX_FAILURE` | Operation was attempted but failed at runtime. | Hardware command rejected; signature mismatch; post-wipe verification found non-zero blocks. |
-| `2` | usage/safety | Refused to run due to a safety interlock. | Target is mounted (without `--force`); target is the root device; target is not a block device; ISO too small for the device. |
-| `64` | `EX_USAGE` | Bad flags or arguments. | Missing required flag; unparseable subcommand. |
-| `65` | `EX_DATAERR` | User-supplied data is malformed. | Certificate is not valid JSON; signature payload does not match the schema. |
+| `64` | `EX_USAGE` | Bad flags or arguments. | Missing required flag; unparseable subcommand. argparse's own exit 2 is remapped to this. |
+| `65` | `EX_DATAERR` | Supplied data is malformed, or verification failed. | Certificate is not valid JSON; the signature payload does not match the schema; `audit verify` cannot attribute a block (`UNVERIFIABLE`). |
 | `66` | `EX_NOINPUT` | Input file missing or unreadable. | `--target` does not exist; `s0 live devices` found no removable USB drive. |
 | `69` | `EX_UNAVAILABLE` | A required program or service is unavailable. | A required helper binary is not installed and no fallback exists. |
 | `70` | `EX_SOFTWARE` | An internal invariant failed. | Should not occur; please report. |
 | `73` | `EX_CANTCREAT` | Output could not be created. | `--out-dir` is not writable or does not exist. |
 | `74` | `EX_IOERR` | I/O error while reading or writing. | Source image unreadable; write failed part-way. |
 | `75` | `EX_TEMPFAIL` | Temporary failure, including operator abort. | Requested tier not satisfiable and `--allow-downgrade` was not given; the confirmation prompt did not match; Ctrl-C at a prompt. |
-| `77` | `EX_NOPERM` | Insufficient privileges. | Wipe without root; key file not readable. |
+| `77` | `EX_NOPERM` | Refused, or insufficient privileges. | Wipe without root; key file not readable; `image`/`clone` onto an existing destination without `--force`; a refused `s0 plan`. Not all of these are permission problems -- the code means "s0 declined", so read the message. |
 | `78` | `EX_CONFIG` | Configuration error. | No issuer signing key configured and `--no-certificate` was not given. |
 | `130` | `EX_INTERRUPTED` | Interrupted by SIGINT. | Ctrl-C during a wipe, carve or acquisition. The target may be partially written and must not be released. |
 
@@ -1480,9 +1671,15 @@ All `s0` subcommands follow a consistent three-value exit code contract, compati
 > refusal. Before this was fixed, `s0 live flash ... && echo "USB ready"` printed
 > "USB ready" after the operator declined to flash.
 
-Only `0` and `1` are safe to treat as "ran but failed" in a CI gate. `2` means a
-safety interlock refused the operation, and `66` may mean the input never existed.
-Distinguish them if your pipeline needs to.
+Only `0` and `1` mean "it ran". Everything else means it did not, for a reason worth
+distinguishing: `64` is your mistake, `65` is the data's, `66` is a missing input,
+and `77` is s0 declining. Treating them as one bucket is how a pipeline reports a
+successful wipe of a device that was never touched.
+
+`s0 verify` additionally exits `75` for a certificate signed with the **published
+demonstration key**: the signature is cryptographically valid and evidentially
+worthless, since the private key is in the repository. That is non-zero in every
+output format so a pipeline cannot read an unaccredited document as a pass.
 
 ```bash
 s0 wipe --target /dev/sdb --yes && echo "Wipe succeeded" || echo "Wipe FAILED (exit $?)"
