@@ -1,6 +1,7 @@
 """Overwrite engine tests on real files — the fully-real method."""
 
 import os
+from pathlib import Path
 
 from s0.wipe.methods.overwrite import (
     OverwriteMethod,
@@ -48,11 +49,11 @@ def test_random_single_pass_changes_content_and_reports_bytes(tmp_path):
     path = make_image(tmp_path)
     with open(path, "r+b") as f:
         f.write(b"\x00" * os.path.getsize(path))
-    before = open(path, "rb").read()
+    before = Path(path).read_bytes()
 
     result = OverwriteMethod(passes=1, pattern="random").run(
         image_target(path), lambda m: None)
-    after = open(path, "rb").read()
+    after = Path(path).read_bytes()
     assert result.status == "success"
     assert before != after
     # CSPRNG output across 8 MiB colliding with all-zeros in any 1KiB window

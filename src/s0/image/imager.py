@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import secrets
 import shutil
 import sys
 import time
@@ -294,7 +295,15 @@ def acquire_image(
     # 3. Create Acquisition Manifest
     out_dir_p = Path(options.out_dir)
     out_dir_p.mkdir(parents=True, exist_ok=True)
-    manifest_filename = f"acquisition_manifest_{int(start_time)}_{Path(src_path).name}.json"
+    # The epoch second alone is not unique: `image --force` and `clone` started in
+    # the same second against the same source produced the SAME manifest filename,
+    # so the second overwrote the first while both certificates stayed on disk --
+    # breaking the manifest-to-certificate pairing that evidence handling depends on.
+    # A short random suffix keeps the name sortable and collision-free.
+    manifest_filename = (
+        f"acquisition_manifest_{int(start_time)}_{secrets.token_hex(4)}"
+        f"_{Path(src_path).name}.json"
+    )
     manifest_file = out_dir_p / manifest_filename
 
     manifest_data = {
