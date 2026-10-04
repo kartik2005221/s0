@@ -93,14 +93,74 @@ def compute_legacy_block_hash(
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+#: How long to wait for another writer's lock. SQLite's default is 5s and it
+#: reports "database is locked" the moment a writer holds the lock; a forensic run
+#: may be appending from a UI, a CLI and a scheduled export at once.
+BUSY_TIMEOUT_MS = 30_000
+
+
 def get_db_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
+    """Open the ledger, creating it 0600 and waiting rather than failing on a lock.
+
+    Two things were wrong here.
+
+    sqlite3.connect creates the file with the process umask -- 0644 on a typical
+    system, so world-readable. This file is the chain of custody: it records what
+    was wiped, by whom, with signatures. Anyone who can write it can forge history,
+    and anyone who can read it learns which evidence a user destroyed. The mode is
+    enforced here rather than left to callers, because a permission a caller has to
+    remember is a permission the next caller forgets, and the chmod is unconditional
+    so a ledger left wide by an older version is narrowed too.
+
+    And there was no busy_timeout, so a concurrent append failed immediately instead
+    of waiting for the other writer to finish.
+    """
     if db_path is None:
         db_path = get_default_audit_db()
     path = Path(db_path).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+
+    # sqlite3.connect takes no mode, so create the file ourselves at 0600 to close
+    # the window in which it exists world-readable.
+    if not path.exists():
+        try:
+            os.close(os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+        except FileExistsError:
+            pass                       # another process won; it set the mode
+        except OSError:
+            pass                       # let connect() surface the real problem
+
+    conn = sqlite3.connect(str(path), timeout=BUSY_TIMEOUT_MS / 1000)
     conn.row_factory = sqlite3.Row
+    conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
     return conn
+
+
+def _write_checkpoint(db_path: str | Path, tip_index: int, tip_hash: str,
+                      updated_at: str) -> None:
+    """Write the chain checkpoint beside the ledger, 0600.
+
+    This sidecar carries the same chain state as the ledger -- the tip index and
+    hash -- so it gets the same mode. It was created with the process umask (0664
+    on a typical system) while the database next to it was 0600, which meant
+    tightening the ledger left a readable copy of its state beside it.
+
+    Best-effort by design: a checkpoint that cannot be written must not fail an
+    erase that has already happened. The ledger itself remains authoritative.
+    """
+    cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
+    try:
+        fd = os.open(str(cp_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        with open(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps({"tip_index": tip_index, "tip_hash": tip_hash,
+                                 "updated_at": updated_at}))
+        os.chmod(cp_file, 0o600)          # mode is ignored for an existing file
+    except OSError:
+        pass
 
 
 def init_audit_db(db_path: str | Path | None = None) -> Path:
@@ -191,11 +251,7 @@ def init_audit_db(db_path: str | Path | None = None) -> Path:
                 """,
                 (0, genesis_hash, genesis_time),
             )
-            try:
-                cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
-                cp_file.write_text(json.dumps({"tip_index": 0, "tip_hash": genesis_hash, "updated_at": genesis_time}), encoding="utf-8")
-            except Exception:
-                pass
+            _write_checkpoint(db_path, 0, genesis_hash, genesis_time)
     conn.close()
     return Path(db_path)
 
@@ -213,6 +269,17 @@ def record_audit_event(
     conn = get_db_connection(db_path)
 
     with conn:
+        # BEGIN IMMEDIATE takes the write lock *before* the tip is read, which makes
+        # the read and the insert one atomic step. Reading the tip first is a race:
+        # two processes both read tip N, both compute index N+1 against the same
+        # prev_hash, and both try to insert. One wins; the loser collides on the
+        # primary key or appends a second block at an index already taken, and a
+        # duplicated index in a hash chain is exactly the artefact the ledger exists
+        # to make impossible.
+        #
+        # A deferred transaction does not help: it upgrades to a write lock at the
+        # first write, which is after this SELECT -- the whole window.
+        conn.execute("BEGIN IMMEDIATE")
         cur = conn.execute("SELECT * FROM audit_blocks ORDER BY block_index DESC LIMIT 1")
         tip = cur.fetchone()
         new_index = (tip["block_index"] + 1) if tip else 0
@@ -312,11 +379,7 @@ def record_audit_event(
 
     conn.close()
 
-    try:
-        cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
-        cp_file.write_text(json.dumps({"tip_index": new_index, "tip_hash": block_hash, "updated_at": timestamp}), encoding="utf-8")
-    except Exception:
-        pass
+    _write_checkpoint(db_path, new_index, block_hash, timestamp)
 
     return AuditBlock(
         block_index=new_index,
