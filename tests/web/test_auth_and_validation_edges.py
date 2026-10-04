@@ -276,3 +276,68 @@ class TestImagingPreFlight:
         dst = tmp_path / "brand-new.img"
         r = client.post("/api/image", json={"source": str(src), "destination": str(dst)}, headers=_auth())
         assert r.status_code == 200, "the pre-flight check rejected a destination that does not exist"
+
+
+class TestBrowseDoesNotLieAboutWhatItListed:
+    """An out-of-root path used to be silently replaced with the repository root.
+
+    The dashboard asked to list `/etc`, received HTTP 200 and a plausible listing of
+    the repo, and had no way to tell. An operator choosing an output directory from
+    that list would have been choosing from the wrong tree entirely.
+    """
+
+    def test_a_protected_path_is_a_403(self, client):
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        r = client.get("/api/browse?path=/etc")
+        assert r.status_code == 403, f"expected an explicit refusal, got {r.status_code}: {r.json()}"
+        assert "outside" in r.json()["error"]
+        assert r.json()["items"] == [], "a refused path still returned a listing"
+
+    def test_a_missing_path_is_a_404_not_a_redirect(self, client):
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        r = client.get("/api/browse?path=/definitely-not-here-s0")
+        assert r.status_code == 404
+
+    def test_a_refusal_never_names_the_repository_as_the_listing(self, client):
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        for path in ("/etc", "/usr", "/"):
+            r = client.get(f"/api/browse?path={path}")
+            body = r.json()
+            assert str(body.get("current", "")).rstrip("/") != str(gui.REPO).rstrip("/"), (
+                f"browsing {path} was answered with the repository root; the caller "
+                f"cannot distinguish that from a real listing"
+            )
+
+    def test_an_allowed_path_still_works(self, client):
+        """The refusal must not have broken the legitimate case."""
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        r = client.get(f"/api/browse?path={gui.REPO}")
+        assert r.status_code == 200
+        assert r.json()["items"], "the repository root should list its own contents"
+
+
+class TestConfigReportsAUsableKeyPath:
+    """`default_key_path` is declared relative to a source checkout."""
+
+    def test_the_reported_key_path_resolves(self, client):
+        from pathlib import Path as _Path
+
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        body = client.get("/api/config").json()
+        reported = body.get("default_key_path")
+        assert body.get("default_key_path_is_usable") is True, (
+            f"the config claims a usable key path but got {reported!r}"
+        )
+        assert reported and _Path(reported).is_file(), (
+            f"/api/config reported {reported!r}, which does not exist. A dashboard "
+            f"showing a key location that resolves nowhere is worse than showing none."
+        )
+
+    def test_a_checkout_relative_path_is_not_handed_out(self, client):
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        body = client.get("/api/config").json()
+        reported = body.get("default_key_path") or ""
+        assert not reported.startswith("src/s0/"), (
+            f"/api/config returned the source-relative {reported!r}, which resolves "
+            f"nowhere for anyone who installed s0 from a wheel"
+        )

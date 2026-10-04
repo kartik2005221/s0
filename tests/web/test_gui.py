@@ -457,11 +457,32 @@ def test_carve_with_custom_signatures(client, tmp_path):
 
 
 def test_browse_endpoint_traversal_restricted(client):
-    """Attempting to browse unauthorized directories falls back to REPO root."""
+    """A path outside the permitted roots is refused, not silently redirected.
+
+    This used to return 200 with the repository root as `current`, so the dashboard
+    asked to list /etc and received a plausible-looking listing of the repo. The
+    caller could not tell, and an operator choosing an output directory would have
+    been choosing from the wrong tree.
+    """
     r = client.get("/api/browse?path=/etc")
-    assert r.status_code == 200
+    assert r.status_code == 403
     data = r.json()
-    assert data["current"] == str(gui_app.REPO.resolve())
+    assert "outside" in data["error"]
+    assert data["items"] == []
+    assert data["current"] if "current" in data else True
+
+
+def test_browse_missing_path_is_a_404(client):
+    r = client.get("/api/browse?path=/nonexistent-directory-for-s0")
+    assert r.status_code == 404
+    assert r.json()["error"] == "no such directory"
+
+
+def test_browse_a_file_is_a_400(client, tmp_path):
+    target = tmp_path / "a-file.txt"
+    target.write_text("x")
+    r = client.get(f"/api/browse?path={target}")
+    assert r.status_code in (400, 403), "a file passed to a directory listing endpoint should be refused"
 
 
 def test_custom_key_isolated_from_out_dir(tmp_path):

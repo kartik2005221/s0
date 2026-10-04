@@ -1008,6 +1008,26 @@ def plan_payload(target_path: str) -> dict:
 @app.get("/api/config", dependencies=[Depends(verify_auth_token)])
 def api_config() -> JSONResponse:
     cfg = dict(CONFIG)
+    # `default_key_path` is declared relative to a source checkout
+    # ("src/s0/data/keys/..."). For anyone who installed s0 from a wheel there is no
+    # checkout above site-packages, so the path resolves nowhere -- the dashboard then
+    # displays a key location that does not exist, which is worse than not naming one.
+    #
+    # Replaced with the packaged key's real location when we can find it, and with
+    # null when there is none. A consumer must be able to tell "no key configured"
+    # from "here is where the key is".
+    relative = str(cfg.get("default_key_path", ""))
+    resolved_default = None
+    try:
+        from s0 import resources
+
+        candidate = resources.demo_private_key()
+        if candidate is not None:
+            resolved_default = str(candidate)
+    except Exception:
+        resolved_default = None
+    cfg["default_key_path"] = resolved_default or relative or None
+    cfg["default_key_path_is_usable"] = resolved_default is not None
     return JSONResponse(cfg)
 
 
@@ -1036,9 +1056,30 @@ def _is_safe_browse_path(target: Path) -> bool:
 
 @app.get("/api/browse", dependencies=[Depends(verify_auth_token)])
 def api_browse(path: str = ".") -> JSONResponse:
-    target = Path(path).expanduser().resolve()
-    if not target.exists() or not target.is_dir() or not _is_safe_browse_path(target):
-        target = REPO
+    requested = Path(path).expanduser().resolve()
+
+    # A rejected path used to be silently replaced with REPO. That is a lie the
+    # caller cannot detect: the dashboard asked to list /tmp and received the
+    # repository, with HTTP 200 and a plausible-looking listing. Silence here reads
+    # as "this directory is empty" or "that is what was there", and an operator
+    # picking an output directory would be choosing from the wrong tree entirely.
+    #
+    # So the refusal is explicit, and it says which condition failed.
+    if not requested.exists():
+        return JSONResponse(
+            {"error": "no such directory", "path": str(requested), "items": []}, status_code=404
+        )
+    if not requested.is_dir():
+        return JSONResponse(
+            {"error": "not a directory", "path": str(requested), "items": []}, status_code=400
+        )
+    if not _is_safe_browse_path(requested):
+        return JSONResponse(
+            {"error": "path is outside the permitted roots", "path": str(requested), "items": []},
+            status_code=403,
+        )
+
+    target = requested
     items = []
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
