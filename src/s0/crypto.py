@@ -62,7 +62,6 @@ def is_demo_key(key: Ed25519PrivateKey | Ed25519PublicKey | str | Path | None) -
     return False
 
 
-
 def generate_private_key() -> Ed25519PrivateKey:
     return Ed25519PrivateKey.generate()
 

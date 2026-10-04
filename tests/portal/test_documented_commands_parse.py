@@ -33,8 +33,7 @@ DESTRUCTIVE = frozenset({"wipe", "erase", "clone", "live", "upgrade", "uninstall
 # Only blocks explicitly tagged as shell. An untagged fence in this tree is usually
 # prose or a transcript, and treating it as commands produces failures that say
 # nothing about whether the documentation is correct.
-_FENCE = re.compile(
-    r"```(?:bash|sh|shell|console|zsh)\s*\n(.*?)```", re.S)
+_FENCE = re.compile(r"```(?:bash|sh|shell|console|zsh)\s*\n(.*?)```", re.S)
 
 
 def _doc_files() -> list[Path]:
@@ -99,7 +98,8 @@ class TestDocumentedCommandsParse:
         commands = _s0_commands()
         assert len(commands) >= 100, (
             f"only {len(commands)} documented s0 commands were found; the "
-            f"extraction is probably broken, which would make this file vacuous")
+            f"extraction is probably broken, which would make this file vacuous"
+        )
 
     def test_every_documented_command_is_accepted_by_the_parser(self):
         from s0.cli.main import build_parser
@@ -125,16 +125,14 @@ class TestDocumentedCommandsParse:
                 # exercises the same subcommand/option resolution.
                 parser.parse_known_args(argv[1:])
             except SystemExit:
-                failures.append(
-                    f"{path.relative_to(REPO_ROOT)}: {command!r} was rejected")
+                failures.append(f"{path.relative_to(REPO_ROOT)}: {command!r} was rejected")
             except Exception as exc:  # argparse raises ArgumentError on some paths
-                failures.append(
-                    f"{path.relative_to(REPO_ROOT)}: {command!r} -> "
-                    f"{type(exc).__name__}: {exc}")
+                failures.append(f"{path.relative_to(REPO_ROOT)}: {command!r} -> {type(exc).__name__}: {exc}")
 
         assert not failures, (
             "these documented commands no longer parse, so the documentation is "
-            "wrong:\n  " + "\n  ".join(failures))
+            "wrong:\n  " + "\n  ".join(failures)
+        )
 
     def test_the_extraction_skips_prompts_and_output(self):
         """If the extractor started capturing output, the test would rot."""
@@ -165,8 +163,8 @@ class TestDocumentedCommandsParse:
 
         unknown = sorted(documented - known)
         assert not unknown, (
-            f"the documentation shows subcommands that do not exist: {unknown}. "
-            f"Known: {sorted(known)}")
+            f"the documentation shows subcommands that do not exist: {unknown}. Known: {sorted(known)}"
+        )
 
 
 class TestDestructiveExamplesAreNeverRun:
@@ -180,5 +178,5 @@ class TestDestructiveExamplesAreNeverRun:
         assert DESTRUCTIVE, "the destructive-command set is empty"
         commands = [c.split()[1] for _p, _l, c in _s0_commands() if len(c.split()) > 1]
         assert "wipe" in commands, (
-            "no wipe example was found; the corpus is probably not the real "
-            "documentation")
+            "no wipe example was found; the corpus is probably not the real documentation"
+        )

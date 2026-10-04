@@ -34,8 +34,9 @@ def name83(stem: str, extension: str = "") -> bytes:
     return raw
 
 
-def make_short_entry(raw_name: bytes, *, first_cluster: int = 5, size: int = 4096,
-                     attributes: int = fd.ATTR_ARCHIVE) -> bytes:
+def make_short_entry(
+    raw_name: bytes, *, first_cluster: int = 5, size: int = 4096, attributes: int = fd.ATTR_ARCHIVE
+) -> bytes:
     assert len(raw_name) == 11, f"8.3 name must be 11 bytes, got {len(raw_name)}"
     out = bytearray(32)
     out[0:11] = raw_name
@@ -46,19 +47,18 @@ def make_short_entry(raw_name: bytes, *, first_cluster: int = 5, size: int = 409
     return bytes(out)
 
 
-def make_lfn_entry(sequence: int, characters: str, checksum: int,
-                   is_last: bool = False) -> bytes:
+def make_lfn_entry(sequence: int, characters: str, checksum: int, is_last: bool = False) -> bytes:
     out = bytearray(32)
     out[0] = (sequence & 0x3F) | (fd.LFN_LAST_ENTRY_FLAG if is_last else 0)
     # 13 UTF-16 units, 26 bytes, split 5 / 6 / 2 across the record.
     encoded = characters.encode("utf-16le")[:26].ljust(26, b"\x00")
-    out[1:11] = encoded[0:10]        # 0x01-0x0A  characters 1-5
-    out[11] = fd.ATTR_LFN            # 0x0B       attribute
-    out[12] = 0                      # 0x0C       reserved
-    out[13] = checksum               # 0x0D       8.3 name checksum
-    out[14:26] = encoded[10:22]      # 0x0E-0x19  characters 6-11
-    out[26:28] = b"\x00\x00"        # 0x1A-0x1B  first cluster low
-    out[28:32] = encoded[22:26]      # 0x1C-0x1F  characters 12-13
+    out[1:11] = encoded[0:10]  # 0x01-0x0A  characters 1-5
+    out[11] = fd.ATTR_LFN  # 0x0B       attribute
+    out[12] = 0  # 0x0C       reserved
+    out[13] = checksum  # 0x0D       8.3 name checksum
+    out[14:26] = encoded[10:22]  # 0x0E-0x19  characters 6-11
+    out[26:28] = b"\x00\x00"  # 0x1A-0x1B  first cluster low
+    out[28:32] = encoded[22:26]  # 0x1C-0x1F  characters 12-13
     return bytes(out)
 
 
@@ -95,7 +95,7 @@ def long_name_for(short83: bytes, long_name: str) -> list:
     out = []
     for i, chunk in enumerate(units, start=1):
         out.append(make_lfn_entry(i, chunk, checksum, is_last=(i == 1)))
-    return list(reversed(out))       # reverse order on disk
+    return list(reversed(out))  # reverse order on disk
 
 
 # --------------------------------------------------------------------------- #
@@ -158,7 +158,7 @@ def test_fragments_with_a_wrong_checksum_are_rejected():
     """
     short = deleted_name83("OLDNAM~1", "TXT")
     blob = b"".join(long_name_for(short, "Original Document.docx"))
-    blob += make_short_entry(name83("NEWFILE~", "TXT"))      # different name, slot reused
+    blob += make_short_entry(name83("NEWFILE~", "TXT"))  # different name, slot reused
     named = fd.name_entries(fd.read_directory_cluster(blob, 512))
     assert named[0].name == "NEWFILE~.TXT", "a stale long name was trusted"
     assert not named[0].recovered.long_name_verified
@@ -184,7 +184,7 @@ def test_a_malformed_fragment_breaks_the_run():
     short = deleted_name83("GOODNAM~", "1T")
     frags = long_name_for(short, "Good Name.txt")
     bad = bytearray(frags[0])
-    bad[26:28] = b"\xff\xff"                         # reserved field must be zero
+    bad[26:28] = b"\xff\xff"  # reserved field must be zero
     blob = bytes(bad) + b"".join(frags[1:]) + deleted_short_entry(short)
     named = fd.name_entries(fd.read_directory_cluster(blob, 512))
     assert named[0].name == "_OODNAM~.1T"
@@ -202,11 +202,10 @@ def test_unclaimed_fragments_are_discarded_not_attached_to_the_next_file():
 def test_a_run_without_the_final_entry_flag_is_rejected():
     short = deleted_name83("NOFLAG~", "1TX")
     frags = long_name_for(short, "No Flag Set.txt")
-    flagged = [f for f in frags
-               if fd.parse_lfn_fragment(fd.FatDirectoryEntry(0, f)).is_last]
+    flagged = [f for f in frags if fd.parse_lfn_fragment(fd.FatDirectoryEntry(0, f)).is_last]
     assert len(flagged) == 1
     stripped = bytearray(flagged[0])
-    stripped[0] &= 0x3F                               # clear the 0x40 flag
+    stripped[0] &= 0x3F  # clear the 0x40 flag
     assert fd.parse_lfn_fragment(fd.FatDirectoryEntry(0, bytes(stripped))).is_last is False
     frags = [bytes(stripped) if f is flagged[0] else f for f in frags]
     blob = bytes(stripped) + b"".join(frags[1:]) + deleted_short_entry(short)
@@ -243,17 +242,17 @@ def test_a_free_slot_does_not_end_the_directory():
     That is the normal state of a directory that has had anything deleted from
     it, so it would hide most of the directory.
     """
-    blob = (make_short_entry(name83("FIRST", "TXT"))
-            + deleted_short_entry(name83("DELETED", "TXT"))
-            + make_short_entry(name83("THIRD", "TXT")))
+    blob = (
+        make_short_entry(name83("FIRST", "TXT"))
+        + deleted_short_entry(name83("DELETED", "TXT"))
+        + make_short_entry(name83("THIRD", "TXT"))
+    )
     named = fd.name_entries(fd.read_directory_cluster(blob, 512))
     assert [n.name for n in named] == ["FIRST.TXT", "_ELETED.TXT", "THIRD.TXT"]
 
 
 def test_a_zero_entry_does_end_the_directory():
-    blob = (make_short_entry(name83("REALFILE", "TXT"))
-            + bytes(32)
-            + make_short_entry(name83("BOGUS", "TXT")))
+    blob = make_short_entry(name83("REALFILE", "TXT")) + bytes(32) + make_short_entry(name83("BOGUS", "TXT"))
     named = fd.name_entries(fd.read_directory_cluster(blob, 512))
     assert [n.name for n in named] == ["REALFILE.TXT"]
 
@@ -324,14 +323,14 @@ def test_scanner_recovers_a_long_name_for_a_deleted_entry(tmp_path, monkeypatch)
 
     boot_bytes = bytearray(512)
     boot_bytes[0x03:0x0B] = b"FAT32   "
-    struct.pack_into("<H", boot_bytes, 0x0B, 512)      # bytes per sector
-    boot_bytes[0x0D] = 4                                # sectors per cluster (2 KiB)
-    struct.pack_into("<H", boot_bytes, 0x0E, 32)         # reserved sectors
-    boot_bytes[0x10] = 2                                 # FAT count
-    struct.pack_into("<H", boot_bytes, 0x11, 0)          # root entries (FAT32)
-    struct.pack_into("<H", boot_bytes, 0x13, 4096)       # total sectors 16
-    struct.pack_into("<I", boot_bytes, 0x24, 32)         # sectors per FAT
-    struct.pack_into("<I", boot_bytes, 0x2C, 3)          # root cluster
+    struct.pack_into("<H", boot_bytes, 0x0B, 512)  # bytes per sector
+    boot_bytes[0x0D] = 4  # sectors per cluster (2 KiB)
+    struct.pack_into("<H", boot_bytes, 0x0E, 32)  # reserved sectors
+    boot_bytes[0x10] = 2  # FAT count
+    struct.pack_into("<H", boot_bytes, 0x11, 0)  # root entries (FAT32)
+    struct.pack_into("<H", boot_bytes, 0x13, 4096)  # total sectors 16
+    struct.pack_into("<I", boot_bytes, 0x24, 32)  # sectors per FAT
+    struct.pack_into("<I", boot_bytes, 0x2C, 3)  # root cluster
     boot_bytes[0x1FE:0x200] = b"\x55\xaa"
 
     cluster_bytes = 2048
@@ -346,9 +345,9 @@ def test_scanner_recovers_a_long_name_for_a_deleted_entry(tmp_path, monkeypatch)
     image = tmp_path / "fat.img"
     image.write_bytes(
         bytes(boot_bytes)
-        + bytes(31 * 512)          # rest of the reserved region
-        + bytes(32 * 512)          # FAT #1
-        + bytes(32 * 512)          # FAT #2
+        + bytes(31 * 512)  # rest of the reserved region
+        + bytes(32 * 512)  # FAT #1
+        + bytes(32 * 512)  # FAT #2
         + cluster
         + bytes(cluster_bytes * 2)
     )

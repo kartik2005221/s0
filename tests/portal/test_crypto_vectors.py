@@ -14,6 +14,7 @@ from s0.resources import repo_root
 
 PORTAL = repo_root() / "site" / "verify"
 
+
 # Probe for node
 def find_node() -> str | None:
     candidates = [
@@ -28,6 +29,7 @@ def find_node() -> str | None:
         if candidate and Path(candidate).is_file():
             return candidate
     return None
+
 
 NODE = find_node()
 
@@ -50,9 +52,7 @@ def test_sha512_nist_vectors(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run(
-        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
-    )
+    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
 
 
@@ -67,9 +67,7 @@ def test_valid_cert_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run(
-        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
-    )
+    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is True
@@ -87,9 +85,7 @@ def test_tampered_cert_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run(
-        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
-    )
+    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
@@ -108,9 +104,7 @@ def test_mutated_payload_hash_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run(
-        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
-    )
+    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
@@ -139,7 +133,5 @@ def test_float_and_duplicate_key_rejection(node_available):
       process.exit(2);
     }
     """
-    result = subprocess.run(
-        [NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL)
-    )
+    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
     assert result.returncode == 0, f"Node.js error: {result.stderr}"

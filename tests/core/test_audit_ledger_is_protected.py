@@ -57,12 +57,22 @@ def _wipe(path: Path, home: Path, tag: str) -> subprocess.CompletedProcess:
     target = home / f"{tag}.txt"
     target.write_text(f"evidence {tag}\n" * 8)
     return subprocess.run(
-        [_entry_point(), "wipe", "--target", str(target), "--yes", "--no-pdf",
-         "--out-dir", str(home / "certs")],
-        capture_output=True, text=True, timeout=300,
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin",
-             "S0_AUDIT_DB": str(home / "audit.db")},
-        cwd=str(home))
+        [
+            _entry_point(),
+            "wipe",
+            "--target",
+            str(target),
+            "--yes",
+            "--no-pdf",
+            "--out-dir",
+            str(home / "certs"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(home / "audit.db")},
+        cwd=str(home),
+    )
 
 
 class TestTheLedgerIsNotWorldReadable:
@@ -74,7 +84,8 @@ class TestTheLedgerIsNotWorldReadable:
         mode = stat.S_IMODE(db.stat().st_mode)
         assert mode == 0o600, (
             f"the ledger is {mode:04o}; anyone who can read it learns what was "
-            f"destroyed, and anyone who can write it can forge history")
+            f"destroyed, and anyone who can write it can forge history"
+        )
 
     def test_an_existing_wide_ledger_is_narrowed(self, tmp_path):
         """The case that matters most: a ledger created by an older version."""
@@ -89,7 +100,8 @@ class TestTheLedgerIsNotWorldReadable:
         assert mode == 0o600, (
             f"a pre-existing 0666 ledger was left at {mode:04o}. The chmod has to be "
             f"unconditional -- trusting an existing file's mode is trusting that "
-            f"nothing has widened it.")
+            f"nothing has widened it."
+        )
 
     def test_the_checkpoint_sidecar_is_0600_too(self, tmp_path):
         """It carries the same tip index and hash as the ledger."""
@@ -104,7 +116,8 @@ class TestTheLedgerIsNotWorldReadable:
         assert mode == 0o600, (
             f"the chain checkpoint is {mode:04o}. It holds the same tip state as the "
             f"ledger, so tightening only the database leaves a readable copy of the "
-            f"chain beside it.")
+            f"chain beside it."
+        )
 
     def test_an_existing_wide_checkpoint_is_narrowed(self, tmp_path):
         from s0.audit.db import _write_checkpoint
@@ -126,7 +139,8 @@ class TestTheLedgerIsNotWorldReadable:
         mode = stat.S_IMODE(db.parent.stat().st_mode)
         assert not (mode & stat.S_IWOTH), (
             f"the ledger's directory is {mode:04o}; another user could replace the "
-            f"file regardless of its own mode")
+            f"file regardless of its own mode"
+        )
 
 
 class TestTheLedgerWaitsForALock:
@@ -140,7 +154,8 @@ class TestTheLedgerWaitsForALock:
             conn.close()
         assert got == BUSY_TIMEOUT_MS, (
             "no busy_timeout, so a concurrent append raises 'database is locked' "
-            "the instant another writer holds the lock rather than waiting")
+            "the instant another writer holds the lock rather than waiting"
+        )
 
     def test_a_second_writer_waits_rather_than_failing(self, tmp_path):
         """The scenario the timeout exists for, held open deliberately."""
@@ -148,7 +163,7 @@ class TestTheLedgerWaitsForALock:
         init_audit_db(db)
 
         holder = get_db_connection(db)
-        holder.execute("BEGIN IMMEDIATE")        # take the write lock
+        holder.execute("BEGIN IMMEDIATE")  # take the write lock
         holder.execute(
             "INSERT INTO audit_blocks (block_index, timestamp, operation_type, "
             "target_id, operator_id, organization, cert_uuid, payload_hash, "
@@ -168,7 +183,7 @@ class TestTheLedgerWaitsForALock:
                         conn.execute("BEGIN IMMEDIATE")
                 finally:
                     conn.close()
-            except Exception as exc:      # noqa: BLE001 - recording the outcome
+            except Exception as exc:  # noqa: BLE001 - recording the outcome
                 errors.append(exc)
             finally:
                 done.set()
@@ -176,8 +191,7 @@ class TestTheLedgerWaitsForALock:
         worker = threading.Thread(target=contend, daemon=True)
         worker.start()
         # Give it long enough that an immediate failure is unambiguous.
-        assert not done.wait(timeout=1.0), (
-            "the second writer failed instead of waiting for the lock")
+        assert not done.wait(timeout=1.0), "the second writer failed instead of waiting for the lock"
         assert not errors, f"the waiting writer raised: {errors}"
 
         holder.rollback()
@@ -198,13 +212,28 @@ class TestConcurrentAppendsDoNotCollide:
         for i in range(6):
             target = tmp_path / f"t{i}.txt"
             target.write_text(f"evidence {i}\n" * 8)
-            procs.append(subprocess.Popen(
-                [_entry_point(), "wipe", "--target", str(target), "--yes", "--no-pdf",
-                 "--out-dir", str(tmp_path / "certs")],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin",
-                     "S0_AUDIT_DB": str(tmp_path / "audit.db")},
-                cwd=str(tmp_path)))
+            procs.append(
+                subprocess.Popen(
+                    [
+                        _entry_point(),
+                        "wipe",
+                        "--target",
+                        str(target),
+                        "--yes",
+                        "--no-pdf",
+                        "--out-dir",
+                        str(tmp_path / "certs"),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={
+                        "HOME": str(tmp_path),
+                        "PATH": "/usr/bin:/bin",
+                        "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                    },
+                    cwd=str(tmp_path),
+                )
+            )
 
         for proc in procs:
             assert proc.wait(timeout=300) == 0, "a concurrent wipe failed"
@@ -216,33 +245,50 @@ class TestConcurrentAppendsDoNotCollide:
 
         assert len(indices) == len(set(indices)), (
             f"duplicate block indices in the ledger: {sorted(indices)}. Two blocks "
-            f"at one index is the exact forgery the chain exists to prevent.")
+            f"at one index is the exact forgery the chain exists to prevent."
+        )
         assert sorted(indices) == list(range(len(indices))), (
-            f"the chain has a gap or is out of order: {sorted(indices)}")
+            f"the chain has a gap or is out of order: {sorted(indices)}"
+        )
 
     def test_every_block_chains_to_its_predecessor(self, tmp_path):
         procs = []
         for i in range(4):
             target = tmp_path / f"u{i}.txt"
             target.write_text(f"evidence {i}\n" * 8)
-            procs.append(subprocess.Popen(
-                [_entry_point(), "wipe", "--target", str(target), "--yes", "--no-pdf",
-                 "--out-dir", str(tmp_path / "certs")],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin",
-                     "S0_AUDIT_DB": str(tmp_path / "audit.db")},
-                cwd=str(tmp_path)))
+            procs.append(
+                subprocess.Popen(
+                    [
+                        _entry_point(),
+                        "wipe",
+                        "--target",
+                        str(target),
+                        "--yes",
+                        "--no-pdf",
+                        "--out-dir",
+                        str(tmp_path / "certs"),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={
+                        "HOME": str(tmp_path),
+                        "PATH": "/usr/bin:/bin",
+                        "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                    },
+                    cwd=str(tmp_path),
+                )
+            )
         for proc in procs:
             proc.wait(timeout=300)
 
         from s0.audit.db import list_audit_blocks
 
-        blocks = sorted(list_audit_blocks(db_path=tmp_path / "audit.db"),
-                        key=lambda b: b.block_index)
+        blocks = sorted(list_audit_blocks(db_path=tmp_path / "audit.db"), key=lambda b: b.block_index)
         for previous, current in zip(blocks, blocks[1:], strict=False):
             assert current.prev_hash == previous.block_hash, (
                 f"block {current.block_index} chains to {current.prev_hash[:16]}... "
-                f"but block {previous.block_index} is {previous.block_hash[:16]}...")
+                f"but block {previous.block_index} is {previous.block_hash[:16]}..."
+            )
 
     def test_the_ledger_still_verifies_after_concurrent_writes(self, tmp_path):
         """A chain that survives the race must still verify."""
@@ -250,27 +296,46 @@ class TestConcurrentAppendsDoNotCollide:
         for i in range(3):
             target = tmp_path / f"v{i}.txt"
             target.write_text(f"evidence {i}\n" * 8)
-            procs.append(subprocess.Popen(
-                [_entry_point(), "wipe", "--target", str(target), "--yes", "--no-pdf",
-                 "--out-dir", str(tmp_path / "certs")],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin",
-                     "S0_AUDIT_DB": str(tmp_path / "audit.db")},
-                cwd=str(tmp_path)))
+            procs.append(
+                subprocess.Popen(
+                    [
+                        _entry_point(),
+                        "wipe",
+                        "--target",
+                        str(target),
+                        "--yes",
+                        "--no-pdf",
+                        "--out-dir",
+                        str(tmp_path / "certs"),
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={
+                        "HOME": str(tmp_path),
+                        "PATH": "/usr/bin:/bin",
+                        "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                    },
+                    cwd=str(tmp_path),
+                )
+            )
         for proc in procs:
             proc.wait(timeout=300)
 
         # `audit verify` takes the ledger through S0_AUDIT_DB; there is no --db flag.
         proc = subprocess.run(
             [_entry_point(), "audit", "verify"],
-            capture_output=True, text=True, timeout=300,
-            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin",
-                 "S0_AUDIT_DB": str(tmp_path / "audit.db")},
-            cwd=str(tmp_path))
+            capture_output=True,
+            text=True,
+            timeout=300,
+            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(tmp_path / "audit.db")},
+            cwd=str(tmp_path),
+        )
         assert "Traceback" not in proc.stdout + proc.stderr
         assert proc.returncode in (0, 65), (
             f"audit verify exited {proc.returncode} after concurrent appends:\n"
-            f"{(proc.stdout + proc.stderr)[-800:]}")
+            f"{(proc.stdout + proc.stderr)[-800:]}"
+        )
+
 
 class TestTheTipReadRaceIsActuallyClosed:
     """Deterministic proof, because the race is too narrow to hit by chance.
@@ -299,7 +364,7 @@ class TestTheTipReadRaceIsActuallyClosed:
         entered = threading.Semaphore(0)
         release = threading.Semaphore(0)
         original = dbmod.compute_block_hash
-        slowdowns = 4          # let several threads pile up behind the lock
+        slowdowns = 4  # let several threads pile up behind the lock
 
         def slow_hash(*args, **kwargs):
             entered.release()
@@ -313,20 +378,22 @@ class TestTheTipReadRaceIsActuallyClosed:
         lock = threading.Lock()
 
         def append(i: int) -> None:
-            cert = {"issued_at": "2026-01-01T00:00:00Z", "cert_uuid": f"u{i}",
-                    "issuer": {"operator_id": "op", "organization": "org"},
-                    "device": {"device_id": "dev"},
-                    "signature": {"signature_base64url": "sig"}}
+            cert = {
+                "issued_at": "2026-01-01T00:00:00Z",
+                "cert_uuid": f"u{i}",
+                "issuer": {"operator_id": "op", "organization": "org"},
+                "device": {"device_id": "dev"},
+                "signature": {"signature_base64url": "sig"},
+            }
             try:
                 block = dbmod.record_audit_event(cert, db_path=db)
                 with lock:
                     results.append(block.block_index)
-            except Exception as exc:                     # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
                 with lock:
                     errors.append(exc)
 
-        workers = [threading.Thread(target=append, args=(i,), daemon=True)
-                   for i in range(slowdowns)]
+        workers = [threading.Thread(target=append, args=(i,), daemon=True) for i in range(slowdowns)]
         with mock.patch.object(dbmod, "compute_block_hash", slow_hash):
             for w in workers:
                 w.start()
@@ -342,4 +409,5 @@ class TestTheTipReadRaceIsActuallyClosed:
         assert not errors, f"concurrent appends raised: {errors}"
         assert len(results) == len(set(results)), (
             f"two writers claimed the same block index: {sorted(results)}. Each "
-            f"computed it from the same tip, which means the chain forks here.")
+            f"computed it from the same tip, which means the chain forks here."
+        )

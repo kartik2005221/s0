@@ -42,8 +42,14 @@ REPO = repo_root()
 assert REPO is not None, "test requires a source checkout"
 
 GLOBAL_FLAGS = {
-    "--format", "--json", "--quiet", "--verbose",
-    "--color", "--no-color", "--yes", "--dry-run",
+    "--format",
+    "--json",
+    "--quiet",
+    "--verbose",
+    "--color",
+    "--no-color",
+    "--yes",
+    "--dry-run",
 }
 
 
@@ -108,7 +114,7 @@ def run_cli(argv, monkeypatch, tty=False):
 def test_json_output_is_pure_envelope_on_stdout(monkeypatch):
     code, out, err = run_cli(["list", "--json"], monkeypatch)
     assert code == EX_OK
-    doc = json.loads(out)                      # must parse with no pre-processing
+    doc = json.loads(out)  # must parse with no pre-processing
     assert doc["schema"] == "s0.list/1"
     assert doc["schema_version"] == "1.0.0"
     assert doc["status"] in ("success", "failure", "partial", "aborted", "refused")
@@ -202,6 +208,7 @@ def test_malformed_certificate_is_ex_dataerr(monkeypatch, tmp_path):
 
 def test_exit_codes_are_distinct_and_documented():
     from s0.terminal import EXIT_MEANINGS
+
     for code, meaning in EXIT_MEANINGS.items():
         assert meaning and isinstance(code, int)
     assert EX_USAGE != EX_NOINPUT
@@ -227,8 +234,7 @@ def test_clicolor_force_overrides_non_tty(monkeypatch):
 
 def test_no_color_flag_wins_over_clicolor_force(monkeypatch):
     monkeypatch.setenv("CLICOLOR_FORCE", "1")
-    policy = policy_from_args(
-        build_parser().parse_args(["list", "--no-color"]), stdout=TTY())
+    policy = policy_from_args(build_parser().parse_args(["list", "--no-color"]), stdout=TTY())
     assert policy.use_color is False
 
 
@@ -257,8 +263,7 @@ def test_status_never_relies_on_colour_alone():
 
 def test_table_right_aligns_numeric_columns():
     policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
-    render_table(policy, [Column("EXT"), Column("SIZE", align="r")],
-                 [["png", "1,234"], ["jpg", "12"]])
+    render_table(policy, [Column("EXT"), Column("SIZE", align="r")], [["png", "1,234"], ["jpg", "12"]])
     err = policy.err_stream.getvalue()
     assert "1,234" in err and "12" in err
     assert err.index("1,234") < err.index("12")
@@ -266,8 +271,9 @@ def test_table_right_aligns_numeric_columns():
 
 def test_table_truncates_long_paths_from_the_left():
     policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
-    render_table(policy, [Column("PATH", max_width=20)],
-                 [["/very/long/prefix/that/goes/on/forever/carved_00001.png"]])
+    render_table(
+        policy, [Column("PATH", max_width=20)], [["/very/long/prefix/that/goes/on/forever/carved_00001.png"]]
+    )
     err = policy.err_stream.getvalue()
     assert "..." in err and "carved_00001.png" in err
 
@@ -281,7 +287,7 @@ def test_human_bytes_uses_binary_units():
     assert human_bytes(0) == "0 B"
     assert human_bytes(1023) == "1023 B"
     assert human_bytes(1024) == "1.00 KiB"
-    assert human_bytes(1024 ** 3) == "1.00 GiB"
+    assert human_bytes(1024**3) == "1.00 GiB"
     assert human_bytes(None) == "-"
 
 
@@ -289,7 +295,7 @@ def test_no_emoji_in_machine_readable_output(monkeypatch):
     """Emoji break monospace alignment and screen readers; s0 emits geometric
     Unicode only, and nothing outside the basic multilingual plane."""
     code, out, _ = run_cli(["list", "--json"], monkeypatch)
-    emoji = re.compile("[\U0001F300-\U0001FAFF☀-➿⬀-⯿️]")
+    emoji = re.compile("[\U0001f300-\U0001faff☀-➿⬀-⯿️]")
     assert not emoji.search(out)
 
 
@@ -304,13 +310,28 @@ SMOKE = {
     "audit list": ["audit", "list", "--limit", "2"],
     "audit verify": ["audit", "verify"],
     "keygen": ["keygen", "--out-dir", "{out}", "--name", "contract"],
-    "carve": ["carve", "--target", "{image}", "--out-dir", "{out}",
-              "--no-certificate", "--extensions", "png"],
+    "carve": [
+        "carve",
+        "--target",
+        "{image}",
+        "--out-dir",
+        "{out}",
+        "--no-certificate",
+        "--extensions",
+        "png",
+    ],
     "verify": ["verify", "{cert}"],
-    "wipe": ["wipe", "--target", "{image}", "--out-dir", "{out}", "--yes",
-             "--no-certificate"],
-    "image": ["image", "--source", "{image}", "--destination", "{dest}",
-              "--out-dir", "{out}", "--no-certificate"],
+    "wipe": ["wipe", "--target", "{image}", "--out-dir", "{out}", "--yes", "--no-certificate"],
+    "image": [
+        "image",
+        "--source",
+        "{image}",
+        "--destination",
+        "{dest}",
+        "--out-dir",
+        "{out}",
+        "--no-certificate",
+    ],
 }
 
 
@@ -321,8 +342,7 @@ def _make_fixtures(tmp_path):
     cert.write_text("{}")
     out = tmp_path / "out"
     out.mkdir()
-    return {"image": str(img), "out": str(out), "cert": str(cert),
-            "dest": str(tmp_path / "dest.img")}
+    return {"image": str(img), "out": str(out), "cert": str(cert), "dest": str(tmp_path / "dest.img")}
 
 
 @pytest.mark.parametrize("name", sorted(SMOKE))
@@ -345,7 +365,8 @@ def test_every_command_emits_a_clean_envelope(name, tmp_path, monkeypatch):
         assert "Traceback" not in err.getvalue(), err.getvalue()[-2000:]
 
     assert "Traceback" not in err.getvalue(), (
-        f"s0 {name} --json raised an unhandled exception:\n{err.getvalue()[-2000:]}")
+        f"s0 {name} --json raised an unhandled exception:\n{err.getvalue()[-2000:]}"
+    )
 
     if out.getvalue().strip():
         doc = json.loads(out.getvalue())
@@ -362,8 +383,9 @@ def test_prose_column_is_cut_from_the_right_so_the_meaning_survives():
     their tail, which is what identifies them.
     """
     policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
-    render_table(policy, [Column("EVIDENCE", max_width=14, tail=False)],
-                 [["both structures"], ["journal only"]])
+    render_table(
+        policy, [Column("EVIDENCE", max_width=14, tail=False)], [["both structures"], ["journal only"]]
+    )
     lines = policy.err_stream.getvalue().splitlines()
     assert "EVIDENCE" in lines[0]
     # 14 wide, so 11 characters plus the ellipsis, and the head of the value.
@@ -372,8 +394,7 @@ def test_prose_column_is_cut_from_the_right_so_the_meaning_survives():
 
 def test_path_column_still_keeps_its_tail():
     policy = OutputPolicy(color=False, stream=io.StringIO(), err_stream=io.StringIO())
-    render_table(policy, [Column("PATH", max_width=20)],
-                 [["/very/long/prefix/forever/carved_00001.png"]])
+    render_table(policy, [Column("PATH", max_width=20)], [["/very/long/prefix/forever/carved_00001.png"]])
     assert "carved_00001.png" in policy.err_stream.getvalue()
 
 

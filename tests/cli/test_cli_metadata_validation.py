@@ -7,7 +7,9 @@ from s0.terminal import EX_USAGE
 
 
 def test_validate_cli_metadata_valid():
-    args = SimpleNamespace(operator="valid_op", operator_id="valid_op", organization="Digital Forensics & Data Sanitization Lab")
+    args = SimpleNamespace(
+        operator="valid_op", operator_id="valid_op", organization="Digital Forensics & Data Sanitization Lab"
+    )
     assert _validate_cli_metadata(args) is True
     assert args.operator == "valid_op"
 
@@ -17,7 +19,7 @@ def test_validate_cli_metadata_xss_rejected(capsys):
         "<script>alert(1)</script>",
         "op>redirect",
         "op|pipe",
-        "op\"quote",
+        'op"quote',
         "op\x27quote",
     ]
     for bad in bad_payloads:

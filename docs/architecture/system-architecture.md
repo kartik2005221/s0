@@ -665,10 +665,9 @@ Float-to-string formatting is the single most common source of inter-implementat
 ```python
 def canonicalize(obj: Any) -> bytes:
     if isinstance(obj, dict):
-        return b"{" + b",".join(
-            canonicalize(k) + b":" + canonicalize(v)
-            for k, v in sorted(obj.items())
-        ) + b"}"
+        return (
+            b"{" + b",".join(canonicalize(k) + b":" + canonicalize(v) for k, v in sorted(obj.items())) + b"}"
+        )
     elif isinstance(obj, list):
         return b"[" + b",".join(canonicalize(i) for i in obj) + b"]"
     elif isinstance(obj, str):

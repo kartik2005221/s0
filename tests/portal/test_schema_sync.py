@@ -78,7 +78,9 @@ def js_registry():
     """
     proc = subprocess.run(
         [node, "-e", script, str(VERIFY_JS)],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
         cwd=str(portal),
     )
     if proc.returncode != 0:
@@ -103,11 +105,15 @@ def test_schema_methods_match_python(schema, py_registry):
 
 
 def test_schema_device_types_match_python(schema, py_registry):
-    assert _enum(schema, "properties", "device", "properties", "device_type") == set(py_registry["DEVICE_TYPES"])
+    assert _enum(schema, "properties", "device", "properties", "device_type") == set(
+        py_registry["DEVICE_TYPES"]
+    )
 
 
 def test_schema_storage_types_match_python(schema, py_registry):
-    assert _enum(schema, "properties", "device", "properties", "storage_type") == set(py_registry["STORAGE_TYPES"])
+    assert _enum(schema, "properties", "device", "properties", "storage_type") == set(
+        py_registry["STORAGE_TYPES"]
+    )
 
 
 def test_schema_patterns_match_python(schema, py_registry):
@@ -115,7 +121,9 @@ def test_schema_patterns_match_python(schema, py_registry):
 
 
 def test_schema_nist_categories_match_python(schema, py_registry):
-    assert _enum(schema, "properties", "wipe", "properties", "nist_category") == set(py_registry["NIST_CATEGORIES"])
+    assert _enum(schema, "properties", "wipe", "properties", "nist_category") == set(
+        py_registry["NIST_CATEGORIES"]
+    )
 
 
 def test_schema_statuses_match_python(schema, py_registry):
@@ -166,7 +174,8 @@ def test_every_firmware_purge_is_documented(schema, py_registry):
     """Every firmware-mediated Purge method must appear in the NIST mapping doc."""
     mapping = (REPO / "docs" / "compliance" / "nist-800-88-mapping.md").read_text(encoding="utf-8")
     firmware = sorted(
-        m for m in py_registry["WIPE_METHODS"]
+        m
+        for m in py_registry["WIPE_METHODS"]
         if any(k in m for k in ("ATA_SANITIZE", "NVME_SANITIZE", "SCSI_SANITIZE", "OPAL_", "LUKS_", "FDE_"))
     )
     missing = [m for m in firmware if m not in mapping]
@@ -220,7 +229,6 @@ def test_dashboard_does_not_hand_out_the_session_token():
         "the ?token= bootstrap must redirect to a clean URL so the token stays out "
         "of browser history and Referer headers"
     )
-    assert "samesite=\"strict\"" in app or "samesite=\"Strict\"" in app or "samesite" in app, (
-        "the auth cookie needs an explicit SameSite policy so cookie auth does not "
-        "reintroduce CSRF"
+    assert 'samesite="strict"' in app or 'samesite="Strict"' in app or "samesite" in app, (
+        "the auth cookie needs an explicit SameSite policy so cookie auth does not reintroduce CSRF"
     )

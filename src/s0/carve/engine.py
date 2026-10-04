@@ -86,8 +86,9 @@ def _sanitize_filename(raw: str, max_len: int = 200) -> str:
     """Strip path separators, null bytes and control characters from a filename."""
     clean = str(raw or "").strip()
     clean = re.sub(r"[\x00-\x1f]", "_", clean)
-    parts = [re.sub(r"^\.+", "", p).strip() for p in re.split(r"[/\\:]+", clean)
-             if p and p not in (".", "..")]
+    parts = [
+        re.sub(r"^\.+", "", p).strip() for p in re.split(r"[/\\:]+", clean) if p and p not in (".", "..")
+    ]
     clean = "_".join(p for p in parts if p)
     clean = clean.strip("._ ")
     clean = re.sub(r"_{2,}", "_", clean)
@@ -207,10 +208,12 @@ def _probe_fs_at_offset(f, offset: int) -> str | None:
             return "exfat"
         if len(header) >= 1082:
             import struct
+
             if struct.unpack_from("<H", header, 1024 + 56)[0] == 0xEF53:
                 return "ext4"
         if len(header) >= 512:
             import struct
+
             if struct.unpack_from("<H", header, 510)[0] == 0xAA55 and (
                 header[82:87] == b"FAT32" or header[54:57] == b"FAT"
             ):
@@ -234,6 +237,7 @@ def detect_partitions(target_path: str | Path) -> list[tuple[str, int]]:
             has_gpt = False
             if len(sector0) == 512 and sector0[510:512] == b"\x55\xaa":
                 import struct
+
                 for i in range(4):
                     entry_off = 446 + i * 16
                     ptype = sector0[entry_off + 4]
@@ -252,6 +256,7 @@ def detect_partitions(target_path: str | Path) -> list[tuple[str, int]]:
                 gpt_hdr = f.read(512)
                 if len(gpt_hdr) >= 92 and gpt_hdr[:8] == b"EFI PART":
                     import struct
+
                     part_lba = struct.unpack_from("<Q", gpt_hdr, 72)[0]
                     num_parts = struct.unpack_from("<I", gpt_hdr, 80)[0]
                     part_size = struct.unpack_from("<I", gpt_hdr, 84)[0]
@@ -317,12 +322,24 @@ def _recover_from_filesystem(
         try:
             if part_fs == "ntfs":
                 entries = scan_ntfs_deleted_records(
-                    target_p, partition_offset=part_offset,
+                    target_p,
+                    partition_offset=part_offset,
                     max_bytes_per_file=budget.max_output_bytes,
-                    warnings=warnings)
-                found = [(e.record_num, e.name, e.data, e.fragment_count,
-                          e.first_data_offset, e.path, e.mft_changed)
-                         for e in entries if e.data is not None]
+                    warnings=warnings,
+                )
+                found = [
+                    (
+                        e.record_num,
+                        e.name,
+                        e.data,
+                        e.fragment_count,
+                        e.first_data_offset,
+                        e.path,
+                        e.mft_changed,
+                    )
+                    for e in entries
+                    if e.data is not None
+                ]
                 # A record whose name survives but whose bytes cannot be read
                 # back -- EFS, NTFS compression, or a sparse stream -- is still
                 # evidence, and saying so is more useful than dropping it.
@@ -330,27 +347,55 @@ def _recover_from_filesystem(
                 for e in unrestorable[:_MAX_RESTORATION_NOTES]:
                     warnings.append(
                         f"NTFS record {e.record_num} ({e.path}) was named but not "
-                        f"restored: {e.content_caveat}")
+                        f"restored: {e.content_caveat}"
+                    )
                 if len(unrestorable) > _MAX_RESTORATION_NOTES:
                     warnings.append(
                         f"{len(unrestorable) - _MAX_RESTORATION_NOTES} further NTFS "
-                        f"record(s) were named but not restorable; see the recovery index.")
+                        f"record(s) were named but not restorable; see the recovery index."
+                    )
                 if unrestorable:
                     counters["structure_filtered"] += len(unrestorable)
                 journal = _read_journal_evidence(target_p, part_offset, warnings)
             elif part_fs == "ext4":
-                found = [(i.inode_num, f"inode{i.inode_num}", i.data, i.fragment_count,
-                          part_offset + (i.extent_block_ranges[0][0] * 1024 if i.extent_block_ranges else 0),
-                          None, None)
-                         for i in scan_ext4_deleted_inodes(target_p, partition_offset=part_offset)]
+                found = [
+                    (
+                        i.inode_num,
+                        f"inode{i.inode_num}",
+                        i.data,
+                        i.fragment_count,
+                        part_offset + (i.extent_block_ranges[0][0] * 1024 if i.extent_block_ranges else 0),
+                        None,
+                        None,
+                    )
+                    for i in scan_ext4_deleted_inodes(target_p, partition_offset=part_offset)
+                ]
             elif part_fs == "fat32":
-                found = [(ff.first_cluster, ff.filename, ff.data, 1,
-                          part_offset + ff.first_cluster * 4096, None, None)
-                         for ff in scan_fat32_deleted_files(target_p, partition_offset=part_offset)]
+                found = [
+                    (
+                        ff.first_cluster,
+                        ff.filename,
+                        ff.data,
+                        1,
+                        part_offset + ff.first_cluster * 4096,
+                        None,
+                        None,
+                    )
+                    for ff in scan_fat32_deleted_files(target_p, partition_offset=part_offset)
+                ]
             elif part_fs == "exfat":
-                found = [(ef.first_cluster, ef.filename, ef.data, ef.fragment_count,
-                          part_offset + ef.first_cluster * 4096, None, None)
-                         for ef in scan_exfat_deleted_files(target_p, partition_offset=part_offset)]
+                found = [
+                    (
+                        ef.first_cluster,
+                        ef.filename,
+                        ef.data,
+                        ef.fragment_count,
+                        part_offset + ef.first_cluster * 4096,
+                        None,
+                        None,
+                    )
+                    for ef in scan_exfat_deleted_files(target_p, partition_offset=part_offset)
+                ]
             else:
                 continue
         except Exception as exc:
@@ -385,7 +430,6 @@ def _recover_from_filesystem(
                 counters["structure_filtered"] += 1
                 continue
 
-
             digest = hashlib.sha256(data).hexdigest()
             if digest in recovered_hashes:
                 counters["duplicate"] += 1
@@ -400,12 +444,15 @@ def _recover_from_filesystem(
                 algo = known_hashes.match(data)
                 if algo is not None:
                     counters["suppressed_known"] = counters.get("suppressed_known", 0) + 1
-                    counters["suppressed_bytes"] = (
-                        counters.get("suppressed_bytes", 0) + len(data))
-                    counters["rejected_samples"].append(RejectedCandidate(
-                        offset if offset is not None else 0, ext,
-                        f"matches a known {algo} digest in {known_hashes.source}",
-                        "known-file"))
+                    counters["suppressed_bytes"] = counters.get("suppressed_bytes", 0) + len(data)
+                    counters["rejected_samples"].append(
+                        RejectedCandidate(
+                            offset if offset is not None else 0,
+                            ext,
+                            f"matches a known {algo} digest in {known_hashes.source}",
+                            "known-file",
+                        )
+                    )
                     continue
 
             counters["structure_accepted"] += 1
@@ -418,10 +465,14 @@ def _recover_from_filesystem(
                 ident,
                 data,
                 boundary_method=boundary.DECLARED_SIZE,
-                boundary_notes=(f"{part_fs.upper()} metadata supplied the exact byte length "
-                                f"and{' original name' if not name.startswith('inode') else ''}",),
+                boundary_notes=(
+                    f"{part_fs.upper()} metadata supplied the exact byte length "
+                    f"and{' original name' if not name.startswith('inode') else ''}",
+                ),
             )
-            heuristics.append(f"Recovered from {part_fs.upper()} filesystem metadata (partition @ {part_offset})")
+            heuristics.append(
+                f"Recovered from {part_fs.upper()} filesystem metadata (partition @ {part_offset})"
+            )
             if frag_count > 1:
                 heuristics.append(f"Reassembled from {frag_count} fragment runs")
 
@@ -450,26 +501,28 @@ def _recover_from_filesystem(
             rec_path.write_bytes(data)
             recovered_hashes.add(digest)
 
-            recovered.append(CarvedFile(
-                file_id=file_id,
-                filename=rec_path.name,
-                extension=ext,
-                category=category,
-                offset=offset,
-                size_bytes=len(data),
-                sha256=digest,
-                confidence_score=score,
-                heuristics=heuristics,
-                recovered_path=str(rec_path),
-                recovery_method=_STRUCTURE_METHODS.get(part_fs, METHOD_STRUCTURE),
-                is_fragmented=frag_count > 1,
-                fragment_count=frag_count,
-                boundary_method=boundary.DECLARED_SIZE,
-                original_name=str(name),
-                original_path=orig_path,
-                deleted_at=deleted_at,
-                provenance=prov.as_dict(),
-            ))
+            recovered.append(
+                CarvedFile(
+                    file_id=file_id,
+                    filename=rec_path.name,
+                    extension=ext,
+                    category=category,
+                    offset=offset,
+                    size_bytes=len(data),
+                    sha256=digest,
+                    confidence_score=score,
+                    heuristics=heuristics,
+                    recovered_path=str(rec_path),
+                    recovery_method=_STRUCTURE_METHODS.get(part_fs, METHOD_STRUCTURE),
+                    is_fragmented=frag_count > 1,
+                    fragment_count=frag_count,
+                    boundary_method=boundary.DECLARED_SIZE,
+                    original_name=str(name),
+                    original_path=orig_path,
+                    deleted_at=deleted_at,
+                    provenance=prov.as_dict(),
+                )
+            )
             if orig_name:
                 names_seen.setdefault(orig_name, 0)
             counters["bytes_recovered"] += len(data)
@@ -488,18 +541,56 @@ def _generic_signature(ext: str, data: bytes) -> FileSignature:
 
 
 _CATEGORY_BY_EXT = {
-    "jpg": "image", "jpeg": "image", "png": "image", "gif": "image", "bmp": "image",
-    "webp": "image", "tiff": "image", "heic": "image", "jp2": "image",
-    "pdf": "document", "doc": "document", "docx": "document", "xlsx": "document",
-    "pptx": "document", "rtf": "document", "pcap": "document", "pcapng": "document",
-    "zip": "archive", "gz": "archive", "bz2": "archive", "xz": "archive", "zst": "archive",
-    "7z": "archive", "rar": "archive", "tar": "archive", "lz4": "archive",
-    "wav": "audio", "flac": "audio", "ogg": "audio", "mp3": "audio", "aiff": "audio", "mid": "audio",
-    "mp4": "video", "mov": "video", "mkv": "video", "webm": "video", "ts": "video",
-    "sqlite": "database", "db": "database", "mdb": "database", "dat": "database",
-    "elf": "executable", "exe": "executable", "dll": "executable", "class": "executable",
+    "jpg": "image",
+    "jpeg": "image",
+    "png": "image",
+    "gif": "image",
+    "bmp": "image",
+    "webp": "image",
+    "tiff": "image",
+    "heic": "image",
+    "jp2": "image",
+    "pdf": "document",
+    "doc": "document",
+    "docx": "document",
+    "xlsx": "document",
+    "pptx": "document",
+    "rtf": "document",
+    "pcap": "document",
+    "pcapng": "document",
+    "zip": "archive",
+    "gz": "archive",
+    "bz2": "archive",
+    "xz": "archive",
+    "zst": "archive",
+    "7z": "archive",
+    "rar": "archive",
+    "tar": "archive",
+    "lz4": "archive",
+    "wav": "audio",
+    "flac": "audio",
+    "ogg": "audio",
+    "mp3": "audio",
+    "aiff": "audio",
+    "mid": "audio",
+    "mp4": "video",
+    "mov": "video",
+    "mkv": "video",
+    "webm": "video",
+    "ts": "video",
+    "sqlite": "database",
+    "db": "database",
+    "mdb": "database",
+    "dat": "database",
+    "elf": "executable",
+    "exe": "executable",
+    "dll": "executable",
+    "class": "executable",
     "macho": "executable",
-    "lnk": "system", "pf": "system", "url": "system", "ini": "system",
+    "lnk": "system",
+    "pf": "system",
+    "url": "system",
+    "ini": "system",
 }
 
 
@@ -547,7 +638,8 @@ def _resolve_free_space(target_p: Path, parts, total_size: int, policy) -> tuple
     if not policy.use_free_space_only:
         notes.append(
             "Allocation-aware search was disabled (--all-space): the whole volume was "
-            "searched, so files that are still allocated will also be reported.")
+            "searched, so files that are still allocated will also be reported."
+        )
         return None, notes
 
     maps: list[FreeSpaceMap] = []
@@ -555,25 +647,29 @@ def _resolve_free_space(target_p: Path, parts, total_size: int, policy) -> tuple
         if ftype == "raw" or not ftype:
             notes.append(
                 f"Partition at offset {offset} is not a recognised filesystem "
-                f"({label or 'unlabelled'}); its space was searched in full.")
+                f"({label or 'unlabelled'}); its space was searched in full."
+            )
             return None, notes
         fsm = build_free_space(target_p, ftype, offset, size)
         if not fsm.reliable:
             notes.append(
                 f"Could not establish a trustworthy allocation map for the "
                 f"{ftype} partition at offset {offset}: {'; '.join(fsm.notes) or 'unknown'}. "
-                f"The whole volume was searched instead.")
+                f"The whole volume was searched instead."
+            )
             return None, notes
         notes.append(
             f"{ftype}: {fsm.free_bytes / (1 << 20):.1f} MiB free in {fsm.range_count} "
             f"extent(s) ({fsm.coverage_ppm / 10_000:.1f}% of the filesystem); carving "
-            f"restricted to unallocated space.")
+            f"restricted to unallocated space."
+        )
         maps.append(fsm)
 
     if not maps:
         notes.append(
             "No filesystem allocation map was available, so the whole volume was searched. "
-            "Recovered files may include ones that are still allocated.")
+            "Recovered files may include ones that are still allocated."
+        )
         return None, notes
 
     combined = FreeSpaceMap(
@@ -643,13 +739,10 @@ def _scan_signatures(
     file_seq = len(already_recovered)
 
     # Longest inbuilt window we need to hold in memory for the cheap prefilter.
-    max_inbuilt_window = max(
-        (s.inbuilt_search_window for s in active if s.inbuilt), default=0
-    )
+    max_inbuilt_window = max((s.inbuilt_search_window for s in active if s.inbuilt), default=0)
     # A signature whose magic sits at header_offset needs that many leading bytes
     # available, or the first candidate in a window is invisible.
-    window_needed = max((s.header_offset + len(s.header) for s in active), default=1) \
-        + max_inbuilt_window
+    window_needed = max((s.header_offset + len(s.header) for s in active), default=1) + max_inbuilt_window
 
     custom_ids = {id(s) for s in custom_signatures or ()}
     carry = b""
@@ -687,11 +780,8 @@ def _scan_signatures(
             # search for it is what makes a carve finish in minutes instead of
             # hours on a mostly-full volume, and it is the same optimisation
             # PhotoRec calls remove_used_space().
-            if free_space is not None and not _overlaps_free(free_space, data_start,
-                                                             data_start + len(data)):
-                counters["allocated_bytes_skipped"] = (
-                    counters.get("allocated_bytes_skipped", 0) + len(data)
-                )
+            if free_space is not None and not _overlaps_free(free_space, data_start, data_start + len(data)):
+                counters["allocated_bytes_skipped"] = counters.get("allocated_bytes_skipped", 0) + len(data)
                 continue
 
             # Only search for magics whose first byte actually occurs in this
@@ -710,8 +800,9 @@ def _scan_signatures(
             present = set(data)
 
             for sig in active:
-                first = sig.header[sig.header_offset] if sig.header_offset < len(sig.header) \
-                    else sig.header[0]
+                first = (
+                    sig.header[sig.header_offset] if sig.header_offset < len(sig.header) else sig.header[0]
+                )
                 if first not in present:
                     continue
                 pos = 0
@@ -730,15 +821,13 @@ def _scan_signatures(
                         continue
                     offset = data_start + start_in_window
                     if offset < searched_upto:
-                        continue    # seen in a previous window's overlap
+                        continue  # seen in a previous window's overlap
 
                     # A signature header inside a block the filesystem still
                     # considers allocated belongs to a live file. Recovering it
                     # would re-cover a file that is not deleted, which is how a
                     # carve ends up reporting the same set of files over and over.
-                    if free_space is not None and not free_space.contains(
-                        offset, min(len(sig.header), 1)
-                    ):
+                    if free_space is not None and not free_space.contains(offset, min(len(sig.header), 1)):
                         counters["allocated_candidates_skipped"] = (
                             counters.get("allocated_candidates_skipped", 0) + 1
                         )
@@ -762,8 +851,15 @@ def _scan_signatures(
 
                     counters["candidates"] += 1
                     result = _carve_one(
-                        src, offset, sig, extensions, min_confidence, budget,
-                        counters, recovered_hashes, warnings,
+                        src,
+                        offset,
+                        sig,
+                        extensions,
+                        min_confidence,
+                        budget,
+                        counters,
+                        recovered_hashes,
+                        warnings,
                         allow_guess=id(sig) in custom_ids,
                         suppression=suppression,
                     )
@@ -796,20 +892,22 @@ def _scan_signatures(
                     recovered_hashes.add(hashlib.sha256(payload).hexdigest())
                     counters["bytes_recovered"] += len(payload)
 
-                    carved.append(CarvedFile(
-                        file_id=file_id,
-                        filename=rec_path.name,
-                        extension=sig.extension,
-                        category=category,
-                        offset=offset,
-                        size_bytes=len(payload),
-                        sha256=hashlib.sha256(payload).hexdigest(),
-                        confidence_score=score,
-                        heuristics=heuristics,
-                        recovered_path=str(rec_path),
-                        recovery_method=METHOD_SIGNATURE,
-                        boundary_method=boundary_result.method,
-                    ))
+                    carved.append(
+                        CarvedFile(
+                            file_id=file_id,
+                            filename=rec_path.name,
+                            extension=sig.extension,
+                            category=category,
+                            offset=offset,
+                            size_bytes=len(payload),
+                            sha256=hashlib.sha256(payload).hexdigest(),
+                            confidence_score=score,
+                            heuristics=heuristics,
+                            recovered_path=str(rec_path),
+                            recovery_method=METHOD_SIGNATURE,
+                            boundary_method=boundary_result.method,
+                        )
+                    )
 
                     # Skip past the object we just consumed so its interior is
                     # not rescanned as nested candidates.
@@ -858,11 +956,11 @@ def _try_isobmff_reassembly(src: boundary.ByteSource, offset: int, max_size: int
         # where the table says the media begins.
         mdat_at = src.read(offset + t.media_start - 8, 8)
         if len(mdat_at) == 8 and mdat_at[4:8] == b"mdat":
-            return None                       # contiguous; nothing to do
+            return None  # contiguous; nothing to do
 
         r = isobmff.reassemble_two_fragment(
-            src, offset, table, src.size,
-            min(src.size, offset + min(max_size, _REASSEMBLY_WINDOW)))
+            src, offset, table, src.size, min(src.size, offset + min(max_size, _REASSEMBLY_WINDOW))
+        )
     except (isobmff.BoxError, OSError, ValueError, struct.error):
         return None
     if r is None:
@@ -922,7 +1020,7 @@ def _ts_run_length(window: bytes, off: int, want: int) -> int | None:
     while n < want:
         if pos + 188 > len(window):
             return None
-        parsed = _ts_packet_header(window[pos:pos + 4])
+        parsed = _ts_packet_header(window[pos : pos + 4])
         if parsed is None:
             return n
         _pid, _pusi, afc, _cc = parsed
@@ -958,7 +1056,7 @@ def _plausible_header(sig: FileSignature, window: bytes, off: int) -> str | None
     ext = sig.extension
     need = off + max(len(magic), 4)
     if need > len(window):
-        return None                    # too close to the window edge to judge
+        return None  # too close to the window edge to judge
 
     if ext == "ts":
         # One valid header is not enough. A single transport header survives
@@ -974,13 +1072,15 @@ def _plausible_header(sig: FileSignature, window: bytes, off: int) -> str | None
 
     if ext == "mp3":
         from s0.carve.boundary import parse_mpeg_frame_header
-        hdr = parse_mpeg_frame_header(window[off:off + 4], 0)
+
+        hdr = parse_mpeg_frame_header(window[off : off + 4], 0)
         if hdr is None:
             return "not a valid MPEG audio frame header"
         return None
 
     if ext == "bmp":
         import struct as _struct
+
         declared = _struct.unpack_from("<I", window, off + 2)[0]
         if declared < 26 or declared > (1 << 31):
             return f"BMP declares an implausible file size of {declared}"
@@ -995,11 +1095,12 @@ def _plausible_header(sig: FileSignature, window: bytes, off: int) -> str | None
 
     if ext in ("exe", "dll"):
         import struct as _struct
+
         e_lfanew = _struct.unpack_from("<I", window, off + 60)[0]
         if e_lfanew < 64 or e_lfanew > (1 << 22):
             return f"PE e_lfanew of {e_lfanew} cannot point at a PE header"
         pe = off + e_lfanew
-        if pe + 4 <= len(window) and window[pe:pe + 4] != b"PE\x00\x00":
+        if pe + 4 <= len(window) and window[pe : pe + 4] != b"PE\x00\x00":
             return "e_lfanew does not point at a PE signature"
         return None
 
@@ -1025,33 +1126,40 @@ def _carve_one(
         counters["filtered"] += 1
         return None
 
-    max_size = min(sig.max_size, budget.max_file_bytes if isinstance(budget, CarveBudget)
-                   else sig.max_size)
+    max_size = min(sig.max_size, budget.max_file_bytes if isinstance(budget, CarveBudget) else sig.max_size)
 
     # Cheap prefilter for low-specificity 2-byte magics.
     if sig.inbuilt is not None:
         head = src.read(offset, max(sig.inbuilt_search_window, len(sig.inbuilt)))
         if sig.inbuilt not in head:
             counters["rejected"] += 1
-            counters["rejected_samples"].append(RejectedCandidate(
-                offset, ext,
-                f"inbuilt marker {sig.inbuilt!r} is absent from the first "
-                f"{sig.inbuilt_search_window} bytes", "structure"))
+            counters["rejected_samples"].append(
+                RejectedCandidate(
+                    offset,
+                    ext,
+                    f"inbuilt marker {sig.inbuilt!r} is absent from the first "
+                    f"{sig.inbuilt_search_window} bytes",
+                    "structure",
+                )
+            )
             return None
 
-    b = boundary.resolve_boundary(src, offset, sig, max_size,
-                                 allow_max_size_fallback=allow_guess)
+    b = boundary.resolve_boundary(src, offset, sig, max_size, allow_max_size_fallback=allow_guess)
     if not b.resolved:
         counters["rejected"] += 1
         counters["rejected_samples"].append(
-            RejectedCandidate(offset, ext, b.notes[0] if b.notes else "boundary unresolved", "boundary"))
+            RejectedCandidate(offset, ext, b.notes[0] if b.notes else "boundary unresolved", "boundary")
+        )
         return None
 
     size = b.end - offset
     if size < sig.min_size:
         counters["rejected"] += 1
         counters["rejected_samples"].append(
-            RejectedCandidate(offset, ext, f"resolved {size} B is below the {sig.min_size} B minimum", "boundary"))
+            RejectedCandidate(
+                offset, ext, f"resolved {size} B is below the {sig.min_size} B minimum", "boundary"
+            )
+        )
         return None
 
     payload = None
@@ -1075,7 +1183,8 @@ def _carve_one(
         if len(payload) < size:
             counters["rejected"] += 1
             counters["rejected_samples"].append(
-                RejectedCandidate(offset, ext, "file extends past end of target", "boundary"))
+                RejectedCandidate(offset, ext, "file extends past end of target", "boundary")
+            )
             return None
 
     ok, reason = boundary.validate_structure(payload, ext)
@@ -1095,15 +1204,17 @@ def _carve_one(
         if algo is not None:
             # Validated, not guessed at, and already known to the examiner.
             counters["suppressed_known"] = counters.get("suppressed_known", 0) + 1
-            counters["suppressed_bytes"] = (
-                counters.get("suppressed_bytes", 0) + len(payload))
-            counters["rejected_samples"].append(RejectedCandidate(
-                offset, ext, f"matches a known {algo} digest in {suppression.source}",
-                "known-file"))
+            counters["suppressed_bytes"] = counters.get("suppressed_bytes", 0) + len(payload)
+            counters["rejected_samples"].append(
+                RejectedCandidate(
+                    offset, ext, f"matches a known {algo} digest in {suppression.source}", "known-file"
+                )
+            )
             return None
 
     score, heuristics = score_carved_candidate(
-        sig, payload,
+        sig,
+        payload,
         has_valid_footer=(sig.footer is not None and sig.footer in payload),
         boundary_method=b.method,
         # Reassembly provenance is part of the evidence record: an examiner has
@@ -1115,7 +1226,10 @@ def _carve_one(
         counters["rejected"] += 1
         counters["rejected_bytes"] += size
         counters["rejected_samples"].append(
-            RejectedCandidate(offset, ext, f"confidence {score} below the {min_confidence} threshold", "score"))
+            RejectedCandidate(
+                offset, ext, f"confidence {score} below the {min_confidence} threshold", "score"
+            )
+        )
         return None
 
     counters["accepted"] += 1
@@ -1185,10 +1299,18 @@ def carve_image(
     # wrong -- hence eight `int has no attribute append` errors that were
     # pointing at a real annotation defect rather than at dead code.
     counters: dict[str, Any] = {
-        "candidates": 0, "accepted": 0, "rejected": 0, "rejected_bytes": 0,
-        "duplicate": 0, "filtered": 0, "bytes_recovered": 0,
-        "structure_candidates": 0, "structure_accepted": 0, "structure_filtered": 0,
-        "budget_stops": 0, "rejected_samples": [],
+        "candidates": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "rejected_bytes": 0,
+        "duplicate": 0,
+        "filtered": 0,
+        "bytes_recovered": 0,
+        "structure_candidates": 0,
+        "structure_accepted": 0,
+        "structure_filtered": 0,
+        "budget_stops": 0,
+        "rejected_samples": [],
     }
     warnings: list[str] = []
     recovered_hashes: set = set()
@@ -1204,29 +1326,34 @@ def carve_image(
         prior = {e.sha256 for e in resume.entries if e.sha256}
         recovered_hashes.update(prior)
         counters["resumed_from_session"] = len(resume.entries)
-        for note in session.describe_resume(resume, out_dir=out_p,
-                                           skipped=len(prior)):
+        for note in session.describe_resume(resume, out_dir=out_p, skipped=len(prior)):
             warnings.append(note)
 
     # ---- 1. filesystem-native recovery (highest evidentiary value) ----
     journal_timeline: list[dict] = []
     if policy.structure_recovery_enabled:
         all_files, journal_timeline = _recover_from_filesystem(
-            target_p, out_p, parts, extensions, budget, warnings, counters,
-            recovered_hashes, known_hashes,
+            target_p,
+            out_p,
+            parts,
+            extensions,
+            budget,
+            warnings,
+            counters,
+            recovered_hashes,
+            known_hashes,
         )
-
 
     # ---- 2. signature carving ----
     active = list(custom_signatures or []) + list(SIGNATURES)
     if extensions:
         norm = {e.lower().lstrip(".") for e in extensions}
         custom_exts = {s.extension.lower().lstrip(".") for s in (custom_signatures or [])}
-        active = [s for s in active
-                  if s.extension.lower().lstrip(".") in norm | custom_exts]
+        active = [s for s in active if s.extension.lower().lstrip(".") in norm | custom_exts]
     if not active:
-        warnings.append("No signature set is active for the requested extensions; "
-                        "nothing will be carved by signature.")
+        warnings.append(
+            "No signature set is active for the requested extensions; nothing will be carved by signature."
+        )
     elif policy.structure_only:
         warnings.append("--structure-only was set: signature carving was skipped.")
 
@@ -1239,9 +1366,22 @@ def carve_image(
             with open(str(target_p), "rb") as fh:
                 src = boundary.ByteSource(fh, total_size)
                 carved = _scan_signatures(
-                    src, target_p, out_p, active, custom_signatures, extensions, min_confidence,
-                    budget, counters, recovered_hashes, warnings, all_files, progress_callback,
-                    total_size, free_space, known_hashes,
+                    src,
+                    target_p,
+                    out_p,
+                    active,
+                    custom_signatures,
+                    extensions,
+                    min_confidence,
+                    budget,
+                    counters,
+                    recovered_hashes,
+                    warnings,
+                    all_files,
+                    progress_callback,
+                    total_size,
+                    free_space,
+                    known_hashes,
                 )
             scanned = counters.pop("bytes_scanned", 0)
             all_files += carved
@@ -1269,8 +1409,9 @@ def carve_image(
     # ---- 3. manifest certificate ----
     manifest_cert = None
     if not generate_certificate:
-        warnings.append("Forensic recovery manifest certificate omitted per operator "
-                        "request (--no-certificate).")
+        warnings.append(
+            "Forensic recovery manifest certificate omitted per operator request (--no-certificate)."
+        )
     else:
         key_file: Path | None
         if signing_key_path:
@@ -1318,7 +1459,9 @@ def carve_image(
                         f"Recovered {len(all_files)} file(s), {counters['bytes_recovered']} bytes.",
                         f"Candidates evaluated: {counters['candidates']}; accepted: {counters['accepted']}; "
                         f"rejected: {counters['rejected']}; duplicates suppressed: {counters['duplicate']}.",
-                        "By recovery method: " + ", ".join(f"{k}={v}" for k, v in sorted(by_method.items())) + ".",
+                        "By recovery method: "
+                        + ", ".join(f"{k}={v}" for k, v in sorted(by_method.items()))
+                        + ".",
                     ]
                     + warnings[:8],
                 )
@@ -1339,7 +1482,8 @@ def carve_image(
     if counters.get("contained"):
         warnings.append(
             f"{counters['contained']} candidate(s) lay inside an "
-            f"already-recovered extent and were not written a second time")
+            f"already-recovered extent and were not written a second time"
+        )
 
     # ---- 4. machine-readable index ----
     by_category: dict[str, int] = {}
@@ -1375,9 +1519,12 @@ def carve_image(
         # Files recovered through the filesystem path carry their bytes in memory
         # rather than as an image extent, so they have no range to contribute.
         recovered_extents=bodyfile.normalise(
-            [(f.offset, f.offset + f.size_bytes - 1)
-             for f in all_files
-             if f.offset is not None and f.size_bytes]),
+            [
+                (f.offset, f.offset + f.size_bytes - 1)
+                for f in all_files
+                if f.offset is not None and f.size_bytes
+            ]
+        ),
         suppressed_known=counters.get("suppressed_known", 0),
         suppressed_known_bytes=counters.get("suppressed_bytes", 0),
         candidates_prefiltered=counters.get("prefiltered", 0),
@@ -1402,7 +1549,6 @@ def carve_image(
         "duplicates_suppressed": counters["duplicate"],
         "contained_candidates_dropped": counters.get("contained", 0),
         "resumed_from_session": counters.get("resumed_from_session", 0),
-
         "filtered_by_extension_filter": counters["filtered"],
         "deleted_names_from_journal": journal_timeline,
         "allocation_aware_search": free_space is not None,
@@ -1440,8 +1586,7 @@ def carve_image(
             for c in all_files
         ],
         "rejection_summary": [
-            {"reason": reason, "count": count}
-            for reason, count in rejection_summary[:_MAX_REJECTION_REASONS]
+            {"reason": reason, "count": count} for reason, count in rejection_summary[:_MAX_REJECTION_REASONS]
         ],
         "rejected_candidates_sample": [
             {"offset": r.offset, "extension": r.extension, "stage": r.stage, "reason": r.reason}
@@ -1482,8 +1627,7 @@ def _is_contained(start: int, end: int, recovered) -> bool:
     return False
 
 
-def drop_contained(all_files: list[CarvedFile], counters: dict[str, int],
-                   out_p: Path) -> list[CarvedFile]:
+def drop_contained(all_files: list[CarvedFile], counters: dict[str, int], out_p: Path) -> list[CarvedFile]:
     """Remove findings whose bytes lie inside another finding's extent.
 
     Two formats nest, and then the inner one is found on its own: a JPEG 2000
@@ -1499,8 +1643,9 @@ def drop_contained(all_files: list[CarvedFile], counters: dict[str, int],
     only what has already been written silently misses the inner file whenever
     it happens to come first -- which is exactly the case that showed up.
     """
-    spans = [(f.offset if f.offset is not None else 0, f.size_bytes, f)
-             for f in all_files if f.size_bytes > 0]
+    spans = [
+        (f.offset if f.offset is not None else 0, f.size_bytes, f) for f in all_files if f.size_bytes > 0
+    ]
     contained = set()
     for i, (off_i, len_i, file_i) in enumerate(spans):
         for j, (off_j, len_j, _file_j) in enumerate(spans):
@@ -1528,8 +1673,7 @@ def drop_contained(all_files: list[CarvedFile], counters: dict[str, int],
     return kept
 
 
-def _read_journal_evidence(target_p: Path, part_offset: int,
-                           warnings: list[str]) -> list | None:
+def _read_journal_evidence(target_p: Path, part_offset: int, warnings: list[str]) -> list | None:
     """Read the NTFS change journal, if this partition has one.
 
     The journal is a separate kind of evidence from the MFT: it names files whose
@@ -1539,8 +1683,7 @@ def _read_journal_evidence(target_p: Path, part_offset: int,
     evidence left that a document ever existed.
     """
     try:
-        records = read_usn_journal(target_p, partition_offset=part_offset,
-                                   warnings=warnings)
+        records = read_usn_journal(target_p, partition_offset=part_offset, warnings=warnings)
     except Exception as exc:
         warnings.append(f"NTFS change journal could not be read: {exc}")
         return None
@@ -1549,8 +1692,7 @@ def _read_journal_evidence(target_p: Path, part_offset: int,
     return build_timeline(records)
 
 
-def _merge_journal_evidence(timeline: list, names_seen: dict[str, int],
-                            warnings: list[str]) -> list[dict]:
+def _merge_journal_evidence(timeline: list, names_seen: dict[str, int], warnings: list[str]) -> list[dict]:
     """Record which journal names are new, and how many corroborated the MFT.
 
     A name that appears both in a deleted MFT record and in the journal is
@@ -1566,30 +1708,34 @@ def _merge_journal_evidence(timeline: list, names_seen: dict[str, int],
             continue
         corroborated = entry.name in names_seen
         names_seen.setdefault(entry.name, entry.event_count)
-        rows.append({
-            "name": entry.name,
-            "mft_entry": entry.mft_entry,
-            "parent_mft_entry": entry.parent_mft_entry,
-            "created_at": entry.created_at,
-            "deleted_at": entry.deleted_at,
-            "was_deleted": entry.was_deleted,
-            "renamed_from": entry.renamed_from,
-            "is_directory": entry.is_directory,
-            "event_count": entry.event_count,
-            "reasons": entry.reasons,
-            "last_usn": entry.last_usn,
-            "corroborated_by_mft": corroborated,
-            "content_recovered": False,
-        })
+        rows.append(
+            {
+                "name": entry.name,
+                "mft_entry": entry.mft_entry,
+                "parent_mft_entry": entry.parent_mft_entry,
+                "created_at": entry.created_at,
+                "deleted_at": entry.deleted_at,
+                "was_deleted": entry.was_deleted,
+                "renamed_from": entry.renamed_from,
+                "is_directory": entry.is_directory,
+                "event_count": entry.event_count,
+                "reasons": entry.reasons,
+                "last_usn": entry.last_usn,
+                "corroborated_by_mft": corroborated,
+                "content_recovered": False,
+            }
+        )
     if rows:
         matched = sum(1 for r in rows if r["corroborated_by_mft"])
         only = len(rows) - matched
-        detail = (f"{matched} corroborated by an MFT record" if matched else "")
+        detail = f"{matched} corroborated by an MFT record" if matched else ""
         if only:
-            detail += (f"; {only} named by the journal alone" if detail else
-                       f"{only} named by the journal alone")
+            detail += (
+                f"; {only} named by the journal alone" if detail else f"{only} named by the journal alone"
+            )
         warnings.append(
             f"NTFS change journal: {len(rows)} deleted name(s) recovered, {detail}. "
             f"These are names and times only -- the content of a journal-named file "
-            f"is not itself in the journal, so no bytes are recovered from it.")
+            f"is not itself in the journal, so no bytes are recovered from it."
+        )
     return rows

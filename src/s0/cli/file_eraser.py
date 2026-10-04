@@ -92,6 +92,7 @@ def detect_cow_and_filesystem(path_str: str) -> tuple[str, str | None]:
         try:
             drive_root = os.path.splitdrive(os.path.abspath(path_str))[0] + "\\"
             import ctypes
+
             vol_name = ctypes.create_unicode_buffer(260)
             fs_buf = ctypes.create_unicode_buffer(260)
             if ctypes.windll.kernel32.GetVolumeInformationW(
@@ -160,6 +161,7 @@ def platform_sync(fd: int) -> bool:
         # Apple macOS: F_FULLFSYNC (fcntl command 51) flushes drive hardware cache
         try:
             import fcntl
+
             fcntl.fcntl(fd, 51, 0)
             return True
         except Exception:
@@ -168,6 +170,7 @@ def platform_sync(fd: int) -> bool:
         try:
             import ctypes
             import msvcrt
+
             handle = msvcrt.get_osfhandle(fd)
             if ctypes.windll.kernel32.FlushFileBuffers(handle):
                 return True
@@ -201,6 +204,7 @@ def platform_cleanse_attributes(path_str: str, fd: int | None = None) -> None:
     elif sys.platform == "win32":
         try:
             import ctypes
+
             FILE_ATTRIBUTE_NORMAL = 0x80
             ctypes.windll.kernel32.SetFileAttributesW(path_str, FILE_ATTRIBUTE_NORMAL)
         except Exception:
@@ -243,6 +247,7 @@ def get_file_extents(file_path: str) -> list[dict]:
         try:
             import fcntl
             import struct
+
             F_LOG2PHYS = 49
             with open(file_path, "rb") as f:
                 buf = bytearray(24)
@@ -319,9 +324,11 @@ def erase_single_file(
             passes=passes,
             pattern=pattern,
             status="failure",
-            error=(f"Invalid pass count {passes!r}: at least one pass is required. "
-                   f"Zero passes would truncate the file without overwriting it, "
-                   f"destroying the original data while claiming to write nothing."),
+            error=(
+                f"Invalid pass count {passes!r}: at least one pass is required. "
+                f"Zero passes would truncate the file without overwriting it, "
+                f"destroying the original data while claiming to write nothing."
+            ),
         )
 
     raw_path = Path(file_path)
@@ -358,6 +365,7 @@ def erase_single_file(
 
     # Open with O_NOFOLLOW to prevent TOCTOU symlink substitution
     import errno
+
     flags = os.O_RDWR
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -487,7 +495,9 @@ def erase_single_file(
                         elif pattern == "random":
                             buf = secrets.token_bytes(to_write)
                         else:
-                            raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
+                            raise ValueError(
+                                f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'"
+                            )
 
                         f.write(buf)
                         remaining -= to_write
@@ -578,8 +588,10 @@ def erase_single_file(
                 passes=passes,
                 pattern=pattern,
                 status="failure",
-                error=(f"Overwritten data still present at {leftover} after an "
-                       f"unlinking attempt; the file was zeroed but not removed"),
+                error=(
+                    f"Overwritten data still present at {leftover} after an "
+                    f"unlinking attempt; the file was zeroed but not removed"
+                ),
                 cow_warning=cow_warning,
                 extents_count=len(extents),
                 filesystem=fs_name,
@@ -596,10 +608,12 @@ def erase_single_file(
                 passes=passes,
                 pattern=pattern,
                 status="failure",
-                error=("; ".join(sorted(set(sync_failures)))
-                       + " -- the overwrite may not have reached the medium; "
-                         "do not rely on this erase until the device has been "
-                         "power-cycled and re-checked"),
+                error=(
+                    "; ".join(sorted(set(sync_failures)))
+                    + " -- the overwrite may not have reached the medium; "
+                    "do not rely on this erase until the device has been "
+                    "power-cycled and re-checked"
+                ),
                 metadata_cleansed=True,
                 cow_warning=cow_warning,
                 extents_count=len(extents),
@@ -676,10 +690,17 @@ def erase_folder(
             try:
                 st = os.lstat(file_p)
             except OSError as exc:
-                results.append(FileEraseResult(
-                    path=file_p, original_size=0, bytes_overwritten=0, passes=passes,
-                    pattern=pattern, status="failure",
-                    error=f"could not stat before erasing: {exc}"))
+                results.append(
+                    FileEraseResult(
+                        path=file_p,
+                        original_size=0,
+                        bytes_overwritten=0,
+                        passes=passes,
+                        pattern=pattern,
+                        status="failure",
+                        error=f"could not stat before erasing: {exc}",
+                    )
+                )
                 continue
             if not stat.S_ISREG(st.st_mode):
                 skipped_special.append(file_p)
@@ -732,15 +753,22 @@ def erase_folder(
         # should know that before relying on the result. Their eventual fate depends
         # on whether the parent removal succeeded, so this reports them as *not
         # erased* rather than claiming they are still there.
-        results.append(FileEraseResult(
-            path=str(root_dir),
-            original_size=0, bytes_overwritten=0, passes=passes, pattern=pattern,
-            status="failure",
-            error=(f"{len(skipped_special)} non-regular file(s) were NOT erased: "
-                   f"opening a FIFO or device node can block indefinitely and "
-                   f"overwriting one has no meaning. {', '.join(skipped_special[:5])}"
-                   + (" ..." if len(skipped_special) > 5 else "")),
-        ))
+        results.append(
+            FileEraseResult(
+                path=str(root_dir),
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=(
+                    f"{len(skipped_special)} non-regular file(s) were NOT erased: "
+                    f"opening a FIFO or device node can block indefinitely and "
+                    f"overwriting one has no meaning. {', '.join(skipped_special[:5])}"
+                    + (" ..." if len(skipped_special) > 5 else "")
+                ),
+            )
+        )
 
     return results
 
@@ -834,9 +862,10 @@ def erase_batch(
     else:
         kind = "file"
     storage_type = "folder_tree" if kind == "folder_tree" else "file"
-    device_id = "batch-files-" + hashlib.sha256(
-        "\0".join(str(p) for p in target_paths).encode("utf-8", "replace")
-    ).hexdigest()[:16]
+    device_id = (
+        "batch-files-"
+        + hashlib.sha256("\0".join(str(p) for p in target_paths).encode("utf-8", "replace")).hexdigest()[:16]
+    )
 
     warnings = [
         "File-level sanitization overwrites allocated filesystem clusters and scrubs metadata.",
@@ -854,11 +883,16 @@ def erase_batch(
         # the target list it is indistinguishable from a real one.
         warnings.append(
             "no files were erased, so no certificate was issued: the target set was "
-            "empty or contained only empty directories.")
+            "empty or contained only empty directories."
+        )
         return BatchEraseSummary(
-            total_files=0, successful_files=0, failed_files=0,
-            total_bytes_processed=0, results=all_results,
-            certificate=None, warnings=warnings,
+            total_files=0,
+            successful_files=0,
+            failed_files=0,
+            total_bytes_processed=0,
+            results=all_results,
+            certificate=None,
+            warnings=warnings,
         )
 
     # Build signed certificate
@@ -894,41 +928,42 @@ def erase_batch(
                 end_time=end_time,
                 bytes_processed=total_bytes,
                 capacity_bytes=total_bytes,
-
                 passes=passes,
                 pattern=pattern,
                 status="success" if failures == 0 else ("partial" if successes > 0 else "failure"),
                 errors=[r.error for r in all_results if r.error] or None,
-verification={
-                      # No content readback happens on the file path: the
-                      # checks below establish that the name is gone and that
-                      # the overwrite did not error, not that the bytes on the
-                      # medium match the pattern. Claiming a readback here
-                      # would put an unsupported assertion on a compliance
-                      # document, so the field is null rather than true.
-                      "method": "post_erase_absence_only",
-                      "samples_checked": total_files,
-                      "sample_bytes_each": 0,
-                      "all_samples_match_wipe_pattern": None,
-                      "planted_pattern_hits_after": failures,
-                      # Not a statistical sample, so no residual bound
-                      # applies; the schema's fields are used to say that
-                      # explicitly rather than left absent, because an
-                      # absent bound reads to a certificate consumer as
-                      # "no bound was needed" rather than "this check is of
-                      # a different kind".
-                      "population_blocks": total_files,
-                      "confidence_percent": 100,
-                      "attestation": (
-                          "exhaustive re-stat of every path supplied to this "
-                          "operation; this is not a statistical sample and "
-                          "carries no residual bound"),
-                      "sample_strategy": (
-                          "exhaustive_over_supplied_paths; note that the "
-                          "supplied list cannot itself be verified complete, "
-                          "so this attests absence for the paths given and "
-                          "not for the volume"),
-                  },
+                verification={
+                    # No content readback happens on the file path: the
+                    # checks below establish that the name is gone and that
+                    # the overwrite did not error, not that the bytes on the
+                    # medium match the pattern. Claiming a readback here
+                    # would put an unsupported assertion on a compliance
+                    # document, so the field is null rather than true.
+                    "method": "post_erase_absence_only",
+                    "samples_checked": total_files,
+                    "sample_bytes_each": 0,
+                    "all_samples_match_wipe_pattern": None,
+                    "planted_pattern_hits_after": failures,
+                    # Not a statistical sample, so no residual bound
+                    # applies; the schema's fields are used to say that
+                    # explicitly rather than left absent, because an
+                    # absent bound reads to a certificate consumer as
+                    # "no bound was needed" rather than "this check is of
+                    # a different kind".
+                    "population_blocks": total_files,
+                    "confidence_percent": 100,
+                    "attestation": (
+                        "exhaustive re-stat of every path supplied to this "
+                        "operation; this is not a statistical sample and "
+                        "carries no residual bound"
+                    ),
+                    "sample_strategy": (
+                        "exhaustive_over_supplied_paths; note that the "
+                        "supplied list cannot itself be verified complete, "
+                        "so this attests absence for the paths given and "
+                        "not for the volume"
+                    ),
+                },
                 notes=[
                     f"Batch sanitized {successes}/{total_files} files, "
                     f"{total_bytes:,} B of content destroyed.",
@@ -949,10 +984,10 @@ verification={
             warnings.append(f"Certificate generation/signing failed: {e}")
             cert = None
     else:
-            warnings.append(
-                f"WARNING: Signing key not found at '{key_file}'. "
-                "No compliance certificate or cryptographic audit record was generated."
-            )
+        warnings.append(
+            f"WARNING: Signing key not found at '{key_file}'. "
+            "No compliance certificate or cryptographic audit record was generated."
+        )
 
     return BatchEraseSummary(
         total_files=total_files,

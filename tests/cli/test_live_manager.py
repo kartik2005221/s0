@@ -29,8 +29,8 @@ def _write_bootable_iso(path: Path, size: int = 101 * 1024 * 1024) -> Path:
     boot-record type, then truncated to size, so no 101 MB is actually written.
     """
     area = bytearray(0x1000)
-    area[1:6] = b"CD001"          # primary volume descriptor at 0x8001
-    area[7] = 0x88                 # boot record present
+    area[1:6] = b"CD001"  # primary volume descriptor at 0x8001
+    area[7] = 0x88  # boot record present
     area[0x821:0x82D] = b"EL TORITO SPEC"
     with open(path, "wb") as fh:
         fh.write(b"\x00" * 0x8000)
@@ -95,12 +95,18 @@ def test_flash_dry_run_never_writes(tmp_path):
         return real_open(path, mode, *a, **kw)
 
     args = argparse.Namespace(
-        target="/dev/sdz", iso=str(iso), yes=True, force=True, dry_run=True,
+        target="/dev/sdz",
+        iso=str(iso),
+        yes=True,
+        force=True,
+        dry_run=True,
     )
-    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]), \
-         patch("builtins.open", side_effect=exploding_open), \
-         patch("sys.platform", "linux"), \
-         patch("os.geteuid", return_value=0):
+    with (
+        patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]),
+        patch("builtins.open", side_effect=exploding_open),
+        patch("sys.platform", "linux"),
+        patch("os.geteuid", return_value=0),
+    ):
         assert cmd_live_flash(args) == 0
 
 
@@ -114,11 +120,17 @@ def test_flash_force_still_requires_a_block_device(tmp_path):
     iso = tmp_path / "fake.iso"
     _write_bootable_iso(iso)
     args = argparse.Namespace(
-        target=str(missing), iso=str(iso), yes=True, force=True, dry_run=False,
+        target=str(missing),
+        iso=str(iso),
+        yes=True,
+        force=True,
+        dry_run=False,
     )
-    with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]), \
-         patch("sys.platform", "linux"), \
-         patch("os.geteuid", return_value=0):
+    with (
+        patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]),
+        patch("sys.platform", "linux"),
+        patch("os.geteuid", return_value=0),
+    ):
         assert cmd_live_flash(args) == 2
 
 
@@ -184,8 +196,10 @@ def test_cmd_live_download_redirect_decline_exits_nonzero(tmp_path, monkeypatch,
         ],
     }
 
-    with patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest), \
-         patch("urllib.request.urlopen") as mock_url:
+    with (
+        patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest),
+        patch("urllib.request.urlopen") as mock_url,
+    ):
         mock_resp = MagicMock()
         mock_resp.read.return_value = json.dumps([rel_latest, rel_older]).encode("utf-8")
         mock_url.return_value.__enter__.return_value = mock_resp
@@ -217,8 +231,10 @@ def test_cmd_live_download_non_interactive_fails_without_allow_older(tmp_path, m
         ],
     }
 
-    with patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest), \
-         patch("urllib.request.urlopen") as mock_url:
+    with (
+        patch("s0.live.live_manager._fetch_github_release", return_value=rel_latest),
+        patch("urllib.request.urlopen") as mock_url,
+    ):
         mock_resp = MagicMock()
         mock_resp.read.return_value = json.dumps([rel_latest, rel_older]).encode("utf-8")
         mock_url.return_value.__enter__.return_value = mock_resp
@@ -276,8 +292,10 @@ def test_cmd_live_download_redirect_accept_interactive(tmp_path, monkeypatch, ca
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
-         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+    with (
+        patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release),
+        patch("urllib.request.urlopen", side_effect=fake_urlopen),
+    ):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
         assert rc == 0
@@ -334,8 +352,10 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
 
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
 
-    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
-         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+    with (
+        patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release),
+        patch("urllib.request.urlopen", side_effect=fake_urlopen),
+    ):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=True)
         rc = cmd_live_download(args)
         assert rc == 0
@@ -345,7 +365,10 @@ def test_cmd_live_download_non_interactive_with_allow_older(tmp_path, monkeypatc
         assert target_file.read_bytes() == iso_bytes
 
         captured = capsys.readouterr()
-        assert "Non-interactive mode: proceeding with fallback release v2.4.0 (--allow-older specified)." in captured.out
+        assert (
+            "Non-interactive mode: proceeding with fallback release v2.4.0 (--allow-older specified)."
+            in captured.out
+        )
         assert "Integrity Verified: SHA-256 matches official release" in captured.out
 
 
@@ -390,8 +413,10 @@ def test_cmd_live_download_older_release_checksum_verification_mismatch(tmp_path
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    with patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release), \
-         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+    with (
+        patch("s0.live.live_manager._fetch_github_release", side_effect=fake_fetch_release),
+        patch("urllib.request.urlopen", side_effect=fake_urlopen),
+    ):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
         assert rc == 1
@@ -442,8 +467,10 @@ def test_cmd_live_download_does_not_leak_auth_token_on_asset_download(tmp_path, 
             return io.BytesIO(iso_bytes)
         return io.BytesIO(b"")
 
-    with patch("s0.live.live_manager._fetch_github_release", return_value=rel), \
-         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+    with (
+        patch("s0.live.live_manager._fetch_github_release", return_value=rel),
+        patch("urllib.request.urlopen", side_effect=fake_urlopen),
+    ):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
         assert rc == 0
@@ -475,8 +502,10 @@ def test_cmd_live_download_missing_checksum_fails_closed(tmp_path, monkeypatch, 
     def fake_urlopen(req, *args, **kwargs):
         return io.BytesIO(iso_bytes)
 
-    with patch("s0.live.live_manager._fetch_github_release", return_value=rel), \
-         patch("urllib.request.urlopen", side_effect=fake_urlopen):
+    with (
+        patch("s0.live.live_manager._fetch_github_release", return_value=rel),
+        patch("urllib.request.urlopen", side_effect=fake_urlopen),
+    ):
         args = argparse.Namespace(version="latest", out_dir=str(tmp_path), allow_older=False)
         rc = cmd_live_download(args)
         assert rc == 1
@@ -486,4 +515,3 @@ def test_cmd_live_download_missing_checksum_fails_closed(tmp_path, monkeypatch, 
 
         captured = capsys.readouterr()
         assert "No official checksum found to verify against" in captured.err
-

@@ -46,12 +46,31 @@ from s0.terminal import (  # re-exported so callers need one import
 )
 
 __all__ = [
-    "EX_OK", "EX_FAILURE", "EX_USAGE", "EX_DATAERR", "EX_NOINPUT",
-    "EX_UNAVAILABLE", "EX_SOFTWARE", "EX_CANTCREAT", "EX_IOERR",
-    "EX_TEMPFAIL", "EX_NOPERM", "EX_CONFIG", "EX_INTERRUPTED",
-    "OutputPolicy", "Column", "render_table", "human_bytes", "human_int",
-    "plural", "envelope", "artifact", "UI", "add_global_arguments",
-    "policy_from_args", "GLOBAL_HELP",
+    "EX_OK",
+    "EX_FAILURE",
+    "EX_USAGE",
+    "EX_DATAERR",
+    "EX_NOINPUT",
+    "EX_UNAVAILABLE",
+    "EX_SOFTWARE",
+    "EX_CANTCREAT",
+    "EX_IOERR",
+    "EX_TEMPFAIL",
+    "EX_NOPERM",
+    "EX_CONFIG",
+    "EX_INTERRUPTED",
+    "OutputPolicy",
+    "Column",
+    "render_table",
+    "human_bytes",
+    "human_int",
+    "plural",
+    "envelope",
+    "artifact",
+    "UI",
+    "add_global_arguments",
+    "policy_from_args",
+    "GLOBAL_HELP",
 ]
 
 GLOBAL_HELP = "output and execution controls (available on every s0 subcommand)"
@@ -68,33 +87,51 @@ def add_global_arguments(parser) -> None:
     existing = {opt for action in parser._actions for opt in action.option_strings}
 
     group = parser.add_argument_group("output")
+
     def add(group, *flags, **kwargs):
         if any(f in existing for f in flags):
             return
         group.add_argument(*flags, **kwargs)
         existing.update(flags)
 
-    add(group, "--format", choices=("text", "json", "csv"), default=None,
+    add(
+        group,
+        "--format",
+        choices=("text", "json", "csv"),
+        default=None,
         metavar="{text,json,csv}",
         help="output format. 'text' is for humans and is written to stderr, "
-             "tables and all; stdout stays empty. Use 'json' or 'csv' to get "
-             "anything on stdout that a script can read")
-    add(group, "--json", action="store_true",
-        help="shorthand for --format json")
-    add(group, "--quiet", "-q", action="store_true",
-        help="suppress progress bars and banners; results are unaffected")
-    add(group, "--verbose", "-v", action="count", default=0,
-        help="increase diagnostic detail on stderr (-v info, -vv debug)")
-    add(group, "--color", choices=("auto", "always", "never"), default=None,
-        help="colour output; 'auto' honours NO_COLOR and TTY detection")
-    add(group, "--no-color", action="store_true",
-        help="disable colour output (same as --color never)")
+        "tables and all; stdout stays empty. Use 'json' or 'csv' to get "
+        "anything on stdout that a script can read",
+    )
+    add(group, "--json", action="store_true", help="shorthand for --format json")
+    add(
+        group,
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="suppress progress bars and banners; results are unaffected",
+    )
+    add(
+        group,
+        "--verbose",
+        "-v",
+        action="count",
+        default=0,
+        help="increase diagnostic detail on stderr (-v info, -vv debug)",
+    )
+    add(
+        group,
+        "--color",
+        choices=("auto", "always", "never"),
+        default=None,
+        help="colour output; 'auto' honours NO_COLOR and TTY detection",
+    )
+    add(group, "--no-color", action="store_true", help="disable colour output (same as --color never)")
 
     group2 = parser.add_argument_group("execution")
-    add(group2, "--yes", "-y", action="store_true",
-        help="assume yes for destructive confirmations")
-    add(group2, "--dry-run", action="store_true",
-        help="plan only; never write to the target")
+    add(group2, "--yes", "-y", action="store_true", help="assume yes for destructive confirmations")
+    add(group2, "--dry-run", action="store_true", help="plan only; never write to the target")
 
 
 def policy_from_args(args, *, stdout=None, stderr=None) -> OutputPolicy:
@@ -169,13 +206,13 @@ class UI:
     def rule(self) -> None:
         self.policy.err()
 
-    def table(self, columns: Sequence[Column], rows: Sequence[Sequence[Any]],
-              max_rows: int = 0) -> None:
+    def table(self, columns: Sequence[Column], rows: Sequence[Sequence[Any]], max_rows: int = 0) -> None:
         render_table(self.policy, columns, rows, max_rows=max_rows)
 
     def progress(self, *args, **kwargs):
         """A progress bar that is silent off-TTY and under --quiet/--format json."""
         from s0.progress import ProgressBar
+
         disabled = self.policy.quiet or self.policy.fmt != "text"
         kwargs.setdefault("stream", self.policy.err_stream)
         kwargs.setdefault("unicode", self.policy.use_unicode)
@@ -190,10 +227,15 @@ class UI:
     def envelope(self, **kwargs) -> dict[str, Any]:
         return envelope(self.command, **kwargs)
 
-    def finish(self, *, result: Any, status: str = "success",
-               artifacts: list[dict[str, Any]] | None = None,
-               errors: list[dict[str, Any]] | None = None,
-               **kwargs) -> None:
+    def finish(
+        self,
+        *,
+        result: Any,
+        status: str = "success",
+        artifacts: list[dict[str, Any]] | None = None,
+        errors: list[dict[str, Any]] | None = None,
+        **kwargs,
+    ) -> None:
         """Emit the machine-readable envelope when a structured format is asked for.
 
         `csv` is rendered from the same `result` payload as `json`, generically,
@@ -204,12 +246,18 @@ class UI:
         nothing, and reports success is worse than a flag that is absent.
         """
         if self.policy.fmt == "json":
-            self.policy.json(self.envelope(
-                result=result, status=status, artifacts=artifacts,
-                errors=errors, warnings=self._warnings, **kwargs))
+            self.policy.json(
+                self.envelope(
+                    result=result,
+                    status=status,
+                    artifacts=artifacts,
+                    errors=errors,
+                    warnings=self._warnings,
+                    **kwargs,
+                )
+            )
         elif self.policy.fmt == "csv":
             write_csv_rows(result, stream=sys.stdout)
-
 
 
 def _csv_cell(value: Any) -> str:
@@ -262,7 +310,8 @@ def write_csv_rows(result: Any, *, stream=None) -> None:
         # record and carry the sibling scalars down as extra columns. Otherwise the
         # entire ledger collapses into one unreadable JSON cell.
         record_lists = [
-            (k, v) for k, v in result.items()
+            (k, v)
+            for k, v in result.items()
             if isinstance(v, list) and v and all(isinstance(r, dict) for r in v)
         ]
         if len(record_lists) == 1:
@@ -273,7 +322,7 @@ def write_csv_rows(result: Any, *, stream=None) -> None:
             writer.writerow(columns)
             for row in records:
                 writer.writerow(
-                    [_csv_cell(row.get(c)) for c in columns[:len(records[0])]]
+                    [_csv_cell(row.get(c)) for c in columns[: len(records[0])]]
                     + [_csv_cell(result[s]) for s in siblings]
                 )
             return

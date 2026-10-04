@@ -101,6 +101,7 @@ def test_mac_cli_main_entrypoint(monkeypatch, tmp_path: Path):
 def test_mac_cli_fullfsync_fallback():
     """Verify macos_full_fsync falls back to os.fsync on non-Darwin."""
     import tempfile
+
     with tempfile.NamedTemporaryFile() as tmp:
         # Should not raise even on Linux (falls back to os.fsync)
         macos_full_fsync(tmp.fileno())
@@ -152,7 +153,9 @@ def test_mac_cli_wipe_partition_success(tmp_path: Path):
     assert cert is not None
     assert cert["tool"]["platform"] == "macos"
     assert cert["signature"]["algorithm"] == "Ed25519"
-    pub_key = core_crypto.load_public_pem(REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
+    pub_key = core_crypto.load_public_pem(
+        REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
+    )
     ok, reason = cert_mod.verify_certificate(cert, [pub_key])
     assert ok, reason
 
@@ -251,12 +254,16 @@ def test_mac_cli_subcommand_dispatch(tmp_path: Path):
     out_dir = tmp_path / "sub_mac_out"
 
     # Test invoking with 'wipe' subcommand directly via mac_main(argv)
-    code = mac_main([
-        "wipe",
-        "--targets", str(target),
-        "--out-dir", str(out_dir),
-        "--no-pdf",
-    ])
+    code = mac_main(
+        [
+            "wipe",
+            "--targets",
+            str(target),
+            "--out-dir",
+            str(out_dir),
+            "--no-pdf",
+        ]
+    )
     assert code == 0
     assert not target.exists()
 
@@ -272,11 +279,16 @@ def test_mac_cli_flag_aliases(monkeypatch, tmp_path: Path):
         "argv",
         [
             "s0_eraser.py",
-            "-t", str(target),
-            "-p", "1",
-            "--key", str(key_file),
-            "--operator", "op-test-mac",
-            "--out-dir", str(out_dir),
+            "-t",
+            str(target),
+            "-p",
+            "1",
+            "--key",
+            str(key_file),
+            "--operator",
+            "op-test-mac",
+            "--out-dir",
+            str(out_dir),
             "--no-pdf",
         ],
     )
@@ -361,7 +373,9 @@ def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: None)
 
-    fake_mount = "/dev/disk5s1s1 on / (apfs, local, read-only)\n/dev/disk5s2 on /System/Volumes/Data (apfs, local)\n"
+    fake_mount = (
+        "/dev/disk5s1s1 on / (apfs, local, read-only)\n/dev/disk5s2 on /System/Volumes/Data (apfs, local)\n"
+    )
     monkeypatch.setattr(
         subprocess,
         "run",
@@ -424,6 +438,3 @@ def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
 
     # An unrelated external USB disk (e.g. disk4) passes
     check_macos_wipe_safety("/dev/disk4", force=False)
-
-
-

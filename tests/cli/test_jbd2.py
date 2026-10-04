@@ -17,27 +17,35 @@ from s0.carve import jbd2
 # `mkfs.ext4 -b 1024`. Taken verbatim; the UUID differs per image and is
 # irrelevant here.
 REAL_SUPERBLOCK = bytes.fromhex(
-    "c03b3998"          # 0x00 h_magic
-    "00000004"          # 0x04 h_blocktype = JBD2_SUPERBLOCK_V2
-    "00000000"          # 0x08 h_sequence
-    "00000400"          # 0x0C s_blocksize = 1024
-    "00001000"          # 0x10 s_maxlen = 4096
-    "00000001"          # 0x14 s_first
-    "00000001"          # 0x18 s_sequence
-    "00000000"          # 0x1C s_start
-    "00000000"          # 0x20 s_errno
-    "00000000"          # 0x24 s_feature_compat
-    "00000000"          # 0x28 s_feature_incompat
-    "00000000"          # 0x2C s_feature_ro_compat
-    "647e02df57f4448ba59190257ed79ff9"   # 0x30 s_uuid
-    "00000001"          # 0x40 s_nr_users
+    "c03b3998"  # 0x00 h_magic
+    "00000004"  # 0x04 h_blocktype = JBD2_SUPERBLOCK_V2
+    "00000000"  # 0x08 h_sequence
+    "00000400"  # 0x0C s_blocksize = 1024
+    "00001000"  # 0x10 s_maxlen = 4096
+    "00000001"  # 0x14 s_first
+    "00000001"  # 0x18 s_sequence
+    "00000000"  # 0x1C s_start
+    "00000000"  # 0x20 s_errno
+    "00000000"  # 0x24 s_feature_compat
+    "00000000"  # 0x28 s_feature_incompat
+    "00000000"  # 0x2C s_feature_ro_compat
+    "647e02df57f4448ba59190257ed79ff9"  # 0x30 s_uuid
+    "00000001"  # 0x40 s_nr_users
 )
 
 
-def _superblock(blocksize: int = 1024, maxlen: int = 4096, first: int = 1,
-                sequence: int = 1, start: int = 0, blocktype: int = 4,
-                magic: int = jbd2.JBD2_MAGIC, incompat: int = 0,
-                uuid: bytes = b"\x11" * 16, nr_users: int = 1) -> bytes:
+def _superblock(
+    blocksize: int = 1024,
+    maxlen: int = 4096,
+    first: int = 1,
+    sequence: int = 1,
+    start: int = 0,
+    blocktype: int = 4,
+    magic: int = jbd2.JBD2_MAGIC,
+    incompat: int = 0,
+    uuid: bytes = b"\x11" * 16,
+    nr_users: int = 1,
+) -> bytes:
     out = bytearray(1024)
     struct.pack_into(">III", out, 0x00, magic, blocktype, 0)
     struct.pack_into(">III", out, 0x0C, blocksize, maxlen, first)
@@ -133,7 +141,7 @@ def test_64bit_and_csum_features_are_read_from_the_right_bits():
     sb = jbd2.parse_jbd2_superblock(_superblock(incompat=0x10))
     assert sb.has_csum_seed and not sb.has_64bit
     sb = jbd2.parse_jbd2_superblock(_superblock(incompat=0x01))
-    assert not sb.has_64bit and not sb.has_csum_seed     # REVOKE
+    assert not sb.has_64bit and not sb.has_csum_seed  # REVOKE
 
 
 # --------------------------------------------------------------------------- #
@@ -141,8 +149,7 @@ def test_64bit_and_csum_features_are_read_from_the_right_bits():
 # --------------------------------------------------------------------------- #
 
 
-def _journal_block(blocktype: int, sequence: int, payload: bytes,
-                   blocksize: int = 1024) -> bytes:
+def _journal_block(blocktype: int, sequence: int, payload: bytes, blocksize: int = 1024) -> bytes:
     out = bytearray(blocksize)
     struct.pack_into(">III", out, 0, jbd2.JBD2_MAGIC, blocktype, sequence)
     out[12 : 12 + len(payload)] = payload
@@ -179,8 +186,9 @@ def test_empty_journal_yields_no_blocks():
 # --------------------------------------------------------------------------- #
 
 
-def _dirent(inode: int, name: str, file_type: int = jbd2.EXT4_DIR_FT_REG,
-            rec_len: int | None = None) -> bytes:
+def _dirent(
+    inode: int, name: str, file_type: int = jbd2.EXT4_DIR_FT_REG, rec_len: int | None = None
+) -> bytes:
     raw = name.encode("utf-8")
     length = rec_len if rec_len is not None else (8 + len(raw) + 3) & ~3
     out = bytearray(length)
@@ -241,7 +249,7 @@ def test_a_torn_entry_length_stops_the_walk_without_overrunning():
     """
     good = _dirent(11, "intact.txt")
     bad = bytearray(_dirent(12, "torn.txt"))
-    struct.pack_into("<H", bad, 4, 4096)          # claims 4 KiB in a 1 KiB block
+    struct.pack_into("<H", bad, 4, 4096)  # claims 4 KiB in a 1 KiB block
     entries = jbd2.parse_ext4_directory(good + bytes(bad))
     assert [e.name for e in entries] == ["intact.txt"]
 
@@ -254,7 +262,7 @@ def test_a_zero_rec_len_terminates():
 
 def test_a_name_length_past_the_record_is_refused():
     block = bytearray(_dirent(11, "a.txt"))
-    struct.pack_into("<B", block, 6, 200)         # name_len larger than rec_len
+    struct.pack_into("<B", block, 6, 200)  # name_len larger than rec_len
     assert jbd2.parse_ext4_directory(bytes(block)) == []
 
 
@@ -308,6 +316,7 @@ def test_crc32c_matches_the_standard_check_value():
 
 def test_crc32c_differs_from_ieee_crc32():
     import zlib
+
     data = b"the quick brown fox"
     # IEEE CRC-32 of the same bytes is 0x91c102ca. Reading a Castagnoli check
     # with the IEEE polynomial -- the obvious mistake when implementing this
@@ -321,7 +330,7 @@ def test_a_block_whose_checksum_does_not_verify_is_marked():
     # A checksum is only present when the superblock advertises CSUM_V3.
     sb = jbd2.parse_jbd2_superblock(_superblock(incompat=0x10))
     block = bytearray(_journal_block(jbd2.JBD2_DESCRIPTOR_BLOCK, 1, b"payload"))
-    struct.pack_into(">I", block, len(block) - 4, 0xDEADBEEF)   # wrong on purpose
+    struct.pack_into(">I", block, len(block) - 4, 0xDEADBEEF)  # wrong on purpose
     parsed = jbd2.read_journal_blocks(bytes(block), sb)[0]
     assert parsed.checksum_ok is False
 

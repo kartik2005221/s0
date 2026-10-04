@@ -141,7 +141,9 @@ def verify_audit_ledger(
             details=["Database contains 0 records."],
         )
 
-    effective_keys = list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
+    effective_keys = (
+        list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
+    )
 
     # Fail closed. The block hash is plain SHA-256 over fields anyone can
     # recompute, so the per-block and per-certificate signatures are the *only*
@@ -165,8 +167,7 @@ def verify_audit_ledger(
                 f"in {Path.home() / '.s0' / 'keys'}."
             ),
             details=[
-                f"Trusted key set is empty ({len(blocks)} block(s) read, "
-                "0 signatures checked).",
+                f"Trusted key set is empty ({len(blocks)} block(s) read, 0 signatures checked).",
                 "This is a refusal, not a pass. Do not treat this ledger as verified.",
             ],
         )
@@ -249,7 +250,11 @@ def verify_audit_ledger(
 
             if block_sig and block_sig != "GENESIS_BLOCK_SIGNATURE":
                 if effective_keys:
-                    matching_keys = [k for k in effective_keys if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp]
+                    matching_keys = [
+                        k
+                        for k in effective_keys
+                        if not claimed_fp or crypto.public_key_fingerprint(k) == claimed_fp
+                    ]
                     if not matching_keys:
                         return ChainAuditReport(
                             is_valid=False,
@@ -263,7 +268,11 @@ def verify_audit_ledger(
                             ),
                             details=details,
                         )
-                    validating_keys = [k for k in matching_keys if crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig)]
+                    validating_keys = [
+                        k
+                        for k in matching_keys
+                        if crypto.verify_payload(k, b["block_hash"].encode("utf-8"), block_sig)
+                    ]
                     if not validating_keys:
                         return ChainAuditReport(
                             is_valid=False,
@@ -272,7 +281,10 @@ def verify_audit_ledger(
                             reason=f"Block signature tampering detected in block #{block_idx}: block_signature does not match block_hash under trusted public keys.",
                             details=details,
                         )
-                    if any(crypto.is_demo_key(k) for k in validating_keys) or claimed_fp == crypto.DEMO_KEY_FINGERPRINT:
+                    if (
+                        any(crypto.is_demo_key(k) for k in validating_keys)
+                        or claimed_fp == crypto.DEMO_KEY_FINGERPRINT
+                    ):
                         is_demo_signed = True
             elif effective_keys and b["certificate_json"]:
                 try:
@@ -336,7 +348,9 @@ def verify_audit_ledger(
                     details=details,
                 )
 
-        details.append(f"Block #{block_idx} ({b['operation_type']}): Verified (Hash: {b['block_hash'][:16]}...)")
+        details.append(
+            f"Block #{block_idx} ({b['operation_type']}): Verified (Hash: {b['block_hash'][:16]}...)"
+        )
         expected_prev = b["block_hash"]
 
     if checkpoint_tip_index is not None and blocks:
@@ -351,7 +365,11 @@ def verify_audit_ledger(
                 details=details,
                 is_demo_signed=is_demo_signed,
             )
-        if actual_tip_index == checkpoint_tip_index and checkpoint_tip_hash and actual_tip_hash != checkpoint_tip_hash:
+        if (
+            actual_tip_index == checkpoint_tip_index
+            and checkpoint_tip_hash
+            and actual_tip_hash != checkpoint_tip_hash
+        ):
             return ChainAuditReport(
                 is_valid=False,
                 total_blocks_verified=len(blocks),

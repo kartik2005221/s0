@@ -88,9 +88,7 @@ def _canon(value: Any, out: list[str], _depth: int = 0) -> None:
             _canon(value[key], out, _depth=_depth + 1)
         out.append("}")
     else:
-        raise CanonicalizationError(
-            f"type not representable in canonical JSON: {type(value).__name__}"
-        )
+        raise CanonicalizationError(f"type not representable in canonical JSON: {type(value).__name__}")
 
 
 def canonicalize_str(value: Any) -> str:
@@ -99,8 +97,7 @@ def canonicalize_str(value: Any) -> str:
     try:
         _canon(value, out)
     except RecursionError:
-        raise CanonicalizationError(
-            "data structure exceeds maximum recursion depth") from None
+        raise CanonicalizationError("data structure exceeds maximum recursion depth") from None
     return "".join(out)
 
 

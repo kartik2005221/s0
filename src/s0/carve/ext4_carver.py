@@ -202,7 +202,7 @@ def scan_ext4_deleted_inodes(
                         )
                         if extents:
                             data_chunks = []
-                            for (start_block, count) in extents:
+                            for start_block, count in extents:
                                 f.seek(partition_offset + start_block * sb.block_size)
                                 chunk = f.read(count * sb.block_size)
                                 data_chunks.append(chunk)

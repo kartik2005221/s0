@@ -46,8 +46,8 @@ class ImagingOptions:
     destination: str
     block_size: int = 1024 * 1024  # 1 MiB default for optimal sequential I/O
     sector_size: int = 512
-    error_recovery: bool = True     # Replace bad sectors with zeros (ddrescue-style)
-    verify_hashes: bool = True     # Compute live SHA-256 and MD5
+    error_recovery: bool = True  # Replace bad sectors with zeros (ddrescue-style)
+    verify_hashes: bool = True  # Compute live SHA-256 and MD5
     operator: str = "op-forensic"
     organization: str = "Digital Forensics & Incident Response Lab"
     notes: list[str] = field(default_factory=list)
@@ -97,6 +97,7 @@ def _resolve_source_target(path: str) -> tuple[str, int, str]:
         sz = 0
         try:
             from s0.platform.windows.s0_eraser import get_windows_target_size
+
             sz = get_windows_target_size(path)
         except Exception:
             pass
@@ -133,7 +134,6 @@ def acquire_image(
             is_clone = True
     except Exception:
         pass
-
 
     if is_clone:
         # Check safety of destination device
@@ -301,8 +301,7 @@ def acquire_image(
     # breaking the manifest-to-certificate pairing that evidence handling depends on.
     # A short random suffix keeps the name sortable and collision-free.
     manifest_filename = (
-        f"acquisition_manifest_{int(start_time)}_{secrets.token_hex(4)}"
-        f"_{Path(src_path).name}.json"
+        f"acquisition_manifest_{int(start_time)}_{secrets.token_hex(4)}_{Path(src_path).name}.json"
     )
     manifest_file = out_dir_p / manifest_filename
 

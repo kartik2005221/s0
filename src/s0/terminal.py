@@ -37,17 +37,17 @@ from typing import Any
 
 EX_OK = 0
 EX_FAILURE = 1
-EX_USAGE = 64            # bad flags or arguments
-EX_DATAERR = 65          # user-supplied data is malformed
-EX_NOINPUT = 66          # input file missing or unreadable
-EX_UNAVAILABLE = 69      # a required program or service is unavailable
-EX_SOFTWARE = 70         # internal error
-EX_CANTCREAT = 73        # output file cannot be created
-EX_IOERR = 74            # I/O error during the operation
-EX_TEMPFAIL = 75         # temporary failure, retryable (device busy)
-EX_NOPERM = 77           # permission denied
-EX_CONFIG = 78           # configuration error
-EX_INTERRUPTED = 130     # SIGINT
+EX_USAGE = 64  # bad flags or arguments
+EX_DATAERR = 65  # user-supplied data is malformed
+EX_NOINPUT = 66  # input file missing or unreadable
+EX_UNAVAILABLE = 69  # a required program or service is unavailable
+EX_SOFTWARE = 70  # internal error
+EX_CANTCREAT = 73  # output file cannot be created
+EX_IOERR = 74  # I/O error during the operation
+EX_TEMPFAIL = 75  # temporary failure, retryable (device busy)
+EX_NOPERM = 77  # permission denied
+EX_CONFIG = 78  # configuration error
+EX_INTERRUPTED = 130  # SIGINT
 
 EXIT_MEANINGS = {
     EX_OK: "success",
@@ -89,7 +89,12 @@ STATUS_STYLES = {
 
 # Box drawing is only safe on a UTF-8 TTY.
 UNICODE_BOX = {
-    "h": "─", "v": "│", "tl": "┌", "tr": "┐", "bl": "└", "br": "┘",
+    "h": "─",
+    "v": "│",
+    "tl": "┌",
+    "tr": "┐",
+    "bl": "└",
+    "br": "┘",
 }
 ASCII_BOX = {"h": "-", "v": "|", "tl": "+", "tr": "+", "bl": "+", "br": "+"}
 
@@ -101,7 +106,7 @@ class OutputPolicy:
     color: bool | None = None
     quiet: bool = False
     verbose: int = 0
-    fmt: str = "text"                 # text | json | csv
+    fmt: str = "text"  # text | json | csv
     # Streams default to the real stdout/stderr but are injectable so tests and
     # the ISO kiosk can render into a buffer.
     stream: Any | None = None
@@ -247,7 +252,7 @@ class OutputPolicy:
 @dataclass
 class Column:
     title: str
-    align: str = "l"                 # l | r
+    align: str = "l"  # l | r
     max_width: int | None = None
     min_width: int = 0
     # True for identifiers, where an over-long value is cut from the left so the
@@ -256,8 +261,9 @@ class Column:
     tail: bool = True
 
 
-def render_table(policy: OutputPolicy, columns: Sequence[Column],
-                 rows: Iterable[Sequence[Any]], *, max_rows: int = 0) -> None:
+def render_table(
+    policy: OutputPolicy, columns: Sequence[Column], rows: Iterable[Sequence[Any]], *, max_rows: int = 0
+) -> None:
     """Render a table to stderr so it never contaminates piped stdout data.
 
     Numeric columns are right-aligned, long paths are ellipsised from the left
@@ -293,7 +299,8 @@ def render_table(policy: OutputPolicy, columns: Sequence[Column],
 
     header = "  ".join(
         c.title.ljust(w) if c.align == "l" else c.title.rjust(w)
-        for c, w in zip(columns, widths, strict=False))
+        for c, w in zip(columns, widths, strict=False)
+    )
     policy.err("  " + header)
     policy.err("  " + policy.box["h"] * len(header))
     for row in rows:
@@ -328,7 +335,7 @@ def _ellipsise_left(value: str, width: int) -> str:
         return value
     if width <= 3:
         return value[-width:]
-    return "..." + value[-(width - 3):]
+    return "..." + value[-(width - 3) :]
 
 
 def _ellipsise_right(value: str, width: int) -> str:
@@ -336,7 +343,7 @@ def _ellipsise_right(value: str, width: int) -> str:
         return value
     if width <= 3:
         return value[:width]
-    return value[:width - 3] + "..."
+    return value[: width - 3] + "..."
 
 
 def human_bytes(n: int | None, *, binary: bool = True) -> str:
@@ -367,16 +374,21 @@ def plural(n: int, singular: str, plural_form: str | None = None) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def envelope(command: str, *, status: str, result: Any = None,
-             artifacts: list[dict[str, Any]] | None = None,
-             warnings: list[str] | None = None,
-             errors: list[dict[str, Any]] | None = None,
-             audit: dict[str, Any] | None = None,
-             signature: dict[str, Any] | None = None,
-             started_at: str | None = None,
-             finished_at: str | None = None,
-             duration_seconds: int | None = None,
-             args: dict[str, Any] | None = None) -> dict[str, Any]:
+def envelope(
+    command: str,
+    *,
+    status: str,
+    result: Any = None,
+    artifacts: list[dict[str, Any]] | None = None,
+    warnings: list[str] | None = None,
+    errors: list[dict[str, Any]] | None = None,
+    audit: dict[str, Any] | None = None,
+    signature: dict[str, Any] | None = None,
+    started_at: str | None = None,
+    finished_at: str | None = None,
+    duration_seconds: int | None = None,
+    args: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Build the versioned machine-readable envelope every `--json` uses.
 
     Invariants (see docs/architecture/canonical-json.md rule 5): integers only, absolute
@@ -413,9 +425,9 @@ def envelope(command: str, *, status: str, result: Any = None,
     return body
 
 
-def artifact(path, kind: str, sha256: str | None = None,
-             size_bytes: int | None = None) -> dict[str, Any]:
+def artifact(path, kind: str, sha256: str | None = None, size_bytes: int | None = None) -> dict[str, Any]:
     from pathlib import Path
+
     p = Path(path)
     entry: dict[str, Any] = {"kind": kind, "path": str(p.resolve())}
     if sha256:

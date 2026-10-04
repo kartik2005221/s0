@@ -39,8 +39,21 @@ from pathlib import Path
 #: Critical system prefixes. Matched after resolution, so `/etc/../etc/passwd`
 #: and a symlink into `/etc` are both caught.
 SYSTEM_PREFIXES: tuple[str, ...] = (
-    "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64", "/boot",
-    "/proc", "/sys", "/dev", "/root", "/var", "/run", "/srv", "/opt",
+    "/etc",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/lib",
+    "/lib64",
+    "/boot",
+    "/proc",
+    "/sys",
+    "/dev",
+    "/root",
+    "/var",
+    "/run",
+    "/srv",
+    "/opt",
 )
 
 
@@ -97,9 +110,7 @@ def check_path_is_destructive(
     """
     resolved = _resolve(path)
     if resolved is None:
-        raise ProtectedPathError(
-            f"cannot resolve {str(path)!r} to a real path; refusing to act on it"
-        )
+        raise ProtectedPathError(f"cannot resolve {str(path)!r} to a real path; refusing to act on it")
 
     warnings: list[str] = []
 
@@ -113,23 +124,25 @@ def check_path_is_destructive(
 
     if target == "/":
         _refuse_or_warn(
-            warnings, force,
+            warnings,
+            force,
             "Refusing to target the filesystem root '/'.",
             f"proceeding AGAINST THE FILESYSTEM ROOT: {target}",
         )
 
     if _under(resolved, Path.home()) and resolved == _resolve(Path.home()):
         _refuse_or_warn(
-            warnings, force,
-            f"Refusing to target the entire home directory ({target}). "
-            "Target a specific path inside it.",
+            warnings,
+            force,
+            f"Refusing to target the entire home directory ({target}). Target a specific path inside it.",
             f"proceeding AGAINST THE ENTIRE HOME DIRECTORY: {target}",
         )
 
     for prefix in SYSTEM_PREFIXES:
         if _under(resolved, Path(prefix)):
             _refuse_or_warn(
-                warnings, force,
+                warnings,
+                force,
                 f"Refusing to target system path: {target}",
                 f"proceeding AGAINST A SYSTEM PATH: {target}",
             )
@@ -140,7 +153,8 @@ def check_path_is_destructive(
             if _under(resolved, state):
                 label = "s0's own state" if state.name == ".s0" else "the s0 installation tree"
                 _refuse_or_warn(
-                    warnings, force,
+                    warnings,
+                    force,
                     f"Refusing to target {label}: {target}\n"
                     "       This holds the audit ledger and signing material. Wiping it "
                     "destroys the\n"

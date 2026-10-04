@@ -41,7 +41,7 @@ def _declared() -> dict[str, str]:
         out[name.lower()] = dep
     for extra, deps in data["project"]["optional-dependencies"].items():
         if extra == "dev":
-            continue                      # tooling, not shipped
+            continue  # tooling, not shipped
         for dep in deps:
             name = re.split(r"[<>=!~\[ ]", dep, maxsplit=1)[0].strip()
             # An extra may re-declare a runtime dep; the tighter specifier wins
@@ -74,7 +74,8 @@ class TestTheLockfileExistsAndIsComplete:
         for path in (LOCK, LOCK_IN):
             assert path.is_file(), (
                 f"{path.name} is missing. Without it the ISO, container and release "
-                f"builds resolve 'latest at build time'.")
+                f"builds resolve 'latest at build time'."
+            )
 
     def test_every_declared_dependency_is_in_the_lock(self):
         declared = set(_declared())
@@ -82,7 +83,8 @@ class TestTheLockfileExistsAndIsComplete:
         missing = sorted(declared - locked)
         assert not missing, (
             f"pyproject declares {missing} but requirements.lock does not pin them, "
-            f"so they reach a build unpinned")
+            f"so they reach a build unpinned"
+        )
 
     def test_every_direct_dependency_is_in_the_lock_input(self):
         """requirements.in is the hand-maintained input; it must not omit anything."""
@@ -92,7 +94,8 @@ class TestTheLockfileExistsAndIsComplete:
         assert not missing, (
             f"pyproject declares {missing} but requirements.in does not list them. "
             f"pip-compile only resolves what it is given, so an omission here "
-            f"produces a lockfile that looks authoritative and is not.")
+            f"produces a lockfile that looks authoritative and is not."
+        )
 
     def test_the_lock_pins_every_package_with_a_hash(self):
         text = LOCK.read_text()
@@ -101,8 +104,8 @@ class TestTheLockfileExistsAndIsComplete:
         for name in pinned:
             block = text.split(f"{name}==", 1)[1].split("\n\n", 1)[0]
             assert "sha256:" in block, (
-                f"{name} is pinned without a hash, so --require-hashes will not "
-                f"protect it")
+                f"{name} is pinned without a hash, so --require-hashes will not protect it"
+            )
 
 
 class TestTheVersionsAgree:
@@ -121,14 +124,16 @@ class TestTheVersionsAgree:
             got = Version(locked[name])
             assert got >= floor, (
                 f"{name} is locked to {got} but pyproject requires >={floor}. The "
-                f"lock and the declaration disagree, so one of them is stale.")
+                f"lock and the declaration disagree, so one of them is stale."
+            )
 
     def test_every_direct_dependency_has_a_concrete_version(self):
         locked = _locked()
         for name in _declared():
             if name in locked:
                 assert re.match(r"^\d", locked[name]), (
-                    f"{name} is locked to {locked[name]!r}, which is not a version")
+                    f"{name} is locked to {locked[name]!r}, which is not a version"
+                )
 
 
 class TestTheLockIsUsable:
@@ -140,22 +145,33 @@ class TestTheLockIsUsable:
         than failing, because an offline test runner is a normal thing.
         """
         proc = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--require-hashes",
-             "--dry-run", "--quiet", "--disable-pip-version-check",
-             "-r", str(LOCK)],
-            capture_output=True, text=True, cwd=str(tmp_path), timeout=900)
-        if proc.returncode != 0 and ("network" in proc.stderr.lower()
-                                     or "connection" in proc.stderr.lower()):
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--require-hashes",
+                "--dry-run",
+                "--quiet",
+                "--disable-pip-version-check",
+                "-r",
+                str(LOCK),
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+            timeout=900,
+        )
+        if proc.returncode != 0 and ("network" in proc.stderr.lower() or "connection" in proc.stderr.lower()):
             pytest.skip("no package index reachable")
         assert proc.returncode == 0, (
-            f"requirements.lock does not install with --require-hashes:\n"
-            f"{proc.stderr[-1500:]}")
+            f"requirements.lock does not install with --require-hashes:\n{proc.stderr[-1500:]}"
+        )
 
     def test_the_regeneration_script_is_valid_bash(self):
         script = REPO_ROOT / "tools" / "lock_dependencies.sh"
         assert script.is_file()
-        proc = subprocess.run(["bash", "-n", str(script)],
-                              capture_output=True, text=True)
+        proc = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
         assert proc.returncode == 0, proc.stderr
 
     def test_the_regeneration_script_references_both_files(self):
@@ -163,6 +179,6 @@ class TestTheLockIsUsable:
         assert "requirements.in" in text and "requirements.lock" in text
         assert "--generate-hashes" in text, (
             "the regeneration script must produce hashes, or the lock it writes is "
-            "not the lock this test suite is asserting about")
-        assert "--require-hashes" in text, (
-            "the script must verify its own output with --require-hashes")
+            "not the lock this test suite is asserting about"
+        )
+        assert "--require-hashes" in text, "the script must verify its own output with --require-hashes"

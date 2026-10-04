@@ -225,17 +225,17 @@ def _sanity(size: int | None, minimum: int, maximum: int) -> int | None:
 
 _MPEG_BITRATES = {
     # (version_id, layer) -> [kbps indexed by bitrate_index]
-    (3, 3): [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 0],   # V1 L1
-    (3, 2): [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 0],   # V1 L2
-    (3, 1): [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0],   # V1 L3
-    (2, 3): [0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, 0],   # V2 L1
-    (2, 2): [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0],       # V2 L2/L3
+    (3, 3): [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 0],  # V1 L1
+    (3, 2): [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 0],  # V1 L2
+    (3, 1): [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0],  # V1 L3
+    (2, 3): [0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256, 0],  # V2 L1
+    (2, 2): [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0],  # V2 L2/L3
 }
 
 _MPEG_SAMPLERATES = {
-    3: [44100, 48000, 32000, 0],   # MPEG-1
-    2: [22050, 24000, 16000, 0],   # MPEG-2
-    0: [11025, 12000, 8000, 0],    # MPEG-2.5
+    3: [44100, 48000, 32000, 0],  # MPEG-1
+    2: [22050, 24000, 16000, 0],  # MPEG-2
+    0: [11025, 12000, 8000, 0],  # MPEG-2.5
 }
 
 # The sample rate table is keyed by the 2-bit version_id read from the header.
@@ -264,19 +264,19 @@ def parse_mpeg_frame_header(buf: bytes, off: int) -> dict | None:
     channel_mode = (b3 >> 6) & 0x03
     emphasis = b3 & 0x03
 
-    if version_id == 1:            # reserved
+    if version_id == 1:  # reserved
         return None
-    if layer == 0:                 # reserved
+    if layer == 0:  # reserved
         return None
-    if bitrate_idx in (0, 15):     # "free" / invalid
+    if bitrate_idx in (0, 15):  # "free" / invalid
         return None
-    if samplerate_idx == 3:        # reserved
+    if samplerate_idx == 3:  # reserved
         return None
-    if emphasis == 2:              # reserved
+    if emphasis == 2:  # reserved
         return None
 
     ver_key = _MPEG_VERSION_BY_ID[version_id]
-    layer_key = 3 - layer          # header encodes layer 1,2,3 as 1,2,3
+    layer_key = 3 - layer  # header encodes layer 1,2,3 as 1,2,3
     table = _MPEG_BITRATES.get((ver_key, layer_key))
     if not table:
         return None
@@ -304,8 +304,9 @@ def parse_mpeg_frame_header(buf: bytes, off: int) -> dict | None:
     }
 
 
-def _mpeg_sequence(src: ByteSource, start: int, header_len: int, min_frames: int,
-                   max_frames: int, limit: int) -> tuple[int, int, str]:
+def _mpeg_sequence(
+    src: ByteSource, start: int, header_len: int, min_frames: int, max_frames: int, limit: int
+) -> tuple[int, int, str]:
     """Walk consecutive MPEG audio frames from `start`.
 
     Returns ``(frame_count, end_offset, reason)``. The decisive rule is that
@@ -332,7 +333,10 @@ def _mpeg_sequence(src: ByteSource, start: int, header_len: int, min_frames: int
         if first_hdr is None:
             first_hdr = hdr
         elif (hdr["version_id"], hdr["layer"], hdr["samplerate"], hdr["channel_mode"]) != (
-            first_hdr["version_id"], first_hdr["layer"], first_hdr["samplerate"], first_hdr["channel_mode"]
+            first_hdr["version_id"],
+            first_hdr["layer"],
+            first_hdr["samplerate"],
+            first_hdr["channel_mode"],
         ):
             break
         frames += 1
@@ -371,7 +375,7 @@ def _id3v2_size(src: ByteSource, start: int) -> tuple[int, int] | None:
     for i in range(4):
         size = (size << 7) | (head[6 + i] & 0x7F)
     total = 10 + size
-    if flags & 0x10:      # footer present (ID3v2.4)
+    if flags & 0x10:  # footer present (ID3v2.4)
         total += 10
     return total, major
 
@@ -494,7 +498,9 @@ def _sevenzip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     end = _sanity(start + size, start + 32, start + max_size)
     if end is None:
         return Boundary(None, UNDETERMINED, [f"7z declared size {size} outside carve bounds"])
-    return Boundary(end, DECLARED_SIZE, [f"7z declares {size} bytes (32 + nextHeaderOffset + nextHeaderSize)"])
+    return Boundary(
+        end, DECLARED_SIZE, [f"7z declares {size} bytes (32 + nextHeaderOffset + nextHeaderSize)"]
+    )
 
 
 def _png_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -520,8 +526,11 @@ def _png_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         if ctype == b"IEND":
             return Boundary(nxt, CONTAINER_WALK, ["PNG chunk list terminated on IEND"])
         pos = nxt
-    return Boundary(None, UNDETERMINED, ["PNG chunk list did not reach IEND" if saw_ihdr
-                                          else "PNG candidate has no IHDR chunk"])
+    return Boundary(
+        None,
+        UNDETERMINED,
+        ["PNG chunk list did not reach IEND" if saw_ihdr else "PNG candidate has no IHDR chunk"],
+    )
 
 
 def _dqt_length_is_exact(body: bytes) -> bool:
@@ -551,7 +560,7 @@ def _dht_length_is_plausible(body: bytes) -> bool:
     while i < n:
         if i + 17 > n:
             return False
-        total = sum(body[i + 1:i + 17])
+        total = sum(body[i + 1 : i + 17])
         if total == 0 or total > 256:
             return False
         i += 17 + total
@@ -597,9 +606,11 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         # of unrelated data and "find" an EOI far outside the image.
         segments += 1
         if segments > 32:
-            return Boundary(None, UNDETERMINED,
-                            ["more than 32 header segments before SOS: the length fields "
-                             "are not describing a JPEG"])
+            return Boundary(
+                None,
+                UNDETERMINED,
+                ["more than 32 header segments before SOS: the length fields are not describing a JPEG"],
+            )
         marker = src.read_until(b"\xff", pos, min(limit - pos, 1 << 24))
         if marker == -1:
             break
@@ -611,22 +622,20 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         if not m_byte:
             break
         m = m_byte[0]
-        after = marker + 2                       # first byte past the 2-byte marker
+        after = marker + 2  # first byte past the 2-byte marker
 
-        if m == 0xD9:                            # EOI
+        if m == 0xD9:  # EOI
             if not saw_sos:
-                return Boundary(None, UNDETERMINED,
-                                ["JPEG reaches EOI without ever entering a scan"])
-            notes = ["JPEG segment walk reached EOI after "
-                     f"{segments} header segment(s)"]
+                return Boundary(None, UNDETERMINED, ["JPEG reaches EOI without ever entering a scan"])
+            notes = [f"JPEG segment walk reached EOI after {segments} header segment(s)"]
             if sof_dims:
                 notes.append(f"SOF declares {sof_dims[0]}x{sof_dims[1]} pixels")
             return Boundary(after, FOOTER_ANCHORED, notes)
         if m == 0x00 or m == 0xFF:
-            pos = after                          # stuffed byte, not a marker
+            pos = after  # stuffed byte, not a marker
             continue
         if m == 0x01 or 0xD0 <= m <= 0xD8:
-            pos = after                          # standalone marker, no length
+            pos = after  # standalone marker, no length
             continue
 
         seg_len = src.read(after, 2)
@@ -634,61 +643,86 @@ def _jpeg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             break
         length = _be16(seg_len, 0)
         if length < 2 or marker + 2 + length > limit:
-            return Boundary(None, UNDETERMINED,
-                            [f"JPEG segment 0xFF{m:02X} declares an implausible length {length}"])
-        if m == 0xDA:                            # SOS: entropy-coded data follows
+            return Boundary(
+                None, UNDETERMINED, [f"JPEG segment 0xFF{m:02X} declares an implausible length {length}"]
+            )
+        if m == 0xDA:  # SOS: entropy-coded data follows
             if not saw_dqt or not saw_dht:
                 missing = [n for n, seen in (("DQT", saw_dqt), ("DHT", saw_dht)) if not seen]
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG enters a scan with no {' and no '.join(missing)} "
-                                 "segment: the image would be undecodable"])
+                return Boundary(
+                    None,
+                    UNDETERMINED,
+                    [
+                        f"JPEG enters a scan with no {' and no '.join(missing)} "
+                        "segment: the image would be undecodable"
+                    ],
+                )
             saw_sos = True
             pos = marker + 2 + length
             nxt = _skip_entropy(src, pos, limit)
             if nxt == -1:
-                return Boundary(None, UNDETERMINED,
-                                ["JPEG entropy-coded scan runs past the carve window"])
+                return Boundary(None, UNDETERMINED, ["JPEG entropy-coded scan runs past the carve window"])
             pos = nxt
             continue
-        if m == 0xDB:                            # DQT: quantisation table(s)
-            body = src.read(after, length)        # body[0:2] is the segment length
+        if m == 0xDB:  # DQT: quantisation table(s)
+            body = src.read(after, length)  # body[0:2] is the segment length
             if len(body) < 3 or not _dqt_length_is_exact(body[2:]):
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG DQT declares length {length}, which is not an exact "
-                                 "sum of 65- and 129-byte tables"])
+                return Boundary(
+                    None,
+                    UNDETERMINED,
+                    [
+                        f"JPEG DQT declares length {length}, which is not an exact "
+                        "sum of 65- and 129-byte tables"
+                    ],
+                )
             saw_dqt = True
-        elif m == 0xC4:                          # DHT: Huffman table(s)
+        elif m == 0xC4:  # DHT: Huffman table(s)
             if not _dht_length_is_plausible(src.read(after, length)[2:]):
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG DHT declares length {length}, which does not "
-                                 "describe a well-formed Huffman table"])
+                return Boundary(
+                    None,
+                    UNDETERMINED,
+                    [
+                        f"JPEG DHT declares length {length}, which does not "
+                        "describe a well-formed Huffman table"
+                    ],
+                )
             saw_dht = True
         elif 0xC0 <= m <= 0xCF and m not in (0xC8, 0xCC):
             # `body` starts at the segment's own 2-byte length field:
             #   [0:2] length, [2] precision, [3:5] height, [5:7] width, [7] components
             body = src.read(after, length)
             if len(body) < 8:
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG SOF segment 0xFF{m:02X} is truncated at {length} bytes"])
+                return Boundary(
+                    None, UNDETERMINED, [f"JPEG SOF segment 0xFF{m:02X} is truncated at {length} bytes"]
+                )
             n_comp = body[7]
             if length != 8 + 3 * n_comp:
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG SOF segment 0xFF{m:02X} declares {n_comp} component(s) "
-                                 f"but a length of {length}, not {8 + 3 * n_comp}"])
+                return Boundary(
+                    None,
+                    UNDETERMINED,
+                    [
+                        f"JPEG SOF segment 0xFF{m:02X} declares {n_comp} component(s) "
+                        f"but a length of {length}, not {8 + 3 * n_comp}"
+                    ],
+                )
             if n_comp == 0 or n_comp > 4:
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG SOF declares an impossible component count {n_comp}"])
+                return Boundary(
+                    None, UNDETERMINED, [f"JPEG SOF declares an impossible component count {n_comp}"]
+                )
             height, width = _be16(body, 3), _be16(body, 5)
             if not (0 < width <= 20_000 and 0 < height <= 20_000):
-                return Boundary(None, UNDETERMINED,
-                                [f"JPEG SOF declares implausible dimensions {width}x{height}"])
+                return Boundary(
+                    None, UNDETERMINED, [f"JPEG SOF declares implausible dimensions {width}x{height}"]
+                )
             sof_dims = (width, height)
             saw_sof = True
         pos = marker + 2 + length
 
-    return Boundary(None, UNDETERMINED,
-                    ["JPEG segment walk never reached EOI" if saw_sof
-                     else "JPEG contains no SOF frame header"])
+    return Boundary(
+        None,
+        UNDETERMINED,
+        ["JPEG segment walk never reached EOI" if saw_sof else "JPEG contains no SOF frame header"],
+    )
 
 
 def _skip_entropy(src: ByteSource, pos: int, limit: int) -> int:
@@ -713,10 +747,10 @@ def _skip_entropy(src: ByteSource, pos: int, limit: int) -> int:
             while j < n and chunk[j] == 0xFF:
                 j += 1
             if j >= n:
-                break                              # marker may straddle the window
+                break  # marker may straddle the window
             nxt = chunk[j]
             if nxt == 0x00 or 0xD0 <= nxt <= 0xD7:
-                i = j + 1                          # stuffed byte or restart marker
+                i = j + 1  # stuffed byte or restart marker
                 continue
             return pos + i
         # Keep one byte for a marker that straddles the window edge. With a
@@ -737,7 +771,7 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     w, h = _le16(head, 6), _le16(head, 8)
     flags = head[10]
     pos = start + 13
-    if flags & 0x80:                                   # global colour table
+    if flags & 0x80:  # global colour table
         pos += 3 * (1 << ((flags & 0x07) + 1))
     images = 0
     while pos < limit:
@@ -745,13 +779,15 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         if not marker:
             break
         c = marker[0]
-        if c == 0x3B:                                  # trailer
+        if c == 0x3B:  # trailer
             if images == 0:
                 return Boundary(None, UNDETERMINED, ["GIF reaches the trailer with no image blocks"])
-            return Boundary(pos + 1, FOOTER_ANCHORED,
-                            [f"GIF trailer found after {images} image block(s), "
-                             f"logical screen {w}x{h}"])
-        if c == 0x21:                                  # extension block
+            return Boundary(
+                pos + 1,
+                FOOTER_ANCHORED,
+                [f"GIF trailer found after {images} image block(s), logical screen {w}x{h}"],
+            )
+        if c == 0x21:  # extension block
             label = src.read(pos + 1, 1)
             if not label:
                 break
@@ -761,15 +797,15 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             # stream, and every animated, ffmpeg-made or transparent GIF was
             # rejected with "unexpected GIF block introducer". Only the
             # extension-free single-image case happened to survive.
-            pos += 2                                    # introducer + label
-            if label[0] == 0xFF:                        # application extension
+            pos += 2  # introducer + label
+            if label[0] == 0xFF:  # application extension
                 # 1 block-size byte + 8-byte identifier + 3-byte auth code = 12,
                 # then the sub-block chain. Skipping 11 desynchronises the walk by
                 # one byte and the rest of the file is misread as garbage, which is
                 # how an ffmpeg-produced animated GIF (21 ff 0b "NETSCAPE2.0" ...)
                 # still failed after the label fix.
                 pos += 12
-            elif label[0] == 0x01:                      # plain text extension
+            elif label[0] == 0x01:  # plain text extension
                 # 1 block-size byte + 12-byte fixed header = 13, then sub-blocks.
                 pos += 13
             # Then a data sub-block chain: length byte, that many bytes, repeated,
@@ -780,21 +816,20 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                     break
                 pos += 1 + size[0]
                 if pos > limit:
-                    return Boundary(None, UNDETERMINED,
-                                    ["GIF extension sub-blocks overrun the window"])
+                    return Boundary(None, UNDETERMINED, ["GIF extension sub-blocks overrun the window"])
             continue
-        if c == 0x2C:                                  # image descriptor
+        if c == 0x2C:  # image descriptor
             img = src.read(pos + 1, 10)
             if len(img) < 10:
                 break
             lf = img[9]
             pos += 10
-            if lf & 0x80:                              # local colour table
+            if lf & 0x80:  # local colour table
                 pos += 3 * (1 << ((lf & 0x07) + 1))
             lzw_min = src.read(pos, 1)
             if not lzw_min:
                 break
-            pos += 1                                   # LZW minimum code size
+            pos += 1  # LZW minimum code size
             # Sub-blocks: a length byte then that many bytes, until a 0x00.
             for _ in range(1 << 20):
                 size = src.read(pos, 1)
@@ -805,13 +840,13 @@ def _gif_end(src: ByteSource, start: int, max_size: int) -> Boundary:
                     return Boundary(None, UNDETERMINED, ["GIF sub-blocks overrun the window"])
             images += 1
             continue
-        if c == 0x00:                                  # stray NUL padding
+        if c == 0x00:  # stray NUL padding
             pos += 1
             continue
-        return Boundary(None, UNDETERMINED,
-                        [f"unexpected GIF block introducer 0x{c:02X} at +{pos - start}"])
-    return Boundary(None, UNDETERMINED,
-                    [f"GIF data-block walk did not reach the trailer ({images} image block(s) read)"])
+        return Boundary(None, UNDETERMINED, [f"unexpected GIF block introducer 0x{c:02X} at +{pos - start}"])
+    return Boundary(
+        None, UNDETERMINED, [f"GIF data-block walk did not reach the trailer ({images} image block(s) read)"]
+    )
 
 
 def _pdf_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -871,7 +906,7 @@ def _select_zip_eocd(src: ByteSource, start: int, first: int, limit: int):
             return offset, cd_size, cd_off, comment_len, True
 
         nxt = src.rfind_near(b"PK\x05\x06", offset, 1 << 20)
-        if nxt == offset:            # no progress; rfind_near is inclusive of `end`
+        if nxt == offset:  # no progress; rfind_near is inclusive of `end`
             nxt = src.rfind_near(b"PK\x05\x06", offset - 1, 1 << 20)
         offset = nxt
 
@@ -899,19 +934,19 @@ def _zip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     # start of *its* archive. So an EOCD belongs to this candidate exactly when
     # cd_off + cd_size lands where the record actually is. That is the same
     # arithmetic the code already computed as a note; it is now the selector.
-    eocd, cd_size, cd_off, comment_len, consistent = _select_zip_eocd(
-        src, start, eocd, limit)
+    eocd, cd_size, cd_off, comment_len, consistent = _select_zip_eocd(src, start, eocd, limit)
     if comment_len is None:
         return Boundary(None, UNDETERMINED, ["EOCD record truncated"])
 
     end = eocd + 22 + comment_len
     notes = [f"ZIP EOCD: {cd_size} bytes of central directory at +{cd_off}"]
     if consistent:
-        notes.append("central directory offsets are self-consistent with this "
-                     "archive's start")
+        notes.append("central directory offsets are self-consistent with this archive's start")
     else:
-        notes.append("no EOCD had offsets consistent with this start; using the "
-                     "nearest, so the end offset may belong to a later archive")
+        notes.append(
+            "no EOCD had offsets consistent with this start; using the "
+            "nearest, so the end offset may belong to a later archive"
+        )
     if end - start > 0xFFFFFFFF:
         notes.append("ZIP64 archive (32-bit fields saturated)")
     return Boundary(end, FOOTER_ANCHORED, notes)
@@ -935,6 +970,7 @@ def _matroska_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         return Boundary(None, UNDETERMINED, ["carve window too small for a Matroska header"])
     try:
         from . import matroska as _mk
+
         end, notes, provenance = _mk.walk_end(src.read, start, limit)
     except _mk.MatroskaError as exc:
         return Boundary(None, UNDETERMINED, [f"Matroska walk failed: {exc}"])
@@ -1008,15 +1044,16 @@ def _ogg_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             seq = this_seq
         elif this_serial != serial or this_seq != (seq + pages - 1) % (1 << 32):
             break
-        if head[5] & 0x04:                            # EOS flag
-            return Boundary(nxt, CONTAINER_WALK,
-                            [f"Ogg: {pages} page(s), end-of-stream page reached"])
+        if head[5] & 0x04:  # EOS flag
+            return Boundary(nxt, CONTAINER_WALK, [f"Ogg: {pages} page(s), end-of-stream page reached"])
         pos = nxt
     return Boundary(None, UNDETERMINED, [f"Ogg page walk did not terminate ({pages} page(s) read)"])
 
 
 _OGG_MIME = {
-    b"\x7fFLAC": "flac", b"\x01vorbis": "ogg", b"\x80theora": "ogv",
+    b"\x7fFLAC": "flac",
+    b"\x01vorbis": "ogg",
+    b"\x80theora": "ogv",
     b"Speex   ": "spx",
 }
 
@@ -1047,8 +1084,9 @@ def _flac_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         audio = _sanity(pos, start + 8, limit)
         if audio is None:
             return Boundary(None, UNDETERMINED, ["FLAC metadata block list did not terminate"])
-        return Boundary(None, UNDETERMINED,
-                        [f"FLAC metadata ends at +{pos - start} but STREAMINFO is absent"])
+        return Boundary(
+            None, UNDETERMINED, [f"FLAC metadata ends at +{pos - start} but STREAMINFO is absent"]
+        )
 
     bits = int.from_bytes(info[10:18], "big")
     sample_rate = (bits >> 44) & 0xFFFFF
@@ -1061,9 +1099,14 @@ def _flac_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     end = _sanity(pos + audio_bytes, pos, limit)
     if end is None:
         return Boundary(None, UNDETERMINED, ["FLAC STREAMINFO length exceeds the carve window"])
-    return Boundary(end, DECLARED_SIZE,
-                    [f"FLAC STREAMINFO: {total_samples} samples @ {sample_rate} Hz, "
-                     f"{channels}ch/{bps}bit -> {audio_bytes} bytes of audio"])
+    return Boundary(
+        end,
+        DECLARED_SIZE,
+        [
+            f"FLAC STREAMINFO: {total_samples} samples @ {sample_rate} Hz, "
+            f"{channels}ch/{bps}bit -> {audio_bytes} bytes of audio"
+        ],
+    )
 
 
 def _is_printable_fourcc(fourcc: bytes) -> bool:
@@ -1171,8 +1214,7 @@ def _mp4_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     return Boundary(end, CONTAINER_WALK, ["MP4 atom tree walked to its last top-level box"])
 
 
-def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
-                   limit: int) -> tuple[int | None, list[str]]:
+def _mp4_table_end(src: ByteSource, start: int, walk_end: int, limit: int) -> tuple[int | None, list[str]]:
     """Resolve an MP4's true media end from its sample table, if one survives.
 
     Returns ``(end, notes)``. ``end`` is ``None`` when the table is absent,
@@ -1203,16 +1245,20 @@ def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
     # walk's end. The walk is the thing being second-guessed.
     span = src.size - start
     if table.fragmented:
-        return None, ["moov declares Movie Fragments: its sample tables are empty "
-                      "by specification, so no index is available"]
+        return None, [
+            "moov declares Movie Fragments: its sample tables are empty "
+            "by specification, so no index is available"
+        ]
     ok, why = table.validate(span)
     if not ok:
         return None, ["sample table rejected: " + why[0]]
 
     t = max(table.tracks, key=lambda tr: tr.sample_count)
     if t.media_end <= 0 or start + t.media_end > limit:
-        return None, [f"sample table implies a media end at {t.media_end} from the "
-                      f"file start, which does not fit inside the carve window"]
+        return None, [
+            f"sample table implies a media end at {t.media_end} from the "
+            f"file start, which does not fit inside the carve window"
+        ]
 
     # The table says where the *media* ends, which is not always where the
     # *file* ends. In a non-faststart file the layout is [ftyp][mdat][moov]: the
@@ -1226,8 +1272,10 @@ def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
         tail = f"the sample table ends at {t.media_end}"
     else:
         end = max(walk_end, start + moov_end)
-        tail = (f"the sample table ends at {t.media_end}, but the index runs to "
-                f"{moov_end}, so the carve extends to {end - start} to keep the moov")
+        tail = (
+            f"the sample table ends at {t.media_end}, but the index runs to "
+            f"{moov_end}, so the carve extends to {end - start} to keep the moov"
+        )
 
     notes = [
         f"sample table accounts for the media exactly: {t.sample_count} sample(s) in "
@@ -1241,9 +1289,11 @@ def _mp4_table_end(src: ByteSource, start: int, walk_end: int,
     if mdat is not None:
         declared_end = (mdat.start - start) + mdat.size
         if declared_end > t.media_end + 16:
-            notes.append(f"mdat declares {declared_end} bytes but the samples end at "
-                         f"{t.media_end}: {declared_end - t.media_end} trailing byte(s) "
-                         "are not part of any sample")
+            notes.append(
+                f"mdat declares {declared_end} bytes but the samples end at "
+                f"{t.media_end}: {declared_end - t.media_end} trailing byte(s) "
+                "are not part of any sample"
+            )
     return end, notes
 
 
@@ -1256,22 +1306,28 @@ def _sqlite_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     if page_size == 1:
         page_size = 65536
     if page_size < 512 or page_size & (page_size - 1):
-        return Boundary(None, UNDETERMINED, [f"SQLite page size {page_size} is not a power of two in 512..65536"])
+        return Boundary(
+            None, UNDETERMINED, [f"SQLite page size {page_size} is not a power of two in 512..65536"]
+        )
     db_pages = _be32(head, 28)
     change_counter = _be32(head, 24)
     version_valid_for = _be32(head, 92)
     if change_counter != version_valid_for:
-        return Boundary(None, UNDETERMINED,
-                        ["SQLite change counter != version-valid-for: database header is stale, "
-                         "the on-disk page count cannot be trusted"])
+        return Boundary(
+            None,
+            UNDETERMINED,
+            [
+                "SQLite change counter != version-valid-for: database header is stale, "
+                "the on-disk page count cannot be trusted"
+            ],
+        )
     if db_pages == 0:
         return Boundary(None, UNDETERMINED, ["SQLite in-header page count is zero"])
     size = db_pages * page_size
     end = _sanity(start + size, start + 512, start + max_size)
     if end is None:
         return Boundary(None, UNDETERMINED, [f"SQLite declared size {size} exceeds the carve window"])
-    return Boundary(end, DECLARED_SIZE,
-                    [f"SQLite header: {db_pages} pages x {page_size} B = {size} bytes"])
+    return Boundary(end, DECLARED_SIZE, [f"SQLite header: {db_pages} pages x {page_size} B = {size} bytes"])
 
 
 def _pcap_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -1309,14 +1365,13 @@ def _pcapng_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         if trailer != total:
             break
         blocks += 1
-        if btype == 0x00000006:                       # Enhanced Packet Block: records follow
+        if btype == 0x00000006:  # Enhanced Packet Block: records follow
             pass
         pos += total
     end = _sanity(start + pos, start + 12, limit)
     if end is None:
         return Boundary(None, UNDETERMINED, [f"PCAPNG block walk did not terminate ({blocks} block(s))"])
-    return Boundary(end, CONTAINER_WALK,
-                    [f"PCAPNG: {blocks} block(s), every length field cross-checked"])
+    return Boundary(end, CONTAINER_WALK, [f"PCAPNG: {blocks} block(s), every length field cross-checked"])
 
 
 def _gzip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -1333,20 +1388,20 @@ def _gzip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         return Boundary(None, UNDETERMINED, ["gzip magic or compression method byte invalid"])
     flags = head[3]
     pos = 10
-    if flags & 0xE0:                                    # reserved bits must be zero
+    if flags & 0xE0:  # reserved bits must be zero
         return Boundary(None, UNDETERMINED, ["gzip FLG has reserved bits set"])
-    if flags & 0x04:                                    # FEXTRA
+    if flags & 0x04:  # FEXTRA
         xlen_b = src.read(start + pos, 2)
         if len(xlen_b) < 2:
             return Boundary(None, UNDETERMINED, ["gzip FEXTRA length truncated"])
         pos += 2 + _le16(xlen_b, 0)
-    for flag in (0x08, 0x10):                           # FNAME, FCOMMENT
+    for flag in (0x08, 0x10):  # FNAME, FCOMMENT
         if flags & flag:
             z = src.read_until(b"\x00", start + pos, min(65536, limit - start - pos))
             if z == -1:
                 return Boundary(None, UNDETERMINED, ["gzip header string is not NUL-terminated"])
             pos = z - start + 1
-    if flags & 0x02:                                    # FHCRC
+    if flags & 0x02:  # FHCRC
         pos += 2
     if pos >= max_size:
         return Boundary(None, UNDETERMINED, ["gzip header overruns the carve window"])
@@ -1401,7 +1456,7 @@ def _tar_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     producers and some carvers register the signature at offset 0 instead.
     """
     hdr_base = None
-    for base in ((start - 257, start) if start >= 257 else (start,)):
+    for base in (start - 257, start) if start >= 257 else (start,):
         if base < 0:
             continue
         head = src.read(base, 512)
@@ -1419,7 +1474,7 @@ def _tar_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     name = hdr[0:100].split(b"\x00")[0]
     raw = hdr[124:136]
     try:
-        if raw[0] & 0x80:                              # GNU base-256 encoding
+        if raw[0] & 0x80:  # GNU base-256 encoding
             size = int.from_bytes(raw, "big") & ((1 << 88) - 1)
         else:
             size = int(raw.split(b"\x00")[0].strip() or b"0", 8)
@@ -1430,9 +1485,14 @@ def _tar_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     blocks = (size + 511) // 512
     trailer = hdr_base + 512 * (1 + blocks)
     if src.read(trailer, 1024) != b"\x00" * 1024:
-        return Boundary(None, UNDETERMINED,
-                        [f"tar member {name.decode('utf-8', 'replace')!r} has no 1024-byte "
-                         f"end-of-archive marker at +{trailer - hdr_base}"])
+        return Boundary(
+            None,
+            UNDETERMINED,
+            [
+                f"tar member {name.decode('utf-8', 'replace')!r} has no 1024-byte "
+                f"end-of-archive marker at +{trailer - hdr_base}"
+            ],
+        )
     absolute_end = trailer + 1024
     if absolute_end > hdr_base + max_size:
         return Boundary(None, UNDETERMINED, ["tar member overruns the carve window"])
@@ -1446,8 +1506,10 @@ def _tar_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             break
         padded += 512
     end = padded + (start - hdr_base)
-    note = f"tar member {name.decode('utf-8', 'replace')!r}, {size} bytes of data, " \
-           f"end-of-archive marker at +{absolute_end - hdr_base}"
+    note = (
+        f"tar member {name.decode('utf-8', 'replace')!r}, {size} bytes of data, "
+        f"end-of-archive marker at +{absolute_end - hdr_base}"
+    )
     if padded > absolute_end:
         note += f", {padded - absolute_end} bytes of conventional zero padding absorbed"
     return Boundary(end, DECLARED_SIZE, [note])
@@ -1489,9 +1551,14 @@ def _elf_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     end = _sanity(start + size, start + 64, start + max_size)
     if end is None:
         return Boundary(None, UNDETERMINED, [f"ELF header tables declare {size} bytes, beyond the window"])
-    return Boundary(end, DECLARED_SIZE,
-                    [f"ELF {'64' if is64 else '32'}-bit, {'LE' if le else 'BE'}: "
-                     f"{e_phnum} program + {e_shnum} section headers -> {size} bytes"])
+    return Boundary(
+        end,
+        DECLARED_SIZE,
+        [
+            f"ELF {'64' if is64 else '32'}-bit, {'LE' if le else 'BE'}: "
+            f"{e_phnum} program + {e_shnum} section headers -> {size} bytes"
+        ],
+    )
 
 
 def _pe_end(src: ByteSource, start: int, max_size: int) -> Boundary:
@@ -1552,8 +1619,9 @@ def _mpeg_audio_end(src: ByteSource, start: int, max_size: int, id3_version: int
         if pos >= limit:
             return Boundary(None, UNDETERMINED, ["ID3v2 tag overruns the carve window"])
         header_len = 0
-    frames, end, reason = _mpeg_sequence(src, pos, header_len, min_frames=3, max_frames=4096,
-                                         limit=limit - pos)
+    frames, end, reason = _mpeg_sequence(
+        src, pos, header_len, min_frames=3, max_frames=4096, limit=limit - pos
+    )
     if frames < 3:
         return Boundary(None, UNDETERMINED, [reason])
     if end > limit:
@@ -1651,7 +1719,7 @@ def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             # every stream that carries PCRs, which is most of them.
             af_len = _ts_adaptation_length(src, pos)
             if af_len > _TS_PACKET - 4:
-                break                           # adaptation field overruns the packet
+                break  # adaptation field overruns the packet
 
         # A transport stream file is a *multiplex*: one run carries the PAT, the
         # PMT and every video and audio elementary stream, each with its own PID.
@@ -1666,15 +1734,23 @@ def _mpegts_end(src: ByteSource, start: int, max_size: int) -> Boundary:
             break
 
     if packets < _TS_MIN_PACKETS:
-        return Boundary(None, UNDETERMINED,
-                        [f"only {packets} consecutive valid 188-byte TS packet(s); "
-                         f"at least {_TS_MIN_PACKETS} are required before this is "
-                         "distinguishable from coincidence"])
+        return Boundary(
+            None,
+            UNDETERMINED,
+            [
+                f"only {packets} consecutive valid 188-byte TS packet(s); "
+                f"at least {_TS_MIN_PACKETS} are required before this is "
+                "distinguishable from coincidence"
+            ],
+        )
     listed = ", ".join(f"0x{p:04X}" for p in sorted(pids)[:6])
     return Boundary(
-        pos, SYNC_RUN,
-        [f"MPEG-TS: {packets} consecutive 188-byte packet(s), every transport header "
-         f"valid, across {len(pids)} PID(s) ({listed})"],
+        pos,
+        SYNC_RUN,
+        [
+            f"MPEG-TS: {packets} consecutive 188-byte packet(s), every transport header "
+            f"valid, across {len(pids)} PID(s) ({listed})"
+        ],
     )
 
 
@@ -1698,7 +1774,7 @@ def _macho_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         cmdsize = int.from_bytes(cmd[4:8], "little")
         if cmdsize < 8 or pos + cmdsize > limit:
             return Boundary(None, UNDETERMINED, ["Mach-O load command size is implausible"])
-        if int.from_bytes(cmd[:4], "little") in (0x01, 0x19):      # LC_SEGMENT / LC_SEGMENT_64
+        if int.from_bytes(cmd[:4], "little") in (0x01, 0x19):  # LC_SEGMENT / LC_SEGMENT_64
             if cmdsize < 72:
                 return Boundary(None, UNDETERMINED, ["Mach-O segment command is too short"])
             seg = src.read(pos, cmdsize)
@@ -1710,7 +1786,9 @@ def _macho_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     e = _sanity(start + (end - start), pos, limit)
     if e is None:
         return Boundary(None, UNDETERMINED, ["Mach-O segments overrun the carve window"])
-    return Boundary(e, DECLARED_SIZE, [f"Mach-O: {ncmds} load command(s), last segment ends at +{end - start}"])
+    return Boundary(
+        e, DECLARED_SIZE, [f"Mach-O: {ncmds} load command(s), last segment ends at +{end - start}"]
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -1766,8 +1844,9 @@ def has_boundary_rule(ext: str) -> bool:
     return ext.lower().lstrip(".") in _BOUNDARY_RULES
 
 
-def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
-                     *, allow_max_size_fallback: bool = False) -> Boundary:
+def resolve_boundary(
+    src: ByteSource, offset: int, sig, max_size: int, *, allow_max_size_fallback: bool = False
+) -> Boundary:
     """Resolve where the candidate at `offset` ends.
 
     `sig` is a :class:`~s0.carve.signatures.FileSignature`. `src` is an
@@ -1801,16 +1880,24 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
             # sized exactly, which is what scalpel-style signature databases do.
             if sig.footer is not None:
                 head_len = sig.header_offset + len(sig.header)
-                found = src.read_until(sig.footer, offset + head_len,
-                                       max(0, max_size - head_len))
+                found = src.read_until(sig.footer, offset + head_len, max(0, max_size - head_len))
                 if found != -1:
                     return Boundary(
-                        found + len(sig.footer), FOOTER_ANCHORED,
-                        [f"terminator {sig.footer!r} declared by the signature found "
-                         f"{found + len(sig.footer) - offset} bytes in"])
-            return Boundary(offset + max_size, MAX_SIZE_FALLBACK,
-                            [f"no boundary rule exists for .{ext} and the signature declares no "
-                             f"terminator; carved to the declared max_size of {max_size} bytes"])
+                        found + len(sig.footer),
+                        FOOTER_ANCHORED,
+                        [
+                            f"terminator {sig.footer!r} declared by the signature found "
+                            f"{found + len(sig.footer) - offset} bytes in"
+                        ],
+                    )
+            return Boundary(
+                offset + max_size,
+                MAX_SIZE_FALLBACK,
+                [
+                    f"no boundary rule exists for .{ext} and the signature declares no "
+                    f"terminator; carved to the declared max_size of {max_size} bytes"
+                ],
+            )
         return Boundary(None, UNDETERMINED, [f"no boundary rule is registered for .{ext}"])
 
     try:
@@ -1818,11 +1905,17 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
     except (struct.error, IndexError, ValueError, OverflowError, MemoryError) as exc:
         return Boundary(None, UNDETERMINED, [f"boundary rule for .{ext} failed: {exc}"])
 
-    if boundary.resolved and (sig.min_size > (boundary.end - offset) or
-                              (boundary.end - offset) > sig.max_size):
-        return Boundary(None, UNDETERMINED,
-                        [f"resolved size {boundary.end - offset} outside the signature's "
-                         f"[{sig.min_size}, {sig.max_size}] bounds"])
+    if boundary.resolved and (
+        sig.min_size > (boundary.end - offset) or (boundary.end - offset) > sig.max_size
+    ):
+        return Boundary(
+            None,
+            UNDETERMINED,
+            [
+                f"resolved size {boundary.end - offset} outside the signature's "
+                f"[{sig.min_size}, {sig.max_size}] bounds"
+            ],
+        )
     return boundary
 
 
@@ -1831,16 +1924,25 @@ def resolve_boundary(src: ByteSource, offset: int, sig, max_size: int,
 # --------------------------------------------------------------------------- #
 
 
-
 #: Extensions with a real structural validator in `validate_structure`. A candidate
 #: for one of these is judged by that validator alone.
-_STRUCTURALLY_VALIDATED = frozenset({
-    "jpg", "jpeg", "png", "gif", "pdf", "zip", "bmp", "wav",
-})
+_STRUCTURALLY_VALIDATED = frozenset(
+    {
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "pdf",
+        "zip",
+        "bmp",
+        "wav",
+    }
+)
 
 
 def _has_structural_validator(ext: str) -> bool:
     return ext.lstrip(".").lower() in _STRUCTURALLY_VALIDATED
+
 
 def validate_structure(data: bytes, ext: str) -> tuple[bool, str]:
     """Decide whether `data` is a coherent instance of `.ext`.
@@ -1935,8 +2037,19 @@ def _validate_jpeg(data: bytes) -> tuple[bool, str]:
     marker = data[3] if len(data) > 3 else 0
     if marker in (0x00, 0xD8, 0xD9, 0xFF):
         return False, f"byte following SOI (0xFF{marker:02X}) is not a valid segment marker"
-    if not any(m in data[:4096] for m in (b"\xff\xe0", b"\xff\xe1", b"\xff\xdb", b"\xff\xc0",
-                                          b"\xff\xc2", b"\xff\xc4", b"JFIF", b"Exif")):
+    if not any(
+        m in data[:4096]
+        for m in (
+            b"\xff\xe0",
+            b"\xff\xe1",
+            b"\xff\xdb",
+            b"\xff\xc0",
+            b"\xff\xc2",
+            b"\xff\xc4",
+            b"JFIF",
+            b"Exif",
+        )
+    ):
         return False, "no APP/DQT/SOF/DHT marker in the first 4 KiB"
     if not data.rstrip(b"\x00").endswith(b"\xff\xd9"):
         return False, "does not terminate on EOI"
@@ -1997,8 +2110,9 @@ def _validate_zip(data: bytes) -> tuple[bool, str]:
     cd_off = _le32(data, eocd + 16)
     if 0xFFFFFFFF not in (cd_size, cd_off):
         if cd_off + cd_size != eocd:
-            return False, (f"central directory is inconsistent with the EOCD offset "
-                           f"({cd_off} + {cd_size} != {eocd})")
+            return False, (
+                f"central directory is inconsistent with the EOCD offset ({cd_off} + {cd_size} != {eocd})"
+            )
         first = data[cd_off : cd_off + 4]
         if first != b"PK\x01\x02":
             return False, "central directory offset does not point at a central directory header"
@@ -2039,8 +2153,9 @@ def _validate_wav(data: bytes) -> tuple[bool, str]:
             tag, channels, rate = _le16(data, body), _le16(data, body + 2), _le32(data, body + 4)
             bits = _le16(data, body + 14)
             if tag not in (1, 0xFFFE) or channels == 0 or channels > 64 or rate == 0 or bits == 0:
-                return False, (f"fmt chunk is implausible: tag={tag} channels={channels} "
-                               f"rate={rate} bits={bits}")
+                return False, (
+                    f"fmt chunk is implausible: tag={tag} channels={channels} rate={rate} bits={bits}"
+                )
             seen_fmt = True
         if fourcc == b"data":
             seen_data = True
@@ -2061,8 +2176,9 @@ def _validate_mp3(data: bytes) -> tuple[bool, str]:
         if info is None:
             return False, "ID3v2 header is malformed (bad synchsafe size)"
         pos, id3_note = info[0], f"valid ID3v2.{info[1]} tag of {info[0]} bytes, "
-    frames, end, reason = _mpeg_sequence(_BytesView(data), pos, 0, min_frames=3, max_frames=8192,
-                                         limit=len(data))
+    frames, end, reason = _mpeg_sequence(
+        _BytesView(data), pos, 0, min_frames=3, max_frames=8192, limit=len(data)
+    )
     if frames < 3:
         return False, reason
     return True, f"{id3_note}{frames} consecutive MPEG frames with an intact sync chain ({reason})"
@@ -2073,17 +2189,17 @@ def _validate_gzip(data: bytes) -> tuple[bool, str]:
         return False, "gzip magic or CM byte invalid"
     flg = data[3]
     pos = 10
-    if flg & 0x04:                                       # FEXTRA
+    if flg & 0x04:  # FEXTRA
         if pos + 2 > len(data):
             return False, "FEXTRA length field truncated"
         xlen = _le16(data, pos)
         pos += 2 + xlen
-    if flg & 0x08:                                       # FNAME
+    if flg & 0x08:  # FNAME
         z = data.find(b"\x00", pos)
         if z == -1:
             return False, "FNAME is not NUL-terminated"
         pos = z + 1
-    if flg & 0x10:                                       # FCOMMENT
+    if flg & 0x10:  # FCOMMENT
         z = data.find(b"\x00", pos)
         if z == -1:
             return False, "FCOMMENT is not NUL-terminated"
@@ -2105,7 +2221,7 @@ def _validate_gzip(data: bytes) -> tuple[bool, str]:
         return False, "deflate stream does not terminate"
     if len(data) >= 8:
         want = _le32(data, len(data) - 4)
-        got = (len(out) & 0xFFFFFFFF)
+        got = len(out) & 0xFFFFFFFF
         if want != got:
             return False, f"ISIZE trailer says {want}, decoded {got} bytes"
         crc = zlib.crc32(out) & 0xFFFFFFFF
@@ -2202,7 +2318,7 @@ def _validate_ogg(data: bytes) -> tuple[bool, str]:
     nsegs = data[26]
     if 27 + nsegs > len(data):
         return False, "Ogg segment table is truncated"
-    return True, f"Ogg page, {nsegs} segment(s), body {sum(data[27:27 + nsegs])} bytes"
+    return True, f"Ogg page, {nsegs} segment(s), body {sum(data[27 : 27 + nsegs])} bytes"
 
 
 def _validate_avi(data: bytes) -> tuple[bool, str]:
@@ -2226,25 +2342,23 @@ def _validate_avi(data: bytes) -> tuple[bool, str]:
     except (riff.RiffError, ValueError, IndexError):
         return False, "AVI chunk chain is malformed"
     if idx is None:
-        return False, ("no resolvable chunk index: neither idx1 nor an OpenDML indx "
-                       "points at its own chunks")
+        return False, ("no resolvable chunk index: neither idx1 nor an OpenDML indx points at its own chunks")
 
-    hits = sum(1 for e in idx.entries
-               if _ascii(data, idx.extent(e)[0], 4) == e.chunk_id)
+    hits = sum(1 for e in idx.entries if _ascii(data, idx.extent(e)[0], 4) == e.chunk_id)
     total = len(idx.entries)
     if total == 0:
         return False, "AVI chunk index is empty"
     if hits * 10 < total * 9:
-        return False, (f"AVI index only resolves {hits} of {total} chunk(s) onto "
-                       "their own FOURCC")
+        return False, (f"AVI index only resolves {hits} of {total} chunk(s) onto their own FOURCC")
 
     first, last = idx.media_extent()
     if last > len(data):
-        return False, (f"AVI index places the last chunk at {last}, past the "
-                       f"{len(data)}-byte file end")
+        return False, (f"AVI index places the last chunk at {last}, past the {len(data)}-byte file end")
     base = "file-absolute" if idx.base_is_absolute else "movi-relative"
-    return True, (f"AVI index resolved: {total} chunk(s) ({idx.keyframes} keyframe(s)), "
-                  f"{base} offset base at {idx.base}, media {first}..{last}")
+    return True, (
+        f"AVI index resolved: {total} chunk(s) ({idx.keyframes} keyframe(s)), "
+        f"{base} offset base at {idx.base}, media {first}..{last}"
+    )
 
 
 def _validate_mp4(data: bytes) -> tuple[bool, str]:
@@ -2254,13 +2368,13 @@ def _validate_mp4(data: bytes) -> tuple[bool, str]:
     compat = []
     for o in range(16, min(len(data), 16 + _be32(data, 0) - 8), 4):
         compat.append(_ascii(data, o, 4).decode("latin-1"))
-    note = (f"ISO-BMFF ftyp major brand {major!r}, "
-            f"compatible with {', '.join(compat[:4]) or 'n/a'}")
+    note = f"ISO-BMFF ftyp major brand {major!r}, compatible with {', '.join(compat[:4]) or 'n/a'}"
 
     # A populated, internally consistent sample table is far stronger evidence
     # than a brand string, which is 8 bytes that occur by chance. Prefer it, and
     # report a rejected table rather than silently ignoring it.
     from s0.carve import isobmff
+
     try:
         if isobmff.is_fragmented(data):
             return True, note + "; moov declares Movie Fragments, so no sample index"
@@ -2271,9 +2385,11 @@ def _validate_mp4(data: bytes) -> tuple[bool, str]:
     if not ok:
         return False, note + "; sample table rejected -- " + why[0]
     t = max(table.tracks, key=lambda tr: tr.sample_count)
-    return True, (note + f"; sample table verified: track {t.track_id} has "
-                  f"{t.sample_count} sample(s) in {len(t.chunk_offsets)} chunk(s), "
-                  f"media {t.media_start}..{t.media_end}")
+    return True, (
+        note + f"; sample table verified: track {t.track_id} has "
+        f"{t.sample_count} sample(s) in {len(t.chunk_offsets)} chunk(s), "
+        f"media {t.media_start}..{t.media_end}"
+    )
 
 
 def _validate_flac(data: bytes) -> tuple[bool, str]:
@@ -2346,8 +2462,10 @@ def _validate_tar(data: bytes) -> tuple[bool, str]:
 
 def _validate_mpegts(data: bytes) -> tuple[bool, str]:
     if len(data) < _TS_PACKET * _TS_MIN_PACKETS:
-        return False, (f"fewer than {_TS_MIN_PACKETS} 188-byte MPEG-TS packets, "
-                       "which is too short to distinguish from coincidence")
+        return False, (
+            f"fewer than {_TS_MIN_PACKETS} 188-byte MPEG-TS packets, "
+            "which is too short to distinguish from coincidence"
+        )
     if len(data) % _TS_PACKET:
         return False, f"length {len(data)} is not a multiple of {_TS_PACKET}"
 
@@ -2355,7 +2473,7 @@ def _validate_mpegts(data: bytes) -> tuple[bool, str]:
     pids: dict[int, int] = {}
     off = 0
     while off + _TS_PACKET <= len(data):
-        parsed = _ts_packet_header(data[off:off + 4])
+        parsed = _ts_packet_header(data[off : off + 4])
         if parsed is None:
             return False, f"packet {off // _TS_PACKET} has an invalid transport header"
         pid, _pusi, afc, _cc = parsed
@@ -2371,11 +2489,15 @@ def _validate_mpegts(data: bytes) -> tuple[bool, str]:
     # PAT, PMT, and one per elementary stream. What is implausible is a run with
     # an unbounded number of them, which is what random headers produce.
     if len(pids) > _TS_MAX_PIDS:
-        return False, (f"{len(pids)} distinct PIDs in one run; a real multiplex has a "
-                       f"handful, so this is not a transport stream")
+        return False, (
+            f"{len(pids)} distinct PIDs in one run; a real multiplex has a "
+            f"handful, so this is not a transport stream"
+        )
     listed = ", ".join(f"0x{p:04X}" for p in sorted(pids)[:6])
-    return True, (f"{len(data) // _TS_PACKET} aligned {_TS_PACKET}-byte packet(s), every "
-                  f"transport header valid, {len(pids)} PID(s) ({listed})")
+    return True, (
+        f"{len(data) // _TS_PACKET} aligned {_TS_PACKET}-byte packet(s), every "
+        f"transport header valid, {len(pids)} PID(s) ({listed})"
+    )
 
 
 def _validate_macho(data: bytes) -> tuple[bool, str]:

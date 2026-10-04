@@ -183,7 +183,8 @@ def generate_pdf(
         )
 
     doc = SimpleDocTemplate(
-        str(out_path), pagesize=A4,
+        str(out_path),
+        pagesize=A4,
         title=f"s0 Wipe Certificate {cert['cert_uuid']}",
         author=cert["issuer"]["organization"],
     )
@@ -193,21 +194,31 @@ def generate_pdf(
 
     story.append(Paragraph("<b>S0 — SECURE WIPE CERTIFICATE</b>", styles["Title"]))
     banner = Table(
-        [[Paragraph(
-            f"<para color='white'><b>{_xml_escape(status.upper())}</b> — NIST 800-88 category: "
-            f"<b>{_xml_escape(str(wipe.get('nist_category', '?')))}</b></para>",
-            styles["Normal"])]],
+        [
+            [
+                Paragraph(
+                    f"<para color='white'><b>{_xml_escape(status.upper())}</b> — NIST 800-88 category: "
+                    f"<b>{_xml_escape(str(wipe.get('nist_category', '?')))}</b></para>",
+                    styles["Normal"],
+                )
+            ]
+        ],
         colWidths=[170 * mm],
     )
-    banner.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), _STATUS_COLORS.get(status, colors.grey)),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-    ]))
+    banner.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), _STATUS_COLORS.get(status, colors.grey)),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
     story.append(banner)
 
     from .crypto import DEMO_KEY_FINGERPRINT
+
     is_demo = (
         sig.get("public_key_fingerprint") == DEMO_KEY_FINGERPRINT
         or "demo" in cert.get("issuer", {}).get("organization", "").lower()
@@ -215,21 +226,30 @@ def generate_pdf(
     )
     if is_demo:
         demo_banner = Table(
-            [[Paragraph(
-                "<para color='#990000' align='center'><b>[!] DEMONSTRATION CERTIFICATE - SIGNED WITH PUBLIC DEMO KEY</b><br/>"
-                "<font size='7.5'>This certificate was signed with an unaccredited public demonstration key. "
-                "DO NOT use for legal chain-of-custody or regulatory compliance.</font></para>",
-                styles["Normal"])]],
+            [
+                [
+                    Paragraph(
+                        "<para color='#990000' align='center'><b>[!] DEMONSTRATION CERTIFICATE - SIGNED WITH PUBLIC DEMO KEY</b><br/>"
+                        "<font size='7.5'>This certificate was signed with an unaccredited public demonstration key. "
+                        "DO NOT use for legal chain-of-custody or regulatory compliance.</font></para>",
+                        styles["Normal"],
+                    )
+                ]
+            ],
             colWidths=[170 * mm],
         )
-        demo_banner.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff3cd")),
-            ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#ffeeba")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ]))
+        demo_banner.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff3cd")),
+                    ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#ffeeba")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
         story.append(Spacer(1, 3 * mm))
         story.append(demo_banner)
 
@@ -252,34 +272,52 @@ def generate_pdf(
     ]
 
     story.append(Paragraph("Device", styles["Heading3"]))
-    t = Table(rows([
-        ("Certificate UUID", cert["cert_uuid"]),
-        ("Issued at", cert["issued_at"]),
-        ("Issuer", f"{cert['issuer']['organization']} / operator {cert['issuer']['operator_id']}"),
-        ("Tool", f"{cert['tool']['name']} {cert['tool']['version']} ({cert['tool']['platform']})"),
-        ("Device ID", device.get("device_id", "?")),
-        ("Type / storage", f"{device.get('device_type', '?')} / {device.get('storage_type', '?')}"),
-        ("Model / serial", f"{device.get('model', '—')} / {device.get('serial_number', '—')}"),
-        ("Capacity", f"{device.get('capacity_bytes', 0):,} bytes"),
-    ]), colWidths=[45 * mm, 125 * mm])
+    t = Table(
+        rows(
+            [
+                ("Certificate UUID", cert["cert_uuid"]),
+                ("Issued at", cert["issued_at"]),
+                ("Issuer", f"{cert['issuer']['organization']} / operator {cert['issuer']['operator_id']}"),
+                ("Tool", f"{cert['tool']['name']} {cert['tool']['version']} ({cert['tool']['platform']})"),
+                ("Device ID", device.get("device_id", "?")),
+                ("Type / storage", f"{device.get('device_type', '?')} / {device.get('storage_type', '?')}"),
+                ("Model / serial", f"{device.get('model', '—')} / {device.get('serial_number', '—')}"),
+                ("Capacity", f"{device.get('capacity_bytes', 0):,} bytes"),
+            ]
+        ),
+        colWidths=[45 * mm, 125 * mm],
+    )
     t.setStyle(TableStyle(body_style))
     story.append(t)
     story.append(Spacer(1, 4 * mm))
 
     story.append(Paragraph("Wipe performed", styles["Heading3"]))
-    t = Table(rows([
-        ("Method", wipe.get("method", "?")),
-        ("NIST 800-88 tier", wipe.get("nist_category", "?")),
-        ("Passes / pattern", f"{wipe.get('passes', '—')} / {wipe.get('pattern', '—')}"),
-        ("Started / ended", f"{wipe.get('start_time')} → {wipe.get('end_time')}"),
-        ("Bytes processed", f"{wipe.get('bytes_processed', 0):,}"),
-        ("Result status", result.get("status", "?")),
-    ] + ([("Errors", "; ".join(result.get("errors", [])))] if result.get("errors") else [])
-      + ([("Post-wipe verification",
-           f"{verif.get('method', '?')}: {verif.get('samples_checked', 0)} samples × "
-           f"{verif.get('sample_bytes_each', 0)} B, all match: "
-           f"{verif.get('all_samples_match_wipe_pattern')}")] if verif else [])),
-        colWidths=[45 * mm, 125 * mm])
+    t = Table(
+        rows(
+            [
+                ("Method", wipe.get("method", "?")),
+                ("NIST 800-88 tier", wipe.get("nist_category", "?")),
+                ("Passes / pattern", f"{wipe.get('passes', '—')} / {wipe.get('pattern', '—')}"),
+                ("Started / ended", f"{wipe.get('start_time')} → {wipe.get('end_time')}"),
+                ("Bytes processed", f"{wipe.get('bytes_processed', 0):,}"),
+                ("Result status", result.get("status", "?")),
+            ]
+            + ([("Errors", "; ".join(result.get("errors", [])))] if result.get("errors") else [])
+            + (
+                [
+                    (
+                        "Post-wipe verification",
+                        f"{verif.get('method', '?')}: {verif.get('samples_checked', 0)} samples × "
+                        f"{verif.get('sample_bytes_each', 0)} B, all match: "
+                        f"{verif.get('all_samples_match_wipe_pattern')}",
+                    )
+                ]
+                if verif
+                else []
+            )
+        ),
+        colWidths=[45 * mm, 125 * mm],
+    )
     t.setStyle(TableStyle(body_style))
     story.append(t)
 
@@ -291,13 +329,18 @@ def generate_pdf(
 
     story.append(Spacer(1, 6 * mm))
     story.append(Paragraph("Cryptographic signature", styles["Heading3"]))
-    sig_rows = rows([
-        ("Algorithm", sig.get("algorithm", "?")),
-        ("Issuer key fingerprint", sig.get("public_key_fingerprint", "?")),
-        ("Payload SHA-256", sig.get("signed_payload_hash", "(not recorded)")),
-        ("Signature (base64url)", Paragraph(_xml_escape(sig.get("signature_base64url", "?")), mono)),
-        ("Verify offline", "Scan the QR with any verifier, or run: s0 verify cert.json --key issuer_public.pem"),
-    ])
+    sig_rows = rows(
+        [
+            ("Algorithm", sig.get("algorithm", "?")),
+            ("Issuer key fingerprint", sig.get("public_key_fingerprint", "?")),
+            ("Payload SHA-256", sig.get("signed_payload_hash", "(not recorded)")),
+            ("Signature (base64url)", Paragraph(_xml_escape(sig.get("signature_base64url", "?")), mono)),
+            (
+                "Verify offline",
+                "Scan the QR with any verifier, or run: s0 verify cert.json --key issuer_public.pem",
+            ),
+        ]
+    )
     t = Table(sig_rows, colWidths=[45 * mm, 125 * mm])
     t.setStyle(TableStyle(body_style))
     story.append(t)
@@ -313,30 +356,31 @@ def generate_pdf(
         f"({qr_module_count(qr_data)} modules) to stay machine-scannable.</font></font>"
     )
     if qr_notes:
-        qr_caption_html += "<br/>" + "<br/>".join(
-            f"<font size='7'>{_xml_escape(n)}</font>" for n in qr_notes
-        )
-    qr_tbl = Table([[qr_img, Paragraph(qr_caption_html, styles["Normal"])]],
-                   colWidths=[115 * mm, 55 * mm])
+        qr_caption_html += "<br/>" + "<br/>".join(f"<font size='7'>{_xml_escape(n)}</font>" for n in qr_notes)
+    qr_tbl = Table([[qr_img, Paragraph(qr_caption_html, styles["Normal"])]], colWidths=[115 * mm, 55 * mm])
     story.append(qr_tbl)
 
     verify_url = sanitized_verify_url
     if verify_url.startswith("http"):
         story.append(Spacer(1, 4 * mm))
         escaped_url = _xml_escape(verify_url)
-        story.append(Paragraph(
-            f'<font size="8">[>] <a href="{escaped_url}" color="#1d4ed8">'
-            f'<u>Verify this certificate online at {escaped_url}</u></a></font>',
-            styles["Normal"],
-        ))
+        story.append(
+            Paragraph(
+                f'<font size="8">[>] <a href="{escaped_url}" color="#1d4ed8">'
+                f"<u>Verify this certificate online at {escaped_url}</u></a></font>",
+                styles["Normal"],
+            )
+        )
 
     story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(
-        '<font size="6.5" color="#64748b">LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
-        'Issued solely for authorized media operations and legal chain of custody. '
-        'Verify authenticity at https://sector-zero.pages.dev/verify/ or via `s0 verify`.</font>',
-        styles["Normal"]
-    ))
+    story.append(
+        Paragraph(
+            '<font size="6.5" color="#64748b">LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
+            "Issued solely for authorized media operations and legal chain of custody. "
+            "Verify authenticity at https://sector-zero.pages.dev/verify/ or via `s0 verify`.</font>",
+            styles["Normal"],
+        )
+    )
 
     doc.build(story)
     return out_path

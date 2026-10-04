@@ -260,7 +260,10 @@ def scan_ntfs_deleted_files(
 
                 if rec_bytes[0:4] == MFT_RECORD_MAGIC:
                     parsed = parse_mft_record_bytes(
-                        rec_bytes, disk_file=f, cluster_size=boot.cluster_size, partition_offset=partition_offset
+                        rec_bytes,
+                        disk_file=f,
+                        cluster_size=boot.cluster_size,
+                        partition_offset=partition_offset,
                     )
                     if parsed:
                         if parsed.is_deleted or include_allocated:
@@ -288,6 +291,7 @@ class NtfsDeletedEntry:
     original name survives once the directory entry is gone, which is why
     record-level recovery beats blind carving by the length of a filename.
     """
+
     record_num: int
     sequence_number: int
     name: str
@@ -334,8 +338,7 @@ def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> list[tuple]
     return []
 
 
-def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int,
-                     runs: list[tuple]) -> Iterator[bytes]:
+def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int, runs: list[tuple]) -> Iterator[bytes]:
     """Yield MFT record buffers in order, following the $MFT's own extents."""
     rs = boot.mft_record_size
     per_run = boot.cluster_size // rs if rs else 0
@@ -351,8 +354,9 @@ def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int,
                 yield fh.read(rs)
 
 
-def _iter_mft_records_contiguous(fh, boot: NtfsBootSector, partition_offset: int,
-                                 limit_bytes: int) -> Iterator[bytes]:
+def _iter_mft_records_contiguous(
+    fh, boot: NtfsBootSector, partition_offset: int, limit_bytes: int
+) -> Iterator[bytes]:
     """Walk the MFT assuming it is contiguous from its first cluster.
 
     Only used when record 0 is unreadable, which happens when the first MFT
@@ -372,8 +376,7 @@ def _iter_mft_records_contiguous(fh, boot: NtfsBootSector, partition_offset: int
         offset += rs
 
 
-def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int,
-                 max_bytes: int) -> tuple:
+def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int, max_bytes: int) -> tuple:
     """Read a record's primary stream back off the media.
 
     Returns (data, fragment_count, caveat, first_data_offset). `caveat` is set
@@ -390,7 +393,7 @@ def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int,
             primary = attr
             break
     if primary is None:
-        return None, 0, None, None   # size may survive in $FILE_NAME, content does not
+        return None, 0, None, None  # size may survive in $FILE_NAME, content does not
 
     if not primary.non_resident:
         return bytes(primary.resident_value), 1, None, None
@@ -469,11 +472,15 @@ def scan_ntfs_deleted_records(
                     "NTFS record 0 could not be read, so the extent of the $MFT is "
                     "unknown. Records were read from the first cluster only; any "
                     "that were relocated when the $MFT was extended are missing "
-                    "from this result.")
+                    "from this result."
+                )
                 size = Path(image_path).stat().st_size
                 buffers = _iter_mft_records_contiguous(
-                    fh, boot, partition_offset,
-                    size - partition_offset - boot.mft_start_cluster * boot.cluster_size)
+                    fh,
+                    boot,
+                    partition_offset,
+                    size - partition_offset - boot.mft_start_cluster * boot.cluster_size,
+                )
 
             records: dict[int, mft_mod.MftRecord] = {}
             names: dict[int, str] = {}
@@ -516,7 +523,8 @@ def scan_ntfs_deleted_records(
                 first_offset = None
                 if not caveat:
                     data, fragments, caveat, first_offset = _reconstruct(
-                        rec, fh, boot, partition_offset, max_bytes_per_file)
+                        rec, fh, boot, partition_offset, max_bytes_per_file
+                    )
                     if data is None:
                         # Follow $ATTRIBUTE_LIST: the real $DATA may live in a
                         # satellite record, which is how large files are stored.
@@ -526,34 +534,37 @@ def scan_ntfs_deleted_records(
                                 continue
                             mft_mod.merge_satellite(rec, sat)
                             data, fragments, caveat, first_offset = _reconstruct(
-                                rec, fh, boot, partition_offset, max_bytes_per_file)
+                                rec, fh, boot, partition_offset, max_bytes_per_file
+                            )
                             satellite = True
                             if data is not None:
                                 break
 
                 path = _build_path(rec, names)
                 rec.primary_name() or {}
-                out.append(NtfsDeletedEntry(
-                    record_num=rec.record_num,
-                    sequence_number=rec.sequence_number,
-                    name=rec.name(),
-                    path=path,
-                    parent_record=(rec.parent() or (None, None))[0],
-                    size_bytes=rec.real_size or len(data or b""),
-                    data=data,
-                    fragment_count=max(1, fragments),
-                    is_resident=any(not a.non_resident for a in rec.attributes
-                                    if a.type == mft_mod.ATTR_DATA),
-                    mft_changed=rec.mft_changed,
-                    created=rec.created,
-                    modified=rec.modified,
-                    accessed=rec.accessed,
-                    fixup_verified=rec.fixup_verified,
-                    content_caveat=caveat or rec.cannot_restore_reason,
-                    recovered_from_satellite=satellite,
-                    first_data_offset=(None if first_offset is None
-                                       else partition_offset + first_offset),
-                ))
+                out.append(
+                    NtfsDeletedEntry(
+                        record_num=rec.record_num,
+                        sequence_number=rec.sequence_number,
+                        name=rec.name(),
+                        path=path,
+                        parent_record=(rec.parent() or (None, None))[0],
+                        size_bytes=rec.real_size or len(data or b""),
+                        data=data,
+                        fragment_count=max(1, fragments),
+                        is_resident=any(
+                            not a.non_resident for a in rec.attributes if a.type == mft_mod.ATTR_DATA
+                        ),
+                        mft_changed=rec.mft_changed,
+                        created=rec.created,
+                        modified=rec.modified,
+                        accessed=rec.accessed,
+                        fixup_verified=rec.fixup_verified,
+                        content_caveat=caveat or rec.cannot_restore_reason,
+                        recovered_from_satellite=satellite,
+                        first_data_offset=(None if first_offset is None else partition_offset + first_offset),
+                    )
+                )
     except Exception:
         return out
 
@@ -638,7 +649,8 @@ def read_usn_journal(
                     "No $UsnJrnl change journal was found on this volume. Windows "
                     "creates one on first use; a volume that has never been written "
                     "by Windows has none, and names of deleted files cannot be "
-                    "recovered from the journal.")
+                    "recovered from the journal."
+                )
                 return []
             run_list, real_size = found
 

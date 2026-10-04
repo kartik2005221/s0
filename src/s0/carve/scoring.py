@@ -29,9 +29,32 @@ from .signatures import FileSignature
 # uncompressed pixels, samples, text or structured tables rather than a
 # compressed bitstream.
 _UNCOMPRESSED = {
-    "bmp", "wav", "aiff", "tar", "pcap", "pcapng", "sqlite", "rtf", "elf", "exe",
-    "dll", "class", "macho", "tiff", "lnk", "pf", "url", "ini", "dat", "mid", "db",
-    "mdb", "doc", "ts", "heic", "jp2",
+    "bmp",
+    "wav",
+    "aiff",
+    "tar",
+    "pcap",
+    "pcapng",
+    "sqlite",
+    "rtf",
+    "elf",
+    "exe",
+    "dll",
+    "class",
+    "macho",
+    "tiff",
+    "lnk",
+    "pf",
+    "url",
+    "ini",
+    "dat",
+    "mid",
+    "db",
+    "mdb",
+    "doc",
+    "ts",
+    "heic",
+    "jp2",
 }
 
 # Boundary strategies, in descending order of evidentiary weight.
@@ -84,7 +107,9 @@ def calculate_sample_entropy(data: bytes) -> float:
     mid = size // 2
     s2 = data[mid : mid + 2048]
     s3 = data[-2048:]
-    return (calculate_shannon_entropy(s1) + calculate_shannon_entropy(s2) + calculate_shannon_entropy(s3)) / 3.0
+    return (
+        calculate_shannon_entropy(s1) + calculate_shannon_entropy(s2) + calculate_shannon_entropy(s3)
+    ) / 3.0
 
 
 #: A payload this uniform cannot be a file. See :func:`is_uniform_random`.
@@ -99,9 +124,9 @@ _ENTROPY_BLOCK = 1024
 _ENTROPY_MIN_BLOCKS = 8
 
 
-def entropy_block_profile(data: bytes,
-                          block_size: int = _ENTROPY_BLOCK,
-                          min_blocks: int = _ENTROPY_MIN_BLOCKS):
+def entropy_block_profile(
+    data: bytes, block_size: int = _ENTROPY_BLOCK, min_blocks: int = _ENTROPY_MIN_BLOCKS
+):
     """``(mean, stdev)`` of per-block Shannon entropy, or ``None`` if too small.
 
     Whole-payload entropy cannot tell a file from noise: measured against real
@@ -114,14 +139,14 @@ def entropy_block_profile(data: bytes,
     if len(data) < block_size * min_blocks:
         return None
     entropies = [
-        calculate_shannon_entropy(data[i:i + block_size])
+        calculate_shannon_entropy(data[i : i + block_size])
         for i in range(0, len(data) - block_size + 1, block_size)
     ]
     if len(entropies) < min_blocks:
         return None
     mean = sum(entropies) / len(entropies)
     var = sum((e - mean) ** 2 for e in entropies) / len(entropies)
-    return (mean, var ** 0.5)
+    return (mean, var**0.5)
 
 
 def uniform_random_complaint(data: bytes) -> str | None:
@@ -144,12 +169,14 @@ def uniform_random_complaint(data: bytes) -> str | None:
     """
     profile = entropy_block_profile(data)
     if profile is None:
-        return None                      # too small to judge; not a complaint
+        return None  # too small to judge; not a complaint
     mean, stdev = profile
     if stdev < _UNIFORM_STDEV_MAX and mean > _UNIFORM_MEAN_MIN:
-        return (f"every {_ENTROPY_BLOCK}-byte block sits at maximum entropy "
-                f"(mean {mean:.3f}, spread {stdev:.3f}): this is random data, "
-                "not a file")
+        return (
+            f"every {_ENTROPY_BLOCK}-byte block sits at maximum entropy "
+            f"(mean {mean:.3f}, spread {stdev:.3f}): this is random data, "
+            "not a file"
+        )
     return None
 
 
@@ -196,11 +223,12 @@ def score_carved_candidate(
     ext = sig.extension.lower().lstrip(".")
 
     # 1. Identity (40) -- assumed: the caller gated on structural validation.
-    if data[sig.header_offset:sig.header_offset + len(sig.header)] == sig.header:
+    if data[sig.header_offset : sig.header_offset + len(sig.header)] == sig.header:
         score += 40
         where = "" if sig.header_offset == 0 else f" at offset {sig.header_offset}"
-        heuristics.append(f"Magic header confirmed{where} and the payload parses as a "
-                          f"structurally valid {sig.name} (+40)")
+        heuristics.append(
+            f"Magic header confirmed{where} and the payload parses as a structurally valid {sig.name} (+40)"
+        )
 
     # 2. Boundary confidence (25)
     weight = _BOUNDARY_WEIGHT.get(boundary_method, 0)
@@ -238,12 +266,16 @@ def score_carved_candidate(
         # Random data sits near 8.0 and real content above 2.0, so a 1.0 cut is
         # unambiguous.
         score = max(0, score - 8)
-        heuristics.append(f"Entropy {entropy:.2f}/8.0 is effectively constant: consistent "
-                          "with padding or an unwritten allocation (-8)")
+        heuristics.append(
+            f"Entropy {entropy:.2f}/8.0 is effectively constant: consistent "
+            "with padding or an unwritten allocation (-8)"
+        )
     else:
         score += 8
-        heuristics.append(f"Entropy {entropy:.2f}/8.0 ({band}) is outside the typical "
-                          f"{lo:.1f}-{hi:.1f} band for this format (+8)")
+        heuristics.append(
+            f"Entropy {entropy:.2f}/8.0 ({band}) is outside the typical "
+            f"{lo:.1f}-{hi:.1f} band for this format (+8)"
+        )
 
     return min(100, max(0, score)), heuristics
 

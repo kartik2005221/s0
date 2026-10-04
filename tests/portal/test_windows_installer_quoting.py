@@ -39,8 +39,7 @@ PS_FILES = sorted(INSTALL_DIR.glob("*.ps1"))
 # Only the *quoted argument* to -Command. Matching to end-of-line would sweep up the
 # trailing cmd redirection -- `> "%TEMP%\_s0_newpath.txt"` -- whose %TEMP% is ordinary
 # cmd syntax outside the PowerShell string and perfectly correct there.
-POWERSHELL_LINE = re.compile(
-    r'powershell[^\n]*-Command\s+"([^"]*)"', re.I)
+POWERSHELL_LINE = re.compile(r'powershell[^\n]*-Command\s+"([^"]*)"', re.I)
 # A cmd variable reference: %NAME%.
 CMD_VAR = re.compile(r"%[A-Za-z_][A-Za-z0-9_]*%")
 
@@ -65,19 +64,23 @@ class TestTheCorpusIsPresent:
         """
         assert _command_payloads(INSTALL_DIR / "install.cmd"), (
             "install.cmd no longer invokes powershell -Command; this file's checks "
-            "assume it does and would otherwise be vacuous")
+            "assume it does and would otherwise be vacuous"
+        )
 
 
 class TestNoPathIsInterpolatedIntoPowerShell:
     @pytest.mark.parametrize("path", CMD_FILES, ids=lambda p: p.name)
     def test_no_cmd_variable_appears_inside_a_command_string(self, path):
-        offenders = [f"{path.name}:{lineno}: {payload.strip()[:90]}"
-                     for lineno, payload in _command_payloads(path)
-                     if CMD_VAR.search(payload)]
+        offenders = [
+            f"{path.name}:{lineno}: {payload.strip()[:90]}"
+            for lineno, payload in _command_payloads(path)
+            if CMD_VAR.search(payload)
+        ]
         assert not offenders, (
             f"a cmd variable is interpolated into a PowerShell -Command string: "
             f"{offenders}. A path containing an apostrophe closes the PowerShell "
-            f"string early and the remainder is executed as code.")
+            f"string early and the remainder is executed as code."
+        )
 
     @pytest.mark.parametrize("path", CMD_FILES, ids=lambda p: p.name)
     def test_paths_are_passed_through_the_environment(self, path):
@@ -87,7 +90,8 @@ class TestNoPathIsInterpolatedIntoPowerShell:
             pytest.skip(f"{path.name} does not use powershell -Command")
         assert all("$env:" in payload for payload in payloads), (
             f"{path.name} builds its PowerShell command without reading the path "
-            f"from the environment, so the quoting hazard may still be present.")
+            f"from the environment, so the quoting hazard may still be present."
+        )
 
     @pytest.mark.parametrize("path", CMD_FILES, ids=lambda p: p.name)
     def test_every_env_var_read_is_one_we_set(self, path):
@@ -106,7 +110,8 @@ class TestNoPathIsInterpolatedIntoPowerShell:
         missing = sorted(used - declared)
         assert not missing, (
             f"{path.name} reads {missing} from the environment but never sets "
-            f"them; PowerShell would silently receive an empty path")
+            f"them; PowerShell would silently receive an empty path"
+        )
 
 
 class TestTheWindowsInstallersStillAgree:
@@ -127,7 +132,8 @@ class TestTheWindowsInstallersStillAgree:
         assert install_vars <= uninstall_vars, (
             f"install.cmd adds {sorted(install_vars - uninstall_vars)} to PATH but "
             f"uninstall.cmd never removes it, so a reinstall leaves stale entries "
-            f"behind forever")
+            f"behind forever"
+        )
 
 
 class TestThePs1Installers:
@@ -144,5 +150,4 @@ class TestThePs1Installers:
         text = path.read_text(errors="ignore")
         if "Environment]::SetEnvironmentVariable" not in text:
             pytest.skip(f"{path.name} does not edit PATH")
-        assert "$env:" in text, (
-            f"{path.name} edits PATH without reading the path from $env:")
+        assert "$env:" in text, f"{path.name} edits PATH without reading the path from $env:"

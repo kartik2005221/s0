@@ -37,24 +37,33 @@ def e2e(tmp_path_factory):
     out_dir = tmp / "out"
     key = tmp_path_factory.mktemp("k") / "issuer_private.pem"
     from s0.crypto import write_private_pem, write_public_pem
+
     priv = crypto.generate_private_key()
     write_private_pem(priv, key)
     pub = tmp_path_factory.mktemp("k") / "issuer_public.pem"
     write_public_pem(priv.public_key(), pub)
 
     # 2. Wipe through the actual CLI argv path.
-    rc = cli_main.main([
-        "wipe",
-        "--target", str(img),
-        "--yes",
-        "--key", str(key),
-        "--out-dir", str(out_dir),
-        "--operator", "op-e2e-test",
-        "--organization", "s0 Test Lab",
-        "--pattern", "zero",
-        "--plant-markers",
-        "--json",
-    ])
+    rc = cli_main.main(
+        [
+            "wipe",
+            "--target",
+            str(img),
+            "--yes",
+            "--key",
+            str(key),
+            "--out-dir",
+            str(out_dir),
+            "--operator",
+            "op-e2e-test",
+            "--organization",
+            "s0 Test Lab",
+            "--pattern",
+            "zero",
+            "--plant-markers",
+            "--json",
+        ]
+    )
     assert rc == 0, "CLI wipe exited non-zero"
 
     cert_files = sorted(out_dir.glob("certificate_*.json"))
@@ -63,9 +72,12 @@ def e2e(tmp_path_factory):
     assert len(cert_files) == 1 and len(pdf_files) == 1 and len(qr_files) == 1
 
     return {
-        "image": img, "cert": json.loads(cert_files[0].read_text()),
-        "cert_file": cert_files[0], "pdf": pdf_files[0],
-        "pub_key": pub, "n_markers": n_markers,
+        "image": img,
+        "cert": json.loads(cert_files[0].read_text()),
+        "cert_file": cert_files[0],
+        "pdf": pdf_files[0],
+        "pub_key": pub,
+        "n_markers": n_markers,
     }
 
 
@@ -124,4 +136,3 @@ def test_uninstall_cli_subcommand(tmp_path, monkeypatch):
     assert rc == 0
     assert not dummy_install.exists()
     assert (tmp_path / "s0_audit.db.bak").exists()
-

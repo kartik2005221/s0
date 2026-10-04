@@ -37,7 +37,8 @@ import pytest
 
 pytestmark = pytest.mark.skipif(
     not (shutil.which("s0") or (Path(sys.executable).parent / "s0").is_file()),
-    reason="s0 entry point not available")
+    reason="s0 entry point not available",
+)
 
 
 def _entry_point() -> str:
@@ -58,10 +59,10 @@ def _run(*args: str, home: Path) -> subprocess.CompletedProcess:
     The ledger matters too: a carve that wrote no files but appended a block
     would still have altered evidence, which is what --dry-run exists to prevent.
     """
-    env = {"HOME": str(home), "PATH": "/usr/bin:/bin",
-           "S0_AUDIT_DB": str(home / "audit.db")}
-    return subprocess.run([_entry_point(), *args], capture_output=True, text=True,
-                          env=env, cwd=str(home), timeout=180)
+    env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(home / "audit.db")}
+    return subprocess.run(
+        [_entry_point(), *args], capture_output=True, text=True, env=env, cwd=str(home), timeout=180
+    )
 
 
 def _md5(path: Path) -> str:
@@ -108,19 +109,14 @@ def sandbox(tmp_path):
 
 # Every command that writes output, with the arguments that make it write.
 WRITING_COMMANDS = [
-    pytest.param(["wipe", "--targets", "keep.txt", "--no-certificate", "--yes"],
-                 id="wipe-file"),
-    pytest.param(["wipe", "--target", "tree", "--no-certificate", "--yes"],
-                 id="wipe-folder"),
-    pytest.param(["wipe", "--target", "src.raw", "--no-certificate", "--yes"],
-                 id="wipe-image"),
-    pytest.param(["image", "--source", "src.raw", "--destination", "new.img"],
-                 id="image"),
-    pytest.param(["clone", "--source", "src.raw", "--destination", "clone.img"],
-                 id="clone"),
-    pytest.param(["carve", "--target", "src.raw", "--out-dir", "out",
-                  "--no-certificate", "--no-pdf"],
-                 id="carve"),
+    pytest.param(["wipe", "--targets", "keep.txt", "--no-certificate", "--yes"], id="wipe-file"),
+    pytest.param(["wipe", "--target", "tree", "--no-certificate", "--yes"], id="wipe-folder"),
+    pytest.param(["wipe", "--target", "src.raw", "--no-certificate", "--yes"], id="wipe-image"),
+    pytest.param(["image", "--source", "src.raw", "--destination", "new.img"], id="image"),
+    pytest.param(["clone", "--source", "src.raw", "--destination", "clone.img"], id="clone"),
+    pytest.param(
+        ["carve", "--target", "src.raw", "--out-dir", "out", "--no-certificate", "--no-pdf"], id="carve"
+    ),
 ]
 
 
@@ -131,14 +127,16 @@ class TestDryRunWritesNothing:
         proc = _run(*argv, "--dry-run", home=sandbox)
 
         assert proc.returncode == 0, (
-            f"`s0 {' '.join(argv)} --dry-run` exited {proc.returncode}\n{proc.stderr}")
+            f"`s0 {' '.join(argv)} --dry-run` exited {proc.returncode}\n{proc.stderr}"
+        )
 
         after = _snapshot(sandbox)
         assert after == before, (
             "the dry run changed the filesystem:\n"
             f"  removed: {sorted(set(before) - set(after))}\n"
             f"  added:   {sorted(set(after) - set(before))}\n"
-            f"  changed: {sorted(k for k in set(before) & set(after) if before[k] != after[k])}")
+            f"  changed: {sorted(k for k in set(before) & set(after) if before[k] != after[k])}"
+        )
 
     @pytest.mark.parametrize("argv", WRITING_COMMANDS)
     def test_no_audit_ledger_block_is_appended(self, sandbox, argv):
@@ -151,8 +149,8 @@ class TestDryRunWritesNothing:
         after = ledger.read_bytes() if ledger.exists() else b""
 
         assert after == before, (
-            f"{len(after) - len(before)} bytes were appended to the audit ledger "
-            f"by a dry run:\n{proc.stderr}")
+            f"{len(after) - len(before)} bytes were appended to the audit ledger by a dry run:\n{proc.stderr}"
+        )
 
     @pytest.mark.parametrize("argv", WRITING_COMMANDS)
     def test_it_says_that_nothing_was_written(self, sandbox, argv):
@@ -160,8 +158,8 @@ class TestDryRunWritesNothing:
         proc = _run(*argv, "--dry-run", home=sandbox)
         combined = (proc.stdout + proc.stderr).lower()
         assert "dry run" in combined, (
-            f"`s0 {' '.join(argv)} --dry-run` said nothing about being a dry run:\n"
-            f"{combined[-500:]}")
+            f"`s0 {' '.join(argv)} --dry-run` said nothing about being a dry run:\n{combined[-500:]}"
+        )
 
 
 class TestWithoutDryRunTheCommandStillWorks:
@@ -172,18 +170,19 @@ class TestWithoutDryRunTheCommandStillWorks:
     """
 
     def test_image_really_writes_without_the_flag(self, sandbox):
-        proc = _run("image", "--source", "src.raw", "--destination", "new.img",
-                    home=sandbox)
+        proc = _run("image", "--source", "src.raw", "--destination", "new.img", home=sandbox)
         assert proc.returncode == 0, proc.stderr
         assert (sandbox / "new.img").stat().st_size == (sandbox / "src.raw").stat().st_size
 
     def test_carve_really_writes_without_the_flag(self, sandbox):
-        proc = _run("carve", "--target", "src.raw", "--out-dir", "out",
-                    "--no-certificate", "--no-pdf", home=sandbox)
+        proc = _run(
+            "carve", "--target", "src.raw", "--out-dir", "out", "--no-certificate", "--no-pdf", home=sandbox
+        )
         assert proc.returncode == 0, proc.stderr
         assert list((sandbox / "out").iterdir()), (
             "carve wrote nothing without --dry-run, so the dry-run test above "
-            "would have passed for the wrong reason")
+            "would have passed for the wrong reason"
+        )
 
 
 class TestReadOnlyCommandsAreUnaffected:
@@ -193,15 +192,19 @@ class TestReadOnlyCommandsAreUnaffected:
     dry run. Intercepting them would be a regression in the other direction.
     """
 
-    @pytest.mark.parametrize("argv", [
-        ["list"],
-        ["plan", "--target", "src.raw"],
-        ["plan", "--target", "src.raw", "--json"],
-    ])
+    @pytest.mark.parametrize(
+        "argv",
+        [
+            ["list"],
+            ["plan", "--target", "src.raw"],
+            ["plan", "--target", "src.raw", "--json"],
+        ],
+    )
     def test_read_only_commands_still_run_under_dry_run(self, sandbox, argv):
         proc = _run(*argv, "--dry-run", home=sandbox)
         assert proc.returncode == 0, (
-            f"`s0 {' '.join(argv)} --dry-run` exited {proc.returncode}\n{proc.stderr}")
+            f"`s0 {' '.join(argv)} --dry-run` exited {proc.returncode}\n{proc.stderr}"
+        )
 
         # Combined output, not stdout alone: whether a command's text rendering
         # goes to stdout or stderr is the separate, still-open piped-output
@@ -209,7 +212,8 @@ class TestReadOnlyCommandsAreUnaffected:
         combined = (proc.stdout + proc.stderr).strip()
         assert combined, (
             f"`s0 {' '.join(argv)} --dry-run` produced no output at all; it was "
-            f"intercepted by the dry-run guard instead of running")
+            f"intercepted by the dry-run guard instead of running"
+        )
 
     def test_plan_json_still_emits_a_document_under_dry_run(self, sandbox):
         """plan --json is the machine-readable contract, so it must stay on stdout."""
@@ -232,18 +236,27 @@ class TestTheWipeDryRunStillExplainsItself:
         ledger.parent.mkdir(parents=True, exist_ok=True)
         ledger.write_bytes(b"")
 
-        proc = _run("wipe", "--targets", str(ledger), "--no-certificate",
-                    "--dry-run", home=sandbox)
+        proc = _run("wipe", "--targets", str(ledger), "--no-certificate", "--dry-run", home=sandbox)
         combined = (proc.stdout + proc.stderr).lower()
         assert "refus" in combined, (
-            "the dry run did not mention that the target is protected:\n"
-            f"{combined[-500:]}")
+            f"the dry run did not mention that the target is protected:\n{combined[-500:]}"
+        )
 
     def test_the_dry_run_names_the_target_and_the_parameters(self, sandbox):
-        proc = _run("wipe", "--targets", "keep.txt", "--no-certificate",
-                    "--passes", "3", "--pattern", "random", "--dry-run", home=sandbox)
+        proc = _run(
+            "wipe",
+            "--targets",
+            "keep.txt",
+            "--no-certificate",
+            "--passes",
+            "3",
+            "--pattern",
+            "random",
+            "--dry-run",
+            home=sandbox,
+        )
         combined = proc.stdout + proc.stderr
         assert "keep.txt" in combined
         assert "3" in combined and "random" in combined, (
-            "the dry run did not report the parameters that would be used, so it "
-            "is not a usable preview")
+            "the dry run did not report the parameters that would be used, so it is not a usable preview"
+        )

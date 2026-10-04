@@ -53,19 +53,23 @@ class TestTheDedicatedChecksumAsset:
     def test_a_dot_slash_prefix_is_tolerated(self):
         assert _parse_sha256_document(f"{GOOD}  ./{ISO}", ISO) == GOOD
 
-    @pytest.mark.parametrize("body", [
-        "<!DOCTYPE html><html><body>rate limit exceeded</body></html>",
-        "Not Found",
-        "",
-        "   \n\n",
-        "404: Not Found",
-        "{\"error\": \"too many requests\"}",
-    ])
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "<!DOCTYPE html><html><body>rate limit exceeded</body></html>",
+            "Not Found",
+            "",
+            "   \n\n",
+            "404: Not Found",
+            '{"error": "too many requests"}',
+        ],
+    )
     def test_an_error_page_yields_no_hash(self, body):
         """The reported defect: the first token became the expected hash."""
         assert _parse_sha256_document(body, ISO) is None, (
             f"an error page produced a hash from {body!r}. The caller then reported "
-            f"a mismatch and deleted a correctly downloaded ISO.")
+            f"a mismatch and deleted a correctly downloaded ISO."
+        )
 
     def test_a_truncated_digest_is_rejected(self):
         assert _parse_sha256_document(GOOD[:63], ISO) is None
@@ -73,8 +77,9 @@ class TestTheDedicatedChecksumAsset:
     def test_a_non_hex_digest_is_rejected(self):
         assert _parse_sha256_document("z" * 64, ISO) is None
 
-    @pytest.mark.parametrize("junk", ["garbage", "sha256:abc", "<hash>", "0x1234",
-                                      "e3b0c44298fc1c149afbf4c8996fb924"])
+    @pytest.mark.parametrize(
+        "junk", ["garbage", "sha256:abc", "<hash>", "0x1234", "e3b0c44298fc1c149afbf4c8996fb924"]
+    )
     def test_a_matching_name_with_a_junk_digest_is_rejected(self, junk):
         """The name matches but the digest does not.
 
@@ -108,13 +113,14 @@ class TestTheSumsFileMatchesExactly:
         The wrong digest is then used to condemn a correct download.
         """
         other = "b" * 64
-        sums = "\n".join([
-            f"{other}  {ISO}.sha256",       # decoy, listed FIRST
-            f"{GOOD}  {ISO}",
-            f"{'c' * 64}  {ISO}.zsync",      # another decoy
-        ])
-        assert _parse_sha256_sums(sums, ISO) == GOOD, (
-            "a substring match picked another artefact's digest")
+        sums = "\n".join(
+            [
+                f"{other}  {ISO}.sha256",  # decoy, listed FIRST
+                f"{GOOD}  {ISO}",
+                f"{'c' * 64}  {ISO}.zsync",  # another decoy
+            ]
+        )
+        assert _parse_sha256_sums(sums, ISO) == GOOD, "a substring match picked another artefact's digest"
 
     def test_a_prefix_sharing_name_does_not_match(self):
         other = "d" * 64
@@ -129,13 +135,15 @@ class TestTheSumsFileMatchesExactly:
         assert _parse_sha256_sums("", ISO) is None
 
     def test_a_realistic_multi_artefact_release_resolves(self):
-        sums = "\n".join([
-            "# sha256sums for the release",
-            f"{'1' * 64}  s0_2.4.4_amd64.iso",
-            f"{'2' * 64}  s0-live-amd64.iso.zsync",
-            f"{GOOD}  {ISO}",
-            f"{'3' * 64}  SHA256SUMS.txt",
-        ])
+        sums = "\n".join(
+            [
+                "# sha256sums for the release",
+                f"{'1' * 64}  s0_2.4.4_amd64.iso",
+                f"{'2' * 64}  s0-live-amd64.iso.zsync",
+                f"{GOOD}  {ISO}",
+                f"{'3' * 64}  SHA256SUMS.txt",
+            ]
+        )
         assert _parse_sha256_sums(sums, ISO) == GOOD
 
     def test_comments_and_blank_lines_are_skipped(self):
@@ -166,4 +174,5 @@ class TestWhatThisDoesNotClaim:
         doc = inspect.getdoc(_parse_sha256_document) or ""
         assert "authentic" in doc.lower(), (
             "the parser's docstring does not distinguish integrity from "
-            "authenticity, so a caller may read 'verified' as 'trustworthy'")
+            "authenticity, so a caller may read 'verified' as 'trustworthy'"
+        )

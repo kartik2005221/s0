@@ -96,6 +96,7 @@ SYSTEM_INODES = frozenset({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
 @dataclass
 class JournalBlock:
     """One block of the journal, with its header fields separated out."""
+
     index: int
     block_type: int
     sequence: int
@@ -132,8 +133,7 @@ class Jbd2Superblock:
 
     @property
     def has_csum_seed(self) -> bool:
-        return bool(self.feature_incompat & (JBD2_FEATURE_INCOMPAT_CSUM_V2
-                                             | JBD2_FEATURE_INCOMPAT_CSUM_V3))
+        return bool(self.feature_incompat & (JBD2_FEATURE_INCOMPAT_CSUM_V2 | JBD2_FEATURE_INCOMPAT_CSUM_V3))
 
     def summary(self) -> dict:
         return {
@@ -279,13 +279,17 @@ def parse_ext4_directory(blob: bytes) -> list[Ext4DirEntry]:
             except UnicodeDecodeError:
                 name = raw.decode("latin-1", "replace")
             if name not in (".", ".."):
-                entries.append(Ext4DirEntry(
-                    inode=inode, name=name, file_type=file_type,
-                    # In ext4 a deleted directory entry has its inode number
-                    # zeroed but keeps its name and its length, so the space is
-                    # reusable but the name is still readable.
-                    deleted=(inode == 0),
-                ))
+                entries.append(
+                    Ext4DirEntry(
+                        inode=inode,
+                        name=name,
+                        file_type=file_type,
+                        # In ext4 a deleted directory entry has its inode number
+                        # zeroed but keeps its name and its length, so the space is
+                        # reusable but the name is still readable.
+                        deleted=(inode == 0),
+                    )
+                )
         pos += rec_len
     return entries
 
@@ -293,6 +297,7 @@ def parse_ext4_directory(blob: bytes) -> list[Ext4DirEntry]:
 @dataclass
 class JournalName:
     """A filename found in the journal, with whatever supports it."""
+
     inode: int
     name: str
     file_type: int
@@ -387,8 +392,7 @@ def recover_names(
         # A descriptor block holds tag triples, each 16 bytes: blocknr, flags
         # and the low/high words of the checksum. The tag numbers are journal
         # block numbers, so the payload of the following block is the data.
-        payload = data[(block.index + 1) * superblock.blocksize :
-                       (block.index + 2) * superblock.blocksize]
+        payload = data[(block.index + 1) * superblock.blocksize : (block.index + 2) * superblock.blocksize]
         if not payload:
             continue
         for entry in parse_ext4_directory(payload):
@@ -399,8 +403,11 @@ def recover_names(
             name = found.get(key)
             if name is None:
                 found[key] = JournalName(
-                    inode=entry.inode, name=entry.name, file_type=entry.file_type,
-                    from_directory=True, checksum_ok=block.checksum_ok,
+                    inode=entry.inode,
+                    name=entry.name,
+                    file_type=entry.file_type,
+                    from_directory=True,
+                    checksum_ok=block.checksum_ok,
                 )
             else:
                 name.from_directory = True

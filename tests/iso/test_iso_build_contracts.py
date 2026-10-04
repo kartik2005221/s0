@@ -36,12 +36,12 @@ def _text(path: Path) -> str:
 # 1. The ISO must not ship the issuer private key.
 # --------------------------------------------------------------------------- #
 
+
 def test_keys_policy_states_the_private_key_never_ships():
     """The stated policy, so the build can be checked against it."""
     policy = _text(KEYS_README).lower()
     assert "never" in policy and "iso" in policy, (
-        "the keys README must state the private key never ships in any bundle, "
-        "including the ISO"
+        "the keys README must state the private key never ships in any bundle, including the ISO"
     )
 
 
@@ -59,9 +59,7 @@ def test_iso_build_excludes_private_keys_from_the_staged_tree():
         "iso/auto/build.sh must delete private keys from the staged tree; "
         "a bare `cp -r src` ships the demo issuer key"
     )
-    assert re.search(r"find .*-name '\*private\*\.key'", build), (
-        "private .key files must be excluded too"
-    )
+    assert re.search(r"find .*-name '\*private\*\.key'", build), "private .key files must be excluded too"
 
 
 def test_iso_excludes_bytecode_so_builds_are_reproducible():
@@ -98,6 +96,7 @@ def test_default_issuer_key_fails_closed_when_no_key_exists():
 # 2. The build must not report success it did not achieve.
 # --------------------------------------------------------------------------- #
 
+
 def test_build_verifies_the_iso_artifact_exists():
     """Regression: `lb build` returning 0 was the only success check.
 
@@ -126,6 +125,7 @@ def test_live_build_does_not_silence_a_failed_purge():
 # 3. One privilege prefix for every live-build call.
 # --------------------------------------------------------------------------- #
 
+
 def test_live_build_uses_one_privilege_prefix_for_config_and_build():
     """Regression: `lb config` unsudoed + `sudo lb build` built the wrong image.
 
@@ -143,6 +143,7 @@ def test_live_build_uses_one_privilege_prefix_for_config_and_build():
 # --------------------------------------------------------------------------- #
 # 4. Security updates must be enabled.
 # --------------------------------------------------------------------------- #
+
 
 def test_iso_enables_the_debian_security_archive():
     """Regression: `--security false` built the appliance unpatched.
@@ -166,6 +167,7 @@ def test_iso_enables_the_debian_security_archive():
 # --------------------------------------------------------------------------- #
 # 5. The chroot hook must not mask failures.
 # --------------------------------------------------------------------------- #
+
 
 def test_chroot_hook_creates_the_kiosk_user_or_fails():
     """Regression: `groupadd || true` then `useradd ... || usermod ... || true`.
@@ -209,6 +211,7 @@ def test_run_directory_is_created_by_systemd_not_the_chroot():
 # 6. The kiosk readiness gate.
 # --------------------------------------------------------------------------- #
 
+
 def test_kiosk_wait_script_probes_an_unauthenticated_endpoint():
     """Regression: it polled /api/devices with no token.
 
@@ -231,7 +234,7 @@ def test_healthz_is_the_only_unauthenticated_data_route():
     """And it must expose nothing about the host."""
     app = _text(REPO / "src" / "s0" / "web" / "app.py")
     assert '"status": "ok"' in app, "/healthz must return a fixed literal"
-    healthz = app[app.index('def healthz'):app.index('def index')]
+    healthz = app[app.index("def healthz") : app.index("def index")]
     assert "REPO" not in healthz and "Path.home()" not in healthz, (
         "the readiness probe must not disclose host paths"
     )
@@ -258,6 +261,7 @@ def test_kiosk_unit_passes_the_token_to_the_bootstrap_url():
 # --------------------------------------------------------------------------- #
 # 7. Package manifest hygiene.
 # --------------------------------------------------------------------------- #
+
 
 def test_package_list_has_no_duplicate_entries():
     lines = [
@@ -286,6 +290,7 @@ def test_package_list_entries_are_plain_names():
 # --------------------------------------------------------------------------- #
 # 8. Shell scripts must at least parse.
 # --------------------------------------------------------------------------- #
+
 
 @pytest.mark.parametrize(
     "script",

@@ -93,11 +93,24 @@ CUE_TRACK_POSITIONS = 0xB7
 CUE_CLUSTER_POSITION = 0xF1
 
 #: Elements whose payload is a list of further elements.
-MASTER_IDS = frozenset({
-    EBML_HEADER, SEEK_HEAD, INFO, TRACKS, CLUSTER, CUES, TAGS, CHAPTERS,
-    ATTACHMENTS, TRACK_ENTRY, BLOCK_GROUP, VIDEO, CUE_POINT,
-    CUE_TRACK_POSITIONS,
-})
+MASTER_IDS = frozenset(
+    {
+        EBML_HEADER,
+        SEEK_HEAD,
+        INFO,
+        TRACKS,
+        CLUSTER,
+        CUES,
+        TAGS,
+        CHAPTERS,
+        ATTACHMENTS,
+        TRACK_ENTRY,
+        BLOCK_GROUP,
+        VIDEO,
+        CUE_POINT,
+        CUE_TRACK_POSITIONS,
+    }
+)
 
 #: Elements permitted as direct children of a Segment. This list is the main
 #: defence against a false end, and it exists because of a measured failure: a
@@ -110,22 +123,38 @@ MASTER_IDS = frozenset({
 #: conforming muxer only writes these. A future element ID would end the walk
 #: early rather than over-run, which fails towards a short file and a note
 #: instead of a long file that decodes to nothing.
-TOP_LEVEL_IDS = frozenset({
-    SEEK_HEAD, INFO, TRACKS, CLUSTER, CUES, TAGS, CHAPTERS, ATTACHMENTS,
-    VOID, CRC32,
-})
+TOP_LEVEL_IDS = frozenset(
+    {
+        SEEK_HEAD,
+        INFO,
+        TRACKS,
+        CLUSTER,
+        CUES,
+        TAGS,
+        CHAPTERS,
+        ATTACHMENTS,
+        VOID,
+        CRC32,
+    }
+)
 
 #: Elements permitted inside a Cluster. Unlisted IDs end the block count for
 #: that cluster, which is the conservative direction: it can only reduce the
 #: frame count, never invent one.
-CLUSTER_CHILD_IDS = frozenset({
-    TIMESTAMP, SIMPLE_BLOCK, BLOCK_GROUP, VOID, CRC32,
-    0xA7,   # Position
-    0xAB,   # PrevSize
-    0xA7 + 0x100,  # Reserved
-    0xA0 + 0x100,  # SilentTracks
-    0xA1 + 0x100,  # Reserved
-})
+CLUSTER_CHILD_IDS = frozenset(
+    {
+        TIMESTAMP,
+        SIMPLE_BLOCK,
+        BLOCK_GROUP,
+        VOID,
+        CRC32,
+        0xA7,  # Position
+        0xAB,  # PrevSize
+        0xA7 + 0x100,  # Reserved
+        0xA0 + 0x100,  # SilentTracks
+        0xA1 + 0x100,  # Reserved
+    }
+)
 
 #: Track types, per the Matroska specification.
 TRACK_VIDEO = 1
@@ -166,6 +195,7 @@ DERIVED_FROM_WALK = "container_walk"
 #: runaway walk is worse than a refusal.
 MAX_CLUSTER_WALK = 64 * 1024 * 1024
 
+
 class MatroskaError(ValueError):
     """The bytes are not a Matroska file this module is willing to trust."""
 
@@ -173,6 +203,7 @@ class MatroskaError(ValueError):
 # --------------------------------------------------------------------------- #
 # EBML primitives
 # --------------------------------------------------------------------------- #
+
 
 def _vint_width(first: int) -> int:
     """Width in bytes of the variable-length integer starting with `first`."""
@@ -242,6 +273,7 @@ def read_string(buf: bytes, pos: int, size: int) -> str:
 # Parsed model
 # --------------------------------------------------------------------------- #
 
+
 @dataclass
 class Track:
     number: int
@@ -259,6 +291,7 @@ class Track:
 @dataclass
 class Block:
     """One frame's worth of data, located exactly."""
+
     track: int
     #: Absolute offset of the first byte of frame data.
     data_offset: int
@@ -296,6 +329,7 @@ class Cluster:
 @dataclass
 class MatroskaInfo:
     """Everything recovered from a Matroska file's structure."""
+
     doc_type: str
     ebml_end: int
     segment_offset: int
@@ -340,6 +374,7 @@ class MatroskaInfo:
 # --------------------------------------------------------------------------- #
 # Parsing
 # --------------------------------------------------------------------------- #
+
 
 def parse_header(buf: bytes) -> tuple[MatroskaInfo, int]:
     """Parse the EBML header. Returns the partial info and the header's end.
@@ -386,9 +421,14 @@ def parse_header(buf: bytes) -> tuple[MatroskaInfo, int]:
     if doc_type_version == 0:
         raise MatroskaError("DocTypeVersion 0 is not valid")
 
-    info = MatroskaInfo(doc_type=doc_type, ebml_end=end, segment_offset=-1,
-                        segment_body=-1, segment_size=None,
-                        doc_type_version=doc_type_version)
+    info = MatroskaInfo(
+        doc_type=doc_type,
+        ebml_end=end,
+        segment_offset=-1,
+        segment_body=-1,
+        segment_size=None,
+        doc_type_version=doc_type_version,
+    )
     return info, end
 
 
@@ -454,14 +494,21 @@ def _parse_tracks(buf: bytes, start: int, end: int) -> list[Track]:
                     vp = vbody + vsize
             p = tbody + tsize
         if number and codec_id:
-            tracks.append(Track(number=number, type_id=type_id, codec_id=codec_id,
-                                width=width, height=height, codec_private=private))
+            tracks.append(
+                Track(
+                    number=number,
+                    type_id=type_id,
+                    codec_id=codec_id,
+                    width=width,
+                    height=height,
+                    codec_private=private,
+                )
+            )
         pos = stop
     return tracks
 
 
-def _parse_block(buf: bytes, pos: int, size: int, cluster_offset: int,
-                 in_group: bool) -> Block | None:
+def _parse_block(buf: bytes, pos: int, size: int, cluster_offset: int, in_group: bool) -> Block | None:
     """Parse a `SimpleBlock` or a `BlockGroup`'s `Block`.
 
     Both share a layout: a track-number VINT, a signed 16-bit timestamp relative
@@ -500,8 +547,7 @@ def _parse_block(buf: bytes, pos: int, size: int, cluster_offset: int,
     )
 
 
-def _parse_cluster(buf: bytes, offset: int, body: int, size: int | None,
-                   limit: int) -> Cluster:
+def _parse_cluster(buf: bytes, offset: int, body: int, size: int | None, limit: int) -> Cluster:
     """Walk one cluster's children.
 
     `size` is the declared size, or ``None`` for a live muxer. In the unknown
@@ -629,7 +675,9 @@ def parse(buf: bytes, limit: int | None = None) -> MatroskaInfo:
                     info.stop_reason = str(exc)
                     break
                 info.clusters.append(cluster)
-                last = cluster.blocks[-1].data_offset + cluster.blocks[-1].data_size if cluster.blocks else body
+                last = (
+                    cluster.blocks[-1].data_offset + cluster.blocks[-1].data_size if cluster.blocks else body
+                )
                 furthest = max(furthest, last)
                 break
             info.stop_reason = f"unknown-size 0x{eid:X} inside the Segment"
@@ -699,8 +747,7 @@ def _parse_info(buf: bytes, start: int, end: int, info: MatroskaInfo) -> None:
         pos = body + size
 
 
-def _parse_cues(buf: bytes, start: int, end: int, info: MatroskaInfo,
-                seg_body: int) -> None:
+def _parse_cues(buf: bytes, start: int, end: int, info: MatroskaInfo, seg_body: int) -> None:
     pos = start
     while pos < end:
         try:
@@ -744,8 +791,7 @@ def _parse_cues(buf: bytes, start: int, end: int, info: MatroskaInfo,
                         if qid == CUE_CLUSTER_POSITION:
                             try:
                                 # Relative to the Segment's data, not the file.
-                                info.cue_cluster_positions.append(
-                                    seg_body + read_uint(buf, qbody, qsize))
+                                info.cue_cluster_positions.append(seg_body + read_uint(buf, qbody, qsize))
                             except MatroskaError:
                                 pass
                         q = qbody + qsize
@@ -756,6 +802,7 @@ def _parse_cues(buf: bytes, start: int, end: int, info: MatroskaInfo,
 # --------------------------------------------------------------------------- #
 # Derived quantities
 # --------------------------------------------------------------------------- #
+
 
 def resolve_end(info: MatroskaInfo, available: int) -> int | None:
     """Where the file ends, or ``None`` if the structure does not say.
@@ -788,8 +835,9 @@ def frame_extents(info: MatroskaInfo) -> list[tuple[int, int]]:
     result is "the runs of the file that hold frames" rather than one entry per
     frame.
     """
-    spans = sorted((b.data_offset, b.data_offset + b.data_size - 1)
-                   for b in info.frame_blocks if b.data_size > 0)
+    spans = sorted(
+        (b.data_offset, b.data_offset + b.data_size - 1) for b in info.frame_blocks if b.data_size > 0
+    )
     return merge_extents(spans)
 
 
@@ -986,8 +1034,10 @@ def _walk_segment_children(read, seg_body: int, limit: int) -> tuple:
             # The bytes here are not a Matroska top-level element, so the file
             # ended before this offset. Whatever the previous element ended at
             # is the file's end.
-            notes.append(f"element 0x{eid:X} at {pos} is not a Matroska top-level "
-                         f"element, so the file ends at {furthest}")
+            notes.append(
+                f"element 0x{eid:X} at {pos} is not a Matroska top-level "
+                f"element, so the file ends at {furthest}"
+            )
             break
         if unknown:
             if eid == CLUSTER:

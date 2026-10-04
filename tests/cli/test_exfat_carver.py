@@ -28,13 +28,13 @@ def create_synthetic_exfat_image(
     img[0:3] = b"\xeb\x76\x90"
     img[3:11] = EXFAT_OEM_MAGIC
     struct.pack_into("<Q", img, 72, total_size_kb * 2)  # VolumeLength in sectors
-    struct.pack_into("<I", img, 80, 2)                  # FatOffset
-    struct.pack_into("<I", img, 84, 4)                  # FatLength
-    struct.pack_into("<I", img, 88, 16)                 # ClusterHeapOffset in sectors
-    struct.pack_into("<I", img, 92, 32)                 # ClusterCount
-    struct.pack_into("<I", img, 96, 4)                  # FirstClusterOfRootDirectory
-    img[108] = 9                                        # BytesPerSectorShift (512 B)
-    img[109] = 3                                        # SectorsPerClusterShift (8 sec = 4096 B)
+    struct.pack_into("<I", img, 80, 2)  # FatOffset
+    struct.pack_into("<I", img, 84, 4)  # FatLength
+    struct.pack_into("<I", img, 88, 16)  # ClusterHeapOffset in sectors
+    struct.pack_into("<I", img, 92, 32)  # ClusterCount
+    struct.pack_into("<I", img, 96, 4)  # FirstClusterOfRootDirectory
+    img[108] = 9  # BytesPerSectorShift (512 B)
+    img[109] = 3  # SectorsPerClusterShift (8 sec = 4096 B)
     struct.pack_into("<H", img, 510, EXFAT_BOOT_SIGNATURE)
 
     # 2. Geometry:

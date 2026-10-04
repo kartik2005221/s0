@@ -132,17 +132,25 @@ def ata_sanitize_status(dev: str) -> tuple[int, dict]:
     m = __import__("re").search(r"(\d{1,3})%", blob)
     if m:
         info["progress_percent"] = int(m.group(1))
-    return (2 if info.get("in_progress") else
-            4 if info.get("succeeded") else
-            3 if info.get("failed") else
-            1 if info.get("frozen") else 0), info
+    return (
+        2
+        if info.get("in_progress")
+        else 4
+        if info.get("succeeded")
+        else 3
+        if info.get("failed")
+        else 1
+        if info.get("frozen")
+        else 0
+    ), info
 
 
 def _antifreeze(dev: str) -> tuple[bool, str]:
     if not has_external_tool("hdparm"):
         return False, "hdparm is not installed; cannot clear the sanitize freeze lock"
-    rc, out, err = _run(["hdparm", "--yes-i-know-what-i-am-doing", "--sanitize-anti-freeze-lock", dev],
-                        timeout=60)
+    rc, out, err = _run(
+        ["hdparm", "--yes-i-know-what-i-am-doing", "--sanitize-anti-freeze-lock", dev], timeout=60
+    )
     return rc == 0, (out + err).strip()[:200]
 
 
@@ -159,18 +167,22 @@ def _ata_sanitize(
     poll: Callable[[str], None] = lambda _m: None,
 ) -> SanitizeOutcome:
     outcome = SanitizeOutcome(
-        ok=False, method_id=method_id, tier=tier, mechanism=mechanism,
-        command=f"ATA 0xB4 FEATURE 0x{feature:04x}"
-                + (f" {' '.join(extra_args)}" if extra_args else ""),
+        ok=False,
+        method_id=method_id,
+        tier=tier,
+        mechanism=mechanism,
+        command=f"ATA 0xB4 FEATURE 0x{feature:04x}" + (f" {' '.join(extra_args)}" if extra_args else ""),
         started_at=time.monotonic(),
     )
     if not has_external_tool("hdparm"):
-        outcome.errors.append("hdparm is not installed; s0 will not build raw ATA "
-                              "taskfile commands against an unverified identify layout")
+        outcome.errors.append(
+            "hdparm is not installed; s0 will not build raw ATA "
+            "taskfile commands against an unverified identify layout"
+        )
         return outcome
 
     state, info = ata_sanitize_status(dev)
-    if state == 1:                                     # frozen
+    if state == 1:  # frozen
         poll("drive is in the SANITIZE FROZEN state; sending ANTIFREEZE LOCK")
         ok, msg = _antifreeze(dev)
         if not ok:
@@ -180,7 +192,8 @@ def _ata_sanitize(
         outcome.errors.append(
             "a sanitize operation is already in progress on this device. Re-issuing "
             "is a protocol violation; wait for it to finish, or power-cycle the drive, "
-            "which resumes rather than aborts it.")
+            "which resumes rather than aborts it."
+        )
         return outcome
 
     cmd = ["hdparm", "--yes-i-know-what-i-am-doing", hdparm_flag] + (extra_args or []) + [dev]
@@ -212,7 +225,8 @@ def _ata_sanitize(
                 "the controller did not report completion within the allotted time. "
                 "ATA and NVMe sanitize resume across a power cycle by design, so the "
                 "device may still be working. Re-run `s0 plan` to read the current "
-                "state before deciding anything.")
+                "state before deciding anything."
+            )
             break
         if time.monotonic() - last_report > 15.0:
             last_report = time.monotonic()
@@ -227,25 +241,36 @@ def _ata_sanitize(
 def ata_sanitize_block_erase(dev: str, *, timeout=None, poll=lambda _m: None) -> SanitizeOutcome:
     """ATA Sanitize BLOCK ERASE EXT. Purge on flash; controller-internal."""
     return _ata_sanitize(
-        dev, feature=0x0012, hdparm_flag="--sanitize-block-erase",
-        method_id="ATA_SANITIZE_BLOCK_ERASE", tier=Tiers.FIRMWARE_PURGE,
+        dev,
+        feature=0x0012,
+        hdparm_flag="--sanitize-block-erase",
+        method_id="ATA_SANITIZE_BLOCK_ERASE",
+        tier=Tiers.FIRMWARE_PURGE,
         mechanism="ATA Sanitize Device BLOCK ERASE EXT (0xB4 / FEATURE 0x0012, 'BkEr'); "
-                  "controller-internal block erase of all user data including caches",
-        timeout=timeout, poll=poll)
+        "controller-internal block erase of all user data including caches",
+        timeout=timeout,
+        poll=poll,
+    )
 
 
 def ata_sanitize_crypto_scramble(dev: str, *, timeout=None, poll=lambda _m: None) -> SanitizeOutcome:
     """ATA Sanitize CRYPTO SCRAMBLE EXT. Purge on a self-encrypting drive."""
     return _ata_sanitize(
-        dev, feature=0x0011, hdparm_flag="--sanitize-crypto-scramble",
-        method_id="ATA_SANITIZE_CRYPTO_SCRAMBLE", tier=Tiers.CRYPTOGRAPHIC_ERASE,
+        dev,
+        feature=0x0011,
+        hdparm_flag="--sanitize-crypto-scramble",
+        method_id="ATA_SANITIZE_CRYPTO_SCRAMBLE",
+        tier=Tiers.CRYPTOGRAPHIC_ERASE,
         mechanism="ATA Sanitize Device CRYPTO SCRAMBLE EXT (0xB4 / FEATURE 0x0011, 'Cryp'); "
-                  "destroys the internal data-encryption key",
-        timeout=timeout, poll=poll)
+        "destroys the internal data-encryption key",
+        timeout=timeout,
+        poll=poll,
+    )
 
 
-def ata_sanitize_overwrite(dev: str, *, pattern: str = "hex:0x00000000", passes: int = 1,
-                           timeout=None, poll=lambda _m: None) -> SanitizeOutcome:
+def ata_sanitize_overwrite(
+    dev: str, *, pattern: str = "hex:0x00000000", passes: int = 1, timeout=None, poll=lambda _m: None
+) -> SanitizeOutcome:
     """ATA Sanitize OVERWRITE EXT.
 
     `passes` is validated: 0 means sixteen passes in the ATA specification, which
@@ -253,21 +278,32 @@ def ata_sanitize_overwrite(dev: str, *, pattern: str = "hex:0x00000000", passes:
     """
     if passes < 1 or passes > 255:
         return SanitizeOutcome(
-            ok=False, method_id="ATA_SANITIZE_OVERWRITE", tier=Tiers.FIRMWARE_PURGE,
-            mechanism="", command="",
-            errors=[f"refusing pass count {passes}: in the ATA specification 0 means "
-                    f"SIXTEEN passes, which can run for a day and has been observed "
-                    f"stalling multi-terabyte drives. Pass an explicit 1-255."])
+            ok=False,
+            method_id="ATA_SANITIZE_OVERWRITE",
+            tier=Tiers.FIRMWARE_PURGE,
+            mechanism="",
+            command="",
+            errors=[
+                f"refusing pass count {passes}: in the ATA specification 0 means "
+                f"SIXTEEN passes, which can run for a day and has been observed "
+                f"stalling multi-terabyte drives. Pass an explicit 1-255."
+            ],
+        )
     if passes == 0:  # pragma: no cover - guarded above
         raise AssertionError
     return _ata_sanitize(
-        dev, feature=0x0014, hdparm_flag="--sanitize-overwrite",
-        method_id="ATA_SANITIZE_OVERWRITE", tier=Tiers.FIRMWARE_PURGE,
+        dev,
+        feature=0x0014,
+        hdparm_flag="--sanitize-overwrite",
+        method_id="ATA_SANITIZE_OVERWRITE",
+        tier=Tiers.FIRMWARE_PURGE,
         mechanism=f"ATA Sanitize Device OVERWRITE EXT (0xB4 / FEATURE 0x0014, "
-                  f"LBA[47:32]='OW', NSECT={passes}); firmware overwrite of logical and "
-                  f"physical address space",
+        f"LBA[47:32]='OW', NSECT={passes}); firmware overwrite of logical and "
+        f"physical address space",
         extra_args=[pattern, "--sanitize-overwrite-passes", str(passes)],
-        timeout=timeout, poll=poll)
+        timeout=timeout,
+        poll=poll,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -322,6 +358,7 @@ def sanitize_status_nvme(ctrl: str) -> tuple[int, dict]:
     if rc != 0:
         return -1, {"error": blob.strip()[:200]}
     import re
+
     info: dict = {"raw": blob.strip()[:600]}
     m = re.search(r"sstat\s*:\s*(0x[0-9a-fA-F]+)", blob)
     if m:
@@ -341,45 +378,79 @@ def sanitize_status_nvme(ctrl: str) -> tuple[int, dict]:
     return 0, info
 
 
-def nvme_sanitize(ctrl: str, sanact: str, *, pattern: int = 0xDEADBEEF, passes: int = 1,
-                  use_ause: bool = True, timeout: float | None = None,
-                  poll: Callable[[str], None] = lambda _m: None) -> SanitizeOutcome:
+def nvme_sanitize(
+    ctrl: str,
+    sanact: str,
+    *,
+    pattern: int = 0xDEADBEEF,
+    passes: int = 1,
+    use_ause: bool = True,
+    timeout: float | None = None,
+    poll: Callable[[str], None] = lambda _m: None,
+) -> SanitizeOutcome:
     """Issue an NVMe Sanitize command and block until the controller finishes.
 
     `ctrl` is the controller node (`/dev/nvme0`), not a namespace.
     """
     method_map = {
-        "block_erase": ("NVME_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE,
-                        "NVMe Sanitize SANACT=2 (Block Erase), admin opcode 0x84; "
-                        "controller-internal block erase"),
-        "crypto_erase": ("NVME_SANITIZE_CRYPTO_ERASE", Tiers.CRYPTOGRAPHIC_ERASE,
-                         "NVMe Sanitize SANACT=4 (Crypto Erase), admin opcode 0x84; "
-                         "destroys the media encryption key"),
-        "overwrite": ("NVME_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE,
-                      "NVMe Sanitize SANACT=3 (Overwrite), admin opcode 0x84, CDW11=OVRPAT"),
-        "purge_required": ("NVME_SANITIZE_PURGE_REQUIRED", Tiers.FIRMWARE_PURGE,
-                           "NVMe Sanitize SANACT=6 with SPRRS; asserts IEEE 2883 conformance"),
+        "block_erase": (
+            "NVME_SANITIZE_BLOCK_ERASE",
+            Tiers.FIRMWARE_PURGE,
+            "NVMe Sanitize SANACT=2 (Block Erase), admin opcode 0x84; controller-internal block erase",
+        ),
+        "crypto_erase": (
+            "NVME_SANITIZE_CRYPTO_ERASE",
+            Tiers.CRYPTOGRAPHIC_ERASE,
+            "NVMe Sanitize SANACT=4 (Crypto Erase), admin opcode 0x84; destroys the media encryption key",
+        ),
+        "overwrite": (
+            "NVME_SANITIZE_OVERWRITE",
+            Tiers.FIRMWARE_PURGE,
+            "NVMe Sanitize SANACT=3 (Overwrite), admin opcode 0x84, CDW11=OVRPAT",
+        ),
+        "purge_required": (
+            "NVME_SANITIZE_PURGE_REQUIRED",
+            Tiers.FIRMWARE_PURGE,
+            "NVMe Sanitize SANACT=6 with SPRRS; asserts IEEE 2883 conformance",
+        ),
     }
     if sanact not in method_map:
-        return SanitizeOutcome(ok=False, method_id="NVME_SANITIZE", tier=Tiers.NONE,
-                               mechanism="", command="",
-                               errors=[f"unknown NVMe SANACT {sanact!r}"])
+        return SanitizeOutcome(
+            ok=False,
+            method_id="NVME_SANITIZE",
+            tier=Tiers.NONE,
+            mechanism="",
+            command="",
+            errors=[f"unknown NVMe SANACT {sanact!r}"],
+        )
     if sanact == "overwrite" and passes < 1:
-        return SanitizeOutcome(ok=False, method_id=method_map[sanact][0], tier=Tiers.FIRMWARE_PURGE,
-                               mechanism="", command="",
-                               errors=["refusing NVMe OWPASS=0: in the specification 0 means "
-                                       "SIXTEEN passes. Pass an explicit count."])
+        return SanitizeOutcome(
+            ok=False,
+            method_id=method_map[sanact][0],
+            tier=Tiers.FIRMWARE_PURGE,
+            mechanism="",
+            command="",
+            errors=[
+                "refusing NVMe OWPASS=0: in the specification 0 means SIXTEEN passes. Pass an explicit count."
+            ],
+        )
     method_id, tier, mechanism = method_map[sanact]
 
     outcome = SanitizeOutcome(
-        ok=False, method_id=method_id, tier=tier, mechanism=mechanism,
+        ok=False,
+        method_id=method_id,
+        tier=tier,
+        mechanism=mechanism,
         command=f"nvme sanitize --sanact=start-{sanact.replace('_', '-')} (SANACT="
-                f"{NVME_SANACT[sanact]}, opcode 0x84)",
-        started_at=time.monotonic())
+        f"{NVME_SANACT[sanact]}, opcode 0x84)",
+        started_at=time.monotonic(),
+    )
 
     if not has_external_tool("nvme"):
-        outcome.errors.append("nvme-cli is not installed; s0 will not issue raw NVMe "
-                              "admin passthrough commands against an unverified layout")
+        outcome.errors.append(
+            "nvme-cli is not installed; s0 will not issue raw NVMe "
+            "admin passthrough commands against an unverified layout"
+        )
         return outcome
 
     cmd = ["nvme", "sanitize", ctrl, f"--sanact=start-{sanact.replace('_', '-')}"]
@@ -403,20 +474,21 @@ def nvme_sanitize(ctrl: str, sanact: str, *, pattern: int = 0xDEADBEEF, passes: 
         sstat, info = sanitize_status_nvme(ctrl)
         if sstat in (1, 4):
             outcome.status = NVME_SSTAT[sstat]
-            outcome.attestation = (
-                "nvme_log_0x81_global_data_erased="
-                + ("1" if info.get("global_data_erased") else "0")
+            outcome.attestation = "nvme_log_0x81_global_data_erased=" + (
+                "1" if info.get("global_data_erased") else "0"
             )
             if info.get("global_data_erased"):
                 outcome.notes.append(
                     "GLOBAL DATA ERASED asserted: no namespace user data has been "
                     "written and no persistent memory region enabled since manufacture "
-                    "or the last successful sanitize")
+                    "or the last successful sanitize"
+                )
             else:
                 outcome.notes.append(
                     "the controller reported success but did NOT assert GLOBAL DATA "
                     "ERASED; a previous sanitize or a vendor firmware path may have "
-                    "been taken. This is recorded on the certificate.")
+                    "been taken. This is recorded on the certificate."
+                )
             outcome.ok = True
             break
         if sstat == 3:
@@ -425,8 +497,10 @@ def nvme_sanitize(ctrl: str, sanact: str, *, pattern: int = 0xDEADBEEF, passes: 
             break
         if time.monotonic() > deadline:
             outcome.status = "timed out waiting for the controller"
-            outcome.errors.append("the controller did not report completion in time; "
-                                  "NVMe sanitize resumes across a power cycle by design")
+            outcome.errors.append(
+                "the controller did not report completion in time; "
+                "NVMe sanitize resumes across a power cycle by design"
+            )
             break
         time.sleep(POLL_INTERVAL)
 
@@ -448,32 +522,52 @@ def nvme_sanitize(ctrl: str, sanact: str, *, pattern: int = 0xDEADBEEF, passes: 
 # OVERWRITE parameter list: byte 0 bits 4:0 pass count, bits 6:5 test, bit 7
 # invert; bytes 2-3 initialisation pattern length; bytes 4.. pattern.
 
-SCSI_SERVICE_ACTION = {"overwrite": 0x01, "block_erase": 0x02,
-                       "cryptographic_erase": 0x03, "exit_failure": 0x1F}
+SCSI_SERVICE_ACTION = {
+    "overwrite": 0x01,
+    "block_erase": 0x02,
+    "cryptographic_erase": 0x03,
+    "exit_failure": 0x1F,
+}
 
 
-def scsi_sanitize(dev: str, service_action: str, *, pattern: bytes = b"\x00\x00\x00\x00",
-                  passes: int = 1, timeout: float | None = None,
-                  poll: Callable[[str], None] = lambda _m: None) -> SanitizeOutcome:
+def scsi_sanitize(
+    dev: str,
+    service_action: str,
+    *,
+    pattern: bytes = b"\x00\x00\x00\x00",
+    passes: int = 1,
+    timeout: float | None = None,
+    poll: Callable[[str], None] = lambda _m: None,
+) -> SanitizeOutcome:
     method_map = {
         "overwrite": ("SCSI_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE),
         "block_erase": ("SCSI_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE),
         "cryptographic_erase": ("SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE", Tiers.CRYPTOGRAPHIC_ERASE),
     }
     if service_action not in method_map:
-        return SanitizeOutcome(ok=False, method_id="SCSI_SANITIZE", tier=Tiers.NONE,
-                               mechanism="", command="",
-                               errors=[f"unknown SCSI SANITIZE service action {service_action!r}"])
+        return SanitizeOutcome(
+            ok=False,
+            method_id="SCSI_SANITIZE",
+            tier=Tiers.NONE,
+            mechanism="",
+            command="",
+            errors=[f"unknown SCSI SANITIZE service action {service_action!r}"],
+        )
     method_id, tier = method_map[service_action]
     outcome = SanitizeOutcome(
-        ok=False, method_id=method_id, tier=tier,
-        mechanism=f"SCSI SANITIZE opcode 0x48, service action "
-                  f"0x{SCSI_SERVICE_ACTION[service_action]:02X}",
-        command="", started_at=time.monotonic())
+        ok=False,
+        method_id=method_id,
+        tier=tier,
+        mechanism=f"SCSI SANITIZE opcode 0x48, service action 0x{SCSI_SERVICE_ACTION[service_action]:02X}",
+        command="",
+        started_at=time.monotonic(),
+    )
 
     if not has_external_tool("sg_sanitize"):
-        outcome.errors.append("sg3_utils is not installed; s0 will not hand-build SCSI "
-                              "CDBs and parse sense data for a firmware erase")
+        outcome.errors.append(
+            "sg3_utils is not installed; s0 will not hand-build SCSI "
+            "CDBs and parse sense data for a firmware erase"
+        )
         return outcome
 
     cmd = ["sg_sanitize", f"--{service_action}"]

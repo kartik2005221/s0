@@ -30,9 +30,23 @@ FFMPEG = shutil.which("ffmpeg")
 
 def _encode_avi(tmp_path: Path, name: str = "clip.avi", *extra: str) -> Path:
     out = tmp_path / name
-    cmd = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
-           "-f", "lavfi", "-i", "testsrc=size=160x120:rate=15:duration=2",
-           "-c:v", "mpeg4", *extra, "-f", "avi", str(out)]
+    cmd = [
+        FFMPEG,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=160x120:rate=15:duration=2",
+        "-c:v",
+        "mpeg4",
+        *extra,
+        "-f",
+        "avi",
+        str(out),
+    ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0 or not out.is_file() or out.stat().st_size < 512:
         pytest.skip(f"ffmpeg could not produce {name}: {proc.stderr[:200]}")
@@ -42,6 +56,7 @@ def _encode_avi(tmp_path: Path, name: str = "clip.avi", *extra: str) -> Path:
 # --------------------------------------------------------------------------- #
 # Synthetic chunk builders, for the traps
 # --------------------------------------------------------------------------- #
+
 
 def chunk(fourcc: bytes, payload: bytes) -> bytes:
     """A RIFF chunk, with the WORD pad byte the format requires."""
@@ -71,7 +86,7 @@ def build_avi(chunk_payloads, *, base_is_absolute=False, movi_pad=0):
     movi_id = 12 + len(hdrl) + 8
 
     rows = b""
-    rel = 4 + movi_pad          # the identifier itself is 4 bytes
+    rel = 4 + movi_pad  # the identifier itself is 4 bytes
     for fourcc, payload in chunk_payloads:
         off = (movi_id + rel) if base_is_absolute else rel
         rows += fourcc + struct.pack("<III", riff.AVIIF_KEYFRAME, off, len(payload))
@@ -116,8 +131,8 @@ class TestChunkWalk:
         body = b"AVI " + lst(b"movi", chunk(b"00dc", b"x"))
         data = b"RIFF" + struct.pack("<I", len(body)) + body
         movi = riff.find_movi(riff.walk_chunks(data, 0, len(data)))
-        assert data[movi.list_type_offset:movi.list_type_offset + 4] == b"movi"
-        assert data[movi.children_start:movi.children_start + 4] == b"00dc"
+        assert data[movi.list_type_offset : movi.list_type_offset + 4] == b"movi"
+        assert data[movi.children_start : movi.children_start + 4] == b"00dc"
 
 
 class TestIndexBaseResolution:
@@ -130,10 +145,10 @@ class TestIndexBaseResolution:
         idx = riff.find_avi_index(data)
         assert idx is not None
         assert not idx.base_is_absolute
-        assert data[idx.base:idx.base + 4] == b"movi"
+        assert data[idx.base : idx.base + 4] == b"movi"
         for e in idx.entries:
             off = idx.extent(e)[0]
-            assert data[off:off + 4] == e.chunk_id
+            assert data[off : off + 4] == e.chunk_id
 
     def test_file_absolute_base_is_detected(self):
         data = build_avi(self.PAYLOADS, base_is_absolute=True)
@@ -142,7 +157,7 @@ class TestIndexBaseResolution:
         assert idx.base_is_absolute
         for e in idx.entries:
             off = idx.extent(e)[0]
-            assert data[off:off + 4] == e.chunk_id
+            assert data[off : off + 4] == e.chunk_id
 
     def test_an_index_that_points_at_nothing_is_rejected(self):
         data = bytearray(build_avi(self.PAYLOADS))
@@ -204,7 +219,7 @@ class TestOpendml:
         rows = [(b"00dc", 0x10, 0, 16)]
         assert riff.parse_opendml_indx(self._indx(rows), 0), "the well-formed table parses"
         broken = bytearray(self._indx(rows))
-        struct.pack_into("<I", broken, 8, 7)      # dwLongsPerEntry != 4
+        struct.pack_into("<I", broken, 8, 7)  # dwLongsPerEntry != 4
         assert riff.parse_opendml_indx(bytes(broken), 0) == []
 
     def test_a_zero_length_row_still_parses(self):
@@ -223,8 +238,7 @@ class TestAgainstRealEncoder:
         idx = riff.find_avi_index(data)
         assert idx is not None, "a real AVI must have a resolvable index"
         assert len(idx.entries) > 0
-        hits = sum(1 for e in idx.entries
-                   if data[idx.extent(e)[0]:idx.extent(e)[0] + 4] == e.chunk_id)
+        hits = sum(1 for e in idx.entries if data[idx.extent(e)[0] : idx.extent(e)[0] + 4] == e.chunk_id)
         assert hits == len(idx.entries), f"only {hits}/{len(idx.entries)} chunks resolved"
         first, last = idx.media_extent()
         assert 0 < first < last <= len(data)
@@ -244,7 +258,8 @@ class TestAgainstRealEncoder:
             declared = struct.unpack_from("<I", data, off + 4)[0]
             assert declared == e.payload_size, (
                 f"index says {e.payload_size} bytes for {e.chunk_id!r} at {off} "
-                f"but the chunk header says {declared}")
+                f"but the chunk header says {declared}"
+            )
 
 
 class TestCarverIntegration:
@@ -252,6 +267,7 @@ class TestCarverIntegration:
     @pytest.mark.parametrize("codec", ["mpeg4", "ffv1"])
     def test_avi_is_recovered_byte_exact(self, tmp_path, codec):
         from s0.carve import carve_image
+
         src = _encode_avi(tmp_path, f"{codec}.avi", "-c:v", codec)
         original = src.read_bytes()
         image = tmp_path / "img.raw"
@@ -267,6 +283,7 @@ class TestCarverIntegration:
         import json
 
         from s0.carve import carve_image
+
         src = _encode_avi(tmp_path)
         image = tmp_path / "img.raw"
         image.write_bytes(b"\x5a" * 4096 + src.read_bytes() + b"\x5a" * 4096)
@@ -280,12 +297,14 @@ class TestCarverIntegration:
 
     def test_a_riff_that_is_not_avi_is_not_claimed(self):
         from s0.carve.boundary import _validate_avi
+
         wav = b"RIFF" + struct.pack("<I", 36) + b"WAVEfmt " + b"\x00" * 32
         ok, why = _validate_avi(wav)
         assert not ok and "AVI" in why
 
     def test_an_avi_without_a_usable_index_is_rejected(self):
         from s0.carve.boundary import _validate_avi
+
         body = b"AVI " + lst(b"hdrl", chunk(b"avih", b"\x00" * 56)) + lst(b"movi", chunk(b"00dc", b"x" * 40))
         data = b"RIFF" + struct.pack("<I", len(body)) + body
         ok, why = _validate_avi(data)
@@ -293,6 +312,7 @@ class TestCarverIntegration:
 
     def test_an_avi_whose_index_points_nowhere_is_rejected(self):
         from s0.carve.boundary import _validate_avi
+
         data = bytearray(build_avi(TestIndexBaseResolution.PAYLOADS))
         at = data.find(b"idx1")
         for row in range(3):

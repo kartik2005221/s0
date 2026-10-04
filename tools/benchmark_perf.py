@@ -345,19 +345,27 @@ def print_report(res: dict) -> None:
     ed = res["ed25519"]
     print(f"   Key Generation : {ed['keygen']['avg_ms']:.4f} ms ({ed['keygen']['ops_sec']:,.0f} keys/sec)")
     print(f"   Sign Latency   : {ed['sign']['avg_ms']:.4f} ms ({ed['sign']['ops_sec']:,.0f} signatures/sec)")
-    print(f"   Verify Latency : {ed['verify']['avg_ms']:.4f} ms ({ed['verify']['ops_sec']:,.0f} verifications/sec)")
+    print(
+        f"   Verify Latency : {ed['verify']['avg_ms']:.4f} ms ({ed['verify']['ops_sec']:,.0f} verifications/sec)"
+    )
     print("-" * 78)
     print("3. HASH-CHAINED AUDIT LEDGER (SQLite + SHA-256 + Ed25519)")
     al = res["audit_ledger"]
     print(f"   Blocks Tested  : {al['block_count']} chained blocks")
-    print(f"   Block Insert   : {al['insert']['avg_ms']:.3f} ms/block ({al['insert']['ops_sec']:,.1f} blocks/sec)")
-    print(f"   Full Chain Ver.: {al['verify_ledger']['total_sec'] * 1000:.2f} ms ({al['verify_ledger']['blocks_sec']:,.0f} blocks/sec)")
+    print(
+        f"   Block Insert   : {al['insert']['avg_ms']:.3f} ms/block ({al['insert']['ops_sec']:,.1f} blocks/sec)"
+    )
+    print(
+        f"   Full Chain Ver.: {al['verify_ledger']['total_sec'] * 1000:.2f} ms ({al['verify_ledger']['blocks_sec']:,.0f} blocks/sec)"
+    )
     print("-" * 78)
     print("4. DATA OVERWRITE & VERIFICATION I/O (Userspace Python Stream)")
     io = res["io_overwrite"]
     print(f"   Buffer Size    : {io['size_mb']} MiB in 1 MiB chunks")
     print(f"   Zero Overwrite : {io['zero_overwrite']['throughput_mbps']:.1f} MB/s (with concurrent SHA-256)")
-    print(f"   Random Overwr. : {io['random_overwrite']['throughput_mbps']:.1f} MB/s (with OS CSPRNG + SHA-256)")
+    print(
+        f"   Random Overwr. : {io['random_overwrite']['throughput_mbps']:.1f} MB/s (with OS CSPRNG + SHA-256)"
+    )
     print(f"   Readback Audit : {io['sampled_readback']['elapsed_ms']:.2f} ms (64 samples × 4 KiB)")
     print("-" * 78)
     print("5. HARDWARE ARCHITECTURE CONTEXT:")

@@ -223,7 +223,9 @@ def _scan_directory_entries(
                         except Exception:
                             pass
 
-                full_filename = "".join(name_parts)[:name_len] if name_parts else f"exfat_file_c{first_cluster}.bin"
+                full_filename = (
+                    "".join(name_parts)[:name_len] if name_parts else f"exfat_file_c{first_cluster}.bin"
+                )
 
                 # Check if this is a directory vs regular file
                 is_dir = bool(file_attr & 0x10)
@@ -238,7 +240,9 @@ def _scan_directory_entries(
 
                         if no_fat_chain or is_deleted:
                             # Contiguous cluster allocation
-                            data_offset = boot.cluster_heap_offset_bytes + (first_cluster - 2) * boot.cluster_size
+                            data_offset = (
+                                boot.cluster_heap_offset_bytes + (first_cluster - 2) * boot.cluster_size
+                            )
                             f.seek(data_offset)
                             file_bytes = f.read(read_bytes_total)
                         else:

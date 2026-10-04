@@ -74,6 +74,7 @@ def test_safety_refusal_same_target(temp_workspace):
     )
 
     from s0.cli.devices import SafetyError
+
     with pytest.raises(SafetyError, match="cannot be the same target"):
         acquire_image(options)
 
@@ -96,6 +97,7 @@ def test_fault_tolerant_bad_sector_handling(temp_workspace):
 
     # Simulate read error on second 4KB chunk, and sector read failure at offset 4608
     original_open = open
+
     class MockFailingFile:
         def __init__(self, real_f):
             self._f = real_f
@@ -134,7 +136,7 @@ def test_fault_tolerant_bad_sector_handling(temp_workspace):
     # Verify that the destination file was padded with zeros at the bad sector
     dst_bytes = dst_file.read_bytes()
     assert len(dst_bytes) == 8192
-    assert dst_bytes[4608:4608 + 512] == b"\x00" * 512
+    assert dst_bytes[4608 : 4608 + 512] == b"\x00" * 512
     assert dst_bytes[:4608] == b"A" * 4608
 
 
@@ -151,11 +153,16 @@ def test_cli_image_and_certificate_signing(temp_workspace):
 
     cmd = [
         "image",
-        "--source", str(src_file),
-        "--destination", str(dst_file),
-        "--out-dir", str(out_dir),
-        "--operator", "op-cert-test",
-        "--organization", "Forensics Lab",
+        "--source",
+        str(src_file),
+        "--destination",
+        str(dst_file),
+        "--out-dir",
+        str(out_dir),
+        "--operator",
+        "op-cert-test",
+        "--organization",
+        "Forensics Lab",
     ]
     if demo_key.is_file():
         cmd.extend(["--key", str(demo_key)])
@@ -184,13 +191,18 @@ def test_cli_clone_alias(temp_workspace):
     src_file.write_bytes(b"CLONE_TARGET_VERIFICATION" * 100)
     dst_file = temp_workspace / "dest_clone.raw"
 
-    ret = main([
-        "clone",
-        "--source", str(src_file),
-        "--destination", str(dst_file),
-        "--out-dir", str(temp_workspace),
-        "--no-certificate",
-    ])
+    ret = main(
+        [
+            "clone",
+            "--source",
+            str(src_file),
+            "--destination",
+            str(dst_file),
+            "--out-dir",
+            str(temp_workspace),
+            "--no-certificate",
+        ]
+    )
     assert ret == 0
     assert dst_file.read_bytes() == src_file.read_bytes()
 
@@ -201,12 +213,17 @@ def test_cli_image_warns_on_default_demo_key(temp_workspace, capsys):
     src_file.write_bytes(b"DATA" * 64)
     dst_file = temp_workspace / "dest_warn.raw"
 
-    ret = main([
-        "image",
-        "--source", str(src_file),
-        "--destination", str(dst_file),
-        "--out-dir", str(temp_workspace),
-    ])
+    ret = main(
+        [
+            "image",
+            "--source",
+            str(src_file),
+            "--destination",
+            str(dst_file),
+            "--out-dir",
+            str(temp_workspace),
+        ]
+    )
     assert ret == 0
     captured = capsys.readouterr()
     assert "NOTICE: Operation signed with unaccredited demonstration key" in captured.err
@@ -219,25 +236,35 @@ def test_cli_image_pdf_generation_and_no_pdf_flag(temp_workspace):
 
     # 1. Image with default PDF generation
     out_pdf = temp_workspace / "out_pdf"
-    ret = main([
-        "image",
-        "--source", str(src_file),
-        "--destination", str(temp_workspace / "dest1.raw"),
-        "--out-dir", str(out_pdf),
-    ])
+    ret = main(
+        [
+            "image",
+            "--source",
+            str(src_file),
+            "--destination",
+            str(temp_workspace / "dest1.raw"),
+            "--out-dir",
+            str(out_pdf),
+        ]
+    )
     assert ret == 0
     pdfs = list(out_pdf.glob("certificate_*.pdf"))
     assert len(pdfs) == 1, "Expected PDF certificate for image acquisition"
 
     # 2. Image with --no-pdf
     out_nopdf = temp_workspace / "out_nopdf"
-    ret = main([
-        "image",
-        "--source", str(src_file),
-        "--destination", str(temp_workspace / "dest2.raw"),
-        "--out-dir", str(out_nopdf),
-        "--no-pdf",
-    ])
+    ret = main(
+        [
+            "image",
+            "--source",
+            str(src_file),
+            "--destination",
+            str(temp_workspace / "dest2.raw"),
+            "--out-dir",
+            str(out_nopdf),
+            "--no-pdf",
+        ]
+    )
     assert ret == 0
     pdfs_none = list(out_nopdf.glob("certificate_*.pdf"))
     assert len(pdfs_none) == 0, "Expected no PDF certificate when --no-pdf is specified"
@@ -252,12 +279,16 @@ def test_image_destination_guards(temp_workspace):
     # 1. Destination already exists: fails without force
     dst = temp_workspace / "existing_dst.raw"
     dst.write_bytes(b"OLD DATA")
-    opt = ImagingOptions(source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=False)
+    opt = ImagingOptions(
+        source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=False
+    )
     with pytest.raises(SafetyError, match="already exists"):
         acquire_image(opt)
 
     # 2. Overwrite succeeds with force=True
-    opt_force = ImagingOptions(source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=True)
+    opt_force = ImagingOptions(
+        source=str(src), destination=str(dst), out_dir=str(temp_workspace), no_certificate=True, force=True
+    )
     res = acquire_image(opt_force)
     assert res.success is True
     assert dst.read_bytes() == src.read_bytes()
@@ -268,9 +299,12 @@ def test_image_destination_guards(temp_workspace):
     target_f.write_bytes(b"TARGET")
     sym_dst.symlink_to(target_f)
 
-    opt_sym = ImagingOptions(source=str(src), destination=str(sym_dst), out_dir=str(temp_workspace), no_certificate=True, force=True)
+    opt_sym = ImagingOptions(
+        source=str(src),
+        destination=str(sym_dst),
+        out_dir=str(temp_workspace),
+        no_certificate=True,
+        force=True,
+    )
     with pytest.raises(SafetyError, match="symbolic link"):
         acquire_image(opt_sym)
-
-
-

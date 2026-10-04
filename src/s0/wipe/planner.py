@@ -74,8 +74,9 @@ def select_method(
     # ---- image files -------------------------------------------------------
     if target.kind == "image":
         chosen = OverwriteMethod(passes=passes, pattern=pattern)
-        alternatives.append(Candidate(None, "firmware erase: no firmware behind an image file",
-                                      available=False))
+        alternatives.append(
+            Candidate(None, "firmware erase: no firmware behind an image file", available=False)
+        )
         return Candidate(chosen), alternatives
 
     # ---- NVMe ---------------------------------------------------------------
@@ -86,46 +87,70 @@ def select_method(
                 if capable:
                     return Candidate(NvmeMethod("sanitize_crypto")), alternatives
                 if capable is None:
-                    alt = Candidate(NvmeMethod("sanitize_crypto"),
-                                    "crypto erase capability unconfirmed", available=False)
+                    alt = Candidate(
+                        NvmeMethod("sanitize_crypto"), "crypto erase capability unconfirmed", available=False
+                    )
                     alternatives.append(alt)
                     return Candidate(NvmeMethod("sanitize_block")), alternatives
-                alternatives.append(Candidate(
-                    NvmeMethod("sanitize_crypto"),
-                    "controller lacks sanitize capability", available=False))
+                alternatives.append(
+                    Candidate(
+                        NvmeMethod("sanitize_crypto"), "controller lacks sanitize capability", available=False
+                    )
+                )
                 return Candidate(NvmeMethod("format_user")), alternatives
         alternatives.append(Candidate(None, "nvme-cli not installed", available=False))
         fallback = Candidate(OverwriteMethod(passes=passes, pattern=pattern))
         return fallback, alternatives
 
     # ---- ATA (SATA SSD/HDD) -------------------------------------------------
-    if prefer_firmware and (ata_probe is not None or shutil.which("hdparm") or shutil.which("/usr/sbin/hdparm") or shutil.which("/sbin/hdparm")):
+    if prefer_firmware and (
+        ata_probe is not None
+        or shutil.which("hdparm")
+        or shutil.which("/usr/sbin/hdparm")
+        or shutil.which("/sbin/hdparm")
+    ):
         info = probe_ata(target)
         if info.get("frozen"):
-            alternatives.append(Candidate(None, "ATA Security Erase unavailable: drive "
-                                               "security state is FROZEN", available=False))
+            alternatives.append(
+                Candidate(
+                    None, "ATA Security Erase unavailable: drive security state is FROZEN", available=False
+                )
+            )
         elif info.get("enhanced_supported"):
             chosen = AtaSecureEraseMethod(enhanced=True)
-            alternatives.append(Candidate(BlkdiscardMethod(discard_justification),
-                                          "discard-only alternative (weaker classification)"))
+            alternatives.append(
+                Candidate(
+                    BlkdiscardMethod(discard_justification),
+                    "discard-only alternative (weaker classification)",
+                )
+            )
             return Candidate(chosen), alternatives
         elif info.get("supported"):
             return Candidate(AtaSecureEraseMethod(enhanced=False)), alternatives
         else:
-            alternatives.append(Candidate(None, "ATA Security Erase: drive does not "
-                                               "advertise support", available=False))
+            alternatives.append(
+                Candidate(None, "ATA Security Erase: drive does not advertise support", available=False)
+            )
 
     # ---- fallbacks ----------------------------------------------------------
     if discard_justification:
         chosen = BlkdiscardMethod(discard_justification)
-        alternatives.append(Candidate(OverwriteMethod(passes, pattern),
-                                      "overwrite alternative (slower, equally Clear-classified)"))
+        alternatives.append(
+            Candidate(
+                OverwriteMethod(passes, pattern), "overwrite alternative (slower, equally Clear-classified)"
+            )
+        )
         return Candidate(chosen), alternatives
-    if target.kind == "block" and target.storage_type in ("SSD", "eMMC") and \
-            not target.path.startswith("/dev/loop"):
-        alternatives.append(Candidate(BlkdiscardMethod(),
-                                      "not chosen by default: classification depends on "
-                                      "drive TRIM guarantees"))
+    if (
+        target.kind == "block"
+        and target.storage_type in ("SSD", "eMMC")
+        and not target.path.startswith("/dev/loop")
+    ):
+        alternatives.append(
+            Candidate(
+                BlkdiscardMethod(), "not chosen by default: classification depends on drive TRIM guarantees"
+            )
+        )
 
     return Candidate(OverwriteMethod(passes=passes, pattern=pattern)), alternatives
 
@@ -133,6 +158,7 @@ def select_method(
 # --------------------------------------------------------------------------- #
 # verification sampling
 # --------------------------------------------------------------------------- #
+
 
 def sample_offsets(capacity: int, sector_size: int, count: int) -> list[int]:
     """Deterministic-per-seed crypto-random sample offsets, sector aligned."""
@@ -212,8 +238,9 @@ def verify_wipe(
     matching is about 4.5%. A certificate carrying only the count would let a
     reader mistake one number for the other.
     """
-    offs = offsets if offsets is not None else sample_offsets(
-        target.capacity_bytes, target.sector_size, samples)
+    offs = (
+        offsets if offsets is not None else sample_offsets(target.capacity_bytes, target.sector_size, samples)
+    )
     post = _read_samples(target.path, offs, sample_bytes)
 
     verif: dict = {
@@ -229,12 +256,12 @@ def verify_wipe(
     elif pre_samples is not None and len(pre_samples) == len(post):
         changed = [a != b for a, b in zip(pre_samples, post, strict=False)]
         pct_changed = sum(changed) / len(changed) if changed else 1.0
-        verif["all_samples_match_wipe_pattern"] = (pct_changed >= 0.90)
+        verif["all_samples_match_wipe_pattern"] = pct_changed >= 0.90
         verif["method"] = "sampled_readback_changed_vs_pre"
     elif pattern in ("firmware", "key_destruction"):
         all_zeros = all(b == b"\x00" * len(b) for b in post)
         all_ones = all(b == b"\xff" * len(b) for b in post)
-        verif["all_samples_match_wipe_pattern"] = (all_zeros or all_ones)
+        verif["all_samples_match_wipe_pattern"] = all_zeros or all_ones
     else:
         # Random pattern without pre-samples: check non-zero ratio and Shannon entropy
         non_zeros = [b != b"\x00" * len(b) for b in post]
@@ -246,7 +273,7 @@ def verify_wipe(
 
         verif["average_entropy"] = round(avg_entropy, 3)
         verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
-        verif["all_samples_match_wipe_pattern"] = (pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy)
+        verif["all_samples_match_wipe_pattern"] = pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy
         verif["note_only_pattern_check_possible_with_pre_samples"] = True
 
     # Record what the sample is worth, not just how many were taken.
@@ -271,8 +298,7 @@ def verify_wipe(
         blocks_sampled=len(post),
         blocks_total=population,
         blocks_matching=0 if verif.get("all_samples_match_wipe_pattern") else 1,
-        pattern_description=f"{sample_bytes}-byte readback against the "
-                            f"{pattern} wipe pattern",
+        pattern_description=f"{sample_bytes}-byte readback against the {pattern} wipe pattern",
         confidence=0.95,
     )
     verif["population_blocks"] = population
@@ -286,13 +312,13 @@ def verify_wipe(
             f"uniform_pseudorandom; {proof.blocks_sampled} of {population} sectors; "
             f"residue bounded at {proof.upper_bound_fraction * 100:.2f}% "
             f"({proof.confidence:.0%} confidence) -- raise --verify-samples for a "
-            f"tighter bound")
+            f"tighter bound"
+        )
 
     if planted_needles:
         from .methods.overwrite import count_pattern_hits
 
-        hits = {n.decode("utf-8", "replace"): count_pattern_hits(target.path, n)
-                for n in planted_needles}
+        hits = {n.decode("utf-8", "replace"): count_pattern_hits(target.path, n) for n in planted_needles}
         verif["planted_pattern_hits_after"] = sum(hits.values())
     return verif, post
 
@@ -306,6 +332,7 @@ def take_pre_samples(target: T, *, samples: int = 64, sample_bytes: int = 4096):
 # --------------------------------------------------------------------------- #
 # certificate assembly
 # --------------------------------------------------------------------------- #
+
 
 def default_issuer_key(explicit: str | None) -> Path | None:
     if explicit:
@@ -351,11 +378,13 @@ def make_certificate(
 ) -> dict:
     notes = list(extra_notes or [])
     if target.kind == "image":
-        notes.insert(0, "File-backed image target: bytes written really land on the "
-                        "underlying disk; no root privileges required.")
+        notes.insert(
+            0,
+            "File-backed image target: bytes written really land on the "
+            "underlying disk; no root privileges required.",
+        )
     if target.kind == "block" and target.serial is None:
-        notes.append(f"device_id fell back to path hash (no serial/WWN available): "
-                     f"{target.path}")
+        notes.append(f"device_id fell back to path hash (no serial/WWN available): {target.path}")
 
     cert = cert_mod.build_certificate(
         organization=organization,

@@ -70,9 +70,14 @@ REASON_RENAME_OLD = 0x00001000
 REASON_RENAME_NEW = 0x00002000
 
 # The reasons that state something about a name coming into being or ceasing to.
-_NAMING_REASONS = frozenset({
-    "FILE_CREATE", "FILE_DELETE", "RENAME_OLD_NAME", "RENAME_NEW_NAME",
-})
+_NAMING_REASONS = frozenset(
+    {
+        "FILE_CREATE",
+        "FILE_DELETE",
+        "RENAME_OLD_NAME",
+        "RENAME_NEW_NAME",
+    }
+)
 
 # Header offsets shared by all three versions.
 _OFF_RECORD_LENGTH = 0x00
@@ -137,7 +142,7 @@ def parse_usn_time(value: int) -> float | None:
     if value > _MAX_FILETIME:
         return None
     seconds = value / 10_000_000 - 11644473600
-    if seconds < 0 or seconds > 4_102_444_800:        # past 2100
+    if seconds < 0 or seconds > 4_102_444_800:  # past 2100
         return None
     return seconds
 
@@ -187,8 +192,7 @@ class UsnRecord:
         """
         return bool(
             self.reason_mask
-            & (REASON_FILE_CREATE | REASON_FILE_DELETE
-               | REASON_RENAME_OLD | REASON_RENAME_NEW)
+            & (REASON_FILE_CREATE | REASON_FILE_DELETE | REASON_RENAME_OLD | REASON_RENAME_NEW)
         )
 
 
@@ -278,6 +282,7 @@ def parse_usn_record(blob: bytes) -> UsnRecord | None:
 @dataclass
 class UsnTimelineEntry:
     """One file's history, folded out of the journal's many revisions."""
+
     mft_entry: int
     name: str
     parent_mft_entry: int

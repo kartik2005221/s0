@@ -116,8 +116,7 @@ def name_source_text(source: str | None, filesystem: str | None = None) -> str:
     if not source:
         return _NAME_SOURCE_TEXT[NAME_SOURCE_CARVED]
     if filesystem:
-        specific = _NAME_SOURCE_TEXT_BY_FILESYSTEM.get(
-            (filesystem.lower(), source))
+        specific = _NAME_SOURCE_TEXT_BY_FILESYSTEM.get((filesystem.lower(), source))
         if specific:
             return specific
     return _NAME_SOURCE_TEXT.get(source, source)
@@ -133,6 +132,7 @@ def path_source_text(source: str | None) -> str:
 @dataclass
 class NameProvenance:
     """What supports a recovered name and path, in reportable form."""
+
     name_source: str
     path_source: str | None = None
     path: str | None = None
@@ -168,7 +168,8 @@ class NameProvenance:
             "path": self.path,
             "path_source": self.path_source,
             "path_is_recovered": self.path_is_recovered,
-            "path_detail": path_source_text(self.path_source) if self.path_is_recovered
+            "path_detail": path_source_text(self.path_source)
+            if self.path_is_recovered
             else path_source_text(PATH_SOURCE_UNRECOVERABLE),
         }
 
@@ -184,11 +185,13 @@ FILESYSTEM_PROVENANCE = {
 }
 
 
-def for_filesystem(filesystem: str, *, path: str | None = None,
-                   name_source: str | None = None) -> NameProvenance:
+def for_filesystem(
+    filesystem: str, *, path: str | None = None, name_source: str | None = None
+) -> NameProvenance:
     """Provenance for a name recovered from `filesystem`."""
     default_name, path_source = FILESYSTEM_PROVENANCE.get(
-        (filesystem or "raw").lower(), FILESYSTEM_PROVENANCE["raw"])
+        (filesystem or "raw").lower(), FILESYSTEM_PROVENANCE["raw"]
+    )
     if filesystem and filesystem.lower() == "ntfs":
         path_source = PATH_SOURCE_MFT
     return NameProvenance(

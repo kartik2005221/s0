@@ -47,14 +47,13 @@ def _resolve(ext: str, blob: bytes):
     if not sigs:
         pytest.skip(f"no signature for .{ext}")
     img = _buried(blob)
-    return img, resolve_boundary(
-        ByteSource(io.BytesIO(img), len(img)), len(PAD), sigs[0], len(img))
+    return img, resolve_boundary(ByteSource(io.BytesIO(img), len(img)), len(PAD), sigs[0], len(img))
 
 
 def _assert_exact(ext: str, blob: bytes):
     img, b = _resolve(ext, blob)
     assert b.end is not None, f".{ext} refused a valid file: {b.notes}"
-    assert img[b.end - len(blob): b.end] == blob, f".{ext} end is wrong"
+    assert img[b.end - len(blob) : b.end] == blob, f".{ext} end is wrong"
 
 
 def _assert_refused(ext: str, blob: bytes, *, contains: str = ""):
@@ -68,14 +67,31 @@ def _assert_refused(ext: str, blob: bytes, *, contains: str = ""):
 # Declared total
 # --------------------------------------------------------------------------- #
 
+
 @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
 class TestAiff:
     def _aiff(self, tmp_path, seconds=1):
         dest = tmp_path / "a.aiff"
         r = subprocess.run(
-            [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-             "-i", f"sine=frequency=440:duration={seconds}", "-c:a", "pcm_s16be",
-             "-f", "aiff", str(dest)], capture_output=True, text=True)
+            [
+                FFMPEG,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"sine=frequency=440:duration={seconds}",
+                "-c:a",
+                "pcm_s16be",
+                "-f",
+                "aiff",
+                str(dest),
+            ],
+            capture_output=True,
+            text=True,
+        )
         if r.returncode != 0:
             pytest.skip(r.stderr[:200])
         return dest.read_bytes()
@@ -96,21 +112,23 @@ class TestShellLinkAndPrefetch:
     def test_a_lnk_with_a_link_size_is_exact(self, tmp_path):
         """`LinkSize` at offset 24 is the whole file's length."""
         from s0.carve.containers import shell_link_end
+
         size = 0x4C + 64
         blob = bytearray(size)
-        struct.pack_into("<I", blob, 0, 0x4C)          # HeaderSize
-        struct.pack_into("<I", blob, 4, size)          # LinkSize
-        blob[0x4C - 2: 0x4C] = b"\x00\x00"            # no target id list
+        struct.pack_into("<I", blob, 0, 0x4C)  # HeaderSize
+        struct.pack_into("<I", blob, 4, size)  # LinkSize
+        blob[0x4C - 2 : 0x4C] = b"\x00\x00"  # no target id list
         buf = _buried(bytes(blob))
         end = shell_link_end(buf, len(PAD), len(buf), 0x4C)
         assert end == len(PAD) + size
-        assert buf[end - size: end] == bytes(blob)
+        assert buf[end - size : end] == bytes(blob)
 
     def test_a_lnk_claiming_a_size_below_the_header_is_refused(self):
         from s0.carve.containers import ResolveError, shell_link_end
+
         blob = bytearray(200)
-        struct.pack_into("<I", blob, 0, 0x4C)          # HeaderSize magic
-        struct.pack_into("<I", blob, 4, 8)             # LinkSize < HeaderSize
+        struct.pack_into("<I", blob, 0, 0x4C)  # HeaderSize magic
+        struct.pack_into("<I", blob, 4, 8)  # LinkSize < HeaderSize
         with pytest.raises(ResolveError, match="below the header size"):
             shell_link_end(_buried(bytes(blob)), len(PAD), 4096 + 200 + 4096, 0x4C)
 
@@ -121,19 +139,21 @@ class TestShellLinkAndPrefetch:
         declared original size, so a shorter file is a different file.
         """
         from s0.carve.containers import prefetch_end
+
         original = 300_000
         blob = bytearray(0x20 + original)
         blob[0:4] = b"SCCA"
-        struct.pack_into("<I", blob, 4, 3)             # version 3
+        struct.pack_into("<I", blob, 4, 3)  # version 3
         struct.pack_into("<I", blob, 0x1C, original)  # original file size
         buf = _buried(bytes(blob))
         end = prefetch_end(buf, len(PAD), len(buf))
         assert end is not None and end > len(PAD)
-        assert buf[end - len(blob): end] == bytes(blob)
+        assert buf[end - len(blob) : end] == bytes(blob)
 
     def test_prefetch_earlier_versions_are_refused(self):
         """Only v3 carries a file size; the others have nothing to derive from."""
         from s0.carve.containers import ResolveError, prefetch_end
+
         for version in (2, 17, 23, 26):
             blob = bytearray(0x20 + 512)
             blob[0:4] = b"SCCA"
@@ -146,12 +166,13 @@ class TestShellLinkAndPrefetch:
 # Chunk and box walks
 # --------------------------------------------------------------------------- #
 
+
 class TestMidi:
     @staticmethod
     def _midi(tracks=1, extra=b""):
         out = b"MThd" + struct.pack(">IHHH", 6, 0, tracks, 96)
         for _ in range(tracks):
-            trk = b"\x00\xff\x2f\x00"                   # delta + End-of-Track
+            trk = b"\x00\xff\x2f\x00"  # delta + End-of-Track
             out += b"MTrk" + struct.pack(">I", len(trk)) + trk
         return out + extra
 
@@ -165,16 +186,14 @@ class TestMidi:
         blob = self._midi(3)
         img, b = _resolve("mid", blob)
         assert b.end is not None
-        assert img[b.end - len(blob): b.end] == blob
-        assert img[b.end: b.end + 8] == PAD[:8], "absorbed the following evidence"
+        assert img[b.end - len(blob) : b.end] == blob
+        assert img[b.end : b.end + 8] == PAD[:8], "absorbed the following evidence"
 
     def test_no_tracks_is_refused(self):
-        _assert_refused("mid", b"MThd" + struct.pack(">IHHH", 6, 0, 0, 96),
-                        contains="no MTrk")
+        _assert_refused("mid", b"MThd" + struct.pack(">IHHH", 6, 0, 0, 96), contains="no MTrk")
 
     def test_an_implausible_header_length_is_refused(self):
-        _assert_refused("mid", b"MThd" + struct.pack(">I", 0xFFFFFF) + b"\x00" * 8,
-                        contains="implausible")
+        _assert_refused("mid", b"MThd" + struct.pack(">I", 0xFFFFFF) + b"\x00" * 8, contains="implausible")
 
 
 class TestJavaClass:
@@ -185,8 +204,8 @@ class TestJavaClass:
             # A Utf8 entry: tag 1, u16 length, bytes.
             text = f"f{i}".encode()
             out += b"\x01" + struct.pack(">H", len(text)) + text
-        out += struct.pack(">HHHH", 0x0021, 1, 0, 0)   # access/this/super/ifaces
-        out += struct.pack(">H", members) * 2          # fields, methods
+        out += struct.pack(">HHHH", 0x0021, 1, 0, 0)  # access/this/super/ifaces
+        out += struct.pack(">H", members) * 2  # fields, methods
         out += struct.pack(">H", attrs)
         return out
 
@@ -205,19 +224,19 @@ class TestJavaClass:
         about it.
         """
         out = b"\xca\xfe\xba\xbe\x00\x00\x00\x34" + struct.pack(">H", 1)
-        out += struct.pack(">HHHH", 0x0021, 1, 0, 0)      # access/this/super/ifaces
-        out += struct.pack(">H", 0)                       # fields
-        out += struct.pack(">H", 2)                       # methods
+        out += struct.pack(">HHHH", 0x0021, 1, 0, 0)  # access/this/super/ifaces
+        out += struct.pack(">H", 0)  # fields
+        out += struct.pack(">H", 2)  # methods
         for _ in range(2):
-            out += struct.pack(">HHH", 0x0001, 1, 2)      # access, name, descriptor
-            out += struct.pack(">H", 1)                   # one attribute
+            out += struct.pack(">HHH", 0x0001, 1, 2)  # access, name, descriptor
+            out += struct.pack(">H", 1)  # one attribute
             out += struct.pack(">HI", 1, 8) + b"12345678"
-        out += struct.pack(">H", 0)                       # class attributes
+        out += struct.pack(">H", 0)  # class attributes
         _assert_exact("class", out)
 
     def test_an_unknown_pool_tag_is_refused(self):
         blob = bytearray(self._class(cp_entries=1))
-        blob[10] = 0x7F                                 # not a valid cp tag
+        blob[10] = 0x7F  # not a valid cp tag
         _assert_refused("class", bytes(blob), contains="unknown constant pool tag")
 
     def test_noise_is_refused(self):
@@ -244,7 +263,7 @@ class TestRtf:
         blob = b"{\\rtf1\\pard hi}"
         img, b = _resolve("rtf", blob)
         assert b.end is not None
-        assert img[b.end - len(blob): b.end] == blob
+        assert img[b.end - len(blob) : b.end] == blob
 
     def test_not_rtf_is_refused(self):
         _assert_refused("rtf", b"{ plain text", contains="no RTF header")
@@ -260,9 +279,9 @@ class TestRegistryHive:
             out += b"\x00" * 4
         head = bytearray(0x1000)
         head[0:4] = b"regf"
-        struct.pack_into("<I", head, 0x04, 1)         # primary sequence
-        struct.pack_into("<I", head, 0x14, 1)         # major version
-        struct.pack_into("<I", head, 0x28, blocks * 0x1000)   # hive bins data size
+        struct.pack_into("<I", head, 0x04, 1)  # primary sequence
+        struct.pack_into("<I", head, 0x14, 1)  # major version
+        struct.pack_into("<I", head, 0x28, blocks * 0x1000)  # hive bins data size
         return bytes(head) + bytes(out)
 
     def test_a_complete_hive(self):
@@ -284,6 +303,7 @@ class TestRegistryHive:
 # --------------------------------------------------------------------------- #
 # Compression: measured by the decompressor's own accounting
 # --------------------------------------------------------------------------- #
+
 
 class TestCompression:
     PAYLOAD = b"forensic evidence " * 900
@@ -365,16 +385,18 @@ class TestCompression:
         """No lz4 encoder here, so the frame is built to the spec and walked."""
         payload = b"a" * 32
         block = struct.pack("<I", len(payload)) + payload
-        frame = (b"\x04\x22\x4d\x18"
-                 + bytes([0x60 | (1 << 3) | 0])   # version 01, single-segment-ish
-                 + (1024).to_bytes(8, "little")  # content size
-                 + b"\x00"                        # header checksum
-                 + block
-                 + struct.pack("<I", 0))          # end mark
+        frame = (
+            b"\x04\x22\x4d\x18"
+            + bytes([0x60 | (1 << 3) | 0])  # version 01, single-segment-ish
+            + (1024).to_bytes(8, "little")  # content size
+            + b"\x00"  # header checksum
+            + block
+            + struct.pack("<I", 0)
+        )  # end mark
         img = _buried(frame)
         end = C.lz4_end(img, len(PAD), len(img))
         assert end == len(PAD) + len(frame)
-        assert img[end - len(frame): end] == frame
+        assert img[end - len(frame) : end] == frame
 
     def test_lz4_wrong_magic(self):
         _assert_refused("lz4", b"\x04\x22\x4d\x19" + b"\x00" * 64, contains="no LZ4")
@@ -384,10 +406,12 @@ class TestCompression:
 # Images
 # --------------------------------------------------------------------------- #
 
+
 class TestTiff:
     @staticmethod
     def _png_module():
         from PIL import Image
+
         return Image
 
     def _tiff(self, mode, size, **kw):
@@ -397,9 +421,14 @@ class TestTiff:
         Image.new(mode, size, colour).save(buf, format="TIFF", **kw)
         return buf.getvalue()
 
-    @pytest.mark.parametrize("mode,size", [
-        ("RGB", (200, 150)), ("L", (64, 64)), ("RGBA", (50, 50)),
-    ])
+    @pytest.mark.parametrize(
+        "mode,size",
+        [
+            ("RGB", (200, 150)),
+            ("L", (64, 64)),
+            ("RGBA", (50, 50)),
+        ],
+    )
     def test_uncompressed_variants(self, mode, size):
         _assert_exact("tiff", self._tiff(mode, size))
 
@@ -416,8 +445,7 @@ class TestTiff:
         The geometry gives a confident wrong answer there, so it is refused with
         the reason stated rather than reported as a boundary.
         """
-        _assert_refused("tiff", self._tiff("RGB", (200, 150), compression=comp),
-                        contains="not handled")
+        _assert_refused("tiff", self._tiff("RGB", (200, 150), compression=comp), contains="not handled")
 
     def test_noise_is_refused(self):
         _assert_refused("tiff", os.urandom(65536), contains="byte order")
@@ -427,12 +455,11 @@ class TestTiff:
         Image = self._png_module()
         buf = io.BytesIO()
         im = Image.new("RGB", (40, 40), (9, 9, 9))
-        im.save(buf, format="TIFF", save_all=True,
-                append_images=[Image.new("RGB", (40, 40), (1, 1, 1))])
+        im.save(buf, format="TIFF", save_all=True, append_images=[Image.new("RGB", (40, 40), (1, 1, 1))])
         blob = bytearray(buf.getvalue())
         ifd = struct.unpack_from("<I", blob, 4)[0]
         n = struct.unpack_from("<H", blob, ifd)[0]
-        struct.pack_into("<I", blob, ifd + 2 + n * 12, 0x7FFFFFF0)   # next IFD
+        struct.pack_into("<I", blob, ifd + 2 + n * 12, 0x7FFFFFF0)  # next IFD
         _img, b = _resolve("tiff", bytes(blob))
         # Either refused, or resolved without reading past the evidence.
         assert b.end is None or b.end - len(PAD) <= len(blob)
@@ -441,9 +468,9 @@ class TestTiff:
 class TestJpeg2000:
     def _jp2(self, size=(120, 90)):
         from PIL import Image
+
         buf = io.BytesIO()
-        Image.new("RGB", size, (1, 2, 3)).save(buf, format="JPEG2000",
-                                               quality_layers=[1])
+        Image.new("RGB", size, (1, 2, 3)).save(buf, format="JPEG2000", quality_layers=[1])
         return buf.getvalue()
 
     def test_exact(self):
@@ -461,34 +488,44 @@ class TestJpeg2000:
 # --------------------------------------------------------------------------- #
 
 ALL_RESOLVERS = [
-    (C.aiff_end, ()), (C.midi_end, ()), (C.tiff_end, ()), (C.jp2_end, ()),
-    (C.java_class_end, ()), (C.rar_end, ()), (C.rtf_end, ()),
-    (C.registry_hive_end, ()), (C.bzip2_end, ()), (C.xz_end, ()),
-    (C.lzma_alone_end, ()), (C.zstd_end, ()), (C.lz4_end, ()),
+    (C.aiff_end, ()),
+    (C.midi_end, ()),
+    (C.tiff_end, ()),
+    (C.jp2_end, ()),
+    (C.java_class_end, ()),
+    (C.rar_end, ()),
+    (C.rtf_end, ()),
+    (C.registry_hive_end, ()),
+    (C.bzip2_end, ()),
+    (C.xz_end, ()),
+    (C.lzma_alone_end, ()),
+    (C.zstd_end, ()),
+    (C.lz4_end, ()),
     (C.cfb_end, ()),
 ]
 
 
 class TestNoiseAcrossAllResolvers:
-    @pytest.mark.parametrize("fn,args", ALL_RESOLVERS,
-                             ids=[f.__name__ for f, _ in ALL_RESOLVERS])
+    @pytest.mark.parametrize("fn,args", ALL_RESOLVERS, ids=[f.__name__ for f, _ in ALL_RESOLVERS])
     def test_noise_is_refused(self, fn, args):
         for _ in range(20):
             blob = os.urandom(200_000)
             with pytest.raises(C.ResolveError):
                 fn(blob, 0, len(blob), *args)
 
-    @pytest.mark.parametrize("fn,args", ALL_RESOLVERS,
-                             ids=[f.__name__ for f, _ in ALL_RESOLVERS])
+    @pytest.mark.parametrize("fn,args", ALL_RESOLVERS, ids=[f.__name__ for f, _ in ALL_RESOLVERS])
     def test_a_truncated_prefix_is_refused(self, fn, args):
         """A valid header followed by nothing must not resolve to the header."""
         # `.class` is deliberately absent: a bare magic followed by zeros *is* a
         # structurally valid empty class, so refusing it would mean inventing a
         # constraint the format does not have. The 4-byte magic is the gate, and
         # 400 noise runs per resolver confirm it holds.
-        for magic, fn_name in ((b"FORM", "aiff_end"), (b"MThd", "midi_end"),
-                               (b"{\\rtf", "rtf_end"),
-                               (b"Rar!\x1a\x07\x01\x00", "rar_end")):
+        for magic, fn_name in (
+            (b"FORM", "aiff_end"),
+            (b"MThd", "midi_end"),
+            (b"{\\rtf", "rtf_end"),
+            (b"Rar!\x1a\x07\x01\x00", "rar_end"),
+        ):
             if fn.__name__ != fn_name:
                 continue
             blob = magic + b"\x00" * 64
@@ -497,24 +534,24 @@ class TestNoiseAcrossAllResolvers:
 
 
 class TestRegistration:
-    NEWLY_RESOLVABLE = ["aiff", "mid", "tiff", "jp2", "class", "rar", "rtf",
-                        "dat", "bz2", "xz", "zst", "lz4"]
+    NEWLY_RESOLVABLE = ["aiff", "mid", "tiff", "jp2", "class", "rar", "rtf", "dat", "bz2", "xz", "zst", "lz4"]
 
     @pytest.mark.parametrize("ext", NEWLY_RESOLVABLE)
     def test_the_rule_is_registered(self, ext):
         from s0.carve import boundary
+
         assert boundary.has_boundary_rule(ext), ext
 
     @pytest.mark.parametrize("ext", NEWLY_RESOLVABLE)
     def test_it_reports_a_method_not_a_guess(self, ext):
         """No format may be carved to `max_size` now that it can be walked."""
         from s0.carve import boundary
+
         sigs = _SIGNATURES_BY_EXT.get(ext)
         if not sigs:
             pytest.skip(f"no signature for .{ext}")
         img = _buried(os.urandom(70000))
-        b = resolve_boundary(ByteSource(io.BytesIO(img), len(img)), len(PAD),
-                             sigs[0], len(img))
+        b = resolve_boundary(ByteSource(io.BytesIO(img), len(img)), len(PAD), sigs[0], len(img))
         assert b.method != boundary.MAX_SIZE_FALLBACK
 
 
@@ -530,9 +567,9 @@ class TestContainedFindings:
 
     def _image(self, tmp_path):
         from PIL import Image
+
         buf = io.BytesIO()
-        Image.new("RGB", (120, 90), (1, 2, 3)).save(buf, format="JPEG2000",
-                                                     quality_layers=[1])
+        Image.new("RGB", (120, 90), (1, 2, 3)).save(buf, format="JPEG2000", quality_layers=[1])
         jp2 = buf.getvalue()
         assert b"ftyp" in jp2[:32], "fixture no longer nests a ftyp box"
         img = tmp_path / "img.raw"
@@ -541,20 +578,22 @@ class TestContainedFindings:
 
     def test_the_inner_box_tree_is_dropped(self, tmp_path):
         from s0.carve import carve_image
+
         img, jp2 = self._image(tmp_path)
         out = tmp_path / "out"
         summary = carve_image(img, out, generate_certificate=False)
-        exts = {Path(f.recovered_path).suffix for f in summary.carved_files
-                if f.recovered_path}
+        exts = {Path(f.recovered_path).suffix for f in summary.carved_files if f.recovered_path}
         assert ".jp2" in exts
         assert ".mp4" not in exts, "the nested ftyp box was reported as a file"
-        recovered = [f for f in summary.carved_files
-                     if f.recovered_path and f.recovered_path.endswith(".jp2")]
+        recovered = [
+            f for f in summary.carved_files if f.recovered_path and f.recovered_path.endswith(".jp2")
+        ]
         assert len(recovered) == 1
         assert Path(recovered[0].recovered_path).read_bytes() == jp2
 
     def test_the_duplicate_is_removed_from_disk(self, tmp_path):
         from s0.carve import carve_image
+
         img, _jp2 = self._image(tmp_path)
         out = tmp_path / "out"
         carve_image(img, out, generate_certificate=False)
@@ -564,6 +603,7 @@ class TestContainedFindings:
         import json
 
         from s0.carve import carve_image
+
         img, _jp2 = self._image(tmp_path)
         out = tmp_path / "out"
         carve_image(img, out, generate_certificate=False)
@@ -580,9 +620,16 @@ class TestContainedFindings:
         from s0.carve.engine import CarvedFile, drop_contained
 
         def mk(offset, size, name):
-            return CarvedFile(file_id=name, filename=name, extension="x",
-                              category="test", offset=offset, size_bytes=size,
-                              sha256=name, confidence_score=100)
+            return CarvedFile(
+                file_id=name,
+                filename=name,
+                extension="x",
+                category="test",
+                offset=offset,
+                size_bytes=size,
+                sha256=name,
+                confidence_score=100,
+            )
 
         inner, outer = mk(1000, 258, "inner"), mk(900, 400, "outer")
         counters: dict = {}
@@ -597,9 +644,16 @@ class TestContainedFindings:
         from s0.carve.engine import CarvedFile, drop_contained
 
         def mk(offset, size, name):
-            return CarvedFile(file_id=name, filename=name, extension="x",
-                              category="test", offset=offset, size_bytes=size,
-                              sha256=name, confidence_score=100)
+            return CarvedFile(
+                file_id=name,
+                filename=name,
+                extension="x",
+                category="test",
+                offset=offset,
+                size_bytes=size,
+                sha256=name,
+                confidence_score=100,
+            )
 
         a, b = mk(0, 500, "a"), mk(400, 500, "b")
         kept = drop_contained([a, b], {}, tmp_path)

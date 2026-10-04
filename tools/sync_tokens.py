@@ -26,10 +26,12 @@ TARGETS = [
     REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
 ]
 
-BANNER = ("/* GENERATED FILE - do not edit.\n"
-          "   Source: shared/tokens.css   Sync: python tools/sync_tokens.py\n"
-          "   The single source of truth for every s0 surface's colour, type,\n"
-          "   spacing, focus and motion tokens. */\n\n")
+BANNER = (
+    "/* GENERATED FILE - do not edit.\n"
+    "   Source: shared/tokens.css   Sync: python tools/sync_tokens.py\n"
+    "   The single source of truth for every s0 surface's colour, type,\n"
+    "   spacing, focus and motion tokens. */\n\n"
+)
 
 
 def _digest(path: Path) -> str:
@@ -38,8 +40,7 @@ def _digest(path: Path) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--check", action="store_true",
-                    help="verify the copies match the source; do not write")
+    ap.add_argument("--check", action="store_true", help="verify the copies match the source; do not write")
     args = ap.parse_args()
 
     if not SOURCE.is_file():

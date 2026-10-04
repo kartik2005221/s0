@@ -79,8 +79,7 @@ def load_config() -> dict[str, Any]:
             )
         except OSError as exc:
             print(
-                f"[s0 config]  WARNING: cannot read {cfg_file} ({exc}); "
-                "using built-in defaults.",
+                f"[s0 config]  WARNING: cannot read {cfg_file} ({exc}); using built-in defaults.",
                 file=sys.stderr,
             )
         else:

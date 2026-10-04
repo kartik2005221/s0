@@ -46,10 +46,17 @@ def ordinal(entry: int, sequence: int = 1) -> int:
     return ((sequence & 0xFFFF) << 48) | (entry & 0x0000FFFFFFFFFFFF)
 
 
-def make_record(name: str, *, usn_value: int = 0x1000, timestamp: float = 1_760_000_000.0,
-                reason: int = REASON_FILE_CREATE, file_ref: int = 0,
-                parent_ref: int = 0, attributes: int = 0x20,
-                version: int = usn.USN_RECORD_V2) -> bytes:
+def make_record(
+    name: str,
+    *,
+    usn_value: int = 0x1000,
+    timestamp: float = 1_760_000_000.0,
+    reason: int = REASON_FILE_CREATE,
+    file_ref: int = 0,
+    parent_ref: int = 0,
+    attributes: int = 0x20,
+    version: int = usn.USN_RECORD_V2,
+) -> bytes:
     """Encode a USN_RECORD_V2 or V3.
 
     The two are byte-identical apart from the version field: RecordLength,
@@ -57,8 +64,9 @@ def make_record(name: str, *, usn_value: int = 0x1000, timestamp: float = 1_760_
     USN, a timestamp, reason, source, security id and attributes, then the name
     length, the name offset, and the name.
     """
-    assert version in (usn.USN_RECORD_V2, usn.USN_RECORD_V3), \
+    assert version in (usn.USN_RECORD_V2, usn.USN_RECORD_V3), (
         "V4 is a different structure with no file name; build it explicitly"
+    )
     file_ref = file_ref or ordinal(0x2A, 5)
     parent_ref = parent_ref or ordinal(5, 5)
 
@@ -77,8 +85,8 @@ def make_record(name: str, *, usn_value: int = 0x1000, timestamp: float = 1_760_
     struct.pack_into("<Q", out, 0x18, usn_value)
     struct.pack_into("<Q", out, 0x20, nt(timestamp))
     struct.pack_into("<I", out, 0x28, reason)
-    struct.pack_into("<I", out, 0x2C, 1)          # source info
-    struct.pack_into("<I", out, 0x30, 256)        # security id
+    struct.pack_into("<I", out, 0x2C, 1)  # source info
+    struct.pack_into("<I", out, 0x30, 256)  # security id
     struct.pack_into("<I", out, 0x34, attributes)
     struct.pack_into("<H", out, usn._OFF_NAME_LENGTH, len(raw))
     struct.pack_into("<H", out, usn._OFF_NAME_OFFSET, fixed)
@@ -107,9 +115,13 @@ def test_v2_record_round_trips():
 
 
 def test_v2_and_v3_are_byte_identical_apart_from_the_version():
-    fields = {"usn_value": 0x2000, "timestamp": 1_750_000_000.0,
-                  "reason": REASON_FILE_DELETE, "file_ref": ordinal(0x2A, 5),
-                  "parent_ref": ordinal(5, 5)}
+    fields = {
+        "usn_value": 0x2000,
+        "timestamp": 1_750_000_000.0,
+        "reason": REASON_FILE_DELETE,
+        "file_ref": ordinal(0x2A, 5),
+        "parent_ref": ordinal(5, 5),
+    }
     v2 = parse_usn_record(make_record("evidence.zip", version=2, **fields))
     v3 = parse_usn_record(make_record("evidence.zip", version=3, **fields))
     for rec in (v2, v3):
@@ -153,8 +165,7 @@ def test_both_references_use_the_same_ordinal_layout():
     the sequence and loses the entry, which is backwards: every MFT entry number
     would come back as the ordinal itself.
     """
-    rec = parse_usn_record(make_record(
-        "ordinal.bin", file_ref=ordinal(0x2A, 5), parent_ref=ordinal(5, 5)))
+    rec = parse_usn_record(make_record("ordinal.bin", file_ref=ordinal(0x2A, 5), parent_ref=ordinal(5, 5)))
     assert rec.mft_entry == 0x2A
     assert rec.sequence == 5
     assert rec.parent_mft_entry == 5
@@ -202,7 +213,7 @@ def test_record_longer_than_the_buffer_is_rejected():
 def test_unaligned_record_length_is_rejected():
     blob = bytearray(make_record("x.txt"))
     length = struct.unpack_from("<I", blob, 0)[0]
-    struct.pack_into("<I", blob, 0, length - 1)      # not 4- or 8-byte aligned
+    struct.pack_into("<I", blob, 0, length - 1)  # not 4- or 8-byte aligned
     assert parse_usn_record(bytes(blob)) is None
 
 
@@ -221,14 +232,14 @@ def test_name_length_of_zero_is_rejected():
 
 def test_odd_name_length_is_rejected():
     blob = bytearray(make_record("x.txt"))
-    struct.pack_into("<H", blob, usn._OFF_NAME_LENGTH, 3)           # UTF-16 cannot be 3 bytes
+    struct.pack_into("<H", blob, usn._OFF_NAME_LENGTH, 3)  # UTF-16 cannot be 3 bytes
     assert parse_usn_record(bytes(blob)) is None
 
 
 def test_name_offset_outside_the_record_is_rejected():
     blob = bytearray(make_record("x.txt"))
     length = struct.unpack_from("<I", blob, 0)[0]
-    struct.pack_into("<H", blob, usn._OFF_NAME_OFFSET, length)      # offset + length overruns
+    struct.pack_into("<H", blob, usn._OFF_NAME_OFFSET, length)  # offset + length overruns
     assert parse_usn_record(bytes(blob)) is None
 
 
@@ -238,7 +249,7 @@ def test_whitespace_only_name_is_rejected():
 
 
 def test_a_name_made_only_of_dots_is_kept():
-    """"." is a real journal entry for a directory, not junk."""
+    """ "." is a real journal entry for a directory, not junk."""
     rec = parse_usn_record(make_record("."))
     assert rec is not None and rec.name == "."
 
@@ -268,7 +279,7 @@ def test_unset_timestamps_are_not_rendered_as_dates():
 
 def test_record_with_a_sentinel_timestamp_still_parses():
     blob = bytearray(make_record("stamp.txt"))
-    struct.pack_into("<Q", blob, 0x20, 0xFFFFFFFFFFFFFFFF)   # V2 timestamp field
+    struct.pack_into("<Q", blob, 0x20, 0xFFFFFFFFFFFFFFFF)  # V2 timestamp field
     rec = parse_usn_record(bytes(blob))
     assert rec is not None
     assert rec.name == "stamp.txt"
@@ -281,11 +292,13 @@ def test_record_with_a_sentinel_timestamp_still_parses():
 
 
 def test_journal_of_several_records_is_read_in_usn_order():
-    journal = b"".join([
-        make_record("first.txt", usn_value=0x1000, reason=REASON_FILE_CREATE),
-        make_record("second.txt", usn_value=0x2000, reason=REASON_FILE_CREATE),
-        make_record("second.txt", usn_value=0x3000, reason=REASON_FILE_DELETE),
-    ])
+    journal = b"".join(
+        [
+            make_record("first.txt", usn_value=0x1000, reason=REASON_FILE_CREATE),
+            make_record("second.txt", usn_value=0x2000, reason=REASON_FILE_CREATE),
+            make_record("second.txt", usn_value=0x3000, reason=REASON_FILE_DELETE),
+        ]
+    )
     records = parse_usn_journal(journal)
     assert [r.usn for r in records] == [0x1000, 0x2000, 0x3000]
     assert records[-1].reasons == ["FILE_DELETE"]
@@ -298,11 +311,13 @@ def test_records_written_out_of_order_are_sorted_by_usn():
     buffer wraps or was written out of order. A filesystem timestamp cannot: the
     clock can be set backwards.
     """
-    journal = b"".join([
-        make_record("late.txt", usn_value=0x9000, timestamp=1_760_000_000.0),
-        make_record("early.txt", usn_value=0x1000, timestamp=1_750_000_000.0),
-        make_record("middle.txt", usn_value=0x5000, timestamp=1_755_000_000.0),
-    ])
+    journal = b"".join(
+        [
+            make_record("late.txt", usn_value=0x9000, timestamp=1_760_000_000.0),
+            make_record("early.txt", usn_value=0x1000, timestamp=1_750_000_000.0),
+            make_record("middle.txt", usn_value=0x5000, timestamp=1_755_000_000.0),
+        ]
+    )
     records = parse_usn_journal(journal)
     assert [r.name for r in records] == ["early.txt", "middle.txt", "late.txt"]
 
@@ -326,9 +341,7 @@ def test_duplicates_are_collapsed():
 
 
 def test_max_records_is_honoured():
-    journal = b"".join(
-        make_record(f"f{i}.txt", usn_value=0x1000 + i) for i in range(20)
-    )
+    journal = b"".join(make_record(f"f{i}.txt", usn_value=0x1000 + i) for i in range(20))
     assert len(parse_usn_journal(journal, max_records=5)) == 5
 
 
@@ -343,12 +356,18 @@ def test_empty_journal_yields_nothing():
 
 
 def test_timeline_reports_deletion_time_for_a_deleted_file():
-    records = parse_usn_journal(b"".join([
-        make_record("report.docx", usn_value=0x1000, timestamp=1_760_000_000.0,
-                    reason=REASON_FILE_CREATE),
-        make_record("report.docx", usn_value=0x2000, timestamp=1_760_003_600.0,
-                    reason=REASON_FILE_DELETE),
-    ]))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record(
+                    "report.docx", usn_value=0x1000, timestamp=1_760_000_000.0, reason=REASON_FILE_CREATE
+                ),
+                make_record(
+                    "report.docx", usn_value=0x2000, timestamp=1_760_003_600.0, reason=REASON_FILE_DELETE
+                ),
+            ]
+        )
+    )
     timeline = build_timeline(records)
     assert len(timeline) == 1
     entry = timeline[0]
@@ -365,13 +384,21 @@ def test_timeline_collapses_data_writes_into_one_entry():
     Reporting each revision separately would bury the single fact that matters
     -- that the file was deleted, and when.
     """
-    records = parse_usn_journal(b"".join(
-        [make_record("busy.log", usn_value=0x1000 + i, timestamp=1_760_000_000.0 + i,
-                     reason=0x00000001)          # DATA_OVERWRITE
-         for i in range(50)]
-        + [make_record("busy.log", usn_value=0x2000, timestamp=1_760_001_000.0,
-                       reason=REASON_FILE_DELETE)]
-    ))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record(
+                    "busy.log", usn_value=0x1000 + i, timestamp=1_760_000_000.0 + i, reason=0x00000001
+                )  # DATA_OVERWRITE
+                for i in range(50)
+            ]
+            + [
+                make_record(
+                    "busy.log", usn_value=0x2000, timestamp=1_760_001_000.0, reason=REASON_FILE_DELETE
+                )
+            ]
+        )
+    )
     timeline = build_timeline(records)
     assert len(timeline) == 1
     assert timeline[0].event_count == 51
@@ -381,10 +408,14 @@ def test_timeline_collapses_data_writes_into_one_entry():
 
 
 def test_rename_records_the_previous_name():
-    records = parse_usn_journal(b"".join([
-        make_record("draft.txt", usn_value=0x1000, reason=REASON_RENAME_OLD),
-        make_record("final.txt", usn_value=0x2000, reason=REASON_RENAME_NEW),
-    ]))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record("draft.txt", usn_value=0x1000, reason=REASON_RENAME_OLD),
+                make_record("final.txt", usn_value=0x2000, reason=REASON_RENAME_NEW),
+            ]
+        )
+    )
     entry = build_timeline(records)[0]
     assert entry.name == "final.txt"
     assert entry.renamed_from == "draft.txt"
@@ -392,23 +423,46 @@ def test_rename_records_the_previous_name():
 
 
 def test_timeline_is_ordered_newest_deletion_first():
-    records = parse_usn_journal(b"".join([
-        make_record("old.bin", usn_value=0x1000, timestamp=1_700_000_000.0,
-                    reason=REASON_FILE_DELETE, file_ref=ordinal(0x31, 1)),
-        make_record("new.bin", usn_value=0x2000, timestamp=1_760_000_000.0,
-                    reason=REASON_FILE_DELETE, file_ref=ordinal(0x32, 1)),
-        make_record("mid.bin", usn_value=0x3000, timestamp=1_730_000_000.0,
-                    reason=REASON_FILE_DELETE, file_ref=ordinal(0x33, 1)),
-    ]))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record(
+                    "old.bin",
+                    usn_value=0x1000,
+                    timestamp=1_700_000_000.0,
+                    reason=REASON_FILE_DELETE,
+                    file_ref=ordinal(0x31, 1),
+                ),
+                make_record(
+                    "new.bin",
+                    usn_value=0x2000,
+                    timestamp=1_760_000_000.0,
+                    reason=REASON_FILE_DELETE,
+                    file_ref=ordinal(0x32, 1),
+                ),
+                make_record(
+                    "mid.bin",
+                    usn_value=0x3000,
+                    timestamp=1_730_000_000.0,
+                    reason=REASON_FILE_DELETE,
+                    file_ref=ordinal(0x33, 1),
+                ),
+            ]
+        )
+    )
     assert [e.name for e in build_timeline(records)] == ["new.bin", "mid.bin", "old.bin"]
 
 
 def test_a_file_reference_is_kept_distinct_from_another():
     """A reused MFT entry is a different file with a different sequence number."""
-    records = parse_usn_journal(b"".join([
-        make_record("first.txt", usn_value=0x1000, file_ref=ordinal(0x2A, 1)),
-        make_record("second.txt", usn_value=0x2000, file_ref=ordinal(0x2A, 2)),
-    ]))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record("first.txt", usn_value=0x1000, file_ref=ordinal(0x2A, 1)),
+                make_record("second.txt", usn_value=0x2000, file_ref=ordinal(0x2A, 2)),
+            ]
+        )
+    )
     timeline = build_timeline(records)
     assert len(timeline) == 2
     assert sorted(e.name for e in timeline) == ["first.txt", "second.txt"]
@@ -416,14 +470,25 @@ def test_a_file_reference_is_kept_distinct_from_another():
 
 
 def test_summarize_counts_the_distinctive_facts():
-    records = parse_usn_journal(b"".join([
-        make_record("gone.txt", usn_value=0x1000, reason=REASON_FILE_DELETE,
-                    file_ref=ordinal(0x41, 1)),
-        make_record("here.txt", usn_value=0x2000, reason=REASON_FILE_CREATE,
-                    file_ref=ordinal(0x42, 1)),
-        make_record("dir", usn_value=0x3000, reason=REASON_FILE_CREATE,
-                    attributes=0x10, file_ref=ordinal(0x43, 1)),
-    ]))
+    records = parse_usn_journal(
+        b"".join(
+            [
+                make_record(
+                    "gone.txt", usn_value=0x1000, reason=REASON_FILE_DELETE, file_ref=ordinal(0x41, 1)
+                ),
+                make_record(
+                    "here.txt", usn_value=0x2000, reason=REASON_FILE_CREATE, file_ref=ordinal(0x42, 1)
+                ),
+                make_record(
+                    "dir",
+                    usn_value=0x3000,
+                    reason=REASON_FILE_CREATE,
+                    attributes=0x10,
+                    file_ref=ordinal(0x43, 1),
+                ),
+            ]
+        )
+    )
     stats = summarize(build_timeline(records))
     assert stats["files_tracked"] == 3
     assert stats["deleted"] == 1

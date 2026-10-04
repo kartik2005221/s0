@@ -109,7 +109,7 @@ def darwin_raw_device_path(value: str) -> str | None:
     v = value.strip()
     if not v.startswith("/dev/rdisk"):
         return None
-    return "/dev/disk" + v[len("/dev/rdisk"):]
+    return "/dev/disk" + v[len("/dev/rdisk") :]
 
 
 # --------------------------------------------------------------------------- #

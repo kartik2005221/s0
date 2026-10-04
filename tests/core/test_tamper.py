@@ -67,15 +67,18 @@ def test_every_leaf_tamper_breaks_signature(pristine, keys):
     assert not failures, f"signature SURVIVED tampering at: {failures}"
 
 
-@pytest.mark.parametrize("attack", [
-    "remove_signed_field",
-    "rename_signed_field",
-    "add_unknown_signed_field",
-    "swap_signature_value",
-    "swap_fingerprint_to_other_key",
-    "truncate_signature",
-    "empty_signature",
-])
+@pytest.mark.parametrize(
+    "attack",
+    [
+        "remove_signed_field",
+        "rename_signed_field",
+        "add_unknown_signed_field",
+        "swap_signature_value",
+        "swap_fingerprint_to_other_key",
+        "truncate_signature",
+        "empty_signature",
+    ],
+)
 def test_structural_attacks_break_signature(pristine, keys, attack):
     mutated = json.loads(json.dumps(pristine))
     if attack == "remove_signed_field":
@@ -86,14 +89,13 @@ def test_structural_attacks_break_signature(pristine, keys, attack):
         mutated["wipe"]["attacker_note"] = "nothing to see here"
     elif attack == "swap_signature_value":
         other = crypto.generate_private_key()
-        mutated["signature"]["signature_base64url"] = crypto.sign_payload(
-            other, b"attacker-chosen-payload")
+        mutated["signature"]["signature_base64url"] = crypto.sign_payload(other, b"attacker-chosen-payload")
     elif attack == "swap_fingerprint_to_other_key":
         mutated["signature"]["public_key_fingerprint"] = crypto.public_key_fingerprint(
-            crypto.generate_private_key().public_key())
+            crypto.generate_private_key().public_key()
+        )
     elif attack == "truncate_signature":
-        mutated["signature"]["signature_base64url"] = \
-            mutated["signature"]["signature_base64url"][:-4]
+        mutated["signature"]["signature_base64url"] = mutated["signature"]["signature_base64url"][:-4]
     elif attack == "empty_signature":
         mutated["signature"]["signature_base64url"] = ""
 

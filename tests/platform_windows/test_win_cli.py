@@ -147,7 +147,9 @@ def test_win_cli_wipe_partition_success(tmp_path: Path):
     assert cert is not None
     assert cert["tool"]["platform"] == "windows"
     assert cert["signature"]["algorithm"] == "Ed25519"
-    pub_key = core_crypto.load_public_pem(REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
+    pub_key = core_crypto.load_public_pem(
+        REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
+    )
     ok, reason = cert_mod.verify_certificate(cert, [pub_key])
     assert ok, reason
 
@@ -246,12 +248,16 @@ def test_win_cli_subcommand_dispatch(tmp_path: Path):
     out_dir = tmp_path / "sub_out"
 
     # Test invoking with 'wipe' subcommand directly via win_main(argv)
-    code = win_main([
-        "wipe",
-        "--targets", str(target),
-        "--out-dir", str(out_dir),
-        "--no-pdf",
-    ])
+    code = win_main(
+        [
+            "wipe",
+            "--targets",
+            str(target),
+            "--out-dir",
+            str(out_dir),
+            "--no-pdf",
+        ]
+    )
     assert code == 0
     assert not target.exists()
 
@@ -267,15 +273,18 @@ def test_win_cli_flag_aliases(monkeypatch, tmp_path: Path):
         "argv",
         [
             "s0_eraser.py",
-            "-t", str(target),
-            "-p", "1",
-            "--key", str(key_file),
-            "--operator", "op-test-win",
-            "--out-dir", str(out_dir),
+            "-t",
+            str(target),
+            "-p",
+            "1",
+            "--key",
+            str(key_file),
+            "--operator",
+            "op-test-win",
+            "--out-dir",
+            str(out_dir),
             "--no-pdf",
         ],
     )
     assert win_main() == 0
     assert not target.exists()
-
-

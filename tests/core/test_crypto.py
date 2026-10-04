@@ -1,6 +1,5 @@
 """Crypto primitive tests: keygen, PEM round-trip, fingerprints, sign/verify."""
 
-
 from s0 import crypto
 
 
@@ -41,6 +40,7 @@ def test_different_keys_different_fingerprints():
 def test_private_pem_permissions(tmp_path, keys):
     p = crypto.write_private_pem(keys["priv"], tmp_path / "priv.pem")
     import os
+
     mode = os.stat(p).st_mode & 0o777
     assert mode == 0o600
 

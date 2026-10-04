@@ -114,7 +114,7 @@ class SuppressionSet:
         # NSRL: algorithm first, then a quoted name and metadata.
         m = _NSRL_FIELD.match(raw)
         if m and m.group(1).lower().replace("-", "") in ALGORITHMS:
-            rest = raw[m.end():]
+            rest = raw[m.end() :]
             # The digest is the first quoted field after the algorithm, or the
             # first whitespace-separated token.
             quoted = re.search(r'"([0-9a-fA-F]{32,128})"', rest)
@@ -157,8 +157,9 @@ class SuppressionSet:
             parts.insert(0, self.source)
         if self.lines_skipped:
             worst = sorted(self.skip_reasons.items(), key=lambda kv: -kv[1])[:3]
-            parts.append(f"{self.lines_skipped} line(s) skipped ("
-                         + ", ".join(f"{n} {why}" for why, n in worst) + ")")
+            parts.append(
+                f"{self.lines_skipped} line(s) skipped (" + ", ".join(f"{n} {why}" for why, n in worst) + ")"
+            )
         return "; ".join(parts)
 
 
@@ -178,8 +179,9 @@ def _normalise_algorithms(algorithms: Iterable[str] | None) -> list[str]:
     return out
 
 
-def load_file_hashes(path: Path, algorithms: Sequence[str] | None = None,
-                     chunk_size: int = 1 << 20) -> SuppressionSet:
+def load_file_hashes(
+    path: Path, algorithms: Sequence[str] | None = None, chunk_size: int = 1 << 20
+) -> SuppressionSet:
     """Hash every file under ``path`` and suppress on those digests.
 
     The common case where the examiner has no hash list but does have the
@@ -211,8 +213,7 @@ def load_file_hashes(path: Path, algorithms: Sequence[str] | None = None,
     return out
 
 
-def _hash_file(path: Path, algorithms: Sequence[str],
-               chunk_size: int = 1 << 20) -> dict[str, str]:
+def _hash_file(path: Path, algorithms: Sequence[str], chunk_size: int = 1 << 20) -> dict[str, str]:
     """Digest ``path`` with every named algorithm in a single pass over the file."""
     hashers = {algo: hashlib.new(algo) for algo in algorithms}
     with open(path, "rb") as fh:
@@ -248,7 +249,5 @@ def load_hash_set(path: Path, algorithms: Iterable[str] | None = None) -> Suppre
                 out._skip(f"dropped {algo} rows")
                 del out.digests[algo]
     if not len(out):
-        raise SuppressionError(
-            f"{path} yielded no usable digests "
-            f"({out.lines_skipped} line(s) skipped)")
+        raise SuppressionError(f"{path} yielded no usable digests ({out.lines_skipped} line(s) skipped)")
     return out

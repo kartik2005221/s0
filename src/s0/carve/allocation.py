@@ -31,8 +31,7 @@ import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["FreeSpaceMap", "build_free_space", "BitmapReader", "decode_run_list",
-           "decode_run_list_raw"]
+__all__ = ["FreeSpaceMap", "build_free_space", "BitmapReader", "decode_run_list", "decode_run_list_raw"]
 
 
 @dataclass
@@ -41,7 +40,7 @@ class FreeSpaceMap:
 
     partition_offset: int
     volume_bytes: int
-    ranges: list[tuple[int, int]] = field(default_factory=list)   # (start, end) relative
+    ranges: list[tuple[int, int]] = field(default_factory=list)  # (start, end) relative
     source: str = "unknown"
     reliable: bool = False
     notes: list[str] = field(default_factory=list)
@@ -125,8 +124,9 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
     a fixed offset either: it moves with the group descriptor table size, the
     inode table size and the flex_bg grouping, so it has to be read.
     """
-    fsm = FreeSpaceMap(partition_offset=part, volume_bytes=sb.blocks_count * sb.block_size,
-                       source="ext4 block bitmap")
+    fsm = FreeSpaceMap(
+        partition_offset=part, volume_bytes=sb.blocks_count * sb.block_size, source="ext4 block bitmap"
+    )
     blocks_per_group = sb.blocks_per_group
     if blocks_per_group <= 0:
         fsm.notes.append("s_blocks_per_group is zero")
@@ -145,17 +145,18 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
         desc = rdr.read(part + desc_table_block * sb.block_size + group * desc_size, desc_size)
         if len(desc) < 12:
             fsm.notes.append(
-                f"block group {group}: group descriptor unreadable; that group's space is excluded")
+                f"block group {group}: group descriptor unreadable; that group's space is excluded"
+            )
             continue
         bitmap_block = struct.unpack_from("<I", desc, 0)[0]
         if bitmap_block == 0 or bitmap_block >= sb.blocks_count:
             fsm.notes.append(
-                f"block group {group}: descriptor points at block {bitmap_block}, outside the volume")
+                f"block group {group}: descriptor points at block {bitmap_block}, outside the volume"
+            )
             continue
         bitmap = rdr.read(part + bitmap_block * sb.block_size, sb.block_size)
         if len(bitmap) < (g_blocks + 7) // 8:
-            fsm.notes.append(
-                f"block group {group}: bitmap unreadable; that group's space is excluded")
+            fsm.notes.append(f"block group {group}: bitmap unreadable; that group's space is excluded")
             continue
         for b in range(g_blocks):
             # A set bit means the block is *in use*. Skip those; the clear bits
@@ -173,7 +174,8 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
         fsm.notes.append(
             f"{fsm.range_count} free extent(s) covering "
             f"{fsm.free_bytes / (1 << 20):.1f} MiB "
-            f"({fsm.coverage_ppm / 10_000:.1f}% of the filesystem)")
+            f"({fsm.coverage_ppm / 10_000:.1f}% of the filesystem)"
+        )
     return fsm
 
 
@@ -202,13 +204,16 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
     root_sectors = (root_entries * 32 + bps - 1) // bps
     first_data_sector = reserved + num_fats * fat_size + root_sectors
     data_sectors = total_sectors - first_data_sector
-    fsm = FreeSpaceMap(partition_offset=part,
-                       volume_bytes=data_sectors * bps if data_sectors > 0 else 0,
-                       source="FAT32 cluster chain")
+    fsm = FreeSpaceMap(
+        partition_offset=part,
+        volume_bytes=data_sectors * bps if data_sectors > 0 else 0,
+        source="FAT32 cluster chain",
+    )
     if cluster_bytes <= 0 or data_sectors <= 0:
         fsm.notes.append(
             f"FAT32 geometry is implausible (bps={bps} spc={spc} reserved={reserved} "
-            f"fats={num_fats} fat_size={fat_size} total={total_sectors})")
+            f"fats={num_fats} fat_size={fat_size} total={total_sectors})"
+        )
         return fsm
 
     data_clusters = data_sectors // spc
@@ -248,11 +253,13 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
         if declared != 0xFFFFFFFF and abs(declared - walked) > max(2, walked // 100):
             fsm.notes.append(
                 f"FSInfo claims {declared} free clusters but the FAT walk found {walked}. "
-                f"FSInfo is a driver-maintained cache; the FAT was used.")
+                f"FSInfo is a driver-maintained cache; the FAT was used."
+            )
     if fsm.reliable:
         fsm.notes.append(
             f"{fsm.range_count} free cluster run(s), {fsm.free_bytes / (1 << 20):.1f} MiB "
-            f"({fsm.coverage_ppm / 10_000:.1f}% of the volume)")
+            f"({fsm.coverage_ppm / 10_000:.1f}% of the volume)"
+        )
     return fsm
 
 
@@ -292,8 +299,12 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     cluster_count = boot["cluster_count"]
     first_cluster = boot["root_cluster"]
 
-    fsm = FreeSpaceMap(partition_offset=part, volume_bytes=cluster_count * cluster_bytes,
-                       source="exFAT allocation bitmap + structural metadata")
+    fsm = FreeSpaceMap(
+        partition_offset=part,
+        volume_bytes=cluster_count * cluster_bytes,
+        source="exFAT allocation bitmap + structural metadata",
+    )
+
     def read_dir_chain(start: int, max_clusters: int = 4096) -> tuple:
         """Collect a directory's entries and the clusters it spans."""
         blob = b""
@@ -360,7 +371,7 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
         declared = struct.unpack_from("<I", data, 0)[0] & 0xFFFFFFFF
         for bit in range(covered):
             if body[bit >> 3] & (1 << (bit & 7)):
-                allocated.add(bit + 2)      # bit n is cluster n + 2
+                allocated.add(bit + 2)  # bit n is cluster n + 2
         break
 
     if not covered:
@@ -389,13 +400,15 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     if declared is not None and declared not in (0, 0xFFFFFFFF) and declared < cluster_count:
         fsm.notes.append(
             f"bitmap header declares {declared} covered clusters but only {covered} are "
-            f"present; clusters past the bitmap were treated as free")
+            f"present; clusters past the bitmap were treated as free"
+        )
     fsm.ranges = _merge(fsm.ranges)
     fsm.reliable = True
     fsm.notes.append(
         f"{fsm.range_count} free extent(s), {fsm.free_bytes / (1 << 20):.1f} MiB "
         f"({fsm.coverage_ppm / 10_000:.1f}% of the volume); "
-        f"{len(structural)} structural cluster(s) excluded")
+        f"{len(structural)} structural cluster(s) excluded"
+    )
     return fsm
 
 
@@ -422,8 +435,12 @@ def _ntfs_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     mft_start = boot["mft_lcn"] * cluster
     base = rdr.read(part + mft_start, mft_record_bytes)
     if len(base) < 64 or base[:4] != b"FILE":
-        return FreeSpaceMap(part, volume, source="ntfs $Bitmap",
-                            notes=["$MFT not directly readable; allocation map unavailable"])
+        return FreeSpaceMap(
+            part,
+            volume,
+            source="ntfs $Bitmap",
+            notes=["$MFT not directly readable; allocation map unavailable"],
+        )
 
     mft_runs = _mft_data_runs(base, 0x80, rdr, part, boot)
     direct = rdr.read(part + mft_start + 6 * mft_record_bytes, mft_record_bytes)
@@ -444,22 +461,20 @@ def _ntfs_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
                 break
             seen += span
         if not bitmap_record:
-            return FreeSpaceMap(part, volume, source="ntfs $Bitmap",
-                                notes=["$Bitmap record not found in the $MFT data runs"])
+            return FreeSpaceMap(
+                part, volume, source="ntfs $Bitmap", notes=["$Bitmap record not found in the $MFT data runs"]
+            )
     else:
-        return FreeSpaceMap(part, volume, source="ntfs $Bitmap",
-                            notes=["$MFT data runs not resolvable"])
+        return FreeSpaceMap(part, volume, source="ntfs $Bitmap", notes=["$MFT data runs not resolvable"])
 
     bitmap_runs = _mft_data_runs(bitmap_record, 0x80, rdr, part, boot)
     if not bitmap_runs:
-        return FreeSpaceMap(part, volume, source="ntfs $Bitmap",
-                            notes=["$Bitmap data runs not resolvable"])
+        return FreeSpaceMap(part, volume, source="ntfs $Bitmap", notes=["$Bitmap data runs not resolvable"])
 
     total_bytes = 0
     for _lcn, length in bitmap_runs:
         total_bytes += length * cluster
-    fsm = FreeSpaceMap(partition_offset=part, volume_bytes=volume or total_bytes,
-                       source="ntfs $Bitmap")
+    fsm = FreeSpaceMap(partition_offset=part, volume_bytes=volume or total_bytes, source="ntfs $Bitmap")
     data = b"".join(rdr.read(part + lcn * cluster, length * cluster) for lcn, length in bitmap_runs)
     if not data:
         fsm.notes.append("$Bitmap unreadable")
@@ -481,12 +496,14 @@ def _ntfs_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     if fsm.reliable:
         fsm.notes.append(
             f"{fsm.range_count} free extent(s), {fsm.free_bytes / (1 << 20):.1f} MiB "
-            f"({fsm.coverage_ppm / 10_000:.1f}% of the volume)")
+            f"({fsm.coverage_ppm / 10_000:.1f}% of the volume)"
+        )
     return fsm
 
 
-def _mft_data_runs(record: bytes, wanted_type: int, rdr: BitmapReader,
-                    part: int, boot: dict) -> list[tuple[int, int]]:
+def _mft_data_runs(
+    record: bytes, wanted_type: int, rdr: BitmapReader, part: int, boot: dict
+) -> list[tuple[int, int]]:
     """Decode a non-resident $DATA attribute's run list into [(lcn, length)]."""
     cluster = boot["cluster_size"]
     attr_off = struct.unpack_from("<H", record, 0x14)[0]
@@ -506,7 +523,7 @@ def _mft_data_runs(record: bytes, wanted_type: int, rdr: BitmapReader,
                 run_off = struct.unpack_from("<H", record, pos + 32)[0]
                 alloc = struct.unpack_from("<Q", record, pos + 40)[0]
                 real = struct.unpack_from("<Q", record, pos + 48)[0]
-                return _decode_runs(record[pos + run_off: pos + alen], alloc, real, cluster)
+                return _decode_runs(record[pos + run_off : pos + alen], alloc, real, cluster)
         pos += alen
     return []
 
@@ -533,7 +550,7 @@ def decode_run_list_raw(blob: bytes) -> list[tuple[int, int]]:
         length = int.from_bytes(blob[pos : pos + len_nibbles], "little")
         pos += len_nibbles
         if off_nibbles == 0:
-            runs.append((-1, length))            # sparse: reads as zeros
+            runs.append((-1, length))  # sparse: reads as zeros
         else:
             raw = blob[pos : pos + off_nibbles]
             delta = int.from_bytes(raw, "little", signed=True) if raw else 0
@@ -586,8 +603,9 @@ def _merge(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return out
 
 
-def build_free_space(image_path: str | Path, fs_type: str, part_offset: int,
-                     volume_bytes: int) -> FreeSpaceMap:
+def build_free_space(
+    image_path: str | Path, fs_type: str, part_offset: int, volume_bytes: int
+) -> FreeSpaceMap:
     """Build the free-space map for one partition.
 
     Returns an *unreliable* map with no ranges when the allocation structure
@@ -599,6 +617,7 @@ def build_free_space(image_path: str | Path, fs_type: str, part_offset: int,
         try:
             if fs_type == "ext4":
                 from .ext4_carver import parse_ext4_superblock
+
                 sb = parse_ext4_superblock(image_path, partition_offset=part_offset)
                 if sb:
                     return _ext4_free_space(rdr, part_offset, sb)
@@ -615,10 +634,15 @@ def build_free_space(image_path: str | Path, fs_type: str, part_offset: int,
                 if boot:
                     return _ntfs_free_space(rdr, part_offset, boot)
         except Exception as exc:  # a malformed structure must not abort the session
-            return FreeSpaceMap(part_offset, volume_bytes, source=fs_type,
-                                notes=[f"allocation map could not be built: {exc}"])
-    return FreeSpaceMap(part_offset, volume_bytes, source=fs_type,
-                        notes=[f"no allocation map for {fs_type}; the whole volume will be searched"])
+            return FreeSpaceMap(
+                part_offset, volume_bytes, source=fs_type, notes=[f"allocation map could not be built: {exc}"]
+            )
+    return FreeSpaceMap(
+        part_offset,
+        volume_bytes,
+        source=fs_type,
+        notes=[f"no allocation map for {fs_type}; the whole volume will be searched"],
+    )
 
 
 def _fat32_vbr(rdr: BitmapReader, part: int) -> dict | None:
@@ -686,7 +710,7 @@ def _ntfs_boot(rdr: BitmapReader, part: int) -> dict | None:
     mfr = struct.unpack_from("<b", sec, 0x40)[0]
     if bps == 0 or spc == 0 or mft_lcn == 0 or total == 0:
         return None
-    if mfr > 0:                    # clusters per record, not a byte size
+    if mfr > 0:  # clusters per record, not a byte size
         mft_record_bytes = 0
     else:
         mft_record_bytes = 1 << (-mfr)

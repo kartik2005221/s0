@@ -102,7 +102,9 @@ def test_detect_broken_chain_hash_link(test_audit_db, sample_cert):
 
     # Maliciously alter prev_hash of block #2
     conn = sqlite3.connect(str(test_audit_db))
-    conn.execute("UPDATE audit_blocks SET prev_hash = '0000000000000000000000000000000000000000000000000000000000000000' WHERE block_index = 2")
+    conn.execute(
+        "UPDATE audit_blocks SET prev_hash = '0000000000000000000000000000000000000000000000000000000000000000' WHERE block_index = 2"
+    )
     conn.commit()
     conn.close()
 
@@ -243,4 +245,3 @@ def test_nonexistent_db_fails_verification(tmp_path):
     assert rep.is_valid is False
     assert "not found" in rep.reason.lower()
     assert not missing.exists()
-

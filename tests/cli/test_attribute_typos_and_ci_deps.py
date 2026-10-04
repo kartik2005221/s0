@@ -51,8 +51,7 @@ def _all_method_classes() -> list[type]:
 class TestMethodIdTypo:
     def test_the_package_actually_exposes_method_classes(self):
         """Guard the guard: if discovery broke, the test below would pass vacuously."""
-        assert len(_all_method_classes()) >= 4, (
-            "expected the real method classes to be discoverable")
+        assert len(_all_method_classes()) >= 4, "expected the real method classes to be discoverable"
 
     def test_no_method_exposes_method_id(self):
         """`method_id` never existed. Any attribute of that name is a typo.
@@ -60,29 +59,32 @@ class TestMethodIdTypo:
         Asserting its absence rather than `id`'s presence means a future rename
         that breaks the serializer fails here first, with a clear message.
         """
-        offenders = [cls.__name__ for cls in _all_method_classes()
-                     if hasattr(cls, "method_id")]
+        offenders = [cls.__name__ for cls in _all_method_classes() if hasattr(cls, "method_id")]
         assert not offenders, (
             f"these classes expose 'method_id': {offenders}. The serializer and "
-            f"WipeMethod both use 'id'; a second spelling is a bug waiting to fire")
+            f"WipeMethod both use 'id'; a second spelling is a bug waiting to fire"
+        )
 
     def test_no_method_class_overrides_id_with_an_empty_string(self):
         """`id` is an instance attribute set in `__init__`, so a class-level empty
         default is expected. What must not happen is a class that *overrides* the
         base default with an empty string, which would silently produce an
         unnamed method in the JSON plan."""
-        empty = [cls.__name__ for cls in _all_method_classes()
-                 if "id" in cls.__dict__ and cls.__dict__["id"] == ""]
+        empty = [
+            cls.__name__ for cls in _all_method_classes() if "id" in cls.__dict__ and cls.__dict__["id"] == ""
+        ]
         assert not empty, (
             f"these classes override id with an empty string: {empty}. A plan "
-            f"would name the method with nothing")
+            f"would name the method with nothing"
+        )
 
     def test_serializer_source_does_not_mention_method_id(self):
         """Pin the exact expression that raised, independent of class discovery."""
         source = (REPO_ROOT / "src/s0/cli/main.py").read_text()
         assert "method.method_id" not in source, (
             "the plan serializer references method.method_id, but WipeMethod has "
-            "'id' -- this raises AttributeError on any target with a real method")
+            "'id' -- this raises AttributeError on any target with a real method"
+        )
 
     def test_plan_json_names_the_selected_method(self, tmp_path):
         """End to end: the emitted JSON must name the method, not leave it empty.
@@ -103,8 +105,9 @@ class TestMethodIdTypo:
 
         target = tmp_path / "vol.img"
         target.write_bytes(b"\x00" * (4 * 1024 * 1024))
-        proc = subprocess.run([entry, "plan", "--target", str(target), "--json"],
-                              capture_output=True, text=True, timeout=180)
+        proc = subprocess.run(
+            [entry, "plan", "--target", str(target), "--json"], capture_output=True, text=True, timeout=180
+        )
         assert proc.returncode == 0, proc.stderr
 
         payload = json.loads(proc.stdout)
@@ -112,7 +115,8 @@ class TestMethodIdTypo:
         for alt in plan.get("alternatives", []):
             name = alt["method"]
             assert name is None or (isinstance(name, str) and name), (
-                "an alternative serialised with an empty method name")
+                "an alternative serialised with an empty method name"
+            )
 
 
 class TestCIInstallsRealPackages:
@@ -139,14 +143,16 @@ class TestCIInstallsRealPackages:
             assert not offenders, (
                 f"these lines would install 'httx', which does not exist on PyPI. "
                 f"pip aborts the whole install line, so the job cannot run: "
-                f"{offenders}")
+                f"{offenders}"
+            )
 
     def test_ci_installs_the_projects_own_extras(self):
         """One command, from pyproject: the hand-written list is what drifted."""
         text = self._workflow_text("ci.yml")
         assert 'pip install -e ".[web,test,dev]"' in text, (
             "ci.yml should install the declared extras rather than a hand-written "
-            "package list, which is how 'httx' got there")
+            "package list, which is how 'httx' got there"
+        )
 
     def test_every_extra_named_in_ci_exists_in_pyproject(self):
         text = (REPO_ROOT / "pyproject.toml").read_text()
@@ -155,7 +161,8 @@ class TestCIInstallsRealPackages:
         for extra in (e.strip() for e in match.group(1).split(",")):
             assert re.search(rf"^{re.escape(extra)}\s*=", text, re.M), (
                 f"ci.yml installs the '{extra}' extra, which pyproject.toml does "
-                f"not declare -- the install would resolve to nothing")
+                f"not declare -- the install would resolve to nothing"
+            )
 
     def test_async_tests_would_be_covered_by_an_extra(self):
         """`pytest-asyncio` was in the old hand-written list and is in no extra.
@@ -164,14 +171,12 @@ class TestCIInstallsRealPackages:
         that ever changes the fix belongs in the `test` extra, not back in a CI
         install line -- which is the thing that drifted in the first place.
         """
-        others = [p for p in (REPO_ROOT / "tests").rglob("*.py")
-                  if p.resolve() != Path(__file__).resolve()]
-        users = [p.name for p in others
-                 if "pytest.mark.asyncio" in p.read_text()]
+        others = [p for p in (REPO_ROOT / "tests").rglob("*.py") if p.resolve() != Path(__file__).resolve()]
+        users = [p.name for p in others if "pytest.mark.asyncio" in p.read_text()]
         if not users:
             assert "pytest-asyncio" not in self._workflow_text("ci.yml")
             return
         declared = (REPO_ROOT / "pyproject.toml").read_text()
         assert "pytest-asyncio" in declared, (
-            f"async tests appeared in {users} but no extra declares "
-            f"pytest-asyncio, so CI will fail on them")
+            f"async tests appeared in {users} but no extra declares pytest-asyncio, so CI will fail on them"
+        )

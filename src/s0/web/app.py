@@ -132,7 +132,6 @@ app = FastAPI(
 )
 
 
-
 # `*.local` matches any mDNS name, so `http://attacker.local` was an accepted Host
 # header -- a DNS-rebinding foothold. Only literal loopback names are needed;
 # `testserver` remains for TestClient.
@@ -200,6 +199,7 @@ async def security_headers(request: Request, call_next):
     )
     return response
 
+
 PORTAL_DIR = REPO / "site/verify"
 if PORTAL_DIR.is_dir():
     app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
@@ -234,7 +234,10 @@ def _record_job(job_id: str, record: dict) -> None:
         _jobs.move_to_end(job_id)
         while len(_jobs) > _MAX_JOBS:
             _jobs.popitem(last=False)
+
+
 _lock = threading.Lock()
+
 
 def _load_or_create_session_token() -> str:
     """Return the session token, writing it to disk only when it is created.
@@ -316,6 +319,7 @@ def _init_session_auth_token() -> None:
                 # Restrict permissions: 0640 (owner root rw, group s0-kiosk r, others none)
                 try:
                     import grp
+
                     kiosk_gid = grp.getgrnam("s0-kiosk").gr_gid
                     os.chown(run_token, 0, kiosk_gid)
                     os.chmod(run_token, 0o640)
@@ -326,7 +330,6 @@ def _init_session_auth_token() -> None:
                 pass
     except Exception:
         pass
-
 
 
 # No longer rotates anything: _load_or_create_session_token already decided the
@@ -431,9 +434,11 @@ def verify_auth_token(
         if request.url.path not in _BOOTSTRAP_PATHS:
             raise HTTPException(
                 status_code=401,
-                detail=("Unauthorized: the ?token= bootstrap form is only accepted "
-                        f"on {'/'.join(_BOOTSTRAP_PATHS)}. Use the X-S0-Auth-Token "
-                        "header or the session cookie."),
+                detail=(
+                    "Unauthorized: the ?token= bootstrap form is only accepted "
+                    f"on {'/'.join(_BOOTSTRAP_PATHS)}. Use the X-S0-Auth-Token "
+                    "header or the session cookie."
+                ),
             )
         tok = token
 
@@ -506,7 +511,9 @@ def _get_secure_keys_dir() -> Path:
         return fallback
 
 
-def _resolve_key(key_path: str | None, key_data: str | None, out_dir: Path | None = None) -> tuple[Path | None, bool]:
+def _resolve_key(
+    key_path: str | None, key_data: str | None, out_dir: Path | None = None
+) -> tuple[Path | None, bool]:
     """Resolve custom signing key from raw PEM content or local file path.
 
     Returns (key_path, is_demo_key). Custom pasted keys are securely saved into
@@ -564,10 +571,13 @@ class WipeRequest(BaseModel):
     pattern: str = "zero"
     passes: int = Field(default=1, ge=1, le=100)
     operator_id: str = Field(
-        default_factory=lambda: CONFIG.get("default_operator", "op-forensic"),
-        alias="operator"
+        default_factory=lambda: CONFIG.get("default_operator", "op-forensic"), alias="operator"
     )
-    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
+    organization: str = Field(
+        default_factory=lambda: CONFIG.get(
+            "default_organization", "Digital Forensics & Data Sanitization Lab"
+        )
+    )
     key_path: str | None = None
     key_data: str | None = Field(
         default=None,
@@ -638,7 +648,11 @@ class FileEraseRequest(BaseModel):
     passes: int = Field(default=1, ge=1, le=100)
     pattern: str = "zero"
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
+    organization: str = Field(
+        default_factory=lambda: CONFIG.get(
+            "default_organization", "Digital Forensics & Data Sanitization Lab"
+        )
+    )
     key_path: str | None = None
     key_data: str | None = Field(
         default=None,
@@ -716,7 +730,11 @@ class CarveRequest(BaseModel):
     # way to tell that from "nothing was recoverable" was to read the report.
     min_confidence: int = Field(default=50, ge=0, le=100)
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
+    organization: str = Field(
+        default_factory=lambda: CONFIG.get(
+            "default_organization", "Digital Forensics & Data Sanitization Lab"
+        )
+    )
     out_dir: str | None = None
     key_path: str | None = None
     key_data: str | None = Field(
@@ -778,7 +796,11 @@ class ImageRequest(BaseModel):
     force: bool = False
     confirm_text: str = ""
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
-    organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
+    organization: str = Field(
+        default_factory=lambda: CONFIG.get(
+            "default_organization", "Digital Forensics & Data Sanitization Lab"
+        )
+    )
     out_dir: str | None = None
     key_path: str | None = None
     key_data: str | None = Field(
@@ -830,7 +852,9 @@ def _find_target(path: str):
                 return t
         size = get_block_device_size(p)
         if size > 0:
-            return Target(path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN")
+            return Target(
+                path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
+            )
         raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
     safe, reason = _is_safe_wipe_path(path)
     if not safe:
@@ -889,9 +913,7 @@ def index(
             return HTMLResponse(_auth_required_page(), status_code=401)
         return _set_auth_cookie(RedirectResponse(url="/", status_code=303))
 
-    if not _token_matches(x_s0_auth_token) and not _token_matches(
-        request.cookies.get(AUTH_COOKIE)
-    ):
+    if not _token_matches(x_s0_auth_token) and not _token_matches(request.cookies.get(AUTH_COOKIE)):
         return HTMLResponse(_auth_required_page(), status_code=401)
 
     return HTMLResponse(
@@ -903,7 +925,7 @@ def index(
 def _auth_required_page() -> str:
     """A 401 that says what to do, instead of a dead dashboard."""
     return (
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         "<title>s0 - authentication required</title><style>body{font:16px/1.6 "
         "system-ui,sans-serif;max-width:44rem;margin:4rem auto;padding:0 1.5rem;"
         "color:#0f172a}code{background:#f1f5f9;padding:.15em .4em;border-radius:3px}"
@@ -924,17 +946,26 @@ def _auth_required_page() -> str:
 def devices() -> JSONResponse:
     block = []
     for t in list_block_targets():
-        block.append({
-            "path": t.path, "storage_type": t.storage_type,
-            "capacity_bytes": t.capacity_bytes, "model": t.model,
-            "serial": t.serial,
-            "mounted_hint": None,
-        })
+        block.append(
+            {
+                "path": t.path,
+                "storage_type": t.storage_type,
+                "capacity_bytes": t.capacity_bytes,
+                "model": t.model,
+                "serial": t.serial,
+                "mounted_hint": None,
+            }
+        )
     images = []
     seen = set()
     for d in IMAGE_DIRS:
         if d and d.is_dir():
-            candidates = list(d.glob("*.img")) + list(d.glob("*.raw")) + list(d.glob("*/*.img")) + list(d.glob("*/*.raw"))
+            candidates = (
+                list(d.glob("*.img"))
+                + list(d.glob("*.raw"))
+                + list(d.glob("*/*.img"))
+                + list(d.glob("*/*.raw"))
+            )
             for img in sorted(candidates):
                 resolved = str(img.resolve())
                 if resolved not in seen and img.is_file():
@@ -957,9 +988,12 @@ def plan_payload(target_path: str) -> dict:
         hpa_dco = hpa_dco_report(target)
     method = candidate.method
     plan = {
-        "target": {"path": target.path, "kind": target.kind,
-                   "storage_type": target.storage_type,
-                   "capacity_bytes": target.capacity_bytes},
+        "target": {
+            "path": target.path,
+            "kind": target.kind,
+            "storage_type": target.storage_type,
+            "capacity_bytes": target.capacity_bytes,
+        },
         "method_id": method.id if method else None,
         "nist_category": method.nist_category if method else None,
         "summary": method.plan(target).summary if method else None,
@@ -1008,25 +1042,29 @@ def api_browse(path: str = ".") -> JSONResponse:
     items = []
     try:
         for entry in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
-            items.append({
-                "name": entry.name,
-                "path": str(entry.resolve()),
-                "is_dir": entry.is_dir(),
-                "size": entry.stat().st_size if entry.is_file() else 0,
-            })
+            items.append(
+                {
+                    "name": entry.name,
+                    "path": str(entry.resolve()),
+                    "is_dir": entry.is_dir(),
+                    "size": entry.stat().st_size if entry.is_file() else 0,
+                }
+            )
     except Exception:
         # The OSError text names server-side directories ("[Errno 13] Permission
         # denied: '/home/operator/...'"). `current` is already constrained by
         # _is_safe_browse_path, so the exception string adds leakage, not context.
         _LOG.exception("browse failed for an already-vetted path")
-        return JSONResponse(
-            {"error": "directory not readable", "current": str(target), "items": []}
-        )
-    return JSONResponse({
-        "current": str(target),
-        "parent": str(target.parent) if target.parent != target and _is_safe_browse_path(target.parent) else None,
-        "items": items,
-    })
+        return JSONResponse({"error": "directory not readable", "current": str(target), "items": []})
+    return JSONResponse(
+        {
+            "current": str(target),
+            "parent": str(target.parent)
+            if target.parent != target and _is_safe_browse_path(target.parent)
+            else None,
+            "items": items,
+        }
+    )
 
 
 @app.get("/api/capabilities", dependencies=[Depends(verify_auth_token)])
@@ -1034,26 +1072,29 @@ def get_capabilities() -> JSONResponse:
     """Return runtime system capabilities and root/administrator privilege status."""
     is_root = False
     if hasattr(os, "geteuid"):
-        is_root = (os.geteuid() == 0)
+        is_root = os.geteuid() == 0
     elif _sys.platform == "win32":
         try:
             import ctypes
+
             # ctypes.windll exists only on Windows; this branch is guarded by
             # sys.platform, and mypy analyses the module against Linux stdlib.
             is_root = bool(ctypes.windll.shell32.IsUserAnAdmin())  # type: ignore[attr-defined]
         except Exception:
             is_root = False
 
-    return JSONResponse({
-        "is_root": is_root,
-        "platform": _sys.platform,
-        "restricted_operations": [] if is_root else ["block_wipe", "disk_image_acquisition"],
-        "message": (
-            "Full root / administrative access granted."
-            if is_root
-            else "Running without root privileges. Direct drive wiping and physical disk acquisition are disabled. For full functionality, launch with: sudo s0 web"
-        ),
-    })
+    return JSONResponse(
+        {
+            "is_root": is_root,
+            "platform": _sys.platform,
+            "restricted_operations": [] if is_root else ["block_wipe", "disk_image_acquisition"],
+            "message": (
+                "Full root / administrative access granted."
+                if is_root
+                else "Running without root privileges. Direct drive wiping and physical disk acquisition are disabled. For full functionality, launch with: sudo s0 web"
+            ),
+        }
+    )
 
 
 @app.get("/api/temperature", dependencies=[Depends(verify_auth_token)])
@@ -1069,11 +1110,13 @@ def get_temperature(path: str = Query(..., description="Target device or file pa
         else:
             status = "critical"
 
-    return JSONResponse({
-        "path": path,
-        "temperature_c": temp,
-        "status": status,
-    })
+    return JSONResponse(
+        {
+            "path": path,
+            "temperature_c": temp,
+            "status": status,
+        }
+    )
 
 
 @app.post("/api/plan", dependencies=[Depends(verify_auth_token)])
@@ -1101,12 +1144,23 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
     cmd = _get_s0_cmd() + [
-        "wipe", "--target", req.target, "--yes",
-        "--pattern", req.pattern, "--passes", str(req.passes),
-        "--operator", req.operator_id,
-        "--organization", req.organization,
-        "--verify-samples", str(req.verify_samples),
-        "--out-dir", str(out_dir), "--json"
+        "wipe",
+        "--target",
+        req.target,
+        "--yes",
+        "--pattern",
+        req.pattern,
+        "--passes",
+        str(req.passes),
+        "--operator",
+        req.operator_id,
+        "--organization",
+        req.organization,
+        "--verify-samples",
+        str(req.verify_samples),
+        "--out-dir",
+        str(out_dir),
+        "--json",
     ]
     if key and key.exists():
         cmd += ["--key", str(key)]
@@ -1175,23 +1229,20 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                     body = parsed.get("result", parsed) if isinstance(parsed, dict) else parsed
                     result.update(body)
                     artifacts = parsed.get("artifacts", []) if isinstance(parsed, dict) else []
-                    by_kind = {a.get("kind"): a.get("path") for a in artifacts
-                               if isinstance(a, dict)}
-                    cert_p = (by_kind.get("certificate")
-                              or body.get("certificate")
-                              or body.get("certificate_path"))
-                    pdf_p = (by_kind.get("pdf_certificate")
-                             or body.get("pdf")
-                             or body.get("pdf_path"))
+                    by_kind = {a.get("kind"): a.get("path") for a in artifacts if isinstance(a, dict)}
+                    cert_p = (
+                        by_kind.get("certificate") or body.get("certificate") or body.get("certificate_path")
+                    )
+                    pdf_p = by_kind.get("pdf_certificate") or body.get("pdf") or body.get("pdf_path")
                     qr_p = by_kind.get("qr_code")
                     if cert_p:
                         result["cert_filename"] = Path(cert_p).name
                         result["certificate_path"] = str(cert_p)
-                        result["certificate"] = str(cert_p)   # legacy alias
+                        result["certificate"] = str(cert_p)  # legacy alias
                     if pdf_p:
                         result["pdf_filename"] = Path(pdf_p).name
                         result["pdf_path"] = str(pdf_p)
-                        result["pdf"] = str(pdf_p)           # legacy alias
+                        result["pdf"] = str(pdf_p)  # legacy alias
                     if qr_p:
                         result["qr_filename"] = Path(qr_p).name
                     if isinstance(parsed, dict) and parsed.get("status") == "failure":
@@ -1210,7 +1261,10 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
             error_id = uuid.uuid4().hex[:12]
             _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
+                _jobs[job_id].update(
+                    status="error",
+                    result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
+                )
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1256,7 +1310,11 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
                 elapsed = max(0.001, now - t_start)
                 speed = written_bytes / elapsed
-                speed_str = f"{speed / (1024 * 1024):.1f} MiB/s" if speed >= 1024 * 1024 else f"{speed / 1024:.1f} KiB/s"
+                speed_str = (
+                    f"{speed / (1024 * 1024):.1f} MiB/s"
+                    if speed >= 1024 * 1024
+                    else f"{speed / 1024:.1f} KiB/s"
+                )
                 pct = (written_bytes * 100 // total_bytes) if total_bytes > 0 else 0
                 rem_bytes = max(0, total_bytes - written_bytes)
                 eta_sec = int(rem_bytes / speed) if speed > 0 else 0
@@ -1305,21 +1363,29 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         file=_sys.stderr,
                     )
                     with _lock:
-                        _jobs[job_id]["log"].append(
-                            "Warning: Failed to append to the audit ledger"
-                        )
+                        _jobs[job_id]["log"].append("Warning: Failed to append to the audit ledger")
                 cert_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
                 cert_file.write_text(json.dumps(summary.certificate, indent=2))
                 cert_filename = cert_file.name
 
                 if not req.no_pdf:
                     try:
-                        qr_url_tpl = CONFIG.get("qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}")
+                        qr_url_tpl = CONFIG.get(
+                            "qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+                        )
                         if req.portal_url and req.portal_url.strip():
                             p_url = req.portal_url.strip()
-                            qr_url_tpl = f"{p_url.rstrip('/')}/?cert={{cert_uuid}}" if "{cert_uuid}" not in p_url else p_url
-                        pdf_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.pdf"
-                        qr_file = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
+                            qr_url_tpl = (
+                                f"{p_url.rstrip('/')}/?cert={{cert_uuid}}"
+                                if "{cert_uuid}" not in p_url
+                                else p_url
+                            )
+                        pdf_file = (
+                            out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.pdf"
+                        )
+                        qr_file = (
+                            out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
+                        )
                         pdfgen.generate_pdf(summary.certificate, pdf_file, qr_url_template=qr_url_tpl)
                         pdfgen.write_qr_file(summary.certificate, qr_file)
                         pdf_filename = pdf_file.name
@@ -1349,7 +1415,10 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
             error_id = uuid.uuid4().hex[:12]
             _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
+                _jobs[job_id].update(
+                    status="error",
+                    result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
+                )
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1396,7 +1465,11 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
                 elapsed = max(0.001, now - t_start)
                 speed = scanned / elapsed
-                speed_str = f"{speed / (1024 * 1024):.1f} MiB/s" if speed >= 1024 * 1024 else f"{speed / 1024:.1f} KiB/s"
+                speed_str = (
+                    f"{speed / (1024 * 1024):.1f} MiB/s"
+                    if speed >= 1024 * 1024
+                    else f"{speed / 1024:.1f} KiB/s"
+                )
                 pct = (scanned * 100 // total) if total > 0 else 0
                 rem_bytes = max(0, total - scanned)
                 eta_sec = int(rem_bytes / speed) if speed > 0 else 0
@@ -1405,7 +1478,9 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                 if now - last_carve_temp_time >= 2.0:
                     last_carve_temp_time = now
                     last_carve_temp_val[0] = read_temperature(req.target)
-                temp_str = f" | Temp: {last_carve_temp_val[0]}°C" if last_carve_temp_val[0] is not None else ""
+                temp_str = (
+                    f" | Temp: {last_carve_temp_val[0]}°C" if last_carve_temp_val[0] is not None else ""
+                )
 
                 scanned_mb = scanned / (1024 * 1024)
                 total_mb = total / (1024 * 1024)
@@ -1419,13 +1494,16 @@ def start_carve(req: CarveRequest) -> JSONResponse:
             custom_sigs = None
             if req.custom_signatures:
                 from s0.carve.signatures import signature_from_dict
+
                 custom_sigs = []
                 for cs in req.custom_signatures:
                     try:
                         custom_sigs.append(signature_from_dict(cs))
                     except Exception as sig_err:
                         with _lock:
-                            _jobs[job_id]["log"].append(f"Warning: skipped invalid custom signature: {sig_err}")
+                            _jobs[job_id]["log"].append(
+                                f"Warning: skipped invalid custom signature: {sig_err}"
+                            )
 
             summary = carve_image(
                 req.target,
@@ -1444,7 +1522,9 @@ def start_carve(req: CarveRequest) -> JSONResponse:
             audit_ledger_error = None
             if summary.manifest_certificate:
                 try:
-                    record_audit_event(summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key)
+                    record_audit_event(
+                        summary.manifest_certificate, operation_type="FILE_CARVE", private_key=key
+                    )
                     audit_ledger_recorded = True
                 except Exception:
                     # The operator must know the ledger append failed -- it is the
@@ -1458,18 +1538,22 @@ def start_carve(req: CarveRequest) -> JSONResponse:
                         file=_sys.stderr,
                     )
                     with _lock:
-                        _jobs[job_id]["log"].append(
-                            "Warning: Failed to append to the audit ledger"
-                        )
+                        _jobs[job_id]["log"].append("Warning: Failed to append to the audit ledger")
                 m_file = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.json"
                 m_file.write_text(json.dumps(summary.manifest_certificate, indent=2))
                 manifest_filename = m_file.name
 
                 if not req.no_pdf:
                     try:
-                        pdf_path = out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        pdf_path = (
+                            out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        )
                         pdfgen.generate_pdf(summary.manifest_certificate, pdf_path)
-                        pdfgen.write_qr_file(summary.manifest_certificate, out_dir / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png")
+                        pdfgen.write_qr_file(
+                            summary.manifest_certificate,
+                            out_dir
+                            / f"carving_manifest_{summary.manifest_certificate['cert_uuid'][:8]}.qr.png",
+                        )
                         pdf_filename = pdf_path.name
                     except Exception:
                         pass
@@ -1509,7 +1593,10 @@ def start_carve(req: CarveRequest) -> JSONResponse:
             error_id = uuid.uuid4().hex[:12]
             _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
+                _jobs[job_id].update(
+                    status="error",
+                    result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
+                )
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1535,9 +1622,8 @@ def start_image(req: ImageRequest) -> JSONResponse:
     # they cannot act on a correlation id they have no way to look up.
     if dst_p.exists() and not req.force:
         raise HTTPException(
-            409,
-            f"destination already exists: {req.destination}. "
-            f"Set force=true to overwrite it.")
+            409, f"destination already exists: {req.destination}. Set force=true to overwrite it."
+        )
 
     is_blk = False
     try:
@@ -1548,7 +1634,9 @@ def start_image(req: ImageRequest) -> JSONResponse:
         is_blk = True
 
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
-        raise HTTPException(400, f"Cloning to target block device requires typing exact destination: '{req.destination}'")
+        raise HTTPException(
+            400, f"Cloning to target block device requires typing exact destination: '{req.destination}'"
+        )
 
     job_id = uuid.uuid4().hex[:12]
     if req.out_dir and req.out_dir.strip():
@@ -1571,6 +1659,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
 
     def run() -> None:
         try:
+
             def _progress(bytes_copied, total_bytes, speed, bad_sectors):
                 pct = int((bytes_copied / total_bytes) * 100) if total_bytes > 0 else 0
                 msg = f"[s0 image] | {pct:3d}% | {bytes_copied / (1024 * 1024):.1f} MiB / {total_bytes / (1024 * 1024):.1f} MiB | {speed:.1f} MB/s | Bad Sectors: {bad_sectors}"
@@ -1601,16 +1690,24 @@ def start_image(req: ImageRequest) -> JSONResponse:
                 cert_fn = f"certificate_{img_result.manifest_certificate['cert_uuid']}.json"
                 if not req.no_pdf:
                     try:
-                        pdf_path = out_dir / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        pdf_path = (
+                            out_dir / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.pdf"
+                        )
                         pdfgen.generate_pdf(img_result.manifest_certificate, pdf_path)
-                        pdfgen.write_qr_file(img_result.manifest_certificate, out_dir / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.qr.png")
+                        pdfgen.write_qr_file(
+                            img_result.manifest_certificate,
+                            out_dir
+                            / f"certificate_{img_result.manifest_certificate['cert_uuid'][:8]}.qr.png",
+                        )
                         pdf_fn = pdf_path.name
                     except Exception:
                         pass
 
             if not img_result.audit_ledger_recorded and img_result.audit_ledger_error:
                 with _lock:
-                    _jobs[job_id]["log"].append(f"Warning: Failed to append to audit ledger: {img_result.audit_ledger_error}")
+                    _jobs[job_id]["log"].append(
+                        f"Warning: Failed to append to audit ledger: {img_result.audit_ledger_error}"
+                    )
 
             with _lock:
                 _jobs[job_id].update(
@@ -1643,7 +1740,10 @@ def start_image(req: ImageRequest) -> JSONResponse:
             error_id = uuid.uuid4().hex[:12]
             _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(status="error", result={"returncode": -1, "error": "operation_failed", "error_id": error_id})
+                _jobs[job_id].update(
+                    status="error",
+                    result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
+                )
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1652,38 +1752,42 @@ def start_image(req: ImageRequest) -> JSONResponse:
 @app.get("/api/audit/blocks", dependencies=[Depends(verify_auth_token)])
 def get_audit_blocks(limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0)) -> JSONResponse:
     blocks = list_audit_blocks(limit=limit, offset=offset)
-    return JSONResponse({
-        "total": len(blocks),
-        "blocks": [
-            {
-                "index": b.block_index,
-                "timestamp": b.timestamp,
-                "operation": b.operation_type,
-                "target": b.target_id,
-                "operator": b.operator_id,
-                "organization": b.organization,
-                "cert_uuid": b.cert_uuid,
-                "prev_hash": b.prev_hash,
-                "block_hash": b.block_hash,
-                "payload_hash": b.payload_hash,
-                "signature": b.signature,
-                "certificate_json": b.certificate_json,
-            }
-            for b in blocks
-        ]
-    })
+    return JSONResponse(
+        {
+            "total": len(blocks),
+            "blocks": [
+                {
+                    "index": b.block_index,
+                    "timestamp": b.timestamp,
+                    "operation": b.operation_type,
+                    "target": b.target_id,
+                    "operator": b.operator_id,
+                    "organization": b.organization,
+                    "cert_uuid": b.cert_uuid,
+                    "prev_hash": b.prev_hash,
+                    "block_hash": b.block_hash,
+                    "payload_hash": b.payload_hash,
+                    "signature": b.signature,
+                    "certificate_json": b.certificate_json,
+                }
+                for b in blocks
+            ],
+        }
+    )
 
 
 @app.get("/api/audit/verify", dependencies=[Depends(verify_auth_token)])
 def get_audit_verify() -> JSONResponse:
     report = verify_audit_ledger(trusted_public_keys=get_default_trusted_keys())
-    return JSONResponse({
-        "is_valid": report.is_valid,
-        "total_blocks": report.total_blocks_verified,
-        "reason": report.reason,
-        "is_demo_signed": report.is_demo_signed,
-        "demo_key_warning": report.demo_key_warning,
-    })
+    return JSONResponse(
+        {
+            "is_valid": report.is_valid,
+            "total_blocks": report.total_blocks_verified,
+            "reason": report.reason,
+            "is_demo_signed": report.is_demo_signed,
+            "demo_key_warning": report.demo_key_warning,
+        }
+    )
 
 
 @app.get("/api/job/{job_id}", dependencies=[Depends(verify_auth_token)])
@@ -1692,13 +1796,15 @@ def job_status(job_id: str) -> JSONResponse:
         job = _jobs.get(job_id)
         if not job:
             raise HTTPException(404, "unknown job")
-        return JSONResponse({
-            "status": job.get("status", "unknown"),
-            "log": job.get("log", []),
-            "result": job.get("result", None),
-            "cmd": job.get("cmd", None),
-            "demo_key_warning": job.get("demo_key_warning", False),
-        })
+        return JSONResponse(
+            {
+                "status": job.get("status", "unknown"),
+                "log": job.get("log", []),
+                "result": job.get("result", None),
+                "cmd": job.get("cmd", None),
+                "demo_key_warning": job.get("demo_key_warning", False),
+            }
+        )
 
 
 @app.get("/api/download/{job_id}/{filename}", dependencies=[Depends(verify_auth_token)])

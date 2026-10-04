@@ -40,18 +40,26 @@ from s0.carve.policy import CarveBudget, CarvePolicy
 def _fresh_counters() -> dict:
     """The counter dict the real caller pre-seeds at engine.py:1183."""
     return {
-        "candidates": 0, "accepted": 0, "rejected": 0, "rejected_bytes": 0,
-        "duplicate": 0, "filtered": 0, "bytes_recovered": 0,
-        "structure_candidates": 0, "structure_accepted": 0, "structure_filtered": 0,
-        "budget_stops": 0, "rejected_samples": [],
+        "candidates": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "rejected_bytes": 0,
+        "duplicate": 0,
+        "filtered": 0,
+        "bytes_recovered": 0,
+        "structure_candidates": 0,
+        "structure_accepted": 0,
+        "structure_filtered": 0,
+        "budget_stops": 0,
+        "rejected_samples": [],
     }
 
 
 MKE2FS = shutil.which("mke2fs")
 DEBUGFS = shutil.which("debugfs")
 requires_ext4_tools = pytest.mark.skipif(
-    not (MKE2FS and DEBUGFS),
-    reason="mke2fs and debugfs are needed to build a real ext4 image without root")
+    not (MKE2FS and DEBUGFS), reason="mke2fs and debugfs are needed to build a real ext4 image without root"
+)
 
 BLOCK_SIZE = 1024
 
@@ -59,6 +67,7 @@ BLOCK_SIZE = 1024
 # --------------------------------------------------------------------------- #
 # The recovery-cap crash
 # --------------------------------------------------------------------------- #
+
 
 @pytest.fixture(scope="module")
 def ext4_with_many_deletions(tmp_path_factory):
@@ -74,28 +83,33 @@ def ext4_with_many_deletions(tmp_path_factory):
     img = d / "vol.img"
     with open(img, "wb") as fh:
         fh.truncate(48 * 1024 * 1024)
-    r = subprocess.run([MKE2FS, "-q", "-t", "ext4", "-O", "has_journal",
-                        "-b", str(BLOCK_SIZE), "-I", "128", str(img)],
-                       capture_output=True, text=True)
+    r = subprocess.run(
+        [MKE2FS, "-q", "-t", "ext4", "-O", "has_journal", "-b", str(BLOCK_SIZE), "-I", "128", str(img)],
+        capture_output=True,
+        text=True,
+    )
     if r.returncode != 0:
         pytest.skip(f"mke2fs failed: {r.stderr[:200]}")
 
     payload = d / "seed.txt"
     payload.write_bytes(b"deleted evidence payload\n" * 8)
-    r = subprocess.run([DEBUGFS, "-w", "-R", "mkdir /case", str(img)],
-                       capture_output=True, text=True)
+    r = subprocess.run([DEBUGFS, "-w", "-R", "mkdir /case", str(img)], capture_output=True, text=True)
     if r.returncode != 0:
         pytest.skip(f"debugfs mkdir failed: {r.stderr[:200]}")
     # One -R per command: newline-separated commands in a single -R are not
     # executed, which silently produces an image with nothing deleted.
     for i in range(40):
-        r = subprocess.run([DEBUGFS, "-w", "-R", f"write {payload} /case/deleted-{i:03d}.txt",
-                            str(img)], capture_output=True, text=True)
+        r = subprocess.run(
+            [DEBUGFS, "-w", "-R", f"write {payload} /case/deleted-{i:03d}.txt", str(img)],
+            capture_output=True,
+            text=True,
+        )
         if r.returncode != 0:
             pytest.skip(f"debugfs write failed: {r.stderr[:200]}")
     for i in range(40):
-        subprocess.run([DEBUGFS, "-w", "-R", f"rm /case/deleted-{i:03d}.txt", str(img)],
-                       capture_output=True, text=True)
+        subprocess.run(
+            [DEBUGFS, "-w", "-R", f"rm /case/deleted-{i:03d}.txt", str(img)], capture_output=True, text=True
+        )
     return img
 
 
@@ -113,14 +127,21 @@ class TestRecoveryCapReturnsBothValues:
         extension check and never reach the budget at all.
         """
         policy = CarvePolicy.for_target(48 * 1024 * 1024)
-        policy.max_files_per_extension = 0      # deny immediately
+        policy.max_files_per_extension = 0  # deny immediately
         budget = CarveBudget(policy=policy)
         warnings: list[str] = []
         counters = _fresh_counters()
 
         result = _recover_from_filesystem(
-            ext4_with_many_deletions, tmp_path, [("ext4", 0)],
-            [], budget, warnings, counters, {}, {},
+            ext4_with_many_deletions,
+            tmp_path,
+            [("ext4", 0)],
+            [],
+            budget,
+            warnings,
+            counters,
+            {},
+            {},
         )
 
         # This single unpacking statement is the assertion that matters: it is
@@ -147,18 +168,27 @@ class TestRecoveryCapReturnsBothValues:
         policy.max_files_per_extension = 0
         budget = CarveBudget(policy=policy)
         result = _recover_from_filesystem(
-            tmp_path / "does-not-exist.img", tmp_path, [("ext4", 0)],
-            ["txt"], budget, [], _fresh_counters(), {}, {},
+            tmp_path / "does-not-exist.img",
+            tmp_path,
+            [("ext4", 0)],
+            ["txt"],
+            budget,
+            [],
+            _fresh_counters(),
+            {},
+            {},
         )
         _recovered, timeline = result
         assert all(isinstance(entry, dict) for entry in timeline), (
             "the second return value is the journal-name timeline, which is a "
-            "list of dicts -- never CarvedFile objects")
+            "list of dicts -- never CarvedFile objects"
+        )
 
 
 # --------------------------------------------------------------------------- #
 # The truncated-JPEG hang
 # --------------------------------------------------------------------------- #
+
 
 class _Timeout(Exception):
     pass
@@ -175,7 +205,7 @@ class _BytesSource:
         self.data = data
 
     def read(self, offset: int, length: int) -> bytes:
-        return self.data[offset:offset + length]
+        return self.data[offset : offset + length]
 
     def size(self) -> int:
         return len(self.data)
@@ -184,6 +214,7 @@ class _BytesSource:
 @pytest.fixture
 def hard_timeout():
     """Fail instead of hanging. A hanging test is worse than no test."""
+
     def _run(fn, *args):
         previous = signal.signal(signal.SIGALRM, _alarm)
         signal.setitimer(signal.ITIMER_REAL, 5.0)
@@ -194,6 +225,7 @@ def hard_timeout():
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, previous)
+
     return _run
 
 

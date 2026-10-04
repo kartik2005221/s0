@@ -97,4 +97,3 @@ def test_verify_js_contains_all_wipe_methods_and_tiers():
 def test_verify_js_sector_size_bound():
     verify_js_content = (PORTAL_DIR / "verify.js").read_text(encoding="utf-8")
     assert "device.sector_size >= 1" in verify_js_content
-

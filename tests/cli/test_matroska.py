@@ -41,11 +41,13 @@ WEBM_SIG = _SIGNATURES_BY_EXT["webm"][0]
 # Fixtures
 # --------------------------------------------------------------------------- #
 
+
 def _encode(src: str, dest: Path, extra: list) -> bytes:
     proc = subprocess.run(
-        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-         "-i", src, *extra, str(dest)],
-        capture_output=True, text=True)
+        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", src, *extra, str(dest)],
+        capture_output=True,
+        text=True,
+    )
     if proc.returncode != 0:
         pytest.skip(f"ffmpeg failed: {proc.stderr[:200]}")
     return dest.read_bytes()
@@ -63,9 +65,22 @@ def encoders(tmp_path_factory):
         "vp8.webm": _encode(video, out / "vp8.webm", ["-c:v", "libvpx", "-f", "webm"]),
         "vp9.mkv": _encode(video, out / "vp9.mkv", ["-c:v", "libvpx-vp9", "-f", "matroska"]),
         "mpeg4.mkv": _encode(video, out / "mpeg4.mkv", ["-c:v", "mpeg4", "-f", "matroska"]),
-        "av.mkv": _encode(video, out / "av.mkv",
-                          ["-f", "lavfi", "-i", "sine=frequency=440:duration=2",
-                           "-c:v", "libx264", "-c:a", "aac", "-f", "matroska"]),
+        "av.mkv": _encode(
+            video,
+            out / "av.mkv",
+            [
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:duration=2",
+                "-c:v",
+                "libx264",
+                "-c:a",
+                "aac",
+                "-f",
+                "matroska",
+            ],
+        ),
     }
     return files
 
@@ -89,8 +104,8 @@ def _blank_size_field(data: bytes, at: int) -> bytes:
     assert not unknown and size_w >= 2, f"0x{eid:X} is not a sized element"
     mask = 0x80 >> (size_w - 1)
     out = bytearray(data)
-    out[at + id_w] = data[at + id_w] | (mask - 1)   # marker stays, value bits go to 1
-    out[at + id_w + 1: at + id_w + size_w] = b"\xff" * (size_w - 1)
+    out[at + id_w] = data[at + id_w] | (mask - 1)  # marker stays, value bits go to 1
+    out[at + id_w + 1 : at + id_w + size_w] = b"\xff" * (size_w - 1)
     _, _, now_unknown = mk.read_vint(bytes(out), at + id_w)
     assert now_unknown, "the fixture did not actually blank the size"
     return bytes(out)
@@ -126,6 +141,7 @@ def _resolve(data: bytes, sig=MK_SIG, at: int = 0):
 # --------------------------------------------------------------------------- #
 # EBML primitives
 # --------------------------------------------------------------------------- #
+
 
 class TestVint:
     def test_widths(self):
@@ -169,6 +185,7 @@ class TestVint:
 # --------------------------------------------------------------------------- #
 # Refusals
 # --------------------------------------------------------------------------- #
+
 
 class TestRefusals:
     def test_random_bytes_are_refused(self):
@@ -232,9 +249,18 @@ class TestRefusals:
         assert b.end is None
 
 
-def _minimal(*, matroska=True, doc_type="matroska", clusters=1, blocks=1, tracks=1,
-             codec=b"V_MPEG4/ISO/AVC", pad_to=None) -> bytes:
+def _minimal(
+    *,
+    matroska=True,
+    doc_type="matroska",
+    clusters=1,
+    blocks=1,
+    tracks=1,
+    codec=b"V_MPEG4/ISO/AVC",
+    pad_to=None,
+) -> bytes:
     """Build the smallest structurally valid Matroska file, with knobs to break it."""
+
     def eid_bytes(eid: int) -> bytes:
         """Encode an element ID at its true width.
 
@@ -256,10 +282,12 @@ def _minimal(*, matroska=True, doc_type="matroska", clusters=1, blocks=1, tracks
     def uint(v: int) -> bytes:
         return bytes([v])
 
-    head = el(mk.EBML_HEADER,
-              el(mk.DOCTYPE, doc_type.encode())
-              + el(mk.DOCTYPE_VERSION, uint(4))
-              + el(mk.DOCTYPE_READ_VERSION, uint(2)))
+    head = el(
+        mk.EBML_HEADER,
+        el(mk.DOCTYPE, doc_type.encode())
+        + el(mk.DOCTYPE_VERSION, uint(4))
+        + el(mk.DOCTYPE_READ_VERSION, uint(2)),
+    )
     if matroska:
         body = b""
         if clusters:
@@ -269,8 +297,11 @@ def _minimal(*, matroska=True, doc_type="matroska", clusters=1, blocks=1, tracks
                 inner += el(mk.SIMPLE_BLOCK, b"\x81\x00\x00\x80" + bytes([i % 251]) * 32)
             body += el(mk.CLUSTER, inner)
         if tracks:
-            entry = (el(mk.TRACK_NUMBER, uint(1)) + el(mk.TRACK_TYPE, uint(mk.TRACK_VIDEO))
-                     + el(mk.CODEC_ID, codec))
+            entry = (
+                el(mk.TRACK_NUMBER, uint(1))
+                + el(mk.TRACK_TYPE, uint(mk.TRACK_VIDEO))
+                + el(mk.CODEC_ID, codec)
+            )
             body += el(mk.TRACKS, el(mk.TRACK_ENTRY, entry))
         seg = el(mk.SEGMENT, body)
     else:
@@ -287,6 +318,7 @@ def _minimal(*, matroska=True, doc_type="matroska", clusters=1, blocks=1, tracks
 # The two shapes that matter
 # --------------------------------------------------------------------------- #
 
+
 @requires_ffmpeg
 class TestDeclaredSizeSegment:
     @pytest.mark.parametrize("name", ["x264.mkv", "vp8.webm", "vp9.mkv", "mpeg4.mkv", "av.mkv"])
@@ -297,7 +329,7 @@ class TestDeclaredSizeSegment:
         b = _resolve(buried, sig, at=8192)
         assert b.end is not None
         assert b.method == mk.DERIVED_FROM_DECLARED_SIZE or b.method == "declared_size"
-        assert buried[b.end - len(data): b.end] == data
+        assert buried[b.end - len(data) : b.end] == data
 
     def test_the_provenance_is_not_inferred_from_note_text(self, encoders):
         """A note containing the word 'declares' must not decide the method.
@@ -308,8 +340,9 @@ class TestDeclaredSizeSegment:
         """
         data = encoders["mpeg4.mkv"]
         b = _resolve(_bury([data]), at=8192)
-        assert any("declares DocType" in n for n in b.notes), \
+        assert any("declares DocType" in n for n in b.notes), (
             "this test is only meaningful while the DocType note says 'declares'"
+        )
         assert b.method == "declared_size"
 
 
@@ -330,9 +363,8 @@ class TestUnknownSizeSegment:
         buried = _bury([data])
         b = _resolve(buried, at=8192)
         assert b.end is not None
-        assert b.method == "container_walk", \
-            "a walked end must not be reported as a declared size"
-        assert buried[b.end - len(data): b.end] == data
+        assert b.method == "container_walk", "a walked end must not be reported as a declared size"
+        assert buried[b.end - len(data) : b.end] == data
 
     def test_it_is_actually_a_different_file(self, encoders):
         """Guard the fixture: the patch has to change something meaningful."""
@@ -350,15 +382,22 @@ class TestUnknownSizeSegment:
         any window, so a walk that only checks whether the next element fits
         swallows the padding and reports it as part of the video.
         """
-        for pad in (b"\x5a" * 8192, b"\x00" * 8192, b"\xff" * 8192, b"\xa5" * 8192,
-                    b"\x5a" * 4096 + b"\x00" * 4096, os.urandom(8192)):
+        for pad in (
+            b"\x5a" * 8192,
+            b"\x00" * 8192,
+            b"\xff" * 8192,
+            b"\xa5" * 8192,
+            b"\x5a" * 4096 + b"\x00" * 4096,
+            os.urandom(8192),
+        ):
             data = _blank_segment_size(encoders["mpeg4.mkv"])
             assert len(pad) == 8192
             buried = _bury([data], pad=pad)
             b = _resolve(buried, at=8192)
             assert b.end is not None, f"refused for pad starting {pad[:1]!r}"
-            assert buried[b.end - len(data): b.end] == data, \
+            assert buried[b.end - len(data) : b.end] == data, (
                 f"end over-ran the file for pad starting {pad[:1]!r}"
+            )
 
     def test_a_trailing_element_outside_the_known_set_ends_the_walk(self, encoders):
         """An unknown top-level ID is how padding is detected; check it directly."""
@@ -368,7 +407,7 @@ class TestUnknownSizeSegment:
         tail = b"\x5a\x5a\x5a" + b"\x10" + b"\x00" * 16
         buried = _bury([data], trail=tail)
         b = _resolve(buried, at=8192)
-        assert buried[b.end - len(data): b.end] == data
+        assert buried[b.end - len(data) : b.end] == data
 
     def test_an_unknown_size_cluster_is_walked_from_its_blocks(self, encoders):
         data = encoders["mpeg4.mkv"]
@@ -389,6 +428,7 @@ class TestUnknownSizeSegment:
 # Frame extents
 # --------------------------------------------------------------------------- #
 
+
 @requires_ffmpeg
 class TestFrames:
     def test_every_frame_is_located_exactly(self, encoders):
@@ -397,7 +437,7 @@ class TestFrames:
         blocks = info.frame_blocks
         assert len(blocks) >= 20
         for b in blocks:
-            payload = data[b.data_offset: b.data_offset + b.data_size]
+            payload = data[b.data_offset : b.data_offset + b.data_size]
             assert len(payload) == b.data_size > 0
         # Extents must not overlap and must be ordered.
         spans = sorted((b.data_offset, b.data_size) for b in blocks)
@@ -429,6 +469,7 @@ class TestFrames:
 
     def test_the_summary_is_json_friendly(self, encoders):
         import json
+
         s = mk.summary(mk.parse(encoders["x264.mkv"]))
         json.dumps(s)
         assert s["doc_type"] == "matroska"
@@ -459,16 +500,21 @@ class TestFrames:
 # Integration
 # --------------------------------------------------------------------------- #
 
+
 @requires_ffmpeg
 class TestCarverIntegration:
     def test_every_fixture_is_recovered_byte_exact(self, tmp_path, encoders):
         from s0.carve import carve_image
+
         image = tmp_path / "img.raw"
         image.write_bytes(_bury(list(encoders.values())))
         out = tmp_path / "out"
         summary = carve_image(image, out, generate_certificate=False)
-        carved = {hashlib.sha256(p.read_bytes()).hexdigest()
-                  for p in out.rglob("*") if p.suffix in (".mkv", ".webm")}
+        carved = {
+            hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in out.rglob("*")
+            if p.suffix in (".mkv", ".webm")
+        }
         wanted = {hashlib.sha256(v).hexdigest() for v in encoders.values()}
         assert carved == wanted, "not every fixture came back byte-identical"
         assert summary.files_recovered == len(encoders)
@@ -476,31 +522,36 @@ class TestCarverIntegration:
     def test_the_doctype_picks_the_extension(self, tmp_path, encoders):
         """WebM must not be reported as `.mkv` just because it came first in the table."""
         from s0.carve import carve_image
+
         image = tmp_path / "img.raw"
         image.write_bytes(_bury([encoders["vp8.webm"]]))
         out = tmp_path / "out"
         summary = carve_image(image, out, generate_certificate=False)
-        exts = {Path(f.recovered_path).suffix for f in summary.carved_files
-                if f.recovered_path}
+        exts = {Path(f.recovered_path).suffix for f in summary.carved_files if f.recovered_path}
         assert exts == {".webm"}, exts
 
     def test_fragmented_fixtures_are_recovered_too(self, tmp_path, encoders):
         from s0.carve import carve_image
+
         payloads = [_blank_segment_size(encoders[k]) for k in ("mpeg4.mkv", "x264.mkv")]
         image = tmp_path / "img.raw"
         image.write_bytes(_bury(payloads))
         out = tmp_path / "out"
         carve_image(image, out, generate_certificate=False)
-        carved = {hashlib.sha256(p.read_bytes()).hexdigest()
-                  for p in out.rglob("*") if p.suffix in (".mkv", ".webm")}
+        carved = {
+            hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in out.rglob("*")
+            if p.suffix in (".mkv", ".webm")
+        }
         assert carved == {hashlib.sha256(p).hexdigest() for p in payloads}
 
     def test_noise_emits_nothing(self, tmp_path):
         from s0.carve import carve_image
+
         noise = bytearray(os.urandom(4 * 1024 * 1024))
         # Plant the magic often enough that a weak gate would be caught.
         for i in range(0, len(noise) - 4, 2048):
-            noise[i:i + 4] = b"\x1a\x45\xdf\xa3"
+            noise[i : i + 4] = b"\x1a\x45\xdf\xa3"
         image = tmp_path / "noise.raw"
         image.write_bytes(bytes(noise))
         out = tmp_path / "out"
@@ -511,9 +562,10 @@ class TestCarverIntegration:
 
     def test_planted_magics_are_rejected_by_the_doctype_gate(self, tmp_path):
         from s0.carve import carve_image
+
         noise = bytearray(os.urandom(2 * 1024 * 1024))
         for i in range(0, len(noise) - 4, 1024):
-            noise[i:i + 4] = b"\x1a\x45\xdf\xa3"
+            noise[i : i + 4] = b"\x1a\x45\xdf\xa3"
         image = tmp_path / "noise.raw"
         image.write_bytes(bytes(noise))
         out = tmp_path / "out"
@@ -524,6 +576,7 @@ class TestCarverIntegration:
 class TestSignatureTable:
     def test_all_three_extensions_have_a_boundary_rule(self):
         from s0.carve.boundary import has_boundary_rule
+
         for ext in ("mkv", "webm", "mka"):
             assert has_boundary_rule(ext), ext
 

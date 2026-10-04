@@ -18,8 +18,12 @@ from s0 import platform
 
 class TestPlatformName:
     def test_reports_the_three_supported_platforms(self, monkeypatch):
-        for raw, expected in (("linux", "linux"), ("linux2", "linux"),
-                              ("win32", "windows"), ("darwin", "macos")):
+        for raw, expected in (
+            ("linux", "linux"),
+            ("linux2", "linux"),
+            ("win32", "windows"),
+            ("darwin", "macos"),
+        ):
             monkeypatch.setattr(sys, "platform", raw)
             assert platform.current() == expected
 
@@ -35,12 +39,15 @@ class TestPlatformName:
 
 
 class TestWindowsVolumePath:
-    @pytest.mark.parametrize("raw", [
-        r"\\.\PhysicalDrive0",
-        r"\\.\PHYSICALDRIVE2",
-        "//./PhysicalDrive1",
-        r"  \\.\PhysicalDrive3  ",
-    ])
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            r"\\.\PhysicalDrive0",
+            r"\\.\PHYSICALDRIVE2",
+            "//./PhysicalDrive1",
+            r"  \\.\PhysicalDrive3  ",
+        ],
+    )
     def test_accepts_every_raw_spelling(self, raw):
         assert platform.is_windows_volume_path(raw)
 
@@ -48,10 +55,17 @@ class TestWindowsVolumePath:
     def test_rejects_ordinary_paths(self, raw):
         assert not platform.is_windows_volume_path(raw)
 
-    @pytest.mark.parametrize("raw,expected", [
-        ("E:", True), ("E:\\", True), ("E: ", True),
-        ("/dev/sda", False), ("/dev/disk2", False), ("C:\\Windows", False),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("E:", True),
+            ("E:\\", True),
+            ("E: ", True),
+            ("/dev/sda", False),
+            ("/dev/disk2", False),
+            ("C:\\Windows", False),
+        ],
+    )
     def test_bare_drive_letter(self, raw, expected):
         assert platform.looks_like_windows_volume_letter(raw) is expected
 
@@ -99,6 +113,7 @@ class TestIsBlockDevice:
         Returning False here would make the CLI fall through to the file-wipe
         path and offer to overwrite a device node as if it were a file.
         """
+
         def boom(self):
             raise PermissionError(13, "Permission denied")
 
@@ -107,12 +122,15 @@ class TestIsBlockDevice:
 
 
 class TestDarwinRawDevicePath:
-    @pytest.mark.parametrize("raw,expected", [
-        ("/dev/rdisk2", "/dev/disk2"),
-        ("/dev/rdisk10", "/dev/disk10"),
-        ("/dev/disk2", None),
-        ("/dev/sda", None),
-        ("", None),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("/dev/rdisk2", "/dev/disk2"),
+            ("/dev/rdisk10", "/dev/disk10"),
+            ("/dev/disk2", None),
+            ("/dev/sda", None),
+            ("", None),
+        ],
+    )
     def test_mapping(self, raw, expected):
         assert platform.darwin_raw_device_path(raw) == expected

@@ -70,7 +70,8 @@ def _cmd_verify(args) -> int:
 def _cmd_pdf(args) -> int:
     cert = _load_cert(Path(args.cert))
     path = pdfgen.generate_pdf(
-        cert, Path(args.out),
+        cert,
+        Path(args.out),
         qr_url_template=args.qr_url_template,
     )
     if args.qr_png:
@@ -85,8 +86,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     kg = sub.add_parser("keygen", help="generate an Ed25519 issuer keypair (out-of-band step)")
     kg.add_argument("--out-dir", default="src/s0/data/keys")
-    kg.add_argument("--name", default="issuer",
-                    help="file stem, e.g. 'demo_issuer' -> demo_issuer_private.pem / _public.pem")
+    kg.add_argument(
+        "--name",
+        default="issuer",
+        help="file stem, e.g. 'demo_issuer' -> demo_issuer_private.pem / _public.pem",
+    )
     kg.set_defaults(func=_cmd_keygen)
 
     sg = sub.add_parser("sign", help="sign a certificate JSON")
@@ -97,8 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     vf = sub.add_parser("verify", help="verify a signed certificate against pinned public keys")
     vf.add_argument("--cert", required=True)
-    vf.add_argument("--key", action="append", required=True,
-                    help="trusted public key PEM (repeatable)")
+    vf.add_argument("--key", action="append", required=True, help="trusted public key PEM (repeatable)")
     vf.set_defaults(func=_cmd_verify)
 
     pf = sub.add_parser("pdf", help="render a signed certificate to PDF (+ optional QR PNG)")

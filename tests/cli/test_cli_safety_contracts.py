@@ -48,6 +48,7 @@ def _md5(path) -> str:
 # --dry-run must never write.
 # --------------------------------------------------------------------------- #
 
+
 def test_wipe_dry_run_does_not_modify_the_target(tmp_path):
     """Regression: `s0 wipe --dry-run` wiped the target.
 
@@ -84,6 +85,7 @@ def _find_subparser(parser, name):
 # --------------------------------------------------------------------------- #
 # --format json must be exactly one JSON document on stdout.
 # --------------------------------------------------------------------------- #
+
 
 def test_file_and_folder_wipe_json_is_valid_and_uncontaminated(tmp_path):
     """Regression: `wipe --targets <dir> --json` printed 8 lines of chrome to
@@ -123,6 +125,7 @@ def test_erase_files_chrome_goes_to_stderr(tmp_path):
 # --------------------------------------------------------------------------- #
 # Tier promises must not be silently downgraded.
 # --------------------------------------------------------------------------- #
+
 
 def test_require_tier_destroy_is_not_silently_satisfied_by_clear():
     """Regression: `--require-tier Destroy` reported `satisfiable: true` on any
@@ -173,27 +176,51 @@ def test_unknown_tier_is_never_satisfiable():
 # Help text must describe behaviour that exists.
 # --------------------------------------------------------------------------- #
 
+
 def test_dry_run_help_promises_are_true_for_every_subcommand_that_offers_it():
     """The help says "plan only; never write to the target". Hold it to that."""
     from s0.cli.main import build_parser
 
     parser = build_parser()
-    names = ("list", "plan", "wipe", "carve", "audit", "verify", "keygen",
-             "image", "clone", "uninstall", "web", "live")
+    names = (
+        "list",
+        "plan",
+        "wipe",
+        "carve",
+        "audit",
+        "verify",
+        "keygen",
+        "image",
+        "clone",
+        "uninstall",
+        "web",
+        "live",
+    )
     for name in names:
         sub = _find_subparser(parser, name)
         for action in sub._actions:
             if action.dest != "dry_run":
                 continue
-            assert "never write" in (action.help or ""), (
-                f"{name} --dry-run help lost its safety promise"
-            )
+            assert "never write" in (action.help or ""), f"{name} --dry-run help lost its safety promise"
 
 
 def test_every_subcommand_help_renders():
     """A help string with a bare `%` raises at runtime inside argparse."""
-    for name in ("list", "plan", "wipe", "carve", "audit", "verify", "keygen",
-                 "upgrade", "uninstall", "image", "clone", "web", "live"):
+    for name in (
+        "list",
+        "plan",
+        "wipe",
+        "carve",
+        "audit",
+        "verify",
+        "keygen",
+        "upgrade",
+        "uninstall",
+        "image",
+        "clone",
+        "web",
+        "live",
+    ):
         result = _s0(name, "--help")
         assert result.returncode == 0, f"{name} --help failed: {result.stderr[-300:]}"
         assert result.stderr == "", f"{name} --help wrote to stderr"
@@ -202,6 +229,7 @@ def test_every_subcommand_help_renders():
 # --------------------------------------------------------------------------- #
 # Operator abort is not success.
 # --------------------------------------------------------------------------- #
+
 
 def test_aborting_a_destructive_confirmation_is_not_exit_zero(tmp_path):
     """`s0 wipe ... && echo "wipe succeeded"` printed "succeeded" on a refusal."""
@@ -219,9 +247,7 @@ def test_aborting_a_destructive_confirmation_is_not_exit_zero(tmp_path):
     )
 
     assert _md5(image) == before, "the target was modified despite the abort"
-    assert result.returncode != 0, (
-        "operator abort returned 0; `cmd && next_step` would run the next step"
-    )
+    assert result.returncode != 0, "operator abort returned 0; `cmd && next_step` would run the next step"
 
 
 def test_live_devices_reports_failure_when_it_finds_nothing():
@@ -250,6 +276,7 @@ def test_live_abort_exit_codes_are_non_zero():
 # Config problems must be visible.
 # --------------------------------------------------------------------------- #
 
+
 def test_config_loading_reports_a_malformed_file(tmp_path):
     """Regression: a config containing `{ this is not json` produced rc=0 and no
     diagnostic at all, so an operator with a typo silently got defaults."""
@@ -257,14 +284,14 @@ def test_config_loading_reports_a_malformed_file(tmp_path):
     bad = tmp_path / "broken.json"
     bad.write_text("{ this is not json", encoding="utf-8")
 
-    script = (
-        "import s0.config as c;"
-        "print('CONFIG_OK', sorted(c.CONFIG)[:3])"
-    )
+    script = "import s0.config as c;print('CONFIG_OK', sorted(c.CONFIG)[:3])"
     env = {**os.environ, "S0_CONFIG_PATH": str(bad)}
     result = subprocess.run(
         [_entry_point(), "list"],
-        capture_output=True, text=True, env=env, timeout=120,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=120,
     )
     assert "is not valid JSON" in result.stderr, (
         "a malformed config was accepted silently; the operator gets defaults "
@@ -280,9 +307,7 @@ def test_config_type_mismatches_are_flagged(tmp_path):
     weird = tmp_path / "weird.json"
     weird.write_text('{"api_port": "not-a-number", "nope": 1}', encoding="utf-8")
     env = {**os.environ, "S0_CONFIG_PATH": str(weird)}
-    result = subprocess.run(
-        [_entry_point(), "list"], capture_output=True, text=True, env=env, timeout=120
-    )
+    result = subprocess.run([_entry_point(), "list"], capture_output=True, text=True, env=env, timeout=120)
     assert "WARNING" in result.stderr, (
         f"no warning about a string port or an unknown key: {result.stderr[:300]!r}"
     )
@@ -291,6 +316,7 @@ def test_config_type_mismatches_are_flagged(tmp_path):
 # --------------------------------------------------------------------------- #
 # The manual must describe the contract the code implements.
 # --------------------------------------------------------------------------- #
+
 
 def test_documented_exit_codes_match_the_implemented_constants():
     """Regression: the manual promised a "consistent three-value exit code
@@ -304,16 +330,17 @@ def test_documented_exit_codes_match_the_implemented_constants():
 
     from s0 import terminal
 
-    doc = (Path(__file__).resolve().parent.parent.parent
-           / "docs" / "guides" / "cli-reference.md").read_text(encoding="utf-8")
-    section = doc[doc.index("## Exit Codes"):]
-    section = section[:section.index("---", section.index("| `130`"))] \
-        if "| `130`" in section else section[:4000]
+    doc = (Path(__file__).resolve().parent.parent.parent / "docs" / "guides" / "cli-reference.md").read_text(
+        encoding="utf-8"
+    )
+    section = doc[doc.index("## Exit Codes") :]
+    section = (
+        section[: section.index("---", section.index("| `130`"))] if "| `130`" in section else section[:4000]
+    )
 
     documented = {int(m) for m in re.findall(r"^\| `(\d+)` \|", section, re.M)}
     implemented = {
-        value for name, value in vars(terminal).items()
-        if name.startswith("EX_") and isinstance(value, int)
+        value for name, value in vars(terminal).items() if name.startswith("EX_") and isinstance(value, int)
     }
 
     assert documented, "no exit codes documented at all"
@@ -331,17 +358,28 @@ def test_documented_json_envelope_keys_are_real():
     No envelope has ever had that key, so the documented
     `grep '"event":"complete"' wipe.log | jq -r '.cert_path'` matched nothing.
     """
-    doc = (Path(__file__).resolve().parent.parent.parent
-           / "docs" / "guides" / "cli-reference.md").read_text(encoding="utf-8")
+    doc = (Path(__file__).resolve().parent.parent.parent / "docs" / "guides" / "cli-reference.md").read_text(
+        encoding="utf-8"
+    )
     assert "event stream schema" not in doc, (
-        "there is no event stream; --json emits a single envelope. Remove the "
-        "ndjson section."
+        "there is no event stream; --json emits a single envelope. Remove the ndjson section."
     )
     from s0 import terminal
 
     source = Path(terminal.__file__).read_text(encoding="utf-8")
-    for key in ("schema", "schema_version", "tool", "invocation", "status",
-                "warnings", "errors", "result", "artifacts", "audit", "signature"):
+    for key in (
+        "schema",
+        "schema_version",
+        "tool",
+        "invocation",
+        "status",
+        "warnings",
+        "errors",
+        "result",
+        "artifacts",
+        "audit",
+        "signature",
+    ):
         assert f'"{key}"' in source, f"documented envelope key {key} is not emitted"
 
 
@@ -354,8 +392,7 @@ def test_config_has_no_dead_keys():
     from s0.config import DEFAULT_CONFIG
 
     supplied = json.loads(
-        (Path(__file__).resolve().parent.parent.parent / "s0_config.json")
-        .read_text(encoding="utf-8")
+        (Path(__file__).resolve().parent.parent.parent / "s0_config.json").read_text(encoding="utf-8")
     )
     dead = sorted(set(supplied) - set(DEFAULT_CONFIG))
     assert not dead, (
@@ -367,6 +404,7 @@ def test_config_has_no_dead_keys():
 # --------------------------------------------------------------------------- #
 # --format csv must produce a document on every subcommand that accepts it.
 # --------------------------------------------------------------------------- #
+
 
 def test_csv_is_not_silently_empty_on_any_subcommand(tmp_path):
     """Regression: `--format csv` emitted nothing on seven of eight commands.
@@ -446,6 +484,7 @@ def test_json_still_wins_and_is_unaffected():
 # A documented flag must do something.
 # --------------------------------------------------------------------------- #
 
+
 def test_list_output_format_alias_works():
     """Regression: `--output-format` was declared on `s0 list` and never read.
 
@@ -459,9 +498,7 @@ def test_list_output_format_alias_works():
     # "emits JSON with records in it", not "matches the generic envelope".
     payload = json.loads(result.stdout)
     rows = payload["result"].get("targets") or payload["result"]
-    assert isinstance(rows, list) and rows, (
-        f"--output-format json produced no records: {sorted(payload)}"
-    )
+    assert isinstance(rows, list) and rows, f"--output-format json produced no records: {sorted(payload)}"
 
 
 def test_removed_flags_are_gone_from_the_parser():
@@ -502,6 +539,7 @@ def test_no_documented_flag_is_silently_ignored_in_help():
 # Colour must honour the policy, not hard-coded escapes.
 # --------------------------------------------------------------------------- #
 
+
 def _carve_stderr_lines(*extra: str) -> str:
     import os as _os
 
@@ -510,9 +548,20 @@ def _carve_stderr_lines(*extra: str) -> str:
     image = Path(tempfile.mkdtemp()) / "evidence.bin"
     image.write_bytes(b"\xa7" * (2 * 1024 * 1024))
     result = subprocess.run(
-        [_entry_point(), "carve", "--target", str(image), "--out-dir",
-         str(image.parent / "out"), "--no-certificate", *extra],
-        capture_output=True, text=True, env=env, timeout=180,
+        [
+            _entry_point(),
+            "carve",
+            "--target",
+            str(image),
+            "--out-dir",
+            str(image.parent / "out"),
+            "--no-certificate",
+            *extra,
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=180,
     )
     return result.stderr
 
@@ -527,10 +576,7 @@ def test_no_color_flags_suppress_every_ansi_escape():
     """
     for flags in (["--no-color"], ["--color", "never"]):
         stderr = _carve_stderr_lines(*flags)
-        assert "\033[" not in stderr, (
-            f"{' '.join(flags)} left ANSI escapes in stderr:\n"
-            + repr(stderr[:400])
-        )
+        assert "\033[" not in stderr, f"{' '.join(flags)} left ANSI escapes in stderr:\n" + repr(stderr[:400])
 
 
 def test_no_color_env_var_suppresses_every_ansi_escape():

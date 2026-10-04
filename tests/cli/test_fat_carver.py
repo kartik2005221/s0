@@ -34,12 +34,12 @@ def create_synthetic_fat32_image(path: Path) -> None:
     buf[13] = sec_per_clus
     struct.pack_into("<H", buf, 14, reserved_sec)
     buf[16] = fats_count
-    struct.pack_into("<H", buf, 17, 0)      # root_entries = 0 in FAT32
+    struct.pack_into("<H", buf, 17, 0)  # root_entries = 0 in FAT32
     struct.pack_into("<H", buf, 19, 0)
     struct.pack_into("<I", buf, 32, img_size // bytes_per_sec)  # total sectors
     struct.pack_into("<I", buf, 36, sec_per_fat)
     struct.pack_into("<I", buf, 44, root_cluster)
-    buf[66] = 0x29                         # boot signature
+    buf[66] = 0x29  # boot signature
     buf[82:90] = b"FAT32   "
     struct.pack_into("<H", buf, 510, 0xAA55)
 
@@ -52,12 +52,12 @@ def create_synthetic_fat32_image(path: Path) -> None:
     # Target cluster: 3
     target_cluster = 3
     entry1 = bytearray(32)
-    entry1[0] = 0xE5                      # Deleted file marker
+    entry1[0] = 0xE5  # Deleted file marker
     entry1[1:8] = b"EVIDENC"
     entry1[8:11] = b"TXT"
-    entry1[11] = 0x20                     # Archive attribute
-    struct.pack_into("<H", entry1, 20, 0) # Cluster high
-    struct.pack_into("<H", entry1, 26, target_cluster) # Cluster low
+    entry1[11] = 0x20  # Archive attribute
+    struct.pack_into("<H", entry1, 20, 0)  # Cluster high
+    struct.pack_into("<H", entry1, 26, target_cluster)  # Cluster low
     file_data = b"CONFIDENTIAL FORENSIC INTELLIGENCE FROM USB STORAGE"
     struct.pack_into("<I", entry1, 28, len(file_data))
 

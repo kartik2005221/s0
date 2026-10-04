@@ -37,13 +37,16 @@ FFPROBE = shutil.which("ffprobe")
 # Synthetic builders
 # --------------------------------------------------------------------------- #
 
+
 def box(btype: bytes, payload: bytes) -> bytes:
     return struct.pack(">I", len(payload) + 8) + btype + payload
 
 
 def fullbox(btype: bytes, version: int, flags: int, payload: bytes) -> bytes:
-    return box(btype, struct.pack(">BBBB", version, (flags >> 16) & 0xFF,
-                                  (flags >> 8) & 0xFF, flags & 0xFF) + payload)
+    return box(
+        btype,
+        struct.pack(">BBBB", version, (flags >> 16) & 0xFF, (flags >> 8) & 0xFF, flags & 0xFF) + payload,
+    )
 
 
 def chunk_starts(spcs, first_offset: int, sample_size: int):
@@ -63,22 +66,43 @@ def _stbl(sample_sizes, chunk_offsets, stsc, stts_runs) -> bytes:
     here rather than left implicit.
     """
     n = len(sample_sizes)
-    return b"".join([
-        fullbox(b"stsd", 0, 0, struct.pack(">I", 0)),                 # no codec needed
-        fullbox(b"stts", 0, 0, struct.pack(">I", len(stts_runs))
-                + b"".join(struct.pack(">II", c, d) for c, d in stts_runs)),
-        fullbox(b"stsc", 0, 0, struct.pack(">I", len(stsc))
-                + b"".join(struct.pack(">III", *e) for e in stsc)),
-        fullbox(b"stsz", 0, 0, struct.pack(">II", 0, n)
-                + b"".join(struct.pack(">I", s) for s in sample_sizes)),
-        fullbox(b"stco", 0, 0, struct.pack(">I", len(chunk_offsets))
-                + b"".join(struct.pack(">I", o) for o in chunk_offsets)),
-    ])
+    return b"".join(
+        [
+            fullbox(b"stsd", 0, 0, struct.pack(">I", 0)),  # no codec needed
+            fullbox(
+                b"stts",
+                0,
+                0,
+                struct.pack(">I", len(stts_runs)) + b"".join(struct.pack(">II", c, d) for c, d in stts_runs),
+            ),
+            fullbox(
+                b"stsc", 0, 0, struct.pack(">I", len(stsc)) + b"".join(struct.pack(">III", *e) for e in stsc)
+            ),
+            fullbox(
+                b"stsz", 0, 0, struct.pack(">II", 0, n) + b"".join(struct.pack(">I", s) for s in sample_sizes)
+            ),
+            fullbox(
+                b"stco",
+                0,
+                0,
+                struct.pack(">I", len(chunk_offsets)) + b"".join(struct.pack(">I", o) for o in chunk_offsets),
+            ),
+        ]
+    )
 
 
-def build_mp4(sample_sizes, chunk_offsets, stsc, *, media_size=None,
-              timescale=1000, stts_runs=None, faststart=False,
-              ftyp=b"isom", filler=0xA5):
+def build_mp4(
+    sample_sizes,
+    chunk_offsets,
+    stsc,
+    *,
+    media_size=None,
+    timescale=1000,
+    stts_runs=None,
+    faststart=False,
+    ftyp=b"isom",
+    filler=0xA5,
+):
     """Build a progressive MP4 whose sample table describes ``sample_sizes``.
 
     ``media_size`` is the required length of the mdat payload. Grow it until it
@@ -102,20 +126,21 @@ def build_mp4(sample_sizes, chunk_offsets, stsc, *, media_size=None,
     ftyp_box = box(b"ftyp", ftyp + struct.pack(">I", 0) + b"isomiso2avc1mp41")
     mdat_box = box(b"mdat", mdat_payload)
 
-    stbl = _stbl(sample_sizes, chunk_offsets, stsc,
-                 stts_runs or [(len(sample_sizes), 1000)])
+    stbl = _stbl(sample_sizes, chunk_offsets, stsc, stts_runs or [(len(sample_sizes), 1000)])
     stbl_box = box(b"stbl", stbl)
     vmhd = fullbox(b"vmhd", 0, 1, struct.pack(">HHHH", 0, 0, 0, 0))
     dinf = box(b"dinf", fullbox(b"dref", 0, 0, struct.pack(">I", 1) + fullbox(b"url ", 0, 1, b"")))
     hdlr = fullbox(b"hdlr", 0, 0, struct.pack(">I", 0) + b"vide" + b"\0" * 12 + b"v\0")
     minf = box(b"minf", vmhd + dinf + stbl_box)
-    mdhd = fullbox(b"mdhd", 0, 0,
-                   struct.pack(">IIII", 0, 0, timescale, len(sample_sizes) * 1000) + b"\0" * 4)
+    mdhd = fullbox(b"mdhd", 0, 0, struct.pack(">IIII", 0, 0, timescale, len(sample_sizes) * 1000) + b"\0" * 4)
     mdia = box(b"mdia", mdhd + hdlr + minf)
     # tkhd v0: flags(4) creation(4) modification(4) track_ID(4) reserved(4) duration(4)
-    tkhd = fullbox(b"tkhd", 0, 7,
-                   struct.pack(">IIII", 0, 0, 1, 0) + struct.pack(">I", len(sample_sizes) * 1000)
-                   + b"\0" * 52)
+    tkhd = fullbox(
+        b"tkhd",
+        0,
+        7,
+        struct.pack(">IIII", 0, 0, 1, 0) + struct.pack(">I", len(sample_sizes) * 1000) + b"\0" * 52,
+    )
     moov_box = box(b"moov", box(b"trak", tkhd + mdia))
 
     if faststart:
@@ -126,6 +151,7 @@ def build_mp4(sample_sizes, chunk_offsets, stsc, *, media_size=None,
 # --------------------------------------------------------------------------- #
 # Arithmetic
 # --------------------------------------------------------------------------- #
+
 
 class TestSampleExtentArithmetic:
     def test_one_sample_per_chunk(self):
@@ -146,14 +172,20 @@ class TestSampleExtentArithmetic:
         n_chunks = n // per_chunk
         offsets = [300 + i * size * per_chunk for i in range(n_chunks)]
         # stsz with sample_size != 0 carries no per-sample size table at all.
-        stbl = b"".join([
-            fullbox(b"stsd", 0, 0, struct.pack(">I", 0)),
-            fullbox(b"stts", 0, 0, struct.pack(">III", 1, n, 1000)),
-            fullbox(b"stsc", 0, 0, struct.pack(">IIII", 1, 1, per_chunk, 1)),
-            fullbox(b"stsz", 0, 0, struct.pack(">II", size, n)),
-            fullbox(b"stco", 0, 0, struct.pack(">I", len(offsets))
-                    + b"".join(struct.pack(">I", o) for o in offsets)),
-        ])
+        stbl = b"".join(
+            [
+                fullbox(b"stsd", 0, 0, struct.pack(">I", 0)),
+                fullbox(b"stts", 0, 0, struct.pack(">III", 1, n, 1000)),
+                fullbox(b"stsc", 0, 0, struct.pack(">IIII", 1, 1, per_chunk, 1)),
+                fullbox(b"stsz", 0, 0, struct.pack(">II", size, n)),
+                fullbox(
+                    b"stco",
+                    0,
+                    0,
+                    struct.pack(">I", len(offsets)) + b"".join(struct.pack(">I", o) for o in offsets),
+                ),
+            ]
+        )
         moov = box(b"moov", box(b"trak", box(b"mdia", box(b"minf", box(b"stbl", stbl)))))
         data = box(b"ftyp", b"isom" + b"\0" * 8) + box(b"mdat", b"\0" * 4000) + moov
         table = isobmff.parse_moov(data)
@@ -215,6 +247,7 @@ class TestSampleExtentArithmetic:
 # Media extents
 # --------------------------------------------------------------------------- #
 
+
 class TestMediaExtents:
     def test_media_end_comes_from_the_table_not_the_mdat_header(self):
         """A truncated recording leaves a garbage mdat size; the table does not.
@@ -229,14 +262,13 @@ class TestMediaExtents:
         data = build_mp4(sizes, offsets, [(1, 1, 1)], faststart=True)
         mdat_at = data.index(b"mdat") - 4
         # Claim the payload is only two samples long.
-        corrupt = data[:mdat_at] + struct.pack(">I", 8 + 64 * 2) + data[mdat_at + 4:]
+        corrupt = data[:mdat_at] + struct.pack(">I", 8 + 64 * 2) + data[mdat_at + 4 :]
 
         table = isobmff.parse_moov(corrupt)
         ok, why = table.validate(len(corrupt))
         assert ok, why
         assert table.media_start == offsets[0]
-        assert table.media_end == offsets[-1] + 64, \
-            "the table must report where the last sample really ends"
+        assert table.media_end == offsets[-1] + 64, "the table must report where the last sample really ends"
 
     def test_media_extents_span_every_track(self):
         data = build_mp4([10] * 4, [400, 410, 420, 430], [(1, 1, 1)])
@@ -266,6 +298,7 @@ class TestMediaExtents:
 # Validation -- the gate that keeps a wrong index from becoming evidence
 # --------------------------------------------------------------------------- #
 
+
 class TestValidation:
     def test_rejects_stts_stsz_mismatch(self):
         """The decisive integrity test: two tables must agree on the sample count.
@@ -273,8 +306,7 @@ class TestValidation:
         A mismatch means this moov is not the index for this data, which is the
         signature of a file whose header and payload came from different files.
         """
-        data = build_mp4([10] * 4, [200, 210, 220, 230], [(1, 1, 1)],
-                         stts_runs=[(3, 1000)])
+        data = build_mp4([10] * 4, [200, 210, 220, 230], [(1, 1, 1)], stts_runs=[(3, 1000)])
         ok, why = isobmff.parse_moov(data).validate(len(data))
         assert not ok
         assert any("stts" in r and "stsz" in r for r in why)
@@ -299,9 +331,9 @@ class TestValidation:
         # The builder grows the mdat to make offsets reachable, so push the
         # table out of range afterwards rather than asking for it up front.
         stco = isobmff.find_box(data, b"stco")
-        first = stco.payload_start + 8        # skip version/flags and entry_count
+        first = stco.payload_start + 8  # skip version/flags and entry_count
         buf = bytearray(data)
-        for k, val in enumerate((10 ** 7, 10 ** 7 + 10)):
+        for k, val in enumerate((10**7, 10**7 + 10)):
             struct.pack_into(">I", buf, first + 4 * (k + 2), val)
         data = bytes(buf)
         ok, why = isobmff.parse_moov(data).validate(len(data))
@@ -362,8 +394,7 @@ class TestBoxWalker:
             list(isobmff.iter_boxes(struct.pack(">I", 4) + b"mdat"))
 
     def test_size_zero_means_extends_to_the_end(self):
-        data = (box(b"ftyp", b"isom" + b"\0" * 4)
-                + struct.pack(">I", 0) + b"mdat" + b"payload")
+        data = box(b"ftyp", b"isom" + b"\0" * 4) + struct.pack(">I", 0) + b"mdat" + b"payload"
         boxes = list(isobmff.iter_boxes(data))
         assert [b.type for b in boxes] == [b"ftyp", b"mdat"]
         assert boxes[1].size == len(data) - boxes[1].start
@@ -394,6 +425,7 @@ class TestBoxWalker:
 # Offset rewriting
 # --------------------------------------------------------------------------- #
 
+
 class TestRemapChunkOffsets:
     def test_rewrites_stco_through_a_mapping(self):
         data = build_mp4([10] * 4, [200, 210, 220, 230], [(1, 1, 1)])
@@ -418,11 +450,26 @@ class TestRemapChunkOffsets:
 # Real encoder output
 # --------------------------------------------------------------------------- #
 
+
 def _encode(tmp_path: Path, name: str, *extra: str) -> Path:
     out = tmp_path / name
-    cmd = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
-           "-f", "lavfi", "-i", "testsrc=size=128x96:rate=15:duration=2",
-           "-c:v", "libx264", "-pix_fmt", "yuv420p", *extra, str(out)]
+    cmd = [
+        FFMPEG,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=128x96:rate=15:duration=2",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        *extra,
+        str(out),
+    ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0 or not out.is_file() or out.stat().st_size < 512:
         pytest.skip(f"ffmpeg could not produce {name}: {proc.stderr[:200]}")
@@ -432,20 +479,24 @@ def _encode(tmp_path: Path, name: str, *extra: str) -> Path:
 def _decodes(path: Path) -> bool:
     proc = subprocess.run(
         [FFMPEG, "-hide_banner", "-loglevel", "error", "-i", str(path), "-f", "null", "-"],
-        capture_output=True, text=True)
+        capture_output=True,
+        text=True,
+    )
     return proc.returncode == 0
 
 
-@pytest.mark.skipif(FFMPEG is None or FFPROBE is None,
-                    reason="ffmpeg/ffprobe not available")
+@pytest.mark.skipif(FFMPEG is None or FFPROBE is None, reason="ffmpeg/ffprobe not available")
 class TestAgainstRealEncoder:
-    @pytest.mark.parametrize("name,extra", [
-        ("plain.mp4", ()),
-        ("faststart.mp4", ("-movflags", "+faststart")),
-        ("nofaststart.mp4", ("-movflags", "-faststart")),
-        ("bframes.mp4", ("-bf", "3")),
-        ("keyint15.mp4", ("-g", "15")),
-    ])
+    @pytest.mark.parametrize(
+        "name,extra",
+        [
+            ("plain.mp4", ()),
+            ("faststart.mp4", ("-movflags", "+faststart")),
+            ("nofaststart.mp4", ("-movflags", "-faststart")),
+            ("bframes.mp4", ("-bf", "3")),
+            ("keyint15.mp4", ("-g", "15")),
+        ],
+    )
     def test_table_is_internally_consistent(self, tmp_path, name, extra):
         data = _encode(tmp_path, name, *extra).read_bytes()
         table = isobmff.parse_moov(data)
@@ -469,11 +520,12 @@ class TestAgainstRealEncoder:
         assert ok, why
 
         t = max(table.tracks, key=lambda tr: tr.sample_count)
-        rebuilt = b"".join(data[off:off + ln] for off, ln in
-                           (t.sample_extent(i) for i in range(t.sample_count)))
+        rebuilt = b"".join(
+            data[off : off + ln] for off, ln in (t.sample_extent(i) for i in range(t.sample_count))
+        )
         mdat = isobmff.find_box(data, b"mdat")
         assert mdat is not None
-        assert rebuilt == data[mdat.payload_start:mdat.payload_start + len(rebuilt)]
+        assert rebuilt == data[mdat.payload_start : mdat.payload_start + len(rebuilt)]
         assert len(rebuilt) == t.media_end - t.media_start
 
     def test_reassembled_file_decodes_after_offset_rewrite(self, tmp_path):
@@ -496,8 +548,8 @@ class TestAgainstRealEncoder:
 
         # Gather only the extents the table knows about, in file order.
         extents = isobmff.chunk_extents(table)
-        moov_bytes = data[moov.start:moov.start + moov.size]
-        ftyp_bytes = data[ftyp.start:ftyp.start + ftyp.size]
+        moov_bytes = data[moov.start : moov.start + moov.size]
+        ftyp_bytes = data[ftyp.start : ftyp.start + ftyp.size]
         # The gathered media still needs its mdat header: a file with a valid
         # sample table and no mdat box is not a file any demuxer will accept.
         # The remapped offsets are absolute in the *new* file, so they start
@@ -508,7 +560,7 @@ class TestAgainstRealEncoder:
             mapping[off] = cursor
             cursor += ln
         for _ti, off, ln in extents:
-            payload.append(data[off:off + ln])
+            payload.append(data[off : off + ln])
 
         provisional = ftyp_bytes + moov_bytes + box(b"mdat", b"".join(payload))
         remapped = isobmff.remap_chunk_offsets(provisional, table, mapping)
@@ -533,33 +585,45 @@ class TestAgainstRealEncoder:
         extents = isobmff.chunk_extents(table)
         ftyp = isobmff.find_box(data, b"ftyp")
         moov = isobmff.find_box(data, b"moov")
-        ftyp_bytes = data[ftyp.start:ftyp.start + ftyp.size]
-        moov_bytes = data[moov.start:moov.start + moov.size]
+        ftyp_bytes = data[ftyp.start : ftyp.start + ftyp.size]
+        moov_bytes = data[moov.start : moov.start + moov.size]
         cursor = len(ftyp_bytes) + len(moov_bytes) + 8
         mapping, payload = {}, []
         for _ti, off, ln in extents:
             mapping[off] = cursor
             cursor += ln
-            payload.append(data[off:off + ln])
+            payload.append(data[off : off + ln])
         provisional = ftyp_bytes + moov_bytes + box(b"mdat", b"".join(payload))
         out = tmp_path / "rebuilt.mp4"
         out.write_bytes(isobmff.remap_chunk_offsets(provisional, table, mapping))
 
         def frames(p: Path) -> int:
             r = subprocess.run(
-                [FFPROBE, "-v", "error", "-select_streams", "v:0",
-                 "-count_frames", "-show_entries", "stream=nb_read_frames",
-                 "-of", "default=nokey=1:noprint_wrappers=1", str(p)],
-                capture_output=True, text=True)
+                [
+                    FFPROBE,
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-count_frames",
+                    "-show_entries",
+                    "stream=nb_read_frames",
+                    "-of",
+                    "default=nokey=1:noprint_wrappers=1",
+                    str(p),
+                ],
+                capture_output=True,
+                text=True,
+            )
             try:
                 return int(r.stdout.strip())
             except ValueError:
                 return -1
 
         assert frames(out) > 0
-        assert frames(out) == frames(src), \
-            f"rebuilt {frames(out)} frames vs original {frames(src)}; " \
-            f"table claims {t.sample_count} samples"
+        assert frames(out) == frames(src), (
+            f"rebuilt {frames(out)} frames vs original {frames(src)}; table claims {t.sample_count} samples"
+        )
 
     def test_stss_keys_are_one_based_and_in_range(self, tmp_path):
         """ISO/IEC 14496-12 stores stss as 1-based sample numbers.
@@ -596,8 +660,10 @@ class TestAgainstRealEncoder:
 # End to end through the carver
 # --------------------------------------------------------------------------- #
 
+
 def _carve(image: Path, out: Path):
     from s0.carve import carve_image
+
     carve_image(image, out, generate_certificate=False)
     return sorted(f for f in out.iterdir() if f.suffix != ".json")
 
@@ -606,10 +672,13 @@ def _carve(image: Path, out: Path):
 class TestCarverIntegration:
     """The sample table only matters if the engine actually consults it."""
 
-    @pytest.mark.parametrize("name,extra", [
-        ("moov_at_end.mp4", ()),
-        ("faststart.mp4", ("-movflags", "+faststart")),
-    ])
+    @pytest.mark.parametrize(
+        "name,extra",
+        [
+            ("moov_at_end.mp4", ()),
+            ("faststart.mp4", ("-movflags", "+faststart")),
+        ],
+    )
     def test_real_mp4_is_recovered_byte_exact(self, tmp_path, name, extra):
         src = _encode(tmp_path, name, *extra)
         original = src.read_bytes()
@@ -623,6 +692,7 @@ class TestCarverIntegration:
 
     def test_confidence_is_full_when_the_table_verifies(self, tmp_path):
         import json
+
         src = _encode(tmp_path, "conf.mp4")
         image = tmp_path / "img.raw"
         image.write_bytes(b"\x5a" * 4096 + src.read_bytes() + b"\x5a" * 4096)
@@ -648,7 +718,7 @@ class TestCarverIntegration:
         original = src.read_bytes()
         corrupt = bytearray(original)
         at = corrupt.index(b"mdat") - 4
-        struct.pack_into(">I", corrupt, at, 8 + 1024)      # claim a tiny payload
+        struct.pack_into(">I", corrupt, at, 8 + 1024)  # claim a tiny payload
         corrupt = bytes(corrupt)
 
         image = tmp_path / "img.raw"
@@ -662,10 +732,10 @@ class TestCarverIntegration:
         # match, and in particular the length must not be cut short at the
         # shrunken size field.
         assert len(got) == len(original), (
-            f"recovered {len(got)} bytes, expected {len(original)}: "
-            "a stale mdat size truncated the recovery")
+            f"recovered {len(got)} bytes, expected {len(original)}: a stale mdat size truncated the recovery"
+        )
         assert got[:at] == original[:at]
-        assert got[at + 4:] == original[at + 4:]
+        assert got[at + 4 :] == original[at + 4 :]
         assert _decodes(mp4s[0]), "the recovered file must decode"
 
     def test_noise_around_the_file_does_not_create_extra_mp4s(self, tmp_path):
@@ -682,6 +752,7 @@ class TestCarverIntegration:
         the structural gates have to be what rejects this.
         """
         import os
+
         blob = bytearray(os.urandom(256 * 1024))
         blob[4096:4104] = b"\x00\x00\x00\x20ftypisom"
         image = tmp_path / "img.raw"
@@ -693,8 +764,12 @@ class TestCarverIntegration:
 class TestSignatureModel:
     def test_header_offset_defaults_to_zero(self):
         from s0.carve.signatures import SIGNATURES
-        assert all(s.header_offset == 0 for s in SIGNATURES if s.extension != "mp4"
-                   and s.extension not in ("heic", "avif"))
+
+        assert all(
+            s.header_offset == 0
+            for s in SIGNATURES
+            if s.extension != "mp4" and s.extension not in ("heic", "avif")
+        )
 
     def test_isobmff_signatures_match_the_box_type_not_a_box_size(self):
         """A 4-byte box size varies with the brand list; pinning it misses files.
@@ -703,6 +778,7 @@ class TestSignatureModel:
         to contain only 0x18 entries, so no real MP4 was ever a candidate.
         """
         from s0.carve.signatures import SIGNATURES
+
         mp4 = [s for s in SIGNATURES if s.extension == "mp4"]
         assert mp4, "no mp4 signature"
         for s in mp4:
@@ -711,6 +787,7 @@ class TestSignatureModel:
 
     def test_sniff_finds_a_mp4_with_any_ftyp_size(self):
         from s0.carve.signatures import sniff
+
         for ftyp_size in (0x18, 0x20, 0x2C, 0x40):
             data = ftyp_size.to_bytes(4, "big") + b"ftypisom" + b"\0" * 64
             sig = sniff(data)
@@ -726,12 +803,14 @@ class TestSignatureModel:
         reachable through the MP4 rule.
         """
         from s0.carve.signatures import _SIGNATURES_BY_EXT, SIGNATURES, sniff
+
         ebml = b"\x1a\x45\xdf\xa3"
         # The MP4 sniffer keys on `ftyp`; EBML files have none, so a real
         # Matroska header must not be reported as ISO-BMFF.
         assert sniff(ebml + b"\xa3\x42\x86\x81\x01B\xf7\x81\x01" + b"\x00" * 64) is None
         # And the extension must resolve to the Matroska boundary rule, not MP4's.
         from s0.carve import boundary
+
         assert boundary.has_boundary_rule("mkv")
         assert boundary._BOUNDARY_RULES["mkv"] is boundary._BOUNDARY_RULES["webm"]
         assert boundary._BOUNDARY_RULES["mkv"] is not boundary._BOUNDARY_RULES["mp4"]
@@ -744,6 +823,7 @@ class TestSignatureModel:
 # --------------------------------------------------------------------------- #
 # Two-fragment reassembly
 # --------------------------------------------------------------------------- #
+
 
 def _split_at_mdat(data: bytes):
     """Split a faststart MP4 into [ftyp][moov] and [mdat][payload]."""
@@ -761,7 +841,7 @@ class _ImageSource:
     def read(self, offset: int, length: int) -> bytes:
         if offset < 0 or offset >= len(self._data):
             return b""
-        return self._data[offset:offset + length]
+        return self._data[offset : offset + length]
 
     def read_until(self, needle: bytes, start: int, limit: int) -> int:
         idx = self._data.find(needle, start, start + limit)
@@ -792,8 +872,7 @@ class TestTwoFragmentReassembly:
         ok, why = table.validate(len(whole))
         assert ok, why
 
-        r = isobmff.reassemble_two_fragment(source, ftyp_at, table,
-                                           len(image), len(image))
+        r = isobmff.reassemble_two_fragment(source, ftyp_at, table, len(image), len(image))
         assert r is not None, "the two-fragment shape was not recognised"
         assert r.payload == whole, "reassembled file differs from the original"
         assert len(r.fragments) == 2
@@ -812,8 +891,10 @@ class TestTwoFragmentReassembly:
             assert fr.image_offset >= 0
             assert fr.length > 0
             # Each fragment's image bytes must be exactly what the file got.
-            assert r.payload[fr.file_offset:fr.file_offset + fr.length] \
-                == image[fr.image_offset:fr.image_offset + fr.length]
+            assert (
+                r.payload[fr.file_offset : fr.file_offset + fr.length]
+                == image[fr.image_offset : fr.image_offset + fr.length]
+            )
 
     def test_a_contiguous_file_needs_no_reassembly(self, tmp_path):
         """The normal case must not be disturbed."""
@@ -844,15 +925,13 @@ class TestTwoFragmentReassembly:
         source = _ImageSource(image[:ftyp_at] + index_part)
         table = isobmff.parse_moov(whole, 0)
         table.validate(len(whole))
-        assert isobmff.reassemble_two_fragment(source, ftyp_at, table,
-                                               source.size, source.size) is None
+        assert isobmff.reassemble_two_fragment(source, ftyp_at, table, source.size, source.size) is None
 
     def test_refuses_a_fragmented_mp4(self, tmp_path):
         moov = box(b"moov", box(b"mvex", box(b"trex", b"\0" * 24)) + box(b"trak", b""))
         data = box(b"ftyp", b"isom" + b"\0" * 8) + moov
         table = isobmff.parse_moov(data, 0)
-        assert isobmff.reassemble_two_fragment(_ImageSource(data), 0, table,
-                                               len(data), len(data)) is None
+        assert isobmff.reassemble_two_fragment(_ImageSource(data), 0, table, len(data), len(data)) is None
 
 
 @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
@@ -871,11 +950,11 @@ class TestReassemblyThroughTheCarver:
         files = _carve(img, tmp_path / "out")
         mp4s = [f for f in files if f.suffix == ".mp4"]
         assert len(mp4s) == 1, [f.name for f in files]
-        assert mp4s[0].read_bytes() == whole, \
-            "a physically split MP4 must be reassembled byte-exactly"
+        assert mp4s[0].read_bytes() == whole, "a physically split MP4 must be reassembled byte-exactly"
 
     def test_the_recovery_report_shows_the_two_fragments(self, tmp_path):
         import json
+
         src = _encode(tmp_path, "split2.mp4", "-movflags", "+faststart")
         whole = src.read_bytes()
         index_part, media_part = _split_at_mdat(whole)

@@ -31,8 +31,12 @@ def test_host_overwrite_is_always_the_last_resort():
 
 
 def test_ata_sanitize_flags_produce_the_right_methods():
-    c = _ata(ata_sanitize_supported=True, ata_sanitize_block_erase=True,
-             ata_sanitize_crypto_scramble=True, ata_sanitize_overwrite=True)
+    c = _ata(
+        ata_sanitize_supported=True,
+        ata_sanitize_block_erase=True,
+        ata_sanitize_crypto_scramble=True,
+        ata_sanitize_overwrite=True,
+    )
     ids = [m[0] for m in c.available_methods()]
     assert "ATA_SANITIZE_BLOCK_ERASE" in ids
     assert "ATA_SANITIZE_CRYPTO_SCRAMBLE" in ids
@@ -42,8 +46,12 @@ def test_ata_sanitize_flags_produce_the_right_methods():
 
 
 def test_nvme_sanicap_flags_produce_the_right_methods():
-    c = _ata(nvme_sanicap_crypto_erase=True, nvme_sanicap_block_erase=True,
-             nvme_sanicap_overwrite=True, nvme_sprrs=True)
+    c = _ata(
+        nvme_sanicap_crypto_erase=True,
+        nvme_sanicap_block_erase=True,
+        nvme_sanicap_overwrite=True,
+        nvme_sprrs=True,
+    )
     ids = [m[0] for m in c.available_methods()]
     assert "NVME_SANITIZE_CRYPTO_ERASE" in ids
     assert "NVME_SANITIZE_BLOCK_ERASE" in ids
@@ -52,12 +60,13 @@ def test_nvme_sanicap_flags_produce_the_right_methods():
 
 
 def test_scsi_sanitize_flags_produce_the_right_methods():
-    c = _ata(scsi_sanitize_block_erase=True, scsi_sanitize_crypto_erase=True,
-             scsi_sanitize_overwrite=True)
+    c = _ata(scsi_sanitize_block_erase=True, scsi_sanitize_crypto_erase=True, scsi_sanitize_overwrite=True)
     ids = [m[0] for m in c.available_methods()]
-    for expected in ("SCSI_SANITIZE_BLOCK_ERASE",
-                     "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE",
-                     "SCSI_SANITIZE_OVERWRITE"):
+    for expected in (
+        "SCSI_SANITIZE_BLOCK_ERASE",
+        "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE",
+        "SCSI_SANITIZE_OVERWRITE",
+    ):
         assert expected in ids
     assert ids[-1] == "OVERWRITE_ZERO_1PASS"
     assert ids.index("SCSI_SANITIZE_BLOCK_ERASE") < ids.index("SCSI_SANITIZE_OVERWRITE")
@@ -116,12 +125,22 @@ def test_probe_never_writes():
         return 0, "", ""
 
     import unittest.mock as mock
-    with mock.patch.object(cap, "_run", fake_run), \
-         mock.patch.object(cap, "has_external_tool", lambda _n: True):
+
+    with (
+        mock.patch.object(cap, "_run", fake_run),
+        mock.patch.object(cap, "has_external_tool", lambda _n: True),
+    ):
         cap.probe_capabilities("/dev/sdX", kind="block")
-    mutating = ("--sanitize-block-erase", "--sanitize-crypto-scramble",
-                "--sanitize-overwrite", "--security-erase", "format",
-                "--wipe", "shred", "clean all")
+    mutating = (
+        "--sanitize-block-erase",
+        "--sanitize-crypto-scramble",
+        "--sanitize-overwrite",
+        "--security-erase",
+        "format",
+        "--wipe",
+        "shred",
+        "clean all",
+    )
     for cmd in issued:
         joined = " ".join(cmd)
         for verb in mutating:
@@ -150,6 +169,7 @@ def test_ata_block_erase_reports_the_exact_cdb():
     out = san.ata_sanitize_block_erase("/dev/sdX")
     assert "0xB4" in out.command and "0x0012" in out.command
     from s0.certificate import METHOD_TIERS
+
     assert METHOD_TIERS[out.method_id] == {"Purge"}
 
 
@@ -159,6 +179,7 @@ def test_nvme_crypto_erase_uses_opcode_0x84():
     assert out.method_id == "NVME_SANITIZE_CRYPTO_ERASE"
     assert out.tier == Tiers.CRYPTOGRAPHIC_ERASE
     from s0.certificate import METHOD_TIERS
+
     assert METHOD_TIERS[out.method_id] == {"Purge"}
 
 
@@ -171,9 +192,11 @@ def test_scsi_block_erase_reports_the_exact_opcode():
 def test_drivers_refuse_without_their_platform_tool(monkeypatch):
     """s0 does not hand-build firmware CDBs when the vendor tooling is absent."""
     monkeypatch.setattr(san, "has_external_tool", lambda _n: False)
-    for out in (san.ata_sanitize_block_erase("/dev/sdX"),
-                san.nvme_sanitize("/dev/nvme0", "block_erase"),
-                san.scsi_sanitize("/dev/sdX", "block_erase")):
+    for out in (
+        san.ata_sanitize_block_erase("/dev/sdX"),
+        san.nvme_sanitize("/dev/nvme0", "block_erase"),
+        san.scsi_sanitize("/dev/sdX", "block_erase"),
+    ):
         assert out.ok is False
         assert out.errors
 
@@ -197,14 +220,22 @@ def test_ata_overwrite_passes_zero_and_nvme_owpass_zero_are_the_same_trap():
 def test_every_purge_capable_method_is_registered_in_the_certificate_schema():
     """A method the engine can run must be a method a certificate may name."""
     from s0.certificate import METHOD_TIERS, WIPE_METHODS
+
     for method_id, _tier, _mech in DeviceCapabilities(
-            path="/dev/sdX", probed=True,
-            ata_sanitize_block_erase=True, ata_sanitize_crypto_scramble=True,
-            ata_sanitize_overwrite=True, nvme_sanicap_block_erase=True,
-            nvme_sanicap_crypto_erase=True, nvme_sanicap_overwrite=True,
-            nvme_sprrs=True, scsi_sanitize_block_erase=True,
-            scsi_sanitize_crypto_erase=True, scsi_sanitize_overwrite=True,
-            blkdiscard=True).available_methods():
+        path="/dev/sdX",
+        probed=True,
+        ata_sanitize_block_erase=True,
+        ata_sanitize_crypto_scramble=True,
+        ata_sanitize_overwrite=True,
+        nvme_sanicap_block_erase=True,
+        nvme_sanicap_crypto_erase=True,
+        nvme_sanicap_overwrite=True,
+        nvme_sprrs=True,
+        scsi_sanitize_block_erase=True,
+        scsi_sanitize_crypto_erase=True,
+        scsi_sanitize_overwrite=True,
+        blkdiscard=True,
+    ).available_methods():
         if method_id == "OVERWRITE_ZERO_1PASS":
             continue
         assert method_id in WIPE_METHODS, f"{method_id} is runnable but not in the schema"

@@ -27,7 +27,6 @@ def get_default_audit_db() -> Path:
 DEFAULT_AUDIT_DB = get_default_audit_db()
 
 
-
 @dataclass
 class AuditBlock:
     block_index: int
@@ -61,18 +60,20 @@ def compute_block_hash(
     prev_hash: str,
 ) -> str:
     """Compute deterministic SHA-256 block hash chaining all transaction fields via Canonical JSON."""
-    payload_for_hash = canonicalize({
-        "block_index": block_index,
-        "timestamp": timestamp,
-        "operation_type": operation_type,
-        "target_id": target_id,
-        "operator_id": operator_id,
-        "organization": organization,
-        "cert_uuid": cert_uuid,
-        "payload_hash": payload_hash,
-        "signature": signature,
-        "prev_hash": prev_hash,
-    })
+    payload_for_hash = canonicalize(
+        {
+            "block_index": block_index,
+            "timestamp": timestamp,
+            "operation_type": operation_type,
+            "target_id": target_id,
+            "operator_id": operator_id,
+            "organization": organization,
+            "cert_uuid": cert_uuid,
+            "payload_hash": payload_hash,
+            "signature": signature,
+            "prev_hash": prev_hash,
+        }
+    )
     return hashlib.sha256(payload_for_hash).hexdigest()
 
 
@@ -126,9 +127,9 @@ def get_db_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
         try:
             os.close(os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
         except FileExistsError:
-            pass                       # another process won; it set the mode
+            pass  # another process won; it set the mode
         except OSError:
-            pass                       # let connect() surface the real problem
+            pass  # let connect() surface the real problem
 
     conn = sqlite3.connect(str(path), timeout=BUSY_TIMEOUT_MS / 1000)
     conn.row_factory = sqlite3.Row
@@ -140,8 +141,7 @@ def get_db_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
     return conn
 
 
-def _write_checkpoint(db_path: str | Path, tip_index: int, tip_hash: str,
-                      updated_at: str) -> None:
+def _write_checkpoint(db_path: str | Path, tip_index: int, tip_hash: str, updated_at: str) -> None:
     """Write the chain checkpoint beside the ledger, 0600.
 
     This sidecar carries the same chain state as the ledger -- the tip index and
@@ -156,9 +156,8 @@ def _write_checkpoint(db_path: str | Path, tip_index: int, tip_hash: str,
     try:
         fd = os.open(str(cp_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
         with open(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps({"tip_index": tip_index, "tip_hash": tip_hash,
-                                 "updated_at": updated_at}))
-        os.chmod(cp_file, 0o600)          # mode is ignored for an existing file
+            fh.write(json.dumps({"tip_index": tip_index, "tip_hash": tip_hash, "updated_at": updated_at}))
+        os.chmod(cp_file, 0o600)  # mode is ignored for an existing file
     except OSError:
         pass
 
@@ -298,6 +297,7 @@ def record_audit_event(
             from s0 import crypto
             from s0.canonical import canonicalize
             from s0.certificate import payload_of
+
             payload_hash = crypto.payload_sha256(canonicalize(payload_of(certificate))).replace("sha256:", "")
         except Exception:
             payload_hash = sig_obj.get("signed_payload_hash", "sha256:" + "0" * 64).replace("sha256:", "")

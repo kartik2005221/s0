@@ -28,9 +28,9 @@ def build_synthetic_mft_record(
     """Construct a minimal valid NTFS MFT record with $FILE_NAME and $DATA."""
     rec = bytearray(1024)
     rec[0:4] = b"FILE"
-    struct.pack_into("<H", rec, 0x0C, 1)   # sequence number
+    struct.pack_into("<H", rec, 0x0C, 1)  # sequence number
     struct.pack_into("<H", rec, 0x14, 56)  # offset to the first attribute
-    flags = 1 if is_allocated else 0      # 0 = unallocated / deleted
+    flags = 1 if is_allocated else 0  # 0 = unallocated / deleted
     struct.pack_into("<H", rec, 0x16, flags)
     struct.pack_into("<I", rec, 0x2C, record_num)
 
@@ -95,7 +95,7 @@ def build_synthetic_mft_record(
     seq = 1
     usa_off = 48
     struct.pack_into("<H", rec, 0x04, usa_off)
-    struct.pack_into("<H", rec, 0x06, 3)          # two sectors, plus the USN slot
+    struct.pack_into("<H", rec, 0x06, 3)  # two sectors, plus the USN slot
     struct.pack_into("<H", rec, usa_off, seq)
     for i in range(1, 3):
         struct.pack_into("<H", rec, usa_off + i * 2, 0)
@@ -189,7 +189,13 @@ def test_ntfs_resident_and_nonresident_carving(tmp_path):
     out_dir = tmp_path / "carved_ntfs_output"
 
     pdf_payload = b"%PDF-1.4\n1 0 obj\n<< /Title (TOP SECRET EVIDENCE) >>\nendobj\nstream\nCONFIDENTIAL EVIDENCE\nendstream\n%%EOF"
-    jpg_payload = bytes([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]) + b"JFIF" + bytes([0x00, 0x01]) + (b"AA" * 200) + bytes([0xFF, 0xD9])
+    jpg_payload = (
+        bytes([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10])
+        + b"JFIF"
+        + bytes([0x00, 0x01])
+        + (b"AA" * 200)
+        + bytes([0xFF, 0xD9])
+    )
 
     resident_files = [("classified_intel.pdf", pdf_payload)]
     nonresident_files = [("intercept_photo.jpg", jpg_payload, 25)]

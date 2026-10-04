@@ -255,7 +255,7 @@ import json
 from base64 import urlsafe_b64encode
 from s0.canonical import canonicalize
 
-cert_dict = { ... }  # full certificate object
+cert_dict = {...}  # full certificate object
 cert_payload = {k: v for k, v in cert_dict.items() if k != "signature"}
 
 canonical_bytes = canonicalize(cert_payload)
@@ -269,7 +269,7 @@ cert_dict["signature"] = {
     "algorithm": "Ed25519",
     "public_key_fingerprint": "sha256:" + hashlib.sha256(der_public_key).hexdigest(),
     "signature_base64url": sig_b64url,
-    "signed_payload_hash": payload_hash
+    "signed_payload_hash": payload_hash,
 }
 ```
 

@@ -37,7 +37,11 @@ def _run_verify(db: Path, *extra: str, cwd: Path | None = None) -> subprocess.Co
     env = {**os.environ, "S0_AUDIT_DB": str(db)}
     return subprocess.run(
         [str(Path(sys.executable).parent / "s0"), "audit", "verify", *extra],
-        capture_output=True, text=True, env=env, cwd=str(cwd or REPO), timeout=120,
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=str(cwd or REPO),
+        timeout=120,
     )
 
 
@@ -54,12 +58,20 @@ def ledger(tmp_path_factory) -> Path:
     for _ in range(2):
         # A real certificate: record_audit_event() validates before appending.
         cert = build_certificate(
-            organization="Acme", operator_id="op-test", tool_name="s0",
-            tool_version="2.4.4", platform="linux", device_id="sha256:deadbeef",
-            device_type="removable_disk", storage_type="HDD",
-            method="OVERWRITE_ZERO_1PASS", nist_category="Clear",
-            start_time="2026-01-01T00:00:00Z", end_time="2026-01-01T00:01:00Z",
-            bytes_processed=4096, capacity_bytes=8192,
+            organization="Acme",
+            operator_id="op-test",
+            tool_name="s0",
+            tool_version="2.4.4",
+            platform="linux",
+            device_id="sha256:deadbeef",
+            device_type="removable_disk",
+            storage_type="HDD",
+            method="OVERWRITE_ZERO_1PASS",
+            nist_category="Clear",
+            start_time="2026-01-01T00:00:00Z",
+            end_time="2026-01-01T00:01:00Z",
+            bytes_processed=4096,
+            capacity_bytes=8192,
         )
         record_audit_event(
             sign_certificate(cert, priv),
@@ -184,7 +196,7 @@ def test_get_default_trusted_keys_has_no_relative_candidate():
     from s0.audit import verify as v
 
     source = Path(v.__file__).read_text(encoding="utf-8")
-    body = source[source.index("def get_default_trusted_keys"):]
+    body = source[source.index("def get_default_trusted_keys") :]
     body = body[: body.index("\ndef ", 5)]
     for suspect in ('Path("core/keys', "Path('core/keys", 'Path("./', "Path('."):
         assert suspect not in body, (

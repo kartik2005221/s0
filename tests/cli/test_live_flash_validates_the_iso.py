@@ -28,11 +28,12 @@ def _pad_to(path, size: int = ONE_HUNDRED_MIB + 1024) -> None:
         fh.truncate(size)
 
 
-def _system_area(*, descriptor_at: int = 1, boot_type: int = 0x88,
-                 el_torito: bool = True, magic: bytes = b"CD001") -> bytes:
+def _system_area(
+    *, descriptor_at: int = 1, boot_type: int = 0x88, el_torito: bool = True, magic: bytes = b"CD001"
+) -> bytes:
     area = bytearray(0x1000)
     if magic:
-        area[descriptor_at:descriptor_at + 5] = magic
+        area[descriptor_at : descriptor_at + 5] = magic
     area[7] = boot_type
     if el_torito:
         area[0x821:0x82D] = b"EL TORITO SPEC"
@@ -63,7 +64,8 @@ class TestARealIsoIsAccepted:
         ok, detail = validate_iso_image(iso)
         assert ok, (
             f"an ISO 9660 image without El Torito was refused. Some hybrid images "
-            f"boot via the partition table, so this must not be a hard failure: {detail}")
+            f"boot via the partition table, so this must not be a hard failure: {detail}"
+        )
         assert "El Torito" in detail
 
     def test_a_boot_type_of_zero_is_accepted(self, tmp_path):
@@ -186,7 +188,7 @@ class TestTheCheckIsCheap:
         iso = tmp_path / "big.iso"
         iso.write_bytes(b"\x00" * 0x8000 + _system_area() + b"\x00" * 0x1000)
         with open(iso, "r+b") as fh:
-            fh.truncate(2 * 1024 * 1024 * 1024)      # sparse
+            fh.truncate(2 * 1024 * 1024 * 1024)  # sparse
 
         ok, _detail = validate_iso_image(iso)
         assert ok
@@ -197,7 +199,7 @@ class TestTheCheckIsCheap:
         with open(iso, "r+b") as fh:
             fh.truncate(2 * 1024 * 1024 * 1024)
         # Sparse: the apparent size is huge but the blocks on disk are not.
-        assert iso.stat().st_size > 1024 ** 3
+        assert iso.stat().st_size > 1024**3
 
 
 class TestTheCheckIsActuallyWiredIn:
@@ -211,8 +213,7 @@ class TestTheCheckIsActuallyWiredIn:
     def _args(self, iso, target="/dev/sdz", **kw):
         import argparse
 
-        return argparse.Namespace(target=target, iso=str(iso), yes=True,
-                                  force=True, dry_run=False, **kw)
+        return argparse.Namespace(target=target, iso=str(iso), yes=True, force=True, dry_run=False, **kw)
 
     def test_a_large_non_iso_is_refused_before_any_write(self, tmp_path, capsys):
         from s0.live.live_manager import cmd_live_flash
@@ -237,9 +238,10 @@ class TestTheCheckIsActuallyWiredIn:
         finally:
             builtins.open = real_open
 
-        assert rc == 2, f"a {blob.stat().st_size // (1024*1024)} MB non-ISO was accepted"
+        assert rc == 2, f"a {blob.stat().st_size // (1024 * 1024)} MB non-ISO was accepted"
         assert not opened_for_writing, (
-            f"something was opened for writing before the refusal: {opened_for_writing}")
+            f"something was opened for writing before the refusal: {opened_for_writing}"
+        )
         assert "not a usable Live ISO" in capsys.readouterr().err
 
     def test_the_refusal_happens_before_the_target_is_examined(self, tmp_path, capsys):

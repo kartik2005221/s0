@@ -34,7 +34,7 @@ class _BytesSource:
         self.data = data
 
     def read(self, offset: int, length: int) -> bytes:
-        return self.data[offset:offset + length]
+        return self.data[offset : offset + length]
 
     @property
     def size(self) -> int:
@@ -64,8 +64,15 @@ def _pad(byte: int, n: int) -> bytes:
 class TestSeveralArchivesGetDistinctEnds:
     def test_each_archive_resolves_to_its_own_end(self):
         archives = [_zip("a"), _zip("b"), _zip("c")]
-        blob = _pad(0, 500) + archives[0] + _pad(0xAA, 3000) \
-            + archives[1] + _pad(0xBB, 3000) + archives[2] + _pad(0, 500)
+        blob = (
+            _pad(0, 500)
+            + archives[0]
+            + _pad(0xAA, 3000)
+            + archives[1]
+            + _pad(0xBB, 3000)
+            + archives[2]
+            + _pad(0, 500)
+        )
         src = _BytesSource(blob)
 
         starts = []
@@ -76,18 +83,19 @@ class TestSeveralArchivesGetDistinctEnds:
 
         ends = [_zip_end(src, s, len(blob)).end for s in starts]
 
-        assert all(e is not None for e in ends), (
-            f"at least one archive had no resolvable end: {ends}")
+        assert all(e is not None for e in ends), f"at least one archive had no resolvable end: {ends}"
 
         assert len(set(ends)) == len(ends), (
             f"every archive resolved to the same end offset {set(ends)}, which is "
-            f"what made them look like duplicates and lose all but one")
+            f"what made them look like duplicates and lose all but one"
+        )
 
         # Each end must land exactly at the end of its own archive.
         for start, archive, end in zip(starts, archives, ends, strict=True):
             assert end == start + len(archive), (
                 "the end offset does not match the archive's real length, so the "
-                "recovered file would be truncated or over-long")
+                "recovered file would be truncated or over-long"
+            )
 
     def test_the_resolved_ranges_do_not_overlap(self):
         archives = [_zip("x"), _zip("y")]
@@ -102,10 +110,12 @@ class TestSeveralArchivesGetDistinctEnds:
         assert end_first is not None and end_second is not None
         assert end_first <= second, (
             "the first archive's range extends past the second archive's start, so "
-            "suppression would discard the second as contained in the first")
+            "suppression would discard the second as contained in the first"
+        )
         assert end_second > end_first, (
             "both archives resolved to the same end, so the second is an exact "
-            "duplicate of the first and is suppressed")
+            "duplicate of the first and is suppressed"
+        )
 
     def test_a_single_archive_still_resolves(self):
         archive = _zip("solo")
@@ -113,7 +123,8 @@ class TestSeveralArchivesGetDistinctEnds:
         boundary = _zip_end(_BytesSource(blob), 100, len(blob))
         assert boundary.end == 100 + len(archive)
         assert any("self-consistent" in note for note in boundary.notes), (
-            f"the consistent-EOCD path was not taken for a lone archive: {boundary.notes}")
+            f"the consistent-EOCD path was not taken for a lone archive: {boundary.notes}"
+        )
 
     def test_an_archive_with_a_comment_resolves(self):
         """A ZIP comment shifts the real end, and exercises the comment_len path."""
@@ -126,7 +137,8 @@ class TestSeveralArchivesGetDistinctEnds:
 
         boundary = _zip_end(_BytesSource(blob), 200, len(blob))
         assert boundary.end == 200 + len(archive), (
-            "a commented archive's end was miscomputed, which would truncate it")
+            "a commented archive's end was miscomputed, which would truncate it"
+        )
 
     def test_an_inconsistent_eocd_is_reported_rather_than_hidden(self):
         """When no candidate is consistent, the boundary must say so.
@@ -137,11 +149,11 @@ class TestSeveralArchivesGetDistinctEnds:
         # Hand-build an EOCD whose cd_off cannot correspond to this start.
         rec = bytearray(22)
         rec[0:4] = b"PK\x05\x06"
-        rec[8:10] = (0).to_bytes(2, "little")      # this disk
-        rec[10:12] = (0).to_bytes(2, "little")     # cd start disk
+        rec[8:10] = (0).to_bytes(2, "little")  # this disk
+        rec[10:12] = (0).to_bytes(2, "little")  # cd start disk
         rec[12:16] = (9999).to_bytes(4, "little")  # cd size -- nonsense
         rec[16:20] = (999999).to_bytes(4, "little")  # cd offset -- nonsense
-        rec[20:22] = (0).to_bytes(2, "little")     # comment length
+        rec[20:22] = (0).to_bytes(2, "little")  # comment length
 
         blob = _pad(0, 100) + b"PK\x03\x04" + _pad(0, 50) + bytes(rec) + _pad(0, 100)
         boundary = _zip_end(_BytesSource(blob), 100, len(blob))
@@ -149,7 +161,8 @@ class TestSeveralArchivesGetDistinctEnds:
         assert boundary.end is not None
         assert any("no EOCD had offsets consistent" in note for note in boundary.notes), (
             "an unresolvable EOCD was presented as a confident measurement; the "
-            f"notes must disclose it: {boundary.notes}")
+            f"notes must disclose it: {boundary.notes}"
+        )
 
     def test_no_eocd_at_all_is_still_reported_as_undetermined(self):
         blob = _pad(0, 100) + b"PK\x03\x04" + _pad(0x11, 400)
@@ -166,8 +179,15 @@ class TestEndToEndCarveRecoversEveryArchive:
         import sys
 
         archives = [_zip("one"), _zip("two"), _zip("three")]
-        blob = _pad(0, 2000) + archives[0] + _pad(0xAA, 3000) \
-            + archives[1] + _pad(0xBB, 3000) + archives[2] + _pad(0, 2000)
+        blob = (
+            _pad(0, 2000)
+            + archives[0]
+            + _pad(0xAA, 3000)
+            + archives[1]
+            + _pad(0xBB, 3000)
+            + archives[2]
+            + _pad(0, 2000)
+        )
         (tmp_path / "multi.img").write_bytes(blob)
 
         entry = shutil.which("s0") or str(Path(sys.executable).parent / "s0")
@@ -175,18 +195,33 @@ class TestEndToEndCarveRecoversEveryArchive:
             pytest.skip("s0 entry point not available")
 
         proc = subprocess.run(
-            [entry, "carve", "--target", "multi.img", "--out-dir", "out",
-             "--no-certificate", "--no-pdf", "--extensions", "zip",
-             "--min-confidence", "0"],
-            capture_output=True, text=True, cwd=str(tmp_path), timeout=300,
-            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin",
-                 "S0_AUDIT_DB": str(tmp_path / "audit.db")})
+            [
+                entry,
+                "carve",
+                "--target",
+                "multi.img",
+                "--out-dir",
+                "out",
+                "--no-certificate",
+                "--no-pdf",
+                "--extensions",
+                "zip",
+                "--min-confidence",
+                "0",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+            timeout=300,
+            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(tmp_path / "audit.db")},
+        )
         assert proc.returncode == 0, proc.stderr
 
         carved = sorted((tmp_path / "out").glob("*.zip"))
         assert len(carved) == 3, (
             f"3 archives in the image produced {len(carved)} recovered file(s); "
-            f"before the fix this was 1, with the rest discarded as duplicates")
+            f"before the fix this was 1, with the rest discarded as duplicates"
+        )
 
         # And each one must actually open and hold its own evidence.
         members = set()
@@ -195,5 +230,5 @@ class TestEndToEndCarveRecoversEveryArchive:
                 assert z.testzip() is None, f"{path.name} is a corrupt archive"
                 members.update(z.namelist())
         assert members == {"one.txt", "two.txt", "three.txt"}, (
-            f"the recovered archives do not hold the expected distinct contents: "
-            f"{members}")
+            f"the recovered archives do not hold the expected distinct contents: {members}"
+        )

@@ -120,6 +120,7 @@ SSTAT_UNKNOWN = -1
 @dataclass
 class SanitizeStatus:
     """One device's own account of its most recent sanitize operation."""
+
     status_code: int
     global_data_erased: bool | None
     media_verification_canceled: bool | None
@@ -132,9 +133,7 @@ class SanitizeStatus:
 
     @property
     def status_text(self) -> str:
-        return SSTAT_STATUS_TEXT.get(
-            self.status_code,
-            f"unrecognised status code 0x{self.status_code:x}")
+        return SSTAT_STATUS_TEXT.get(self.status_code, f"unrecognised status code 0x{self.status_code:x}")
 
     @property
     def known_status(self) -> bool:
@@ -219,8 +218,7 @@ def parse_sanitize_status_log(page: bytes) -> SanitizeStatus:
     as unrecognised rather than mapped onto a defined one.
     """
     if len(page) < 0x20:
-        raise ValueError(
-            f"sanitize status log page is {len(page)} bytes; the fields end at 0x20")
+        raise ValueError(f"sanitize status log page is {len(page)} bytes; the fields end at 0x20")
     sprog, sstat, scdw10 = struct.unpack_from("<HHI", page, 0)
     eto, etbe, etce, etond, etbend, etcend = struct.unpack_from("<IIIIII", page, 0x08)
     status = sstat & 0xF
@@ -235,27 +233,32 @@ def parse_sanitize_status_log(page: bytes) -> SanitizeStatus:
         completed_passes=passes_raw if passes_raw else None,
         # SPROG's denominator is 65536, not 100. Reading it as a percentage is
         # the kind of off-by-a-lot-of-factor that makes progress read 0.15%.
-        progress_fraction=((sprog / 65536.0)
-                        if (sstat & 0xF) == SSTAT_IN_PROGRESS else None),
+        progress_fraction=((sprog / 65536.0) if (sstat & 0xF) == SSTAT_IN_PROGRESS else None),
         scdw10=scdw10,
         estimated_seconds={
-            "overwrite": eto, "block_erase": etbe, "crypto_erase": etce,
-            "overwrite_no_dealloc": etond, "block_erase_no_dealloc": etbend,
+            "overwrite": eto,
+            "block_erase": etbe,
+            "crypto_erase": etce,
+            "overwrite_no_dealloc": etond,
+            "block_erase_no_dealloc": etbend,
             "crypto_erase_no_dealloc": etcend,
         },
         raw=bytes(page),
     )
 
 
-def build_sanitize_status_log(*, status: int = SSTAT_COMPLETE_SUCCESS,
-                              global_data_erased: bool = True,
-                              action: int = SANACT_BLOCK_ERASE,
-                              overwrite_passes: int = 0,
-                              progress: int = 0,
-                              media_verification_canceled: bool = False,
-                              completed_passes: int = 0) -> bytes:
+def build_sanitize_status_log(
+    *,
+    status: int = SSTAT_COMPLETE_SUCCESS,
+    global_data_erased: bool = True,
+    action: int = SANACT_BLOCK_ERASE,
+    overwrite_passes: int = 0,
+    progress: int = 0,
+    media_verification_canceled: bool = False,
+    completed_passes: int = 0,
+) -> bytes:
     """Build a log page. Used by the tests, and to document the layout."""
-    sstat = (status & 0xF)
+    sstat = status & 0xF
     if global_data_erased:
         sstat |= 1 << 8
     if media_verification_canceled:
@@ -276,6 +279,7 @@ def parse_nvme_cli_output(text: str) -> dict:
     decoder's mistake was having two places that disagreed about the bits.
     """
     import re
+
     out: dict = {"source": "nvme-cli text output"}
     m = re.search(r"\[SSTAT\]:\s*0x([0-9a-fA-F]+)", text)
     if not m:
@@ -288,8 +292,7 @@ def parse_nvme_cli_output(text: str) -> dict:
         scdw10 = int(m10.group(1), 16)
     out["sanitize_status"] = {
         "status_code": status,
-        "status_text": SSTAT_STATUS_TEXT.get(
-            status, f"unrecognised status code 0x{status:x}"),
+        "status_text": SSTAT_STATUS_TEXT.get(status, f"unrecognised status code 0x{status:x}"),
         "status_known": status in SSTAT_STATUS_TEXT,
         "completed_successfully": status == SSTAT_COMPLETE_SUCCESS,
         "failed": status == SSTAT_COMPLETED_FAILED,
@@ -311,6 +314,7 @@ def parse_nvme_cli_output(text: str) -> dict:
 # Statistical sampling
 # --------------------------------------------------------------------------- #
 
+
 @dataclass
 class SamplingProof:
     """What a sample of the medium showed, and how much that is worth.
@@ -321,6 +325,7 @@ class SamplingProof:
     no bound is not evidence of anything, and reporting it as though it were
     would be the dishonest form of this feature.
     """
+
     blocks_sampled: int
     blocks_total: int
     blocks_matching: int
@@ -361,15 +366,19 @@ class SamplingProof:
     def claim(self) -> str:
         if not self.clean:
             pct = self.observed_fraction * 100
-            return (f"{self.blocks_matching} of {self.blocks_sampled} sampled blocks "
-                    f"still matched the pattern ({pct:.2f}% of the sample); the medium "
-                    f"is not sanitized")
+            return (
+                f"{self.blocks_matching} of {self.blocks_sampled} sampled blocks "
+                f"still matched the pattern ({pct:.2f}% of the sample); the medium "
+                f"is not sanitized"
+            )
         if not self.blocks_sampled:
             return "no blocks were sampled, so nothing was verified"
         bound = self.upper_bound_fraction * 100
-        return (f"no sampled block matched the pattern; at {self.confidence:.0%} "
-                f"confidence the fraction of the medium still matching is below "
-                f"{bound:.3f}% ({self.method})")
+        return (
+            f"no sampled block matched the pattern; at {self.confidence:.0%} "
+            f"confidence the fraction of the medium still matching is below "
+            f"{bound:.3f}% ({self.method})"
+        )
 
 
 def clopper_pearson_upper(k: int, n: int, confidence: float = 0.95) -> float:
@@ -390,19 +399,20 @@ def clopper_pearson_upper(k: int, n: int, confidence: float = 0.95) -> float:
     # Upper bound is BetaInv(1 - alpha; k + 1, n - k).
     try:
         from scipy.stats import beta as _beta
+
         return float(_beta.ppf(1.0 - alpha, k + 1, n - k))
     except ImportError:
         pass
     # Wilson score upper bound as a dependency-free fallback. It is not the
     # exact bound, so the method string is adjusted by the caller below.
     import math
+
     if k == 0:
         # The k=0 case has a closed form even without SciPy: 1 - alpha**(1/n).
         return 1.0 - alpha ** (1.0 / n)
     z = 1.6448536269514722  # one-sided 95%
     if abs(confidence - 0.95) > 1e-9:
-        z = {0.90: 1.2815515655446004, 0.99: 2.3263478740408408}.get(
-            round(confidence, 2), z)
+        z = {0.90: 1.2815515655446004, 0.99: 2.3263478740408408}.get(round(confidence, 2), z)
     p = k / n
     denom = 1 + z * z / n
     centre = p + z * z / (2 * n)
@@ -418,9 +428,13 @@ def _exact_bounds_available() -> bool:
     return True
 
 
-def build_sampling_proof(blocks_sampled: int, blocks_total: int,
-                         blocks_matching: int, pattern_description: str,
-                         confidence: float = 0.95) -> SamplingProof:
+def build_sampling_proof(
+    blocks_sampled: int,
+    blocks_total: int,
+    blocks_matching: int,
+    pattern_description: str,
+    confidence: float = 0.95,
+) -> SamplingProof:
     """Assemble a sampling proof, reporting which bound was actually computed.
 
     The k = 0 case -- a clean sample, which is the one a wipe certificate
@@ -431,16 +445,18 @@ def build_sampling_proof(blocks_sampled: int, blocks_total: int,
     """
     if blocks_sampled > blocks_total and blocks_total > 0:
         raise ValueError(
-            f"sampled {blocks_sampled} blocks from a medium of {blocks_total}; "
-            f"that is not possible")
+            f"sampled {blocks_sampled} blocks from a medium of {blocks_total}; that is not possible"
+        )
     upper = clopper_pearson_upper(blocks_matching, blocks_sampled, confidence)
     if blocks_matching == 0:
         method = "one-sided Clopper-Pearson exact upper bound, k=0 closed form"
     elif _exact_bounds_available():
         method = "one-sided Clopper-Pearson (exact binomial) upper bound"
     else:
-        method = ("Wilson score upper bound; the exact Clopper-Pearson bound "
-                  "needs SciPy and is not strictly tighter here")
+        method = (
+            "Wilson score upper bound; the exact Clopper-Pearson bound "
+            "needs SciPy and is not strictly tighter here"
+        )
     return SamplingProof(
         blocks_sampled=blocks_sampled,
         blocks_total=blocks_total,
@@ -452,8 +468,7 @@ def build_sampling_proof(blocks_sampled: int, blocks_total: int,
     )
 
 
-def required_sample_size(confidence: float = 0.95,
-                         upper_fraction: float = 0.0001) -> int:
+def required_sample_size(confidence: float = 0.95, upper_fraction: float = 0.0001) -> int:
     """Blocks to sample so a clean sample bounds the residue at `upper_fraction`.
 
     For the k = 0 case this is the standard closed form,
@@ -483,7 +498,7 @@ NIST_800_88_TERMS = {
     "purge": "overwrite that addresses the medium's spare and remapped areas too",
     "destroy": "physical destruction of the medium",
     "sanitize": "cryptographic or verified media erase, as defined in SP 800-88 Rev. 2 "
-                "section 2.5 and IEEE 2883-2022",
+    "section 2.5 and IEEE 2883-2022",
     "verify": "sampling to confirm, with a recorded bound; not proof of absence",
 }
 
@@ -503,8 +518,7 @@ def tier_for_action(action: int | None, *, storage_type: str = "UNKNOWN") -> str
     return None
 
 
-def refuse_downgrade(requested: str, achieved: str | None,
-                     reason: str) -> dict:
+def refuse_downgrade(requested: str, achieved: str | None, reason: str) -> dict:
     """The record for a requested tier that was not achieved.
 
     Invariant 2 of the plan: never claim a tier the evidence does not support,
@@ -516,7 +530,9 @@ def refuse_downgrade(requested: str, achieved: str | None,
         "achieved_tier": achieved,
         "downgraded": achieved != requested,
         "reason": reason,
-        "statement": (f"the requested {requested} tier was NOT achieved; "
-                      f"the highest tier the evidence supports is "
-                      f"{achieved or 'none'}"),
+        "statement": (
+            f"the requested {requested} tier was NOT achieved; "
+            f"the highest tier the evidence supports is "
+            f"{achieved or 'none'}"
+        ),
     }

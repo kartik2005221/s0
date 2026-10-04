@@ -43,8 +43,7 @@ class OverwriteMethod(WipeMethod):
             raise ValueError("passes must be >= 1")
         self.passes = passes
         self.pattern = pattern
-        self.id = "OVERWRITE_ZERO_1PASS" if (pattern == "zero" and passes == 1) \
-            else "SHRED_RANDOM_NPASS"
+        self.id = "OVERWRITE_ZERO_1PASS" if (pattern == "zero" and passes == 1) else "SHRED_RANDOM_NPASS"
         # SHRED_RANDOM_NPASS covers random-pattern multi-pass; a single random
         # pass keeps the same id (shred-equivalent semantics).
         self.nist_category = "Clear"
@@ -60,16 +59,21 @@ class OverwriteMethod(WipeMethod):
                 f"{self.passes}-pass {'zero' if self.pattern == 'zero' else 'CSPRNG-random'} "
                 f"overwrite of {target.display}; fsync each pass"
             ),
-            commands=[f"python inline writer -> {target.path}"] if target.kind == "image"
+            commands=[f"python inline writer -> {target.path}"]
+            if target.kind == "image"
             else [f"open({target.path}, O_WRONLY) + sequential write + fsync"],
             warnings=[
                 "Overwrite claims NIST Clear only — it cannot reach remapped/"
                 "overprovisioned sectors; firmware erase would be required for Purge.",
             ]
-            + ([] if self.passes == 1 else [
-                f"Multi-pass ({self.passes}) requested: legacy-policy theater on modern "
-                f"drives, not extra security — recorded honestly here rather than implied.",
-            ]),
+            + (
+                []
+                if self.passes == 1
+                else [
+                    f"Multi-pass ({self.passes}) requested: legacy-policy theater on modern "
+                    f"drives, not extra security — recorded honestly here rather than implied.",
+                ]
+            ),
         )
 
     def run(self, target: Target, progress: ProgressFn) -> MethodResult:
@@ -155,5 +159,5 @@ def count_pattern_hits(path: str, needle: bytes, chunk: int = CHUNK) -> int:
                 break
             window = tail + block
             hits += window.count(needle)
-            tail = window[-(len(needle) - 1):] if len(needle) > 1 else b""
+            tail = window[-(len(needle) - 1) :] if len(needle) > 1 else b""
     return hits

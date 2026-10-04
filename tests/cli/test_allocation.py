@@ -45,9 +45,9 @@ def test_free_space_containment_is_half_open():
     fsm = FreeSpaceMap(0, 100, ranges=[(10, 20)], source="t", reliable=True)
     assert fsm.contains(10, 1)
     assert fsm.contains(19, 1)
-    assert not fsm.contains(20, 1)      # exclusive end
-    assert not fsm.contains(5, 100)     # would cross the end
-    assert fsm.contains(10, 10)         # exactly fills the range
+    assert not fsm.contains(20, 1)  # exclusive end
+    assert not fsm.contains(5, 100)  # would cross the end
+    assert fsm.contains(10, 10)  # exactly fills the range
 
 
 def test_free_space_summary_reports_ppm():
@@ -64,8 +64,14 @@ def test_free_space_summary_reports_ppm():
 # --------------------------------------------------------------------------- #
 
 
-def _ext4_image(path: Path, *, block_size: int = 1024, blocks: int = 64,
-                blocks_per_group: int = 32, free_per_group: int = 8) -> Path:
+def _ext4_image(
+    path: Path,
+    *,
+    block_size: int = 1024,
+    blocks: int = 64,
+    blocks_per_group: int = 32,
+    free_per_group: int = 8,
+) -> Path:
     """Write a tiny ext4 volume with a known number of free blocks per group."""
     data = bytearray(block_size * blocks)
     sb_off = 1024
@@ -74,16 +80,16 @@ def _ext4_image(path: Path, *, block_size: int = 1024, blocks: int = 64,
         struct.pack_into(fmt, data, off, *vals)
 
     magic = 0xEF53
-    put(sb_off + 0x00, "<I", 64)                               # s_inodes_count
-    put(sb_off + 0x04, "<I", blocks)                           # s_blocks_count
-    put(sb_off + 0x14, "<I", 1 if block_size == 1024 else 0)   # s_first_data_block
-    put(sb_off + 0x18, "<I", block_size.bit_length() - 11)      # s_log_block_size
+    put(sb_off + 0x00, "<I", 64)  # s_inodes_count
+    put(sb_off + 0x04, "<I", blocks)  # s_blocks_count
+    put(sb_off + 0x14, "<I", 1 if block_size == 1024 else 0)  # s_first_data_block
+    put(sb_off + 0x18, "<I", block_size.bit_length() - 11)  # s_log_block_size
     put(sb_off + 0x20, "<I", blocks_per_group)
-    put(sb_off + 0x28, "<I", 64)                               # s_inodes_per_group
+    put(sb_off + 0x28, "<I", 64)  # s_inodes_per_group
     put(sb_off + 0x38, "<H", magic)
-    put(sb_off + 0x58, "<H", 256)                              # s_inode_size
-    put(sb_off + 0x60, "<I", 0)                                # s_feature_incompat
-    put(sb_off + 0xFE, "<H", 32)                               # s_desc_size
+    put(sb_off + 0x58, "<H", 256)  # s_inode_size
+    put(sb_off + 0x60, "<I", 0)  # s_feature_incompat
+    put(sb_off + 0xFE, "<H", 32)  # s_desc_size
 
     num_groups = (blocks - 1 + blocks_per_group - 1) // blocks_per_group
     # The group descriptor table is addressed in blocks, so it starts at block 2
@@ -92,7 +98,7 @@ def _ext4_image(path: Path, *, block_size: int = 1024, blocks: int = 64,
     bb_base = desc_table + 1
     for g in range(num_groups):
         d = desc_table * block_size + g * 32
-        put(d + 0x00, "<I", bb_base + g)          # bb_block
+        put(d + 0x00, "<I", bb_base + g)  # bb_block
         put(d + 0x04, "<I", bb_base + num_groups + g)
         put(d + 0x08, "<I", bb_base + 2 * num_groups + g)
         bitmap = bytearray(block_size)
@@ -141,7 +147,7 @@ def test_ext4_group_descriptor_bitmap_field_is_offset_zero(tmp_path):
     """
     img = _ext4_image(tmp_path / "ext4.img", blocks=64, blocks_per_group=32, free_per_group=8)
     fsm = build_free_space(str(img), "ext4", 0, 64 * KB)
-    assert fsm.free_bytes == 15 * KB   # group 1 is one block short of a full group
+    assert fsm.free_bytes == 15 * KB  # group 1 is one block short of a full group
 
 
 def test_ext4_fully_used_volume_reports_no_free_space(tmp_path):
@@ -152,8 +158,7 @@ def test_ext4_fully_used_volume_reports_no_free_space(tmp_path):
 
 
 def test_ext4_fully_free_volume_reports_one_whole_extent(tmp_path):
-    img = _ext4_image(tmp_path / "empty.img", blocks=32, blocks_per_group=32,
-                      free_per_group=32)
+    img = _ext4_image(tmp_path / "empty.img", blocks=32, blocks_per_group=32, free_per_group=32)
     fsm = build_free_space(str(img), "ext4", 0, 32 * KB)
     # Block 0 is the boot area and belongs to no group, so it is never free.
     assert fsm.free_bytes == 31 * KB
@@ -162,8 +167,9 @@ def test_ext4_fully_free_volume_reports_one_whole_extent(tmp_path):
 
 def test_ext4_4k_block_volume_tiles_exactly(tmp_path):
     """At 4 KiB blocks s_first_data_block is 0 and the groups divide the volume."""
-    img = _ext4_image(tmp_path / "ext4_4k.img", block_size=4096, blocks=64,
-                      blocks_per_group=32, free_per_group=8)
+    img = _ext4_image(
+        tmp_path / "ext4_4k.img", block_size=4096, blocks=64, blocks_per_group=32, free_per_group=8
+    )
     fsm = build_free_space(str(img), "ext4", 0, 64 * 4096)
     assert fsm.reliable
     assert fsm.free_bytes == 2 * 8 * 4096
@@ -175,9 +181,16 @@ def test_ext4_4k_block_volume_tiles_exactly(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def _fat32_image(path: Path, *, spc: int = 8, reserved: int = 32, fats: int = 2,
-                 root_entries: int = 16, clusters: int = 512,
-                 allocated: tuple = (0, 1)) -> tuple:
+def _fat32_image(
+    path: Path,
+    *,
+    spc: int = 8,
+    reserved: int = 32,
+    fats: int = 2,
+    root_entries: int = 16,
+    clusters: int = 512,
+    allocated: tuple = (0, 1),
+) -> tuple:
     """Write a FAT32 volume with `clusters` data clusters and a matching FAT.
 
     Returns (path, data_clusters). The FAT is sized to describe exactly the
@@ -205,7 +218,7 @@ def _fat32_image(path: Path, *, spc: int = 8, reserved: int = 32, fats: int = 2,
     put(0x24, "<I", fat_sectors)
     put(0x20, "<I", total_sectors)
     put(0x1FE, "<H", 0xAA55)
-    img[0x36:0x3A] = b"\x00\x00\x00\x00"     # no FSInfo sector
+    img[0x36:0x3A] = b"\x00\x00\x00\x00"  # no FSInfo sector
 
     # FAT #1 starts after the reserved sectors plus one FAT's worth of slack for
     # sector 0, matching the layout the parser assumes.
@@ -218,8 +231,7 @@ def _fat32_image(path: Path, *, spc: int = 8, reserved: int = 32, fats: int = 2,
 
 def test_fat32_only_an_exactly_zero_entry_means_free(tmp_path):
     spc, cluster_bytes = 8, 4096
-    img, clusters = _fat32_image(tmp_path / "f.img", clusters=512, allocated=(0, 1),
-                                  spc=spc)
+    img, clusters = _fat32_image(tmp_path / "f.img", clusters=512, allocated=(0, 1), spc=spc)
     fsm = build_free_space(str(img), "fat32", 0, img.stat().st_size)
     # 0x0FFFFFFF is an end-of-chain marker, i.e. *in use*, never free. The data
     # area is clusters 2..513, of which only the root directory is in use, so
@@ -262,8 +274,14 @@ def _exfat_cluster_byte(cluster: int, cluster_bytes: int = 4096) -> int:
     return EXFAT_HEAP + (cluster - 2) * cluster_bytes
 
 
-def _exfat_image(path: Path, *, cluster_bytes: int = 4096, clusters: int = 512,
-                 allocated: tuple = (), blank_bitmap: bool = True) -> Path:
+def _exfat_image(
+    path: Path,
+    *,
+    cluster_bytes: int = 4096,
+    clusters: int = 512,
+    allocated: tuple = (),
+    blank_bitmap: bool = True,
+) -> Path:
     """Write a minimal exFAT volume with an allocation bitmap and upcase table."""
     bps = 512
     sectors_per_cluster = cluster_bytes // bps
@@ -276,13 +294,13 @@ def _exfat_image(path: Path, *, cluster_bytes: int = 4096, clusters: int = 512,
         struct.pack_into(fmt, img, off, *vals)
 
     img[0x03:0x0B] = b"EXFAT   "
-    put(0x40, "<Q", 0)                  # PartitionOffset
-    put(0x50, "<I", heap_sector)        # FatOffset
+    put(0x40, "<Q", 0)  # PartitionOffset
+    put(0x50, "<I", heap_sector)  # FatOffset
     put(0x54, "<I", fat_sectors)
-    put(0x58, "<I", heap_sector)        # ClusterHeapOffset (in sectors)
+    put(0x58, "<I", heap_sector)  # ClusterHeapOffset (in sectors)
     put(0x5C, "<I", clusters)
-    put(0x60, "<I", 5)                  # RootDirectoryCluster
-    put(0x6C, "<B", 9)                  # BytesPerSectorShift -> 512
+    put(0x60, "<I", 5)  # RootDirectoryCluster
+    put(0x6C, "<B", 9)  # BytesPerSectorShift -> 512
     put(0x6D, "<B", sectors_per_cluster.bit_length() - 1)
     put(0x1FE, "<H", 0xAA55)
 
@@ -293,13 +311,13 @@ def _exfat_image(path: Path, *, cluster_bytes: int = 4096, clusters: int = 512,
 
     # Root directory: volume label, allocation bitmap, upcase table.
     root = bytearray(cluster_bytes)
-    root[0] = 0x83                                      # volume label
-    struct.pack_into("<I", root, 32 + 0x00, 0x81)       # bitmap entry type
-    struct.pack_into("<I", root, 32 + 0x14, 2)          # FirstClusterOfBitmap
+    root[0] = 0x83  # volume label
+    struct.pack_into("<I", root, 32 + 0x00, 0x81)  # bitmap entry type
+    struct.pack_into("<I", root, 32 + 0x14, 2)  # FirstClusterOfBitmap
     struct.pack_into("<I", root, 32 + 0x18, clusters // 8 + 4)
-    root[64] = 0x82                                     # upcase table
+    root[64] = 0x82  # upcase table
     struct.pack_into("<I", root, 64 + 0x14, 3)
-    struct.pack_into("<I", root, 64 + 0x18, cluster_bytes)   # spans 1 cluster
+    struct.pack_into("<I", root, 64 + 0x18, cluster_bytes)  # spans 1 cluster
     img[cluster_off(5) : cluster_off(5) + cluster_bytes] = root
 
     # The allocation bitmap itself.
@@ -351,10 +369,10 @@ def test_exfat_structural_metadata_is_excluded_even_with_a_blank_bitmap(tmp_path
     fsm = build_free_space(str(img), "exfat", 0, 4 * MB)
     assert fsm.reliable
     assert fsm.free_bytes == (512 - 3) * 4096
-    assert not fsm.contains(_exfat_cluster_byte(2), 1)    # allocation bitmap
-    assert not fsm.contains(_exfat_cluster_byte(3), 1)    # upcase table
-    assert not fsm.contains(_exfat_cluster_byte(5), 1)    # root directory
-    assert fsm.contains(_exfat_cluster_byte(4), 1)        # cluster 4 is free
+    assert not fsm.contains(_exfat_cluster_byte(2), 1)  # allocation bitmap
+    assert not fsm.contains(_exfat_cluster_byte(3), 1)  # upcase table
+    assert not fsm.contains(_exfat_cluster_byte(5), 1)  # root directory
+    assert fsm.contains(_exfat_cluster_byte(4), 1)  # cluster 4 is free
 
 
 def test_exfat_bitmap_bit_zero_is_cluster_two_not_cluster_zero(tmp_path):
@@ -386,7 +404,7 @@ def test_exfat_multi_cluster_upcase_table_is_wholly_excluded(tmp_path):
     # Structural: bitmap 2, upcase 3-5, root 5. The upcase table's third cluster
     # is 5, which the root directory already occupies, so four are excluded.
     assert fsm.free_bytes == (512 - 4) * 4096
-    assert not fsm.contains(_exfat_cluster_byte(4), 1)    # third upcase cluster
+    assert not fsm.contains(_exfat_cluster_byte(4), 1)  # third upcase cluster
 
 
 # --------------------------------------------------------------------------- #
@@ -394,8 +412,7 @@ def test_exfat_multi_cluster_upcase_table_is_wholly_excluded(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-def _ntfs_image(path: Path, *, cluster: int = 4096, clusters: int = 4096,
-                mft_lcn: int = 4) -> Path:
+def _ntfs_image(path: Path, *, cluster: int = 4096, clusters: int = 4096, mft_lcn: int = 4) -> Path:
     """Write a tiny NTFS volume with a $MFT holding a $Bitmap record."""
     bps = 512
     spc = cluster // bps
@@ -412,8 +429,8 @@ def _ntfs_image(path: Path, *, cluster: int = 4096, clusters: int = 4096,
     put(0x0B, "<H", bps)
     put(0x0D, "<B", spc)
     put(0x28, "<Q", total_sectors)
-    put(0x30, "<Q", mft_lcn)               # $MFT cluster, *not* 0x48
-    put(0x40, "<b", -10)                   # 2^10 = 1024-byte records
+    put(0x30, "<Q", mft_lcn)  # $MFT cluster, *not* 0x48
+    put(0x40, "<b", -10)  # 2^10 = 1024-byte records
 
     def mft_record(off, attrs: list):
         img[off : off + 4] = b"FILE"
@@ -443,7 +460,7 @@ def _ntfs_image(path: Path, *, cluster: int = 4096, clusters: int = 4096,
     mft_record(mft_off + 6 * rec, [(0x80, True, runs(30, 1), cluster)])
 
     bitmap = bytearray(cluster)
-    struct.pack_into("<Q", bitmap, 0, 40)     # 40 clusters in use
+    struct.pack_into("<Q", bitmap, 0, 40)  # 40 clusters in use
     for c in range(40):
         bitmap[c >> 3] |= 1 << (c & 7)
     img[30 * cluster : 31 * cluster] = bitmap

@@ -65,6 +65,7 @@ class SessionError(ValueError):
 @dataclass
 class SessionEntry:
     """One extent already recovered."""
+
     offset: int
     length: int
     sha256: str
@@ -79,6 +80,7 @@ class SessionEntry:
 @dataclass
 class CarveSession:
     """State that lets a later run skip work already done."""
+
     target_path: str
     target_size: int
     fingerprint: str
@@ -163,20 +165,23 @@ class CarveSession:
             raise SessionError(
                 f"session {path} is format version {version}, newer than this "
                 f"build understands ({SESSION_VERSION}); refusing rather than "
-                f"misreading it")
+                f"misreading it"
+            )
         entries = []
         for e in doc.get("entries") or []:
             if not isinstance(e, dict):
                 continue
             try:
-                entries.append(SessionEntry(
-                    offset=int(e["offset"]),
-                    length=int(e["length"]),
-                    sha256=str(e.get("sha256", "")),
-                    extension=str(e.get("extension", "")),
-                    original_name=e.get("original_name"),
-                    recovered_path=e.get("recovered_path"),
-                ))
+                entries.append(
+                    SessionEntry(
+                        offset=int(e["offset"]),
+                        length=int(e["length"]),
+                        sha256=str(e.get("sha256", "")),
+                        extension=str(e.get("extension", "")),
+                        original_name=e.get("original_name"),
+                        recovered_path=e.get("recovered_path"),
+                    )
+                )
             except (KeyError, TypeError, ValueError):
                 # One malformed row must not cost the whole session; the rest of
                 # the run is still worth resuming.
@@ -207,12 +212,14 @@ class CarveSession:
         if size != self.target_size:
             raise SessionError(
                 f"session was taken against a {self.target_size}-byte target but "
-                f"{target} is {size} bytes; these are not the same image")
+                f"{target} is {size} bytes; these are not the same image"
+            )
         actual = self.compute_fingerprint(target)
         if actual != self.fingerprint:
             raise SessionError(
                 f"session fingerprint does not match {target}; the image has "
-                f"changed since the session was written")
+                f"changed since the session was written"
+            )
 
     def skipped_offsets(self) -> set:
         """Offsets this session already recovered."""
@@ -243,15 +250,15 @@ class CarveSession:
                 sha256=c.sha256,
                 extension=c.extension,
                 original_name=c.original_name,
-                recovered_path=(str(Path(c.recovered_path).relative_to(out_dir))
-                                if c.recovered_path else None),
+                recovered_path=(
+                    str(Path(c.recovered_path).relative_to(out_dir)) if c.recovered_path else None
+                ),
             )
         self.entries = sorted(merged.values(), key=lambda e: e.offset)
         return self
 
 
-def describe_resume(session: CarveSession, *, out_dir: Path,
-                    skipped: int) -> list[str]:
+def describe_resume(session: CarveSession, *, out_dir: Path, skipped: int) -> list[str]:
     """Notes for the report about what resuming did and did not carry over."""
     notes = [
         f"resumed from a session recording {len(session.entries)} recovered "
@@ -259,15 +266,13 @@ def describe_resume(session: CarveSession, *, out_dir: Path,
     ]
     gone = session.missing_outputs()
     if gone:
-        names = ", ".join(
-            f"{e.original_name or e.recovered_path or f'offset {e.offset}'}"
-            for e in gone[:8])
+        names = ", ".join(f"{e.original_name or e.recovered_path or f'offset {e.offset}'}" for e in gone[:8])
         more = "" if len(gone) <= 8 else f" (+{len(gone) - 8} more)"
         notes.append(
             f"{len(gone)} extent(s) in the session have no file in {out_dir} and "
             f"were re-examined: {names}{more}. A session records what was found, "
-            f"not what is still on the medium")
+            f"not what is still on the medium"
+        )
     if session.warnings:
-        notes.append(f"session carried {len(session.warnings)} warning(s) from the "
-                     f"previous run")
+        notes.append(f"session carried {len(session.warnings)} warning(s) from the previous run")
     return notes

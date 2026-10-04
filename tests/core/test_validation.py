@@ -19,14 +19,17 @@ def test_validate_metadata_str_empty_fails():
 
 
 def test_validate_metadata_str_forbidden_chars():
-    for char in "<>&\"\x27\\|":
+    for char in '<>&"\x27\\|':
         with pytest.raises(ValueError, match="contains forbidden characters"):
             validate_metadata_str("operator", f"bad{char}name")
 
 
 def test_validate_organization_allows_default_org():
-    assert validate_metadata_str("organization", "Digital Forensics & Data Sanitization Lab") == "Digital Forensics & Data Sanitization Lab"
-    for char in "<>&\"\x27\\|":
+    assert (
+        validate_metadata_str("organization", "Digital Forensics & Data Sanitization Lab")
+        == "Digital Forensics & Data Sanitization Lab"
+    )
+    for char in '<>&"\x27\\|':
         with pytest.raises(ValueError, match="contains forbidden characters"):
             validate_metadata_str("organization", f"bad{char}org")
 
@@ -35,4 +38,3 @@ def test_validate_metadata_str_max_length():
     with pytest.raises(ValueError, match="exceeds maximum length"):
         validate_metadata_str("operator", "a" * 65, max_len=64)
     assert validate_metadata_str("operator", "a" * 64, max_len=64) == "a" * 64
-

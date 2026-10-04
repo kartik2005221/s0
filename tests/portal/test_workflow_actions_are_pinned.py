@@ -53,29 +53,35 @@ class TestEveryReferenceIsImmutable:
         refs = _references()
         assert len(refs) >= 8, (
             f"only {len(refs)} action references found; the regex probably stopped "
-            f"matching the file format, which would make this file vacuous")
+            f"matching the file format, which would make this file vacuous"
+        )
 
     def test_no_reference_is_a_mutable_ref(self):
-        offenders = [f"{p.relative_to(REPO_ROOT)}:{n}: {ref}"
-                     for p, n, ref, _c in _references() if MUTABLE.search(ref)]
+        offenders = [
+            f"{p.relative_to(REPO_ROOT)}:{n}: {ref}" for p, n, ref, _c in _references() if MUTABLE.search(ref)
+        ]
         assert not offenders, (
             f"these action references are mutable: {offenders}. A tag or branch can "
             f"be moved to new code by whoever controls the repository, and this "
-            f"workflow runs with write permissions on release.")
+            f"workflow runs with write permissions on release."
+        )
 
     def test_no_docker_image_reference_remains(self):
         """`docker://image:tag` is mutable too, and easy to reintroduce."""
-        offenders = [f"{p.relative_to(REPO_ROOT)}:{n}: {ref}"
-                     for p, n, ref, _c in _references() if ref.startswith("docker://")]
+        offenders = [
+            f"{p.relative_to(REPO_ROOT)}:{n}: {ref}"
+            for p, n, ref, _c in _references()
+            if ref.startswith("docker://")
+        ]
         assert not offenders, (
             f"these reference a mutable container image: {offenders}. Pin to a digest "
-            f"(image@sha256:...) or use a SHA-pinned action.")
+            f"(image@sha256:...) or use a SHA-pinned action."
+        )
 
     @pytest.mark.parametrize("path", WORKFLOWS, ids=lambda p: p.name)
     def test_every_sha_is_a_full_commit_hash(self, path):
         offenders = []
-        for lineno, ref, _comment in ((n, r, c) for p, n, r, c in _references()
-                                      if p == path):
+        for lineno, ref, _comment in ((n, r, c) for p, n, r, c in _references() if p == path):
             if ref.startswith("./") or ref.startswith("docker://"):
                 continue
             if "@" not in ref:
@@ -83,8 +89,7 @@ class TestEveryReferenceIsImmutable:
                 continue
             sha = ref.rsplit("@", 1)[1]
             if not SHA.match(sha):
-                offenders.append(
-                    f"{path.name}:{lineno}: {ref} is not a 40-character commit SHA")
+                offenders.append(f"{path.name}:{lineno}: {ref} is not a 40-character commit SHA")
         assert not offenders, offenders
 
 
@@ -100,7 +105,8 @@ class TestThePinsRemainReviewable:
                 offenders.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {ref}")
         assert not offenders, (
             f"these pins have no trailing version comment: {offenders}. A bare SHA "
-            f"is unreviewable and will not be maintained.")
+            f"is unreviewable and will not be maintained."
+        )
 
     def test_the_same_action_is_always_pinned_to_the_same_sha(self):
         """Two refs to one action at different SHAs means a partial, unexplained bump."""
@@ -115,7 +121,8 @@ class TestThePinsRemainReviewable:
         split = {name: sorted(shas) for name, shas in by_action.items() if len(shas) > 1}
         assert not split, (
             f"these actions are pinned to more than one SHA, so a bump was applied "
-            f"in some places and not others: {split}")
+            f"in some places and not others: {split}"
+        )
 
     def test_pins_are_actually_pinned_not_freshly_added_as_tags(self):
         """Catches a plausible-looking ref that is a tag in SHA position."""
@@ -124,8 +131,8 @@ class TestThePinsRemainReviewable:
                 continue
             sha = ref.rsplit("@", 1)[1]
             assert not re.fullmatch(r"v[\w.]+", sha), (
-                f"{path.relative_to(REPO_ROOT)}:{lineno}: {ref} looks like a version "
-                f"tag, not a commit")
+                f"{path.relative_to(REPO_ROOT)}:{lineno}: {ref} looks like a version tag, not a commit"
+            )
 
 
 class TestDependabotKeepsThemCurrent:
@@ -135,12 +142,17 @@ class TestDependabotKeepsThemCurrent:
         assert config.is_file(), (
             "dependabot.yml is missing, so the SHA pins will never be refreshed. "
             "Pinning without an updater trades a mutable-ref risk for a stale-action "
-            "risk.")
+            "risk."
+        )
         text = config.read_text()
         # For the github-actions ecosystem the directory is the repository root, not
         # /.github/workflows -- dependabot reads the workflow files itself. The value
         # may be quoted or bare in the YAML, so match either.
-        assert re.search(r'package-ecosystem:\s*["\']?github-actions["\']?\s*\n'
-                         r'\s*directory:\s*["\']?/["\']?', text), (
+        assert re.search(
+            r'package-ecosystem:\s*["\']?github-actions["\']?\s*\n'
+            r'\s*directory:\s*["\']?/["\']?',
+            text,
+        ), (
             "dependabot is not configured for github-actions against the repository "
-            "root, so none of these SHA pins will ever be refreshed")
+            "root, so none of these SHA pins will ever be refreshed"
+        )

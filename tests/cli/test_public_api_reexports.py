@@ -100,9 +100,7 @@ def test_scanner_found_the_known_case() -> None:
 
 
 @pytest.mark.parametrize(("module_name", "attr"), sorted(REFERENCED))
-def test_string_referenced_name_is_declared_in_dunder_all(
-    module_name: str, attr: str
-) -> None:
+def test_string_referenced_name_is_declared_in_dunder_all(module_name: str, attr: str) -> None:
     """A reflectively-referenced attribute must be an explicit export.
 
     Otherwise a lint autofix is free to delete it, and the breakage only shows up
@@ -123,7 +121,8 @@ def test_string_referenced_name_is_declared_in_dunder_all(
         # establish, since an implicit export is what a lint autofix deletes.
         pytest.skip(
             f"{module_name} declares no __all__, so its exports cannot be checked. "
-            f"Add an explicit __all__ to make them live.")
+            f"Add an explicit __all__ to make them live."
+        )
     assert attr in declared, (
         f"{module_name}.{attr} is referenced as a string path in the repo but is "
         f"not in __all__. Add it to __all__ so linters treat it as a live export."

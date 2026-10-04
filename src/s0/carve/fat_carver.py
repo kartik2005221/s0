@@ -141,7 +141,9 @@ def scan_fat32_deleted_files(
             clusters_to_check = [boot.root_cluster]
 
             # Also scan early data clusters in case directory blocks reside there
-            for c in range(2, min(2 + max_scan_clusters, 2 + (f_size - boot.data_start_offset) // boot.cluster_size)):
+            for c in range(
+                2, min(2 + max_scan_clusters, 2 + (f_size - boot.data_start_offset) // boot.cluster_size)
+            ):
                 clusters_to_check.append(c)
 
             for clus in clusters_to_check:
@@ -161,8 +163,8 @@ def scan_fat32_deleted_files(
                 # reached. Parsing entries in isolation -- as this did -- is what
                 # made every recovered name an 8.3 stub.
                 for named in fat_dir.name_entries(
-                        fat_dir.read_directory_cluster(raw_cluster, boot.cluster_size),
-                        include_free=True):
+                    fat_dir.read_directory_cluster(raw_cluster, boot.cluster_size), include_free=True
+                ):
                     entry = named.entry
                     if entry.is_end_of_directory:
                         break

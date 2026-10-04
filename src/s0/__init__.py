@@ -83,9 +83,7 @@ __version__ = _distribution_version() or str(CONFIG.get("version", "2.4.4"))
 __git_commit__ = _git_commit()
 
 #: Human-facing version banner, e.g. ``2.4.4 (commit a1b2c3d4)``.
-__version_str__ = (
-    f"{__version__} (commit {__git_commit__})" if __git_commit__ else str(__version__)
-)
+__version_str__ = f"{__version__} (commit {__git_commit__})" if __git_commit__ else str(__version__)
 
 from . import crypto
 from .canonical import CanonicalizationError, canonicalize, canonicalize_str

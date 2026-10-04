@@ -50,7 +50,7 @@ class ResolveError(ValueError):
 def _need(buf: bytes, off: int, n: int, what: str) -> bytes:
     if off < 0 or off + n > len(buf):
         raise ResolveError(f"ran out of data reading {what} at {off}")
-    return buf[off: off + n]
+    return buf[off : off + n]
 
 
 def _u16le(b: bytes, o: int) -> int:
@@ -85,6 +85,7 @@ def _sanitise(end: int, start: int, limit: int, *, minimum: int = MIN_FILE) -> i
 # Declared total
 # --------------------------------------------------------------------------- #
 
+
 def aiff_end(buf: bytes, start: int, limit: int) -> int | None:
     """AIFF/AIFC: a `FORM` whose size field is everything after byte 8.
 
@@ -111,7 +112,7 @@ def shell_link_end(buf: bytes, start: int, limit: int, header_size: int) -> int 
     declared = _u32le(head, 0x04)
     if declared < header_size:
         raise ResolveError(f"LinkSize {declared} is below the header size")
-    if head[0x4C - 2: 0x4C] == b"\x00\x00":
+    if head[0x4C - 2 : 0x4C] == b"\x00\x00":
         return _sanitise(start + declared, start, limit, minimum=header_size)
     raise ResolveError("no HasLinkTargetIDList terminator")
 
@@ -141,6 +142,7 @@ def prefetch_end(buf: bytes, start: int, limit: int) -> int | None:
 # Chunk and box walks
 # --------------------------------------------------------------------------- #
 
+
 def midi_end(buf: bytes, start: int, limit: int) -> int | None:
     """Standard MIDI file: a header chunk then `MTrk` chunks, each self-sizing."""
     head = _need(buf, start, 14, "MThd")
@@ -152,7 +154,7 @@ def midi_end(buf: bytes, start: int, limit: int) -> int | None:
     pos = start + 8 + header_len
     tracks = 0
     while pos + 8 <= limit:
-        if buf[pos: pos + 4] != b"MTrk":
+        if buf[pos : pos + 4] != b"MTrk":
             break
         length = _u32be(buf, pos + 4)
         end = pos + 8 + length
@@ -215,7 +217,7 @@ def cfb_end(buf: bytes, start: int, limit: int) -> int | None:
         off = sector_offset(difat[n])
         if off + sector > limit:
             return None
-        return buf[off: off + sector]
+        return buf[off : off + sector]
 
     # Follow the directory chain to find the highest sector it touches, which
     # is where the file ends.
@@ -292,8 +294,7 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
         step = 2 if type_id == 3 else 4
         if at + step * count > limit:
             raise ResolveError("IFD value array runs past the window")
-        return [u16(at + step * k) if type_id == 3 else u32(at + step * k)
-                for k in range(count)]
+        return [u16(at + step * k) if type_id == 3 else u32(at + step * k) for k in range(count)]
 
     # The IFD offset in the header is relative to the start of the file, so it
     # has to be added to `start`. Reading it at absolute offset 4 reads the
@@ -329,7 +330,8 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
         if comp is not None and comp != 1:
             raise ResolveError(
                 f"TIFF compression {comp} is not handled: a compressed strip's "
-                f"length is not its byte count, so the end would be a guess")
+                f"length is not its byte count, so the end would be a guess"
+            )
 
         geometry: dict[int, list[int]] = {}
         # Width of each TIFF field type. Needed because any value that does not
@@ -337,8 +339,24 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
         # offset, and the file has to contain it. Tracking only the strip arrays
         # misses a `BitsPerSample` array that happens to sit last, and the file
         # then comes out a few bytes short of itself.
-        item = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4,
-                10: 8, 11: 4, 12: 8, 13: 4, 16: 8, 17: 8, 18: 8}
+        item = {
+            1: 1,
+            2: 1,
+            3: 2,
+            4: 4,
+            5: 8,
+            6: 1,
+            7: 1,
+            8: 2,
+            9: 4,
+            10: 8,
+            11: 4,
+            12: 8,
+            13: 4,
+            16: 8,
+            17: 8,
+            18: 8,
+        }
         for i in range(count):
             eo = entry_base + i * 12
             tag = u16(eo)
@@ -351,8 +369,7 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
                     furthest = max(furthest, start + at + width * n)
             if tag in (0x0111, 0x0144, 0x0117, 0x0146, 0x0115, 0x0116, 0x0147):
                 geometry.setdefault(tag, values(eo, type_id, n))
-        for off_tag, cnt_tag in ((0x0111, 0x0117), (0x0144, 0x0146),
-                                 (0x0115, 0x0116), (0x0117, 0x0146)):
+        for off_tag, cnt_tag in ((0x0111, 0x0117), (0x0144, 0x0146), (0x0115, 0x0116), (0x0117, 0x0146)):
             offs = geometry.get(off_tag)
             cnts = geometry.get(cnt_tag)
             if not offs or not cnts:
@@ -379,7 +396,8 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
     if end is None:
         raise ResolveError(
             f"the IFD chain points to offset {furthest - start}, past the end of "
-            f"the {limit - start}-byte window; the strips cannot be trusted")
+            f"the {limit - start}-byte window; the strips cannot be trusted"
+        )
     return end
 
 
@@ -391,16 +409,16 @@ def jp2_end(buf: bytes, start: int, limit: int) -> int | None:
     also a box sequence, so both are handled by the same walk.
     """
     pos = start
-    if buf[pos: pos + 4] == b"\xff\x4f\xff\x51":          # raw codestream
+    if buf[pos : pos + 4] == b"\xff\x4f\xff\x51":  # raw codestream
         pos = start + 4
         length = _u32be(buf, pos)
-        header = buf[pos + 4: pos + 4 + length - 4]
+        header = buf[pos + 4 : pos + 4 + length - 4]
         width = height = 0
         i = 0
         while i + 4 <= len(header):
             marker = header[i]
             seg = struct.unpack_from(">H", header, i + 2)[0] if i + 4 <= len(header) else 0
-            if marker == 0xFF51:                          # SIZ
+            if marker == 0xFF51:  # SIZ
                 width = struct.unpack_from(">I", header, i + 6)[0] if i + 10 <= len(header) else 0
                 height = struct.unpack_from(">I", header, i + 10)[0] if i + 14 <= len(header) else 0
             i += 2 + seg
@@ -411,20 +429,20 @@ def jp2_end(buf: bytes, start: int, limit: int) -> int | None:
         pos = start + 4 + length
     else:
         pos = start
-        if buf[pos: pos + 12] != b"\x00\x00\x00\x0cjP  \r\n\x87\n":
+        if buf[pos : pos + 12] != b"\x00\x00\x00\x0cjP  \r\n\x87\n":
             raise ResolveError("no JP2 signature box")
         pos = start + 12
     saw_soc = False
     guard = 0
     while pos + 4 <= limit and guard < 4096:
         length = _u32be(buf, pos)
-        marker = buf[pos + 4: pos + 8]
-        if marker == b"\xff\x4f\xff\x51":                # SOC inside a box
+        marker = buf[pos + 4 : pos + 8]
+        if marker == b"\xff\x4f\xff\x51":  # SOC inside a box
             pos += 4
             continue
         if length < 2:
             raise ResolveError(f"marker segment length {length} at {pos}")
-        if marker == b"jp2c":                             # contiguous codestream
+        if marker == b"jp2c":  # contiguous codestream
             body = pos + 8
             eoc = buf.find(b"\xff\xd9", body, min(limit, body + length))
             if eoc < 0:
@@ -453,15 +471,32 @@ def java_class_end(buf: bytes, start: int, limit: int) -> int | None:
     # Tag 1 (Utf8) is variable-length and handled separately, so it has to be
     # named here too. Leaving it out means the membership check below rejects
     # every real class file, since almost every class has string constants.
-    sizes = {1: None, 7: 2, 8: 2, 16: 2, 19: 2, 20: 2, 15: 3, 3: 4, 4: 4,
-             9: 4, 10: 4, 11: 4, 12: 4, 17: 4, 18: 4, 5: 8, 6: 8}
+    sizes = {
+        1: None,
+        7: 2,
+        8: 2,
+        16: 2,
+        19: 2,
+        20: 2,
+        15: 3,
+        3: 4,
+        4: 4,
+        9: 4,
+        10: 4,
+        11: 4,
+        12: 4,
+        17: 4,
+        18: 4,
+        5: 8,
+        6: 8,
+    }
     for _ in range(count - 1):
         if pos >= limit:
             raise ResolveError("constant pool ran past the window")
         tag = buf[pos]
         if tag not in sizes:
             raise ResolveError(f"unknown constant pool tag {tag} at {pos}")
-        if tag == 1:                                     # Utf8: u16 length + bytes
+        if tag == 1:  # Utf8: u16 length + bytes
             n = _u16be(buf, pos + 1)
             if n > limit:
                 raise ResolveError("Utf8 constant length is implausible")
@@ -478,7 +513,7 @@ def java_class_end(buf: bytes, start: int, limit: int) -> int | None:
         if n > 1 << 16:
             raise ResolveError(f"implausible member count {n}")
         for _ in range(n):
-            pos += 6                                   # access, name, descriptor
+            pos += 6  # access, name, descriptor
             attr_count = _u16be(buf, pos)
             pos += 2
             if attr_count > 1 << 16:
@@ -516,20 +551,20 @@ def rar_end(buf: bytes, start: int, limit: int) -> int | None:
         flags = buf[pos + 5]
         extra = _u32le(buf, pos + 6) if head_size >= 11 else 0
         data_len = 0
-        if flags & 0x0001:                              # extra area present
+        if flags & 0x0001:  # extra area present
             p = pos + head_size - 4
             while p + 4 <= pos + head_size:
                 rec_size = _u64le(buf, p)
                 if rec_size == 0 or p + rec_size > pos + head_size:
                     break
-                if _u64le(buf, p + 8) == 1:             # file data
+                if _u64le(buf, p + 8) == 1:  # file data
                     data_len = _u64le(buf, p + 16)
                 p += rec_size
         block_end = pos + head_size + extra + data_len
         if block_end > limit or block_end <= pos:
             break
         furthest = max(furthest, block_end)
-        if header_type == 5:                            # end-of-archive
+        if header_type == 5:  # end-of-archive
             return _sanitise(block_end, start, limit, minimum=16)
         pos = block_end
         guard += 1
@@ -551,7 +586,7 @@ def rtf_end(buf: bytes, start: int, limit: int) -> int | None:
     i = start
     while i < limit:
         c = buf[i]
-        if c == 0x5C:                                   # backslash escape
+        if c == 0x5C:  # backslash escape
             i += 2
             continue
         if c == 0x7B:
@@ -594,9 +629,9 @@ def registry_hive_end(buf: bytes, start: int, limit: int) -> int | None:
         # The end of a hive is a zero-length block, not an `hbin`. It has to be
         # tested before the `hbin` requirement, or a complete hive is refused
         # for ending where it is supposed to.
-        if buf[pos: pos + 4] == b"\x00\x00\x00\x00":
+        if buf[pos : pos + 4] == b"\x00\x00\x00\x00":
             return _sanitise(pos + 4, start, limit, minimum=0x1000)
-        block = buf[pos: pos + 0x1000]
+        block = buf[pos : pos + 0x1000]
         if len(block) < 8:
             break
         if block[:4] != b"hbin":
@@ -607,18 +642,19 @@ def registry_hive_end(buf: bytes, start: int, limit: int) -> int | None:
         seen += 1
         pos += size
     del budget
-    if buf[pos: pos + 4] == b"\x00\x00\x00\x00":
+    if buf[pos : pos + 4] == b"\x00\x00\x00\x00":
         return _sanitise(pos + 4, start, limit, minimum=0x1000)
     raise ResolveError("hive has no terminating empty block, so it is truncated")
 
 
 def _ascii(buf: bytes, o: int, n: int) -> bytes:
-    return buf[o: o + n]
+    return buf[o : o + n]
 
 
 # --------------------------------------------------------------------------- #
 # Streams with no length at all
 # --------------------------------------------------------------------------- #
+
 
 def _decompressed_end(ctor, buf: bytes, start: int, limit: int, what: str) -> int | None:
     """Exact end of a compressed stream, from the decompressor's own accounting.
@@ -637,7 +673,7 @@ def _decompressed_end(ctor, buf: bytes, start: int, limit: int, what: str) -> in
     window = buf[start:limit]
     try:
         d = ctor()
-    except Exception as exc:                             # pragma: no cover - ctor
+    except Exception as exc:  # pragma: no cover - ctor
         raise ResolveError(f"{what}: no decompressor available ({exc})") from exc
     consumed = None
     try:
@@ -657,9 +693,10 @@ def bzip2_end(buf: bytes, start: int, limit: int) -> int | None:
     """bzip2: exact end, from :class:`bz2.BZ2Decompressor`."""
     if _need(buf, start, 4, "bzip2 magic")[:3] != b"BZh":
         raise ResolveError("no BZh magic")
-    if buf[start + 3: start + 4] < b"1" or buf[start + 3: start + 4] > b"9":
+    if buf[start + 3 : start + 4] < b"1" or buf[start + 3 : start + 4] > b"9":
         raise ResolveError("implausible bzip2 level")
     import bz2
+
     return _decompressed_end(bz2.BZ2Decompressor, buf, start, limit, "bzip2")
 
 
@@ -668,12 +705,14 @@ def xz_end(buf: bytes, start: int, limit: int) -> int | None:
     if _need(buf, start, 6, "xz magic") != b"\xfd7zXZ\x00":
         raise ResolveError("no XZ magic")
     import lzma
+
     return _decompressed_end(lzma.LZMADecompressor, buf, start, limit, "xz")
 
 
 def lzma_alone_end(buf: bytes, start: int, limit: int) -> int | None:
     """Legacy `.lzma` (alone format), which has a different magic."""
     import lzma
+
     return _decompressed_end(lzma.LZMADecompressor, buf, start, limit, "lzma")
 
 
@@ -690,7 +729,7 @@ def zstd_end(buf: bytes, start: int, limit: int) -> int | None:
     pos = start
     guard = 0
     while pos + 5 <= limit and guard < 1 << 16:
-        if buf[pos: pos + 4] != b"\x28\xb5\x2f\xfd":
+        if buf[pos : pos + 4] != b"\x28\xb5\x2f\xfd":
             # Not another frame. A `.zst` on a volume is followed by whatever
             # else was there, and that is the answer, not a parse error.
             break
@@ -701,7 +740,7 @@ def zstd_end(buf: bytes, start: int, limit: int) -> int | None:
         # FCS code 0 means no content-size field at all in a multi-segment frame
         # and a single byte in a single-segment one.
         fcs_size = {0: 0 if not single else 1, 1: 2, 2: 4, 3: 8}[fcs_flag]
-        p = pos + 4 + (1 if single else 5)             # no window byte if single
+        p = pos + 4 + (1 if single else 5)  # no window byte if single
         p += fcs_size
         dict_flag = fhd & 0x03
         p += (0, 1, 2, 4)[dict_flag]
@@ -709,18 +748,18 @@ def zstd_end(buf: bytes, start: int, limit: int) -> int | None:
             break
         # Blocks: 3-byte header, low bit = last, bits 1-2 = type, rest = size.
         while p + 3 <= limit:
-            bh = int.from_bytes(buf[p:p + 3], "little")
+            bh = int.from_bytes(buf[p : p + 3], "little")
             last = bh & 1
             btype = (bh >> 1) & 0x03
             bsize = bh >> 3
             p += 3
-            if btype == 0:                              # raw
+            if btype == 0:  # raw
                 p += bsize
-            elif btype == 1:                            # RLE: 1 byte
+            elif btype == 1:  # RLE: 1 byte
                 p += 1
-            elif btype == 2:                            # compressed
+            elif btype == 2:  # compressed
                 p += bsize
-            else:                                       # reserved
+            else:  # reserved
                 raise ResolveError("reserved zstd block type")
             if p > limit:
                 raise ResolveError("zstd block runs past the window")
@@ -765,12 +804,12 @@ def lz4_end(buf: bytes, start: int, limit: int) -> int | None:
         pos += 8
     if dict_id:
         pos += 4
-    pos += 1                                           # header checksum
+    pos += 1  # header checksum
     if pos > limit:
         raise ResolveError("LZ4 header runs past the window")
     while pos + 4 <= limit:
         size = _u32le(buf, pos)
-        if size == 0:                                  # end mark
+        if size == 0:  # end mark
             return _sanitise(pos + 4, start, limit, minimum=7)
         pos += 4 + size
         if pos > limit:
@@ -782,8 +821,10 @@ def lz4_end(buf: bytes, start: int, limit: int) -> int | None:
 # Dispatch
 # --------------------------------------------------------------------------- #
 
-def resolve(ext: str, buf: bytes, start: int, limit: int,
-            reader: Callable | None = None) -> tuple[int, list[str]] | None:
+
+def resolve(
+    ext: str, buf: bytes, start: int, limit: int, reader: Callable | None = None
+) -> tuple[int, list[str]] | None:
     """Resolve one of these formats, returning ``(end, notes)``.
 
     Raises :class:`ResolveError` when the format does not support a defensible
@@ -796,8 +837,7 @@ def resolve(ext: str, buf: bytes, start: int, limit: int,
     end = fn(buf, start, limit)
     if end is None:
         raise ResolveError(f"the .{ext} structure does not support a length")
-    return end, [f"{ext.upper()}: structural walk resolved the end to {end} "
-                 f"({end - start} bytes)"]
+    return end, [f"{ext.upper()}: structural walk resolved the end to {end} ({end - start} bytes)"]
 
 
 _DISPATCH: dict = {

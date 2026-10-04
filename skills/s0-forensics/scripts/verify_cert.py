@@ -66,8 +66,8 @@ def _bootstrap_s0() -> tuple[object | None, object | None]:
             sys.path.insert(0, str(src))
     try:
         from s0 import certificate, crypto
-    except Exception:                      # noqa: BLE001 - any import failure is
-        return None, None                  # the same answer: no in-process path
+    except Exception:  # noqa: BLE001 - any import failure is
+        return None, None  # the same answer: no in-process path
     return certificate, crypto
 
 
@@ -178,8 +178,7 @@ def _describe_target(device: dict, cert: dict) -> list[str]:
     if kind:
         lines.append(_row("Target kind", kind))
     if isinstance(capacity, int):
-        lines.append(_row("Target capacity",
-                          f"{capacity} bytes ({_human_bytes(capacity)})"))
+        lines.append(_row("Target capacity", f"{capacity} bytes ({_human_bytes(capacity)})"))
     model = device.get("model")
     if model:
         lines.append(_row("Target model", model))
@@ -228,9 +227,13 @@ def _describe_verification(result: dict) -> list[str]:
         suffix = f" at {confidence}% confidence" if confidence is not None else ""
         lines.append(_row("Residual bound", f"{percent}{suffix}"))
     else:
-        lines.append(_row("Residual bound",
-                          "NONE RECORDED -- this was not a statistical sample, so no "
-                          "bound applies (this is NOT a claim of 0)"))
+        lines.append(
+            _row(
+                "Residual bound",
+                "NONE RECORDED -- this was not a statistical sample, so no "
+                "bound applies (this is NOT a claim of 0)",
+            )
+        )
 
     attestation = verif.get("attestation")
     if attestation:
@@ -269,8 +272,9 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
     signature = cert_data.get("signature")
     if not isinstance(signature, dict):
         signature = {}
-    fingerprint = _first(signature.get("public_key_fingerprint"),
-                         cert_data.get("public_key_fingerprint"), "unknown")
+    fingerprint = _first(
+        signature.get("public_key_fingerprint"), cert_data.get("public_key_fingerprint"), "unknown"
+    )
 
     print("╔══════════════════════════════════════════════════════════════════╗")
     print("║          s0 Forensic Certificate Verification Summary            ║")
@@ -305,7 +309,7 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
         try:
             pubkey = crypto.load_public_pem(resolved_key)
             ok, reason = certificate.verify_certificate(cert_data, [pubkey])
-        except Exception as err:                     # noqa: BLE001
+        except Exception as err:  # noqa: BLE001
             print(f"  ❌ Verification error: {err}")
             return 1
         if ok:
@@ -325,8 +329,12 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
     cli = find_s0_cli()
     if cli:
         print(f"  (the s0 package is not importable here; delegating to {cli})")
-        res = subprocess.run([str(cli), "verify", str(cert_path), "--key", str(resolved_key)],
-                             capture_output=True, text=True, check=False)
+        res = subprocess.run(
+            [str(cli), "verify", str(cert_path), "--key", str(resolved_key)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         sys.stdout.write(res.stdout or "")
         sys.stderr.write(res.stderr or "")
         return res.returncode
@@ -341,10 +349,14 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify s0 Forensic Certificate")
     parser.add_argument("certificate", type=Path, help="Path to certificate JSON")
-    parser.add_argument("--key", type=Path, default=None,
-                        help="trusted issuer public key PEM; defaults to the "
-                             "demonstration key in a source checkout, else "
-                             "~/.s0/keys/*.pem, else /etc/s0/authority_public.pem")
+    parser.add_argument(
+        "--key",
+        type=Path,
+        default=None,
+        help="trusted issuer public key PEM; defaults to the "
+        "demonstration key in a source checkout, else "
+        "~/.s0/keys/*.pem, else /etc/s0/authority_public.pem",
+    )
     args = parser.parse_args()
     return verify_certificate_file(args.certificate, args.key)
 

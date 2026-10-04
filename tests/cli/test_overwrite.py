@@ -34,8 +34,7 @@ def test_plant_then_zero_wipe_removes_all_hits(tmp_path):
     assert count_pattern_hits(path, MARKER) == 16
 
     progress = []
-    result = OverwriteMethod(passes=1, pattern="zero").run(
-        target, lambda m: progress.append(m))
+    result = OverwriteMethod(passes=1, pattern="zero").run(target, lambda m: progress.append(m))
     assert result.status == "success"
     assert result.bytes_processed == os.path.getsize(path)
     assert len(progress) >= 4  # streamed progress lines
@@ -51,8 +50,7 @@ def test_random_single_pass_changes_content_and_reports_bytes(tmp_path):
         f.write(b"\x00" * os.path.getsize(path))
     before = Path(path).read_bytes()
 
-    result = OverwriteMethod(passes=1, pattern="random").run(
-        image_target(path), lambda m: None)
+    result = OverwriteMethod(passes=1, pattern="random").run(image_target(path), lambda m: None)
     after = Path(path).read_bytes()
     assert result.status == "success"
     assert before != after
@@ -66,8 +64,7 @@ def test_multi_pass_counts_all_bytes(tmp_path):
 
     path = make_image(tmp_path, size=1024 * 1024)
     size = os.path.getsize(path)
-    result = OverwriteMethod(passes=3, pattern="random").run(
-        image_target(path), lambda m: None)
+    result = OverwriteMethod(passes=3, pattern="random").run(image_target(path), lambda m: None)
     assert result.bytes_processed == 3 * size
 
 
@@ -79,8 +76,12 @@ def test_method_id_reflects_policy_choice():
 def test_unwritable_target_fails_cleanly(tmp_path):
     from s0.cli.devices import Target
 
-    bad = Target(path=str(tmp_path / "nope" / "missing.img"), kind="image",
-                 capacity_bytes=4096, storage_type="IMAGE_FILE")
+    bad = Target(
+        path=str(tmp_path / "nope" / "missing.img"),
+        kind="image",
+        capacity_bytes=4096,
+        storage_type="IMAGE_FILE",
+    )
     result = OverwriteMethod().run(bad, lambda m: None)
     assert result.status == "failure"
     assert result.errors and "cannot open" in result.errors[0]

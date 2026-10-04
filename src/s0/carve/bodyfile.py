@@ -30,7 +30,7 @@ from pathlib import Path
 
 __all__ = ["normalise", "complement", "write_bodyfile", "read_bodyfile", "merge"]
 
-Extent = tuple[int, int]      # inclusive start, inclusive end
+Extent = tuple[int, int]  # inclusive start, inclusive end
 
 
 def normalise(extents: Iterable[tuple[int, int]]) -> list[Extent]:
@@ -87,8 +87,7 @@ def total_length(extents: Sequence[tuple[int, int]]) -> int:
     return sum(e - s + 1 for s, e in normalise(extents))
 
 
-def write_bodyfile(path: Path, extents: Iterable[tuple[int, int]],
-                   comment: str = "") -> tuple[int, int]:
+def write_bodyfile(path: Path, extents: Iterable[tuple[int, int]], comment: str = "") -> tuple[int, int]:
     """Write ``extents`` to ``path``. Returns ``(rows, bytes)``."""
     merged = normalise(extents)
     path = Path(path)
@@ -130,5 +129,4 @@ def merge(paths: Iterable[Path], destination: Path) -> tuple[int, int]:
     for p in paths:
         allx.extend(read_bodyfile(p))
         count += 1
-    return write_bodyfile(destination, allx,
-                         comment=f"merged from {count} bodyfile(s)")
+    return write_bodyfile(destination, allx, comment=f"merged from {count} bodyfile(s)")

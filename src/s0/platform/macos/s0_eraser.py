@@ -32,6 +32,7 @@ def _find_repo_root() -> Path:
             return p
     return Path(__file__).resolve().parents[1]
 
+
 REPO_ROOT = _find_repo_root()
 core_python_dir = REPO_ROOT / "src"
 if core_python_dir.exists() and str(core_python_dir) not in sys.path:
@@ -51,8 +52,10 @@ except ImportError:
     cert_mod = None
     core_crypto = None
     ProgressBar = None
+
     def read_temperature(_):
         return None
+
     pdfgen = None
     CONFIG = {
         "default_operator": "op-forensic-01",
@@ -135,7 +138,7 @@ def macos_clear_attributes(path_str: str, fd: int | None = None) -> bool:
     try:
         xattr_bin = "/usr/bin/xattr" if os.path.isfile("/usr/bin/xattr") else "xattr"
         proc = subprocess.run([xattr_bin, "-c", "-s", path_str], capture_output=True, check=False)
-        cleared = (proc.returncode == 0)
+        cleared = proc.returncode == 0
     except Exception:
         pass
     return cleared
@@ -145,6 +148,7 @@ def macos_full_fsync(fd: int) -> None:
     """Flush macOS drive hardware write cache via F_FULLFSYNC."""
     try:
         import fcntl
+
         fcntl.fcntl(fd, F_FULLFSYNC, 0)
     except Exception:
         try:
@@ -199,6 +203,7 @@ def erase_single_file_macos(
     fs_name, cow_warning = detect_macos_filesystem(path_str)
 
     import errno
+
     flags = os.O_RDWR
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -420,7 +425,9 @@ def erase_batch_macos(
     results: list[MacFileEraseResult] = []
 
     total_est = sum(Path(t).stat().st_size for t in targets if Path(t).is_file()) * passes
-    bar = ProgressBar(max(total_est, 1024), operation="s0-mac erase") if ProgressBar and total_est > 0 else None
+    bar = (
+        ProgressBar(max(total_est, 1024), operation="s0-mac erase") if ProgressBar and total_est > 0 else None
+    )
 
     for t in targets:
         p = Path(t).resolve()
@@ -462,7 +469,9 @@ def erase_batch_macos(
             else REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem"
         )
         if cert_mod and core_crypto and key_file.exists():
-            method_name = "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
+            method_name = (
+                "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
+            )
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
@@ -491,7 +500,8 @@ def erase_batch_macos(
                     f"macOS batch sanitized {success}/{total} targets ({total_bytes} bytes overwritten).",
                     "Hardware write cache flushed via fcntl(F_FULLFSYNC).",
                     "Extended attributes (xattrs) and quarantine flags cleared prior to unlinking.",
-                ] + warnings,
+                ]
+                + warnings,
             )
             priv = core_crypto.load_private_pem(key_file)
             signed_cert = cert_mod.sign_certificate(cert_dict, priv)
@@ -510,7 +520,10 @@ def _get_macos_boot_disk() -> str | None:
     try:
         proc = subprocess.run(
             ["diskutil", "info", "/"],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if proc.returncode != 0:
             return None
@@ -538,7 +551,10 @@ def _resolve_apfs_physical_store(container_disk: str) -> str | None:
     try:
         proc = subprocess.run(
             ["diskutil", "info", container_disk],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if proc.returncode == 0:
             for line in proc.stdout.splitlines():
@@ -559,6 +575,7 @@ def _is_macos_dev_or_subpartition(parent_path: str, candidate_mount: str) -> boo
       Parent whole disk: disk0, /dev/disk0, /dev/rdisk0, rdisk0, disk3, /dev/disk3...
       Sub-partitions: disk0s1, /dev/disk0s1, /dev/disk3s1s1 (APFS synthesized slices)...
     """
+
     def _canon(p: str) -> str:
         s = p.strip().lower()
         if s.startswith("/dev/"):
@@ -632,7 +649,9 @@ def check_macos_wipe_safety(target: str, force: bool = False) -> None:
         res = subprocess.run(["mount"], capture_output=True, text=True, check=False)
         if res.returncode == 0:
             for line in res.stdout.splitlines():
-                if any(root_mp in line for root_mp in (" on / ", " on /System", " on /private", " on /Users")):
+                if any(
+                    root_mp in line for root_mp in (" on / ", " on /System", " on /private", " on /Users")
+                ):
                     mp = line.split(" on ")[0].strip()
                     if _is_macos_dev_or_subpartition(norm, mp):
                         if not force:
@@ -775,6 +794,7 @@ def wipe_drive_or_partition_macos(
     def _get_temp(path: str) -> str:
         """Temperature string, throttled to once per 2 seconds."""
         import time as _time
+
         now = _time.monotonic()
         if now - _last_temp_time[0] >= 2.0:
             _last_temp_time[0] = now
@@ -876,8 +896,14 @@ def wipe_drive_or_partition_macos(
             else REPO_ROOT / "src" / "s0" / "data" / "keys" / "demo_issuer_private.pem"
         )
         if cert_mod and core_crypto and key_file.exists():
-            method_name = "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
-            schema_dev_type = "removable_disk" if target_type == "removable_disk" else ("internal_disk" if target_type == "partition" else "image_file")
+            method_name = (
+                "OVERWRITE_ZERO_1PASS" if pattern == "zero" and passes == 1 else "SHRED_RANDOM_NPASS"
+            )
+            schema_dev_type = (
+                "removable_disk"
+                if target_type == "removable_disk"
+                else ("internal_disk" if target_type == "partition" else "image_file")
+            )
             cert_dict = cert_mod.build_certificate(
                 organization=organization,
                 operator_id=operator_id,
@@ -901,7 +927,8 @@ def wipe_drive_or_partition_macos(
                     "samples_checked": samples_checked,
                     "all_samples_match_wipe_pattern": verification_passed,
                 },
-                notes=result.notes + [
+                notes=result.notes
+                + [
                     "Direct raw sector overwriting executed on raw device (/dev/rdisk).",
                     "Partition map (GUID/MBR) and filesystem headers destroyed.",
                 ],
@@ -915,13 +942,24 @@ def wipe_drive_or_partition_macos(
 def main(argv: list[str] | None = None) -> int:
     raw_args = list(sys.argv[1:] if argv is None else argv)
     subcommands = {
-        "list", "plan", "wipe", "carve",
-        "audit", "verify", "keygen", "image", "clone", "upgrade",
-        "uninstall", "web", "live",
+        "list",
+        "plan",
+        "wipe",
+        "carve",
+        "audit",
+        "verify",
+        "keygen",
+        "image",
+        "clone",
+        "upgrade",
+        "uninstall",
+        "web",
+        "live",
     }
     if raw_args and raw_args[0] in subcommands:
         try:
             from s0.cli.main import main as unified_main
+
             return unified_main(raw_args)
         except Exception as exc:
             print(f"[-] Error executing '{raw_args[0]}' on macOS: {exc}", file=sys.stderr)
@@ -933,25 +971,59 @@ def main(argv: list[str] | None = None) -> int:
         print("    Tip: Run 's0 --help' to see command documentation and options.", file=sys.stderr)
         return 2
 
-    parser = argparse.ArgumentParser(description="s0 macOS Secure Sanitization Tool (Files, Partitions, Drives)")
+    parser = argparse.ArgumentParser(
+        description="s0 macOS Secure Sanitization Tool (Files, Partitions, Drives)"
+    )
     parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '2.4.4')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
-    parser.add_argument("--wipe-partition", help="Partition device path to wipe (e.g. /dev/rdisk2s1 or /Volumes/USB)")
+    parser.add_argument(
+        "--wipe-partition", help="Partition device path to wipe (e.g. /dev/rdisk2s1 or /Volumes/USB)"
+    )
     parser.add_argument("--wipe-drive", help="Physical raw drive path to wipe (e.g. /dev/rdisk2)")
-    parser.add_argument("--yes", "-y", action="store_true", help="Confirm destructive operation without prompt")
-    parser.add_argument("--force", action="store_true", help="Force wipe despite non-critical safety warnings")
+    parser.add_argument(
+        "--yes", "-y", action="store_true", help="Confirm destructive operation without prompt"
+    )
+    parser.add_argument(
+        "--force", action="store_true", help="Force wipe despite non-critical safety warnings"
+    )
     parser.add_argument("--passes", "-p", type=int, default=1, help="Overwrite passes (default: 1)")
     parser.add_argument("--pattern", choices=["zero", "random"], default="zero", help="Overwrite pattern")
-    parser.add_argument("--out-dir", default="./sanitization_reports", help="Output directory for certificate")
+    parser.add_argument(
+        "--out-dir", default="./sanitization_reports", help="Output directory for certificate"
+    )
     parser.add_argument("--signing-key", "--key", help="Path to Ed25519 issuer private key PEM")
-    parser.add_argument("--operator-id", "--operator", default=CONFIG.get("default_operator", "op-forensic-01"), help="Operator identifier")
-    parser.add_argument("--organization", default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"), help="Issuing organization")
+    parser.add_argument(
+        "--operator-id",
+        "--operator",
+        default=CONFIG.get("default_operator", "op-forensic-01"),
+        help="Operator identifier",
+    )
+    parser.add_argument(
+        "--organization",
+        default=CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"),
+        help="Issuing organization",
+    )
     parser.add_argument("--cert-out", help="Explicit path to write signed certificate JSON")
-    parser.add_argument("--no-certificate", action="store_true", help="Omit compliance certificate generation")
+    parser.add_argument(
+        "--no-certificate", action="store_true", help="Omit compliance certificate generation"
+    )
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
-    parser.add_argument("--portal-url", default=CONFIG.get("verification_portal_url", "https://sector-zero.pages.dev/verify/"), help="Verification portal base URL")
-    parser.add_argument("--qr-url-template", default=CONFIG.get("qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"), help="URL template for verification QR")
-    parser.add_argument("--verify-samples", type=int, default=64, help="Number of readback samples for verification (default: 64)")
+    parser.add_argument(
+        "--portal-url",
+        default=CONFIG.get("verification_portal_url", "https://sector-zero.pages.dev/verify/"),
+        help="Verification portal base URL",
+    )
+    parser.add_argument(
+        "--qr-url-template",
+        default=CONFIG.get("qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"),
+        help="URL template for verification QR",
+    )
+    parser.add_argument(
+        "--verify-samples",
+        type=int,
+        default=64,
+        help="Number of readback samples for verification (default: 64)",
+    )
     parser.add_argument("--json", action="store_true", help="Output JSON result")
     args = parser.parse_args(raw_args)
 
@@ -981,7 +1053,11 @@ def main(argv: list[str] | None = None) -> int:
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
-            cert_path = Path(args.cert_out) if args.cert_out else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
+            cert_path = (
+                Path(args.cert_out)
+                if args.cert_out
+                else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
+            )
             cert_path.parent.mkdir(parents=True, exist_ok=True)
             cert_path.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
 
@@ -1044,7 +1120,11 @@ def main(argv: list[str] | None = None) -> int:
         if signed_cert:
             out_dir = Path(args.out_dir)
             out_dir.mkdir(parents=True, exist_ok=True)
-            cert_path = Path(args.cert_out) if args.cert_out else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
+            cert_path = (
+                Path(args.cert_out)
+                if args.cert_out
+                else out_dir / f"certificate_{signed_cert['cert_uuid'][:8]}.json"
+            )
             cert_path.parent.mkdir(parents=True, exist_ok=True)
             cert_path.write_text(json.dumps(signed_cert, indent=2), encoding="utf-8")
 
@@ -1092,10 +1172,11 @@ def main(argv: list[str] | None = None) -> int:
 
     else:
         parser.print_help()
-        print("\nError: Must specify either --targets (files/folders), --wipe-partition (e.g. /dev/rdisk2s1), or --wipe-drive (e.g. /dev/rdisk2).")
+        print(
+            "\nError: Must specify either --targets (files/folders), --wipe-partition (e.g. /dev/rdisk2s1), or --wipe-drive (e.g. /dev/rdisk2)."
+        )
         return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

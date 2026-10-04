@@ -27,9 +27,10 @@ def _lsblk() -> list[dict]:
         return []
     try:
         out = subprocess.run(
-            ["lsblk", "-J", "-b", "-o",
-             "NAME,PATH,TYPE,SIZE,SERIAL,MODEL,RM,ROTA,MOUNTPOINTS"],
-            capture_output=True, text=True, check=False,
+            ["lsblk", "-J", "-b", "-o", "NAME,PATH,TYPE,SIZE,SERIAL,MODEL,RM,ROTA,MOUNTPOINTS"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if out.returncode != 0:
             return []
@@ -104,6 +105,7 @@ def get_block_device_size(device_path: str | Path) -> int:
     try:
         import fcntl
         import struct
+
         BLKGETSIZE64 = 0x80081272
         with open(p, "rb") as f:
             buf = fcntl.ioctl(f.fileno(), BLKGETSIZE64, struct.pack("Q", 0))
@@ -127,8 +129,7 @@ def get_block_device_size(device_path: str | Path) -> int:
     if shutil.which("blockdev"):
         try:
             res = subprocess.run(
-                ["blockdev", "--getsize64", str(p)],
-                capture_output=True, text=True, check=True
+                ["blockdev", "--getsize64", str(p)], capture_output=True, text=True, check=True
             )
             sz = int(res.stdout.strip())
             if sz > 0:
@@ -140,8 +141,7 @@ def get_block_device_size(device_path: str | Path) -> int:
     if shutil.which("lsblk"):
         try:
             res = subprocess.run(
-                ["lsblk", "-b", "-d", "-n", "-o", "SIZE", str(p)],
-                capture_output=True, text=True, check=True
+                ["lsblk", "-b", "-d", "-n", "-o", "SIZE", str(p)], capture_output=True, text=True, check=True
             )
             sz = int(res.stdout.strip())
             if sz > 0:
@@ -149,7 +149,10 @@ def get_block_device_size(device_path: str | Path) -> int:
         except Exception:
             pass
 
-    logger.warning("Could not determine size of block device %s — all detection methods failed; falling back to 0 bytes", p)
+    logger.warning(
+        "Could not determine size of block device %s — all detection methods failed; falling back to 0 bytes",
+        p,
+    )
     return 0
 
 
@@ -165,6 +168,7 @@ def _flatten_devs(devs: list[dict]) -> list[dict]:
 def _windows_disk_targets() -> list[Target]:
     targets = []
     import string
+
     for letter in string.ascii_uppercase:
         drive_path = f"{letter}:"
         try:
@@ -172,16 +176,23 @@ def _windows_disk_targets() -> list[Target]:
                 sz = 0
                 try:
                     from s0.platform.windows.s0_eraser import get_windows_target_size
+
                     sz = get_windows_target_size(drive_path)
                 except Exception as exc:
-                    logger.warning("Could not determine size of Windows volume %s: %s; falling back to 0 bytes", drive_path, exc)
-                targets.append(Target(
-                    path=drive_path,
-                    kind="block",
-                    capacity_bytes=sz,
-                    storage_type="UNKNOWN",
-                    model=f"Windows Volume {drive_path}",
-                ))
+                    logger.warning(
+                        "Could not determine size of Windows volume %s: %s; falling back to 0 bytes",
+                        drive_path,
+                        exc,
+                    )
+                targets.append(
+                    Target(
+                        path=drive_path,
+                        kind="block",
+                        capacity_bytes=sz,
+                        storage_type="UNKNOWN",
+                        model=f"Windows Volume {drive_path}",
+                    )
+                )
         except Exception:
             pass
     return targets
@@ -203,16 +214,21 @@ def _macos_disk_targets() -> list[Target]:
                     sz = 0
                     try:
                         from s0.platform.macos.s0_eraser import get_macos_target_size
+
                         sz = get_macos_target_size(dev)
                     except Exception as exc:
-                        logger.warning("Could not determine size of macOS disk %s: %s; falling back to 0 bytes", dev, exc)
-                    targets.append(Target(
-                        path=rdev,
-                        kind="block",
-                        capacity_bytes=sz,
-                        storage_type="UNKNOWN",
-                        model="macOS Disk",
-                    ))
+                        logger.warning(
+                            "Could not determine size of macOS disk %s: %s; falling back to 0 bytes", dev, exc
+                        )
+                    targets.append(
+                        Target(
+                            path=rdev,
+                            kind="block",
+                            capacity_bytes=sz,
+                            storage_type="UNKNOWN",
+                            model="macOS Disk",
+                        )
+                    )
     except Exception:
         pass
     return targets
@@ -240,16 +256,18 @@ def list_block_targets() -> list[Target]:
         if size <= 0:
             size = get_block_device_size(target_path)
 
-        targets.append(Target(
-            path=target_path,
-            kind="block",
-            capacity_bytes=size,
-            sector_size=_sys_int(name, "queue/logical_block_size") or 512,
-            storage_type=_storage_type(name, rotational),
-            model=(dev.get("model") or "").strip() or None,
-            serial=(dev.get("serial") or "").strip() or None,
-            removable=bool(_sys_int(name, "removable")),
-        ))
+        targets.append(
+            Target(
+                path=target_path,
+                kind="block",
+                capacity_bytes=size,
+                sector_size=_sys_int(name, "queue/logical_block_size") or 512,
+                storage_type=_storage_type(name, rotational),
+                model=(dev.get("model") or "").strip() or None,
+                serial=(dev.get("serial") or "").strip() or None,
+                removable=bool(_sys_int(name, "removable")),
+            )
+        )
     return targets
 
 
@@ -322,9 +340,7 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
     # a system file. Block devices return from the guard so the richer checks
     # below (mounts, root filesystem, HPA) keep ownership of them.
     try:
-        warnings.extend(
-            check_path_is_destructive(target.path, force=force)
-        )
+        warnings.extend(check_path_is_destructive(target.path, force=force))
     except ProtectedPathError as exc:
         raise SafetyError(str(exc)) from exc
 
@@ -350,8 +366,9 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
                     f"{target.path} hosts the running ROOT filesystem. The tool refuses "
                     f"this without --force; if you mean it, boot the s0 ISO instead."
                 )
-            warnings.append("proceeding AGAINST THE RUNNING ROOT FILESYSTEM — this "
-                            "will destroy the running system")
+            warnings.append(
+                "proceeding AGAINST THE RUNNING ROOT FILESYSTEM — this will destroy the running system"
+            )
     else:
         if not force:
             raise SafetyError(
@@ -370,8 +387,7 @@ def _get_root_mount_source() -> str | None:
     """
     try:
         res = subprocess.run(
-            ["findmnt", "-n", "-o", "SOURCE", "/"],
-            capture_output=True, text=True, check=True
+            ["findmnt", "-n", "-o", "SOURCE", "/"], capture_output=True, text=True, check=True
         )
         src = res.stdout.strip()
         if src:
@@ -437,8 +453,7 @@ def _get_underlying_devices(dev_path: str) -> set[str]:
 
         try:
             res = subprocess.run(
-                ["lsblk", "-s", "-n", "-o", "KNAME", curr],
-                capture_output=True, text=True, check=False
+                ["lsblk", "-s", "-n", "-o", "KNAME", curr], capture_output=True, text=True, check=False
             )
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
@@ -488,4 +503,3 @@ def is_os_device(device_path: str) -> bool:
         return False
     except Exception:
         return False
-

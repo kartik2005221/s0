@@ -86,6 +86,7 @@ class ReassemblyError(ValueError):
 # Model
 # --------------------------------------------------------------------------- #
 
+
 @dataclass
 class Fragment:
     """One located piece of a fragmented file, with the key that orders it.
@@ -96,6 +97,7 @@ class Fragment:
     decode time" and one that says "ordered by cluster timestamp" are making
     different claims, and only one of them is as strong.
     """
+
     image_offset: int
     length: int
     key: int
@@ -134,6 +136,7 @@ class FragmentSet:
     fragments -- an examiner is entitled to know which bytes of the image
     produced the output.
     """
+
     fragments: list[Fragment] = field(default_factory=list)
     #: ``(start, end)`` of the `ftyp`/`moov` region preceding the first fragment.
     prefix: tuple[int, int] | None = None
@@ -155,6 +158,7 @@ class FragmentSet:
 @dataclass
 class Assembly:
     """Fragments concatenated in logical-key order."""
+
     payload: bytes
     fragments: list[Fragment]
     notes: list[str] = field(default_factory=list)
@@ -177,12 +181,13 @@ def _read(source, offset: int, length: int) -> bytes:
     """Read from bytes or a ``ByteSource``-like object."""
     if hasattr(source, "read") and not isinstance(source, (bytes, bytearray)):
         return source.read(offset, length)
-    return bytes(source[offset: offset + length])
+    return bytes(source[offset : offset + length])
 
 
 # --------------------------------------------------------------------------- #
 # ISO-BMFF: locating fragments
 # --------------------------------------------------------------------------- #
+
 
 def _mfhd_sequence(payload: bytes, start: int, end: int) -> int | None:
     box = isobmff._find_child(payload, start, end, b"mfhd")
@@ -192,8 +197,7 @@ def _mfhd_sequence(payload: bytes, start: int, end: int) -> int | None:
     return struct.unpack(">I", body[:4])[0]
 
 
-def _traf_details(payload: bytes, start: int, end: int
-                  ) -> tuple[int | None, int | None, int | None, int]:
+def _traf_details(payload: bytes, start: int, end: int) -> tuple[int | None, int | None, int | None, int]:
     """Return ``(track_id, base_media_decode_time, duration_sum, sample_count)``.
 
     `duration_sum` is the total decode time the fragment's samples consume,
@@ -209,7 +213,7 @@ def _traf_details(payload: bytes, start: int, end: int
         default_duration = None
         tfhd = isobmff._find_child(payload, traf.payload_start, traf.payload_end, b"tfhd")
         if tfhd is not None:
-            flags = struct.unpack(">I", payload[tfhd.payload_start: tfhd.payload_start + 4])[0] & 0xFFFFFF
+            flags = struct.unpack(">I", payload[tfhd.payload_start : tfhd.payload_start + 4])[0] & 0xFFFFFF
             pos = tfhd.payload_start + 4
             # track_ID is a *required* field and comes first, before every
             # optional one. Reading it after them picks up whichever optional
@@ -217,29 +221,29 @@ def _traf_details(payload: bytes, start: int, end: int
             # ends up being read as 1 and the projection check compares 13
             # against 6656.
             if pos + 4 <= traf.payload_end:
-                track_id = struct.unpack(">I", payload[pos: pos + 4])[0]
+                track_id = struct.unpack(">I", payload[pos : pos + 4])[0]
             pos += 4
-            if flags & 0x000001:      # base-data-offset
+            if flags & 0x000001:  # base-data-offset
                 pos += 8
-            if flags & 0x000002:      # sample-description-index
+            if flags & 0x000002:  # sample-description-index
                 pos += 4
-            if flags & 0x000008:      # default-sample-duration
-                default_duration = struct.unpack(">I", payload[pos: pos + 4])[0]
+            if flags & 0x000008:  # default-sample-duration
+                default_duration = struct.unpack(">I", payload[pos : pos + 4])[0]
                 pos += 4
-            if flags & 0x000010:      # default-sample-size
+            if flags & 0x000010:  # default-sample-size
                 pos += 4
-            if flags & 0x000020:      # default-sample-flags
+            if flags & 0x000020:  # default-sample-flags
                 pos += 4
-            if flags & 0x010000:      # duration-is-empty
+            if flags & 0x010000:  # duration-is-empty
                 pos += 4
-            if not (flags & 0x020000):    # default-base-is-moof absent
+            if not (flags & 0x020000):  # default-base-is-moof absent
                 pos += 8
         tfdt = isobmff._find_child(payload, traf.payload_start, traf.payload_end, b"tfdt")
         if tfdt is not None:
             version = payload[tfdt.payload_start]
             width = 4 if version == 0 else 8
             fmt = ">I" if version == 0 else ">Q"
-            raw = payload[tfdt.payload_start + 4: tfdt.payload_start + 4 + width]
+            raw = payload[tfdt.payload_start + 4 : tfdt.payload_start + 4 + width]
             if len(raw) == width:
                 base_decode = struct.unpack(fmt, raw)[0]
         for trun in isobmff._iter_children(payload, traf.payload_start, traf.payload_end, b"trun"):
@@ -261,7 +265,7 @@ def _trun_sample_count(payload: bytes, trun) -> int:
     pos = trun.payload_start
     if pos + 8 > trun.payload_end:
         return 0
-    return struct.unpack(">I", payload[pos + 4: pos + 8])[0]
+    return struct.unpack(">I", payload[pos + 4 : pos + 8])[0]
 
 
 def _trun_duration_sum(payload: bytes, trun) -> int | None:
@@ -269,27 +273,27 @@ def _trun_duration_sum(payload: bytes, trun) -> int | None:
     pos = trun.payload_start
     if pos + 8 > trun.payload_end:
         return None
-    _version_flags = struct.unpack(">I", payload[pos: pos + 4])[0]
+    _version_flags = struct.unpack(">I", payload[pos : pos + 4])[0]
     flags = _version_flags & 0xFFFFFF
-    sample_count = struct.unpack(">I", payload[pos + 4: pos + 8])[0]
+    sample_count = struct.unpack(">I", payload[pos + 4 : pos + 8])[0]
     pos += 8
-    if flags & 0x000001:      # data-offset
+    if flags & 0x000001:  # data-offset
         pos += 4
-    if flags & 0x000004:      # first-sample-flags
+    if flags & 0x000004:  # first-sample-flags
         pos += 4
-    if not (flags & 0x000100):    # no sample-duration present
+    if not (flags & 0x000100):  # no sample-duration present
         return None
     total = 0
     for _ in range(sample_count):
         if pos + 4 > trun.payload_end:
             return None
-        total += struct.unpack(">I", payload[pos: pos + 4])[0]
+        total += struct.unpack(">I", payload[pos : pos + 4])[0]
         pos += 4
-        if flags & 0x000200:      # sample-size
+        if flags & 0x000200:  # sample-size
             pos += 4
-        if flags & 0x000400:      # sample-flags
+        if flags & 0x000400:  # sample-flags
             pos += 4
-        if flags & 0x000800:      # sample-composition-time-offset
+        if flags & 0x000800:  # sample-composition-time-offset
             pos += 4
     return total
 
@@ -303,7 +307,7 @@ def _moov_identity(payload: bytes, moov) -> tuple:
         if tkhd is not None and tkhd.payload_start + 4 <= tkhd.payload_end:
             version = payload[tkhd.payload_start]
             base = tkhd.payload_start + 4
-            tid = struct.unpack(">I", payload[base + (16 if version == 1 else 8):][:4])[0]
+            tid = struct.unpack(">I", payload[base + (16 if version == 1 else 8) :][:4])[0]
             track_ids.append(tid)
         mdhd = isobmff._find_child(payload, trak.payload_start, trak.payload_end, b"mdia")
         if mdhd is not None:
@@ -312,9 +316,9 @@ def _moov_identity(payload: bytes, moov) -> tuple:
                 version = payload[mdia.payload_start]
                 base = mdia.payload_start + 4
                 if version == 1 and base + 20 <= mdia.payload_end:
-                    timescales.append(struct.unpack(">I", payload[base + 16: base + 20])[0])
+                    timescales.append(struct.unpack(">I", payload[base + 16 : base + 20])[0])
                 elif base + 12 <= mdia.payload_end:
-                    timescales.append(struct.unpack(">I", payload[base + 8: base + 12])[0])
+                    timescales.append(struct.unpack(">I", payload[base + 8 : base + 12])[0])
     return (tuple(sorted(timescales)), tuple(sorted(track_ids)))
 
 
@@ -388,23 +392,24 @@ def find_isobmff_fragments(source, start: int, end: int) -> FragmentSet:
         if nxt is None or nxt.type != b"mdat" or nxt.start != box.start + box.size:
             continue
         seq = _mfhd_sequence(payload, box.payload_start, box.payload_end)
-        track_id, base_decode, dur_sum, _count = _traf_details(
-            payload, box.payload_start, box.payload_end)
+        track_id, base_decode, dur_sum, _count = _traf_details(payload, box.payload_start, box.payload_end)
         if seq is None or base_decode is None:
             # Without both keys the fragment cannot be ordered, so it is not a
             # candidate. The caller reports these as unassigned.
             continue
-        fragments.append(Fragment(
-            image_offset=start + box.start,
-            length=(nxt.start + nxt.size) - box.start,
-            key=seq,
-            key_source="mfhd.sequence_number",
-            key_kind="sequence",
-            label=f"moof#{seq}",
-            decode_time=base_decode,
-            duration_sum=dur_sum,
-            group=identity + ((track_id,) if track_id is not None else ()),
-        ))
+        fragments.append(
+            Fragment(
+                image_offset=start + box.start,
+                length=(nxt.start + nxt.size) - box.start,
+                key=seq,
+                key_source="mfhd.sequence_number",
+                key_kind="sequence",
+                label=f"moof#{seq}",
+                decode_time=base_decode,
+                duration_sum=dur_sum,
+                group=identity + ((track_id,) if track_id is not None else ()),
+            )
+        )
         last_fragment_end = nxt.start + nxt.size
         if len(fragments) > MAX_FRAGMENTS:
             break
@@ -418,18 +423,20 @@ def find_isobmff_fragments(source, start: int, end: int) -> FragmentSet:
         suffix = (last_fragment_end, max(b for _, b in tail))
     else:
         suffix = None
-        _tile_extents(fragments, max(b for _, b in other_boxes) if other_boxes
-                      else (last_fragment_end or 0))
+        _tile_extents(fragments, max(b for _, b in other_boxes) if other_boxes else (last_fragment_end or 0))
     if tail:
         # Any `free`/`sidx` between the last fragment and the trailing index is
         # part of the file, so the last fragment is grown to meet the tail.
         _tile_extents(fragments, suffix[0])
-    return FragmentSet(fragments=fragments, prefix=prefix, suffix=suffix,
-                       identity=identity, kind="isobmff", contiguous=True)
+    return FragmentSet(
+        fragments=fragments, prefix=prefix, suffix=suffix, identity=identity, kind="isobmff", contiguous=True
+    )
+
 
 # --------------------------------------------------------------------------- #
 # Matroska: locating fragments
 # --------------------------------------------------------------------------- #
+
 
 def find_matroska_fragments(source, start: int, end: int) -> FragmentSet:
     """One fragment per Matroska Cluster, keyed by the cluster's timecode.
@@ -443,6 +450,7 @@ def find_matroska_fragments(source, start: int, end: int) -> FragmentSet:
     accepted when its children actually walk and its blocks carry real sizes.
     """
     from . import matroska as mk
+
     payload = _read(source, start, end - start)
     try:
         info = mk.parse(payload)
@@ -453,15 +461,17 @@ def find_matroska_fragments(source, start: int, end: int) -> FragmentSet:
     for cluster in info.clusters:
         if cluster.size is None or not cluster.blocks:
             continue
-        out.append(Fragment(
-            image_offset=start + cluster.offset,
-            length=cluster.size,
-            key=cluster.timestamp,
-            key_source="matroska cluster timestamp",
-            key_kind="timecode",
-            label=f"cluster@{cluster.timestamp}",
-            group=group,
-        ))
+        out.append(
+            Fragment(
+                image_offset=start + cluster.offset,
+                length=cluster.size,
+                key=cluster.timestamp,
+                key_source="matroska cluster timestamp",
+                key_kind="timecode",
+                label=f"cluster@{cluster.timestamp}",
+                group=group,
+            )
+        )
         if len(out) > MAX_FRAGMENTS:
             break
     if not out:
@@ -487,6 +497,7 @@ def find_matroska_fragments(source, start: int, end: int) -> FragmentSet:
 # Assembly
 # --------------------------------------------------------------------------- #
 
+
 def _check_outliers(fragments: Sequence[Fragment]) -> list[str]:
     if len(fragments) < 3:
         return []
@@ -500,8 +511,10 @@ def _check_outliers(fragments: Sequence[Fragment]) -> list[str]:
     # A comprehension has its own scope, so the label has to be read from the
     # first offender rather than from a loop variable that is not in scope here.
     worst = max(bad, key=lambda f: f.length)
-    return [f"fragment {worst.label} is {worst.length} bytes against a median of "
-            f"{median}; the pairing is probably wrong"]
+    return [
+        f"fragment {worst.label} is {worst.length} bytes against a median of "
+        f"{median}; the pairing is probably wrong"
+    ]
 
 
 def _missing_keys(keys: Sequence[int], first: int) -> list[int]:
@@ -511,8 +524,7 @@ def _missing_keys(keys: Sequence[int], first: int) -> list[int]:
     return [k for k in range(first, max(present) + 1) if k not in present]
 
 
-def reassemble(fragments: Sequence[Fragment], *,
-               require_contiguous: bool = True) -> Assembly:
+def reassemble(fragments: Sequence[Fragment], *, require_contiguous: bool = True) -> Assembly:
     """Concatenate fragments in logical-key order.
 
     `require_contiguous` refuses a set with holes rather than producing a file
@@ -526,9 +538,11 @@ def reassemble(fragments: Sequence[Fragment], *,
 
     groups = {f.group for f in ordered}
     if len(groups) > 1:
-        return Assembly(b"", [], refusal=(
-            f"fragments carry {len(groups)} different identities; they are not "
-            f"all from one file"))
+        return Assembly(
+            b"",
+            [],
+            refusal=(f"fragments carry {len(groups)} different identities; they are not all from one file"),
+        )
     notes.append(f"{len(ordered)} fragment(s) ordered by {ordered[0].key_source}")
 
     notes.extend(_check_outliers(ordered))
@@ -539,9 +553,12 @@ def reassemble(fragments: Sequence[Fragment], *,
     seen: dict = {}
     for f in ordered:
         if f.key in seen:
-            return Assembly(b"", [], notes + [
-                f"fragments {seen[f.key].label} and {f.label} both claim key {f.key}"
-            ], refusal=f"duplicate logical key {f.key}")
+            return Assembly(
+                b"",
+                [],
+                notes + [f"fragments {seen[f.key].label} and {f.label} both claim key {f.key}"],
+                refusal=f"duplicate logical key {f.key}",
+            )
         seen[f.key] = f
 
     kind = ordered[0].key_kind
@@ -552,13 +569,16 @@ def reassemble(fragments: Sequence[Fragment], *,
         # out loud is the opposite: a timecode jump is *not* a lost fragment.
         gaps = [b for a, b in zip(ordered, ordered[1:], strict=False) if b.key != a.key + 1]
         if gaps:
-            widest = max((b.key - a.key for a, b in
-                          zip(ordered, ordered[1:], strict=False)), default=0)
-            notes.append(f"timecodes jump between clusters (largest step {widest}); "
-                         f"the recording skipped time, which is normal for a "
-                         f"recorder that drops frames")
-        notes.append("timecode keys are checked for monotonicity, not contiguity: "
-                     "a skipped frame is not a lost fragment")
+            widest = max((b.key - a.key for a, b in zip(ordered, ordered[1:], strict=False)), default=0)
+            notes.append(
+                f"timecodes jump between clusters (largest step {widest}); "
+                f"the recording skipped time, which is normal for a "
+                f"recorder that drops frames"
+            )
+        notes.append(
+            "timecode keys are checked for monotonicity, not contiguity: "
+            "a skipped frame is not a lost fragment"
+        )
         complete = True
         missing = []
     else:
@@ -569,18 +589,22 @@ def reassemble(fragments: Sequence[Fragment], *,
         more = "" if len(missing) <= 12 else f" (+{len(missing) - 12} more)"
         notes.append(f"keys {preview}{more} are absent, so the file is incomplete")
         if require_contiguous:
-            return Assembly(b"", [], notes, complete=False, missing_keys=missing,
-                            refusal=f"{len(missing)} fragment(s) are missing")
+            return Assembly(
+                b"",
+                [],
+                notes,
+                complete=False,
+                missing_keys=missing,
+                refusal=f"{len(missing)} fragment(s) are missing",
+            )
 
     projection = _check_projection(ordered)
     notes.extend(projection[1])
     if projection[0] is False:
-        return Assembly(b"", [], notes, complete=complete, missing_keys=missing,
-                        refusal=projection[2])
+        return Assembly(b"", [], notes, complete=complete, missing_keys=missing, refusal=projection[2])
 
     chunks = [_read_from_image(f) for f in ordered]
-    return Assembly(b"".join(chunks), list(ordered), notes, complete=complete,
-                    missing_keys=missing)
+    return Assembly(b"".join(chunks), list(ordered), notes, complete=complete, missing_keys=missing)
 
 
 #: Set by the caller so `reassemble` can read fragment payloads without the
@@ -588,8 +612,9 @@ def reassemble(fragments: Sequence[Fragment], *,
 _IMAGE_SOURCE: Callable | None = None
 
 
-def scan_isobmff_fragments(source, start: int, end: int, *,
-                          window: int = 1 << 20, overlap: int = 64) -> FragmentSet:
+def scan_isobmff_fragments(
+    source, start: int, end: int, *, window: int = 1 << 20, overlap: int = 64
+) -> FragmentSet:
     """Find ISO-BMFF fragments scattered anywhere in a byte range.
 
     `find_isobmff_fragments` walks the box tree linearly from `start`, which
@@ -632,8 +657,10 @@ def scan_isobmff_fragments(source, start: int, end: int, *,
             break
         if btype == b"moov":
             try:
-                identity = _moov_identity(_read(source, pos, size), next(
-                    b for b in isobmff.iter_boxes(_read(source, pos, size)) if b.start == 0))
+                identity = _moov_identity(
+                    _read(source, pos, size),
+                    next(b for b in isobmff.iter_boxes(_read(source, pos, size)) if b.start == 0),
+                )
             except (StopIteration, isobmff.BoxError, ValueError):
                 pass
         pos += size
@@ -658,8 +685,9 @@ def scan_isobmff_fragments(source, start: int, end: int, *,
                 seen_boxes.add(box_start)
                 fragments.append(frag)
                 if len(fragments) > MAX_FRAGMENTS:
-                    return FragmentSet(fragments=fragments, prefix=(start, head_end),
-                                       identity=identity, kind="isobmff")
+                    return FragmentSet(
+                        fragments=fragments, prefix=(start, head_end), identity=identity, kind="isobmff"
+                    )
         pos += max(1, len(chunk) - overlap)
 
     if not fragments:
@@ -673,11 +701,15 @@ def scan_isobmff_fragments(source, start: int, end: int, *,
     # 3. The trailing index, if one survived, found by its own magic. `mfra` is
     # optional, so its absence is not an error -- it just means the file has no
     # index and the output is the file without one.
-    tail = _find_box_by_magic(source, end, b"mfra",
-                              after=max(f.image_end for f in fragments))
-    return FragmentSet(fragments=fragments, prefix=(start, head_end),
-                       suffix=tail, identity=identity, kind="isobmff",
-                       contiguous=False)
+    tail = _find_box_by_magic(source, end, b"mfra", after=max(f.image_end for f in fragments))
+    return FragmentSet(
+        fragments=fragments,
+        prefix=(start, head_end),
+        suffix=tail,
+        identity=identity,
+        kind="isobmff",
+        contiguous=False,
+    )
 
 
 def _find_box_by_magic(source, end: int, magic: bytes, after: int):
@@ -714,8 +746,7 @@ def _find_box_by_magic(source, end: int, magic: bytes, after: int):
                 boxes = list(isobmff.iter_boxes(body))
             except (isobmff.BoxError, ValueError):
                 continue
-            if boxes and boxes[0].type == magic and boxes[0].start == 0 \
-                    and boxes[0].size == size:
+            if boxes and boxes[0].type == magic and boxes[0].start == 0 and boxes[0].size == size:
                 return (box_start, box_start + size)
         pos += max(1, len(chunk) - (len(magic) - 1))
     return None
@@ -751,8 +782,7 @@ def _fragment_at_inner(source, box_start: int, end: int, identity: tuple) -> Fra
     if parsed.type != b"moof" or parsed.size != size:
         return None
     seq = _mfhd_sequence(box, parsed.payload_start, parsed.payload_end)
-    track_id, base_decode, dur_sum, _count = _traf_details(
-        box, parsed.payload_start, parsed.payload_end)
+    track_id, base_decode, dur_sum, _count = _traf_details(box, parsed.payload_start, parsed.payload_end)
     if seq is None or base_decode is None:
         return None
     mdat_at = box_start + size
@@ -794,11 +824,17 @@ def assemble_file(fset: FragmentSet, source) -> Assembly:
         parts.append(_read(source, fset.suffix[0], fset.suffix[1] - fset.suffix[0]))
     assembly.payload = b"".join(parts)
     if fset.prefix:
-        assembly.notes.insert(0, f"reattached {fset.prefix[1] - fset.prefix[0]}-byte "
-                                 f"header region from image offset {fset.prefix[0]}")
+        assembly.notes.insert(
+            0,
+            f"reattached {fset.prefix[1] - fset.prefix[0]}-byte "
+            f"header region from image offset {fset.prefix[0]}",
+        )
     if fset.suffix:
-        assembly.notes.insert(1, f"reattached {fset.suffix[1] - fset.suffix[0]}-byte "
-                                 f"index region from image offset {fset.suffix[0]}")
+        assembly.notes.insert(
+            1,
+            f"reattached {fset.suffix[1] - fset.suffix[0]}-byte "
+            f"index region from image offset {fset.suffix[0]}",
+        )
     return assembly
 
 
@@ -828,8 +864,10 @@ def _check_projection(ordered: Sequence[Fragment]) -> tuple[bool | None, list[st
         return None, notes, ""
     usable = [f for f in ordered if f.decode_time is not None and f.duration_sum]
     if len(usable) < 2:
-        notes.append("no decode-time projection is available for this container; "
-                     "ordering rests on the in-band key alone")
+        notes.append(
+            "no decode-time projection is available for this container; "
+            "ordering rests on the in-band key alone"
+        )
         return None, notes, ""
     checked = 0
     for prev, nxt in zip(usable, usable[1:], strict=False):
@@ -837,13 +875,17 @@ def _check_projection(ordered: Sequence[Fragment]) -> tuple[bool | None, list[st
             continue
         predicted = prev.decode_time + (prev.duration_sum or 0)
         if predicted != nxt.decode_time:
-            return False, notes, (
-                f"{prev.label} ends at decode time {predicted} but {nxt.label} "
-                f"starts at {nxt.decode_time}; the fragments are not consecutive")
+            return (
+                False,
+                notes,
+                (
+                    f"{prev.label} ends at decode time {predicted} but {nxt.label} "
+                    f"starts at {nxt.decode_time}; the fragments are not consecutive"
+                ),
+            )
         checked += 1
     if checked:
-        notes.append(f"decode-time projection confirmed across {checked} "
-                     f"consecutive pair(s)")
+        notes.append(f"decode-time projection confirmed across {checked} consecutive pair(s)")
     else:
         notes.append("no consecutive pair had a decode-time projection to check")
     return None, notes, ""
@@ -854,12 +896,14 @@ def reparse_assembly(assembly: Assembly, kind: str) -> tuple[bool, list[str]]:
     notes: list[str] = []
     if kind == "matroska":
         from . import matroska as mk
+
         try:
             info = mk.parse(assembly.payload)
         except mk.MatroskaError as exc:
             return False, [f"assembled bytes are not a valid Matroska file: {exc}"]
-        notes.append(f"reparsed as Matroska: {len(info.clusters)} cluster(s), "
-                     f"{len(info.frame_blocks)} frame(s)")
+        notes.append(
+            f"reparsed as Matroska: {len(info.clusters)} cluster(s), {len(info.frame_blocks)} frame(s)"
+        )
         return True, notes
     if kind == "isobmff":
         try:
@@ -871,8 +915,9 @@ def reparse_assembly(assembly: Assembly, kind: str) -> tuple[bool, list[str]]:
             return False, ["assembled ISO-BMFF has no moov"]
         if b"moof" not in types:
             return False, ["assembled ISO-BMFF has no moof, so nothing was reassembled"]
-        notes.append(f"reparsed as ISO-BMFF: {types.count(b'moof')} moof, "
-                     f"{types.count(b'mdat')} mdat, moov present")
+        notes.append(
+            f"reparsed as ISO-BMFF: {types.count(b'moof')} moof, {types.count(b'mdat')} mdat, moov present"
+        )
         return True, notes
     return False, [f"unknown container kind {kind!r}"]
 

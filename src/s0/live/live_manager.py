@@ -42,6 +42,7 @@ def _format_size(size_bytes: int) -> str:
 # 1. Device Enumeration (Cross-Platform Removable USBs)
 # ---------------------------------------------------------------------------
 
+
 def get_removable_usb_devices() -> list[dict[str, Any]]:
     """Enumerate removable USB drives safely across Linux, macOS, and Windows."""
     devices: list[dict[str, Any]] = []
@@ -62,7 +63,9 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
                         if m:
                             system_disks.add(m.group(1))
         except Exception as exc:
-            print(f"[s0 live]  WARN : Cannot read /proc/mounts to identify system disks: {exc}", file=sys.stderr)
+            print(
+                f"[s0 live]  WARN : Cannot read /proc/mounts to identify system disks: {exc}", file=sys.stderr
+            )
             print("    Device listing refused for safety (cannot exclude system disk).", file=sys.stderr)
             return []
 
@@ -121,13 +124,15 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
                 except Exception:
                     pass
 
-            devices.append({
-                "path": f"/dev/{name}",
-                "model": model,
-                "size_bytes": size_bytes,
-                "size_human": _format_size(size_bytes),
-                "platform": "linux",
-            })
+            devices.append(
+                {
+                    "path": f"/dev/{name}",
+                    "model": model,
+                    "size_bytes": size_bytes,
+                    "size_human": _format_size(size_bytes),
+                    "platform": "linux",
+                }
+            )
 
     elif sys.platform == "darwin":
         try:
@@ -135,6 +140,7 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
             res = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if res.returncode == 0:
                 import plistlib
+
                 data = plistlib.loads(res.stdout.encode("utf-8"))
                 for disk_id in data.get("AllDisks", []):
                     # Query info for this disk
@@ -144,14 +150,16 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
                         info = plistlib.loads(info_res.stdout.encode("utf-8"))
                         if info.get("Internal", True) is False or info.get("RemovableMedia", False):
                             sz = info.get("TotalSize", 0)
-                            devices.append({
-                                "path": f"/dev/{disk_id}",
-                                "raw_path": f"/dev/r{disk_id}",
-                                "model": info.get("MediaName", "External USB Drive"),
-                                "size_bytes": sz,
-                                "size_human": _format_size(sz),
-                                "platform": "darwin",
-                            })
+                            devices.append(
+                                {
+                                    "path": f"/dev/{disk_id}",
+                                    "raw_path": f"/dev/r{disk_id}",
+                                    "model": info.get("MediaName", "External USB Drive"),
+                                    "size_bytes": sz,
+                                    "size_human": _format_size(sz),
+                                    "platform": "darwin",
+                                }
+                            )
         except Exception:
             pass
 
@@ -161,7 +169,9 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
                 "Get-Disk | Where-Object { $_.BusType -eq 'USB' } | "
                 "Select-Object Number, FriendlyName, Size, BusType | ConvertTo-Json"
             )
-            res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, check=False)
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, check=False
+            )
             if res.returncode == 0 and res.stdout.strip():
                 data = json.loads(res.stdout.strip())
                 if isinstance(data, dict):
@@ -169,14 +179,16 @@ def get_removable_usb_devices() -> list[dict[str, Any]]:
                 for item in data:
                     num = item.get("Number")
                     sz = item.get("Size", 0)
-                    devices.append({
-                        "path": f"\\\\.\\PhysicalDrive{num}",
-                        "disk_number": str(num),
-                        "model": item.get("FriendlyName", f"USB Disk {num}"),
-                        "size_bytes": sz,
-                        "size_human": _format_size(sz),
-                        "platform": "win32",
-                    })
+                    devices.append(
+                        {
+                            "path": f"\\\\.\\PhysicalDrive{num}",
+                            "disk_number": str(num),
+                            "model": item.get("FriendlyName", f"USB Disk {num}"),
+                            "size_bytes": sz,
+                            "size_human": _format_size(sz),
+                            "platform": "win32",
+                        }
+                    )
         except Exception:
             pass
 
@@ -225,7 +237,7 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
         return EX_NOINPUT
 
     print(f"  {'#':<3} {'Target Device':<24} {'Capacity':<14} {'Model / Description'}")
-    print(f"  {'-'*3} {'-'*24} {'-'*14} {'-'*22}")
+    print(f"  {'-' * 3} {'-' * 24} {'-' * 14} {'-' * 22}")
     for idx, d in enumerate(devs):
         print(f"  [{idx}] {d['path']:<24} {d['size_human']:<14} {d['model']}")
     print("━" * 68)
@@ -323,7 +335,8 @@ def _https_only(url: str, what: str = "URL") -> str:
         raise ValueError(
             f"{what} is not an https:// URL: {url!r}. Refusing to fetch it, "
             f"because the value came from a network response and would be "
-            f"written straight to disk.")
+            f"written straight to disk."
+        )
     return url
 
 
@@ -366,7 +379,11 @@ def _fetch_github_release(repo: str, version: str) -> dict[str, Any]:
         # Fallback to gh release view if gh is installed
         if shutil.which("gh"):
             try:
-                tag_arg = "latest" if version.lower() == "latest" else (version if version.startswith("v") else f"v{version}")
+                tag_arg = (
+                    "latest"
+                    if version.lower() == "latest"
+                    else (version if version.startswith("v") else f"v{version}")
+                )
                 gh_cmd = ["gh", "release", "view", tag_arg, "-R", repo, "--json", "tagName,assets"]
                 res = subprocess.run(gh_cmd, capture_output=True, text=True, check=False)
                 if res.returncode == 0 and res.stdout.strip():
@@ -446,7 +463,10 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 
     if not iso_asset:
         target_tag = tag_name
-        print(f"\n[s0 live]  WARN : Release {target_tag} does not contain a bootable Live ISO asset.", file=sys.stderr)
+        print(
+            f"\n[s0 live]  WARN : Release {target_tag} does not contain a bootable Live ISO asset.",
+            file=sys.stderr,
+        )
         print("[s0 live]  Checking for the latest available Live ISO from older releases...", file=sys.stderr)
 
         fallback_rel = None
@@ -510,7 +530,9 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                 pass
 
         if fallback_iso:
-            print(f"[s0 live]  Fallback release identified: {fallback_tag} containing '{fallback_iso['name']}' ({_format_size(fallback_iso.get('size', 0))})")
+            print(
+                f"[s0 live]  Fallback release identified: {fallback_tag} containing '{fallback_iso['name']}' ({_format_size(fallback_iso.get('size', 0))})"
+            )
             accept_redirect = False
             allow_older = getattr(args, "allow_older", False)
 
@@ -522,15 +544,25 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                         file=sys.stderr,
                     )
                     return 1
-                print(f"[s0 live]  Non-interactive mode: proceeding with fallback release {fallback_tag} (--allow-older specified).")
+                print(
+                    f"[s0 live]  Non-interactive mode: proceeding with fallback release {fallback_tag} (--allow-older specified)."
+                )
                 accept_redirect = True
             else:
                 if allow_older:
-                    print(f"[s0 live]  Proceeding with fallback release {fallback_tag} (--allow-older specified).")
+                    print(
+                        f"[s0 live]  Proceeding with fallback release {fallback_tag} (--allow-older specified)."
+                    )
                     accept_redirect = True
                 else:
                     try:
-                        ans = input(f"[s0 live]  Would you like to redirect and download the Live ISO from older release {fallback_tag}? [y/N]: ").strip().lower()
+                        ans = (
+                            input(
+                                f"[s0 live]  Would you like to redirect and download the Live ISO from older release {fallback_tag}? [y/N]: "
+                            )
+                            .strip()
+                            .lower()
+                        )
                     except (KeyboardInterrupt, EOFError):
                         print("\n[s0 live]  Download cancelled.")
                         return 130
@@ -555,7 +587,10 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                     elif name == "SHA256SUMS.txt":
                         sha_sums_asset = a
         else:
-            print(f"[s0 live]  ERROR : No Live ISO asset (.hybrid.iso) found in release {target_tag} or any older release.", file=sys.stderr)
+            print(
+                f"[s0 live]  ERROR : No Live ISO asset (.hybrid.iso) found in release {target_tag} or any older release.",
+                file=sys.stderr,
+            )
             return 1
 
     iso_name = iso_asset["name"]
@@ -597,7 +632,19 @@ def cmd_live_download(args: argparse.Namespace) -> int:
         if shutil.which("gh"):
             try:
                 print("[s0 live]  Fetching release asset via GitHub CLI...")
-                cmd = ["gh", "release", "download", tag_name, "-R", repo, "-p", iso_name, "--dir", str(out_dir), "--clobber"]
+                cmd = [
+                    "gh",
+                    "release",
+                    "download",
+                    tag_name,
+                    "-R",
+                    repo,
+                    "-p",
+                    iso_name,
+                    "--dir",
+                    str(out_dir),
+                    "--clobber",
+                ]
                 res = subprocess.run(cmd, check=False)
                 if res.returncode != 0 or not target_iso.is_file():
                     raise e
@@ -624,13 +671,25 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             if shutil.which("gh"):
                 try:
                     res = subprocess.run(
-                        ["gh", "release", "download", tag_name, "-R", repo, "-p", sha_asset["name"], "--dir", str(out_dir), "--clobber"],
-                        capture_output=True, check=False
+                        [
+                            "gh",
+                            "release",
+                            "download",
+                            tag_name,
+                            "-R",
+                            repo,
+                            "-p",
+                            sha_asset["name"],
+                            "--dir",
+                            str(out_dir),
+                            "--clobber",
+                        ],
+                        capture_output=True,
+                        check=False,
                     )
                     local_sha = out_dir / sha_asset["name"]
                     if local_sha.is_file():
-                        expected_sha = _parse_sha256_document(
-                            local_sha.read_text(encoding="utf-8"), iso_name)
+                        expected_sha = _parse_sha256_document(local_sha.read_text(encoding="utf-8"), iso_name)
                 except Exception:
                     pass
 
@@ -644,8 +703,21 @@ def cmd_live_download(args: argparse.Namespace) -> int:
             if shutil.which("gh"):
                 try:
                     res = subprocess.run(
-                        ["gh", "release", "download", tag_name, "-R", repo, "-p", "SHA256SUMS.txt", "--dir", str(out_dir), "--clobber"],
-                        capture_output=True, check=False
+                        [
+                            "gh",
+                            "release",
+                            "download",
+                            tag_name,
+                            "-R",
+                            repo,
+                            "-p",
+                            "SHA256SUMS.txt",
+                            "--dir",
+                            str(out_dir),
+                            "--clobber",
+                        ],
+                        capture_output=True,
+                        check=False,
                     )
                     local_sums = out_dir / "SHA256SUMS.txt"
                     if local_sums.is_file():
@@ -666,7 +738,9 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 
     if expected_sha:
         if actual_sha == expected_sha:
-            print(f"[s0 live]  OK : Integrity Verified: SHA-256 matches official release ({actual_sha[:16]}...)")
+            print(
+                f"[s0 live]  OK : Integrity Verified: SHA-256 matches official release ({actual_sha[:16]}...)"
+            )
         else:
             print("[s0 live]  ERROR : Integrity Error: Checksum mismatch!", file=sys.stderr)
             print(f"    Expected: {expected_sha}", file=sys.stderr)
@@ -677,7 +751,10 @@ def cmd_live_download(args: argparse.Namespace) -> int:
                 pass
             return 1
     else:
-        print("[s0 live]  ERROR : No official checksum found to verify against. Cannot verify ISO integrity.", file=sys.stderr)
+        print(
+            "[s0 live]  ERROR : No official checksum found to verify against. Cannot verify ISO integrity.",
+            file=sys.stderr,
+        )
         try:
             target_iso.unlink()
         except OSError:
@@ -698,6 +775,7 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 # 4. Command: s0 live flash
 # ---------------------------------------------------------------------------
 
+
 def _unmount_partitions(target: str) -> bool:
     """Unmount active partitions on target drive across platforms."""
     if sys.platform == "linux":
@@ -717,7 +795,9 @@ def _unmount_partitions(target: str) -> bool:
     elif sys.platform == "darwin":
         try:
             disk_target = target.replace("/dev/rdisk", "/dev/disk")
-            res = subprocess.run(["diskutil", "unmountDisk", disk_target], capture_output=True, text=True, check=False)
+            res = subprocess.run(
+                ["diskutil", "unmountDisk", disk_target], capture_output=True, text=True, check=False
+            )
             return res.returncode == 0
         except Exception:
             return False
@@ -756,9 +836,7 @@ def validate_iso_image(iso_path: Path) -> tuple[bool, str]:
 
     # The system area lives at 0x8000..0x9000 and must be inside the file.
     if size < 0x9000:
-        return False, (
-            f"only {size} bytes; an ISO 9660 system area needs at least "
-            f"{0x9000} (36864)")
+        return False, (f"only {size} bytes; an ISO 9660 system area needs at least {0x9000} (36864)")
 
     try:
         with open(iso_path, "rb") as fh:
@@ -771,20 +849,23 @@ def validate_iso_image(iso_path: Path) -> tuple[bool, str]:
         head = _describe_leading_bytes(iso_path)
         return False, (
             f"no ISO 9660 signature ('CD001') in the 32 KiB system area, so this is "
-            f"not an ISO image at all. It starts with {head}.")
+            f"not an ISO image at all. It starts with {head}."
+        )
 
     descriptor = system_area[1:6]
     if descriptor != b"CD001":
         return False, (
             f"expected the primary volume descriptor at offset 0x8001, found "
-            f"{descriptor!r}. This is not a standard-layout ISO.")
+            f"{descriptor!r}. This is not a standard-layout ISO."
+        )
 
     boot_type = system_area[7]
     if boot_type not in (0x00, 0x88):
         return False, (
             f"the primary volume descriptor does not indicate a boot record "
             f"(type byte {boot_type:#04x}, expected 0x00 'no boot' or 0x88 "
-            f"'El Torito'). This ISO will not produce a bootable USB stick.")
+            f"'El Torito'). This ISO will not produce a bootable USB stick."
+        )
 
     if b"EL TORITO SPEC" not in system_area:
         # Not fatal on its own -- some images boot via a partition-table hybrid
@@ -792,7 +873,8 @@ def validate_iso_image(iso_path: Path) -> tuple[bool, str]:
         return True, (
             "ISO 9660 structure verified, but no El Torito boot record was found. "
             "This may be a hybrid image that boots via the partition table, or it "
-            "may not be bootable at all.")
+            "may not be bootable at all."
+        )
 
     return True, "ISO 9660 structure and El Torito boot record verified."
 
@@ -851,16 +933,22 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 
     iso_size = iso_path.stat().st_size
     if iso_size < 100 * 1024 * 1024:
-        print(f"[s0 live]  ERROR : Selected file {iso_path.name} is too small ({_format_size(iso_size)}) to be a valid Live ISO.", file=sys.stderr)
+        print(
+            f"[s0 live]  ERROR : Selected file {iso_path.name} is too small ({_format_size(iso_size)}) to be a valid Live ISO.",
+            file=sys.stderr,
+        )
         return 2
 
     ok, detail = validate_iso_image(iso_path)
     if not ok:
         print(f"[s0 live]  ERROR : {iso_path.name} is not a usable Live ISO.", file=sys.stderr)
         print(f"            {detail}", file=sys.stderr)
-        print("            Refusing to flash it: the write would destroy the target "
-              "device and the stick would not boot, so the loss is discovered only "
-              "afterwards.", file=sys.stderr)
+        print(
+            "            Refusing to flash it: the write would destroy the target "
+            "device and the stick would not boot, so the loss is discovered only "
+            "afterwards.",
+            file=sys.stderr,
+        )
         return 2
     print(f"[s0 live]  Image check: {detail}", file=sys.stderr)
 
@@ -869,9 +957,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
         print("━" * 68)
         print(f"  Source ISO:       {iso_path.name} ({_format_size(iso_size)})")
         print(f"  Target Device:    {target_arg}")
-        verified = any(
-            d["path"].lower() == target_arg.lower() for d in get_removable_usb_devices()
-        )
+        verified = any(d["path"].lower() == target_arg.lower() for d in get_removable_usb_devices())
         print(f"  Verified USB:     {'yes' if verified else 'no (--force would be required)'}")
         print()
         print("[s0 live]  Planned action: write the ISO to the target device.")
@@ -880,7 +966,10 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 
     # Check root privileges
     if sys.platform in ("linux", "darwin") and hasattr(os, "geteuid") and os.geteuid() != 0:
-        print("[s0 live]  ERROR : 's0 live flash' requires root/administrator privileges to write directly to block devices.", file=sys.stderr)
+        print(
+            "[s0 live]  ERROR : 's0 live flash' requires root/administrator privileges to write directly to block devices.",
+            file=sys.stderr,
+        )
         print(f"    Run: sudo s0 live flash --target {target_arg} --iso {iso_path}", file=sys.stderr)
         return 1
 
@@ -900,13 +989,19 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
             break
 
     if not matched_device:
-        print(f"[s0 live]  WARN : Device '{target_arg}' was not verified as a removable USB drive.", file=sys.stderr)
+        print(
+            f"[s0 live]  WARN : Device '{target_arg}' was not verified as a removable USB drive.",
+            file=sys.stderr,
+        )
         print("    Available removable USB devices:", file=sys.stderr)
         for d in devs:
             print(f"      - {d['path']} ({d['model']}, {d['size_human']})", file=sys.stderr)
         print()
         if not getattr(args, "force", False):
-            print("[s0 live]  ERROR : Refusing to write to unverified or potentially internal disk for safety.", file=sys.stderr)
+            print(
+                "[s0 live]  ERROR : Refusing to write to unverified or potentially internal disk for safety.",
+                file=sys.stderr,
+            )
             print("    If you are certain, pass '--force' alongside confirmation.", file=sys.stderr)
             return 2
         # `--force` waives the removable-USB check, not basic existence. Without
@@ -938,7 +1033,10 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 
     target_capacity = matched_device.get("size_bytes", 0)
     if target_capacity and target_capacity < iso_size:
-        print(f"[s0 live]  ERROR : Target USB drive is too small ({matched_device['size_human']}) to hold ISO ({_format_size(iso_size)}).", file=sys.stderr)
+        print(
+            f"[s0 live]  ERROR : Target USB drive is too small ({matched_device['size_human']}) to hold ISO ({_format_size(iso_size)}).",
+            file=sys.stderr,
+        )
         return 2
 
     print("[s0 live]  USB Flash Confirmation :")
@@ -966,7 +1064,11 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
     print("[s0 live]  Unmounting existing filesystems on target drive...")
     _unmount_partitions(matched_device["path"])
 
-    write_target = matched_device.get("raw_path") if (sys.platform == "darwin" and matched_device.get("raw_path")) else matched_device["path"]
+    write_target = (
+        matched_device.get("raw_path")
+        if (sys.platform == "darwin" and matched_device.get("raw_path"))
+        else matched_device["path"]
+    )
 
     print(f"[s0 live]  Writing {iso_path.name} to {write_target}...")
     bar = ProgressBar(iso_size, operation="s0 live flash")
@@ -976,6 +1078,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
     try:
         if sys.platform == "win32":
             from s0.platform.windows.s0_eraser import win32_flush_buffers, win32_open_drive_or_partition
+
             f_out = win32_open_drive_or_partition(write_target, write=True)
             with open(iso_path, "rb") as f_in:
                 while True:
@@ -1003,7 +1106,10 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
         bar.finish()
     except KeyboardInterrupt:
         bar.close()
-        print("\n⚠  Flashing interrupted by user (Ctrl+C). USB drive is in an incomplete/unbootable state.", file=sys.stderr)
+        print(
+            "\n⚠  Flashing interrupted by user (Ctrl+C). USB drive is in an incomplete/unbootable state.",
+            file=sys.stderr,
+        )
         return 130
     except Exception as e:
         bar.close()
@@ -1024,10 +1130,14 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 # 5. Command: s0 live build
 # ---------------------------------------------------------------------------
 
+
 def cmd_live_build(args: argparse.Namespace) -> int:
     """Build s0 bare-metal Live ISO from source."""
     if sys.platform != "linux":
-        print("[s0 live]  ERROR : 's0 live build' natively requires the Linux kernel and Debian live-build toolchain.", file=sys.stderr)
+        print(
+            "[s0 live]  ERROR : 's0 live build' natively requires the Linux kernel and Debian live-build toolchain.",
+            file=sys.stderr,
+        )
         print(f"    Current platform: {sys.platform}", file=sys.stderr)
         print()
         print("Tips:")
@@ -1037,7 +1147,10 @@ def cmd_live_build(args: argparse.Namespace) -> int:
         return 1
 
     if hasattr(os, "geteuid") and os.geteuid() != 0:
-        print("[s0 live]  ERROR : 's0 live build' requires root privileges to mount loop devices and configure chroot.", file=sys.stderr)
+        print(
+            "[s0 live]  ERROR : 's0 live build' requires root privileges to mount loop devices and configure chroot.",
+            file=sys.stderr,
+        )
         print("    Run: sudo s0 live build", file=sys.stderr)
         return 1
 
@@ -1070,7 +1183,9 @@ def cmd_live_build(args: argparse.Namespace) -> int:
             return 0
         else:
             print("━" * 68)
-            print(f"[s0 live]  ERROR : Live ISO build failed with exit code {proc.returncode}.", file=sys.stderr)
+            print(
+                f"[s0 live]  ERROR : Live ISO build failed with exit code {proc.returncode}.", file=sys.stderr
+            )
             return proc.returncode
     except Exception as e:
         print(f"[s0 live]  ERROR : Error executing build: {e}", file=sys.stderr)
@@ -1081,6 +1196,7 @@ def cmd_live_build(args: argparse.Namespace) -> int:
 # 6. Argument Parser Registration
 # ---------------------------------------------------------------------------
 
+
 def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
     """Register 'live' subparser."""
     p = subparsers.add_parser("live", help="download, inspect, and flash bootable s0 Live ISO to USB")
@@ -1088,9 +1204,15 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
 
     # download
     d_p = sub.add_parser("download", help="download official s0 Live ISO with SHA-256 validation")
-    d_p.add_argument("--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)")
+    d_p.add_argument(
+        "--version", default="latest", help="release tag to download (default: latest, or e.g. v2.4.0)"
+    )
     d_p.add_argument("--out-dir", default=".", help="directory to save ISO (default: current directory)")
-    d_p.add_argument("--allow-older", action="store_true", help="allow downloading Live ISO from older release if target release lacks an ISO")
+    d_p.add_argument(
+        "--allow-older",
+        action="store_true",
+        help="allow downloading Live ISO from older release if target release lacks an ISO",
+    )
     d_p.set_defaults(func=cmd_live_download)
 
     # devices
@@ -1101,9 +1223,13 @@ def register_live_parser(subparsers: argparse._SubParsersAction) -> None:
     # flash
     f_p = sub.add_parser("flash", help="write s0 Live ISO to removable USB drive")
     f_p.add_argument("--target", "-t", required=True, help="target device path (from 's0 live devices')")
-    f_p.add_argument("--iso", help="path to custom or downloaded ISO (defaults to auto-detecting in current dir)")
+    f_p.add_argument(
+        "--iso", help="path to custom or downloaded ISO (defaults to auto-detecting in current dir)"
+    )
     f_p.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation")
-    f_p.add_argument("--force", action="store_true", help="allow flashing even if drive removable flag is unconfirmed")
+    f_p.add_argument(
+        "--force", action="store_true", help="allow flashing even if drive removable flag is unconfirmed"
+    )
     f_p.set_defaults(func=cmd_live_flash)
 
     # build

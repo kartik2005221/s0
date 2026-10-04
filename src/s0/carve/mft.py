@@ -71,7 +71,7 @@ def parse_nt_time(value: int) -> float | None:
     if value in (0, 0xFFFFFFFFFFFFFFFF, 0x7FFFFFFFFFFFFFFF):
         return None
     seconds = value / 10_000_000 - _EPOCH_DELTA
-    if seconds < 0 or seconds > 4_102_444_800:      # beyond year 2100
+    if seconds < 0 or seconds > 4_102_444_800:  # beyond year 2100
         return None
     return seconds
 
@@ -107,8 +107,7 @@ def apply_fixup(record: bytearray, sector_size: int) -> tuple[bool, int]:
     sectors = (len(record) + sector_size - 1) // sector_size
     if usa_count != sectors + 1:
         raise FixupError(
-            f"update sequence array claims {usa_count - 1} sectors but the record "
-            f"spans {sectors}"
+            f"update sequence array claims {usa_count - 1} sectors but the record spans {sectors}"
         )
 
     verified = True
@@ -128,11 +127,12 @@ def apply_fixup(record: bytearray, sector_size: int) -> tuple[bool, int]:
 @dataclass
 class MftAttribute:
     """One attribute as it appears on disk, with its value already fixup-corrected."""
+
     type: int
     name: str
     non_resident: bool
     resident_value: bytes = b""
-    runs: list[tuple[int, int]] = field(default_factory=list)   # (lcn, length)
+    runs: list[tuple[int, int]] = field(default_factory=list)  # (lcn, length)
     allocated_size: int = 0
     real_size: int = 0
     initialized_size: int = 0
@@ -256,7 +256,7 @@ class MftRecord:
         """
         best = None
         for entry in self.names:
-            if entry.get("namespace") not in (1, 3):        # $FILE_NAME_NAMESPACE_DOS/Win32
+            if entry.get("namespace") not in (1, 3):  # $FILE_NAME_NAMESPACE_DOS/Win32
                 continue
             if entry.get("is_dot") or entry.get("is_dotdot"):
                 continue
@@ -298,6 +298,7 @@ def _first_attribute_offset(record: bytes) -> int | None:
     the first offset that does, which is cheap and only ever runs on records that
     the documented layout would have mis-parsed.
     """
+
     def valid(offset: int) -> bool:
         if offset < 0x2A or offset + 8 > len(record):
             return False
@@ -475,33 +476,38 @@ def parse_mft_record(
                 decoded = raw_name.decode("latin-1", "replace")
             parent_entry = struct.unpack_from("<Q", blob, 0x00)[0]
             fn_flags = struct.unpack_from("<I", blob, 0x38)[0] if len(blob) >= 0x3C else 0
-            names.append({
-                "name": decoded,
-                "namespace": blob[0x41],
-                "parent_ref": (parent_entry & 0x0000FFFFFFFFFFFF,
-                               (parent_entry >> 48) & 0xFFFF),
-                "is_dot": decoded == ".",
-                "is_dotdot": decoded == "..",
-                "allocated_size": (struct.unpack_from("<Q", blob, 0x28)[0]
-                                   if len(blob) >= 0x30 else 0),
-                "real_size": (struct.unpack_from("<Q", blob, 0x30)[0]
-                              if len(blob) >= 0x38 else 0),
-                "flags": fn_flags,
-                # A $FILE_NAME entry marked directory with a matching record
-                # number is the "." link of a directory; the one whose parent
-                # differs is "..". Neither names the object.
-                "is_primary": decoded not in (".", ".."),
-            })
+            names.append(
+                {
+                    "name": decoded,
+                    "namespace": blob[0x41],
+                    "parent_ref": (parent_entry & 0x0000FFFFFFFFFFFF, (parent_entry >> 48) & 0xFFFF),
+                    "is_dot": decoded == ".",
+                    "is_dotdot": decoded == "..",
+                    "allocated_size": (struct.unpack_from("<Q", blob, 0x28)[0] if len(blob) >= 0x30 else 0),
+                    "real_size": (struct.unpack_from("<Q", blob, 0x30)[0] if len(blob) >= 0x38 else 0),
+                    "flags": fn_flags,
+                    # A $FILE_NAME entry marked directory with a matching record
+                    # number is the "." link of a directory; the one whose parent
+                    # differs is "..". Neither names the object.
+                    "is_primary": decoded not in (".", ".."),
+                }
+            )
 
         elif attr_type == ATTR_DATA and not non_resident:
             value_off = struct.unpack_from("<H", record, offset + 0x14)[0]
             value_len = struct.unpack_from("<I", record, offset + 0x10)[0]
-            attrs.append(MftAttribute(
-                type=attr_type, name=name, non_resident=False,
-                resident_value=record[offset + value_off : offset + value_off + value_len],
-                real_size=value_len, allocated_size=value_len, initialized_size=value_len,
-                flags=struct.unpack_from("<H", record, offset + 0x16)[0],
-            ))
+            attrs.append(
+                MftAttribute(
+                    type=attr_type,
+                    name=name,
+                    non_resident=False,
+                    resident_value=record[offset + value_off : offset + value_off + value_len],
+                    real_size=value_len,
+                    allocated_size=value_len,
+                    initialized_size=value_len,
+                    flags=struct.unpack_from("<H", record, offset + 0x16)[0],
+                )
+            )
 
         elif attr_type == ATTR_DATA and non_resident:
             run_off = struct.unpack_from("<H", record, offset + 0x20)[0]
@@ -510,14 +516,21 @@ def parse_mft_record(
             init = struct.unpack_from("<Q", record, offset + 0x38)[0]
             blob = record[offset + run_off : offset + attr_len]
             from .allocation import decode_run_list_raw
-            attrs.append(MftAttribute(
-                type=attr_type, name=name, non_resident=True,
-                runs=decode_run_list_raw(blob),
-                allocated_size=alloc, real_size=real, initialized_size=init,
-                flags=struct.unpack_from("<H", record, offset + 0x16)[0],
-                start_vcn=struct.unpack_from("<Q", record, offset + 0x10)[0],
-                last_vcn=struct.unpack_from("<Q", record, offset + 0x18)[0],
-            ))
+
+            attrs.append(
+                MftAttribute(
+                    type=attr_type,
+                    name=name,
+                    non_resident=True,
+                    runs=decode_run_list_raw(blob),
+                    allocated_size=alloc,
+                    real_size=real,
+                    initialized_size=init,
+                    flags=struct.unpack_from("<H", record, offset + 0x16)[0],
+                    start_vcn=struct.unpack_from("<Q", record, offset + 0x10)[0],
+                    last_vcn=struct.unpack_from("<Q", record, offset + 0x18)[0],
+                )
+            )
 
         elif attr_type == ATTR_ATTRIBUTE_LIST and not non_resident:
             value_off = struct.unpack_from("<H", record, offset + 0x14)[0]
@@ -547,8 +560,7 @@ def parse_mft_record(
     )
 
 
-def read_data(spans: list[tuple[int, int, bool]], handle, partition_offset: int,
-              limit_bytes: int) -> bytes:
+def read_data(spans: list[tuple[int, int, bool]], handle, partition_offset: int, limit_bytes: int) -> bytes:
     """Read reconstructed file content from a list of byte spans.
 
     Sparse spans are emitted as real zero bytes rather than skipped, because the
@@ -572,8 +584,9 @@ def read_data(spans: list[tuple[int, int, bool]], handle, partition_offset: int,
     return b"".join(out)
 
 
-def runs_to_byte_spans(runs: list[tuple[int, int]], cluster_size: int,
-                       limit_bytes: int) -> list[tuple[int, int, bool]]:
+def runs_to_byte_spans(
+    runs: list[tuple[int, int]], cluster_size: int, limit_bytes: int
+) -> list[tuple[int, int, bool]]:
     """Turn cluster runs into (byte_offset, length, is_sparse) spans.
 
     `limit_bytes` caps the total so a corrupt or hostile run list -- a

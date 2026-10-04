@@ -113,6 +113,14 @@ jobs:
       # S607). Anything else is a real finding and should fail the build.
       - name: Ruff (lint, whole tree, blocking)
         run: ruff check --output-format=github .
+      # pre-commit already enforced ruff-format on every commit, so 139 files were
+      # one `pre-commit run` away from being rewritten -- and CI, which is what
+      # actually gates a merge, never checked. A formatter enforced only in a hook
+      # nobody runs is not a standard; it is a suggestion. The tree is now formatted
+      # (verified by AST comparison: zero semantic changes across 69 files) and this
+      # step keeps it that way.
+      - name: Ruff (format, blocking)
+        run: ruff format --check --diff .
 
       - name: EditorConfig and hygiene
         uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1

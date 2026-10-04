@@ -81,8 +81,7 @@ def inline_blocks(html: str, tag: str) -> list[str]:
 
 
 def sha256_b64(text: str) -> str:
-    return "sha256-" + base64.b64encode(
-        hashlib.sha256(text.encode("utf-8")).digest()).decode("ascii")
+    return "sha256-" + base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode("ascii")
 
 
 def parse_blocks(text: str) -> dict[str, int]:
@@ -108,8 +107,7 @@ def csp_for(surface: Surface) -> str:
     # A CSP hash source is only valid when quoted; an unquoted 'sha256-...'
     # makes the browser discard the entire directive, silently removing the
     # protection it was meant to provide.
-    script_src = " ".join(["'self'"] + [f"'{sha256_b64(b)}'" for b in scripts]) \
-        if scripts else "'self'"
+    script_src = " ".join(["'self'"] + [f"'{sha256_b64(b)}'" for b in scripts]) if scripts else "'self'"
     # Presentational inline styles (style="" attributes that exist for layout,
     # not behaviour) require 'unsafe-inline' in style-src. Script injection is
     # the actual threat model here, so script-src stays strict and this
@@ -150,8 +148,7 @@ def main() -> int:
     stale: list[str] = []
     unknown = set(found) - {b for s in SURFACES for b in s.blocks}
     if unknown:
-        print(f"error: _headers has CSP blocks owned by no surface: {sorted(unknown)}",
-              file=sys.stderr)
+        print(f"error: _headers has CSP blocks owned by no surface: {sorted(unknown)}", file=sys.stderr)
         return 1
 
     for surface in SURFACES:
@@ -162,16 +159,20 @@ def main() -> int:
 
         missing = [b for b in surface.blocks if b not in found]
         if missing:
-            print(f"error: {HEADERS.relative_to(REPO)} has no CSP block for "
-                  f"{surface.comment} at {missing}", file=sys.stderr)
+            print(
+                f"error: {HEADERS.relative_to(REPO)} has no CSP block for {surface.comment} at {missing}",
+                file=sys.stderr,
+            )
             return 1
 
         for block in surface.blocks:
             line = lines[found[block]].rstrip()
             if args.write:
                 lines[found[block]] = want
-                print(f"wrote {HEADERS.relative_to(REPO)} [{block}] "
-                      f"({surface.comment}): {len(scripts)} inline script(s)")
+                print(
+                    f"wrote {HEADERS.relative_to(REPO)} [{block}] "
+                    f"({surface.comment}): {len(scripts)} inline script(s)"
+                )
             elif line != want:
                 stale.append(f"{block} ({surface.comment})")
 
@@ -186,8 +187,7 @@ def main() -> int:
         HEADERS.write_text("\n".join(lines), encoding="utf-8")
 
     if args.check and stale:
-        print("\nerror: these blocks do not match their page's inline scripts:",
-              file=sys.stderr)
+        print("\nerror: these blocks do not match their page's inline scripts:", file=sys.stderr)
         for s in stale:
             print(f"  {s}", file=sys.stderr)
         print("\nRun: python tools/sync_csp.py --write", file=sys.stderr)

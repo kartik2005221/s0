@@ -58,8 +58,7 @@ class Tiers:
     DESTRUCT = "destruct"
     NONE = "unavailable"
 
-    ORDER = (FIRMWARE_PURGE, CRYPTOGRAPHIC_ERASE, SECURE_DEALLOCATION,
-             HOST_OVERWRITE, DESTRUCT, NONE)
+    ORDER = (FIRMWARE_PURGE, CRYPTOGRAPHIC_ERASE, SECURE_DEALLOCATION, HOST_OVERWRITE, DESTRUCT, NONE)
 
     RANK = {
         FIRMWARE_PURGE: 5,
@@ -84,7 +83,7 @@ class DeviceCapabilities:
     probed: bool = False
     probe_method: str = "not probed"
     # transport family
-    transport: str = "unknown"        # ata | scsi | nvme | virtio | file | loop
+    transport: str = "unknown"  # ata | scsi | nvme | virtio | file | loop
     controller: str = ""
     model: str = ""
     serial: str = ""
@@ -99,7 +98,7 @@ class DeviceCapabilities:
     nvme_sanicap_crypto_erase: bool = False
     nvme_sanicap_block_erase: bool = False
     nvme_sanicap_overwrite: bool = False
-    nvme_sprrs: bool = False           # Purge Required support
+    nvme_sprrs: bool = False  # Purge Required support
     # SCSI
     scsi_sanitize_block_erase: bool = False
     scsi_sanitize_crypto_erase: bool = False
@@ -129,76 +128,147 @@ class DeviceCapabilities:
         """
         out: list[tuple[str, str, str]] = []
         if self.ata_sanitize_block_erase:
-            out.append(("ATA_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE,
-                        "ATA Device Configuration/Sanitize feature set, command 0xB4, "
-                        "FEATURE 0x0012 (BkEr)"))
+            out.append(
+                (
+                    "ATA_SANITIZE_BLOCK_ERASE",
+                    Tiers.FIRMWARE_PURGE,
+                    "ATA Device Configuration/Sanitize feature set, command 0xB4, FEATURE 0x0012 (BkEr)",
+                )
+            )
         if self.ata_sanitize_crypto_scramble:
-            out.append(("ATA_SANITIZE_CRYPTO_SCRAMBLE", Tiers.CRYPTOGRAPHIC_ERASE,
-                        "ATA Sanitize CRYPTO SCRAMBLE, 0xB4 / FEATURE 0x0011 (Cryp)"))
+            out.append(
+                (
+                    "ATA_SANITIZE_CRYPTO_SCRAMBLE",
+                    Tiers.CRYPTOGRAPHIC_ERASE,
+                    "ATA Sanitize CRYPTO SCRAMBLE, 0xB4 / FEATURE 0x0011 (Cryp)",
+                )
+            )
         if self.ata_sanitize_overwrite:
-            out.append(("ATA_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE,
-                        "ATA Sanitize OVERWRITE, 0xB4 / FEATURE 0x0014, NSECT = pass count"))
+            out.append(
+                (
+                    "ATA_SANITIZE_OVERWRITE",
+                    Tiers.FIRMWARE_PURGE,
+                    "ATA Sanitize OVERWRITE, 0xB4 / FEATURE 0x0014, NSECT = pass count",
+                )
+            )
         if self.nvme_sanicap_crypto_erase:
-            out.append(("NVME_SANITIZE_CRYPTO_ERASE", Tiers.CRYPTOGRAPHIC_ERASE,
-                        "NVMe Sanitize SANACT=4 (Crypto Erase), admin opcode 0x84"))
+            out.append(
+                (
+                    "NVME_SANITIZE_CRYPTO_ERASE",
+                    Tiers.CRYPTOGRAPHIC_ERASE,
+                    "NVMe Sanitize SANACT=4 (Crypto Erase), admin opcode 0x84",
+                )
+            )
         if self.nvme_sanicap_block_erase:
-            out.append(("NVME_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE,
-                        "NVMe Sanitize SANACT=2 (Block Erase), admin opcode 0x84"))
+            out.append(
+                (
+                    "NVME_SANITIZE_BLOCK_ERASE",
+                    Tiers.FIRMWARE_PURGE,
+                    "NVMe Sanitize SANACT=2 (Block Erase), admin opcode 0x84",
+                )
+            )
         if self.nvme_sanicap_overwrite:
-            out.append(("NVME_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE,
-                        "NVMe Sanitize SANACT=3 (Overwrite), admin opcode 0x84, CDW11 = OVRPAT"))
+            out.append(
+                (
+                    "NVME_SANITIZE_OVERWRITE",
+                    Tiers.FIRMWARE_PURGE,
+                    "NVMe Sanitize SANACT=3 (Overwrite), admin opcode 0x84, CDW11 = OVRPAT",
+                )
+            )
         if self.nvme_sprrs:
-            out.append(("NVME_SANITIZE_PURGE_REQUIRED", Tiers.FIRMWARE_PURGE,
-                        "NVMe Sanitize SANACT=6 with SPRRS: the only NVMe option that "
-                        "asserts IEEE 2883 conformance"))
+            out.append(
+                (
+                    "NVME_SANITIZE_PURGE_REQUIRED",
+                    Tiers.FIRMWARE_PURGE,
+                    "NVMe Sanitize SANACT=6 with SPRRS: the only NVMe option that "
+                    "asserts IEEE 2883 conformance",
+                )
+            )
         if self.scsi_sanitize_crypto_erase:
-            out.append(("SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE", Tiers.CRYPTOGRAPHIC_ERASE,
-                        "SCSI SANITIZE opcode 0x48, service action 0x03"))
+            out.append(
+                (
+                    "SCSI_SANITIZE_CRYPTOGRAPHIC_ERASE",
+                    Tiers.CRYPTOGRAPHIC_ERASE,
+                    "SCSI SANITIZE opcode 0x48, service action 0x03",
+                )
+            )
         if self.scsi_sanitize_block_erase:
-            out.append(("SCSI_SANITIZE_BLOCK_ERASE", Tiers.FIRMWARE_PURGE,
-                        "SCSI SANITIZE opcode 0x48, service action 0x02"))
+            out.append(
+                (
+                    "SCSI_SANITIZE_BLOCK_ERASE",
+                    Tiers.FIRMWARE_PURGE,
+                    "SCSI SANITIZE opcode 0x48, service action 0x02",
+                )
+            )
         if self.scsi_sanitize_overwrite:
-            out.append(("SCSI_SANITIZE_OVERWRITE", Tiers.FIRMWARE_PURGE,
-                        "SCSI SANITIZE opcode 0x48, service action 0x01 + parameter list"))
+            out.append(
+                (
+                    "SCSI_SANITIZE_OVERWRITE",
+                    Tiers.FIRMWARE_PURGE,
+                    "SCSI SANITIZE opcode 0x48, service action 0x01 + parameter list",
+                )
+            )
         if self.blkdiscard:
-            out.append(("BLKDISCARD", Tiers.SECURE_DEALLOCATION,
-                        "kernel BLKDISCARD ioctl -> device deallocate/unmap"))
-        out.append(("OVERWRITE_ZERO_1PASS", Tiers.HOST_OVERWRITE,
-                    "host single-pass overwrite of the full addressable space"))
+            out.append(
+                (
+                    "BLKDISCARD",
+                    Tiers.SECURE_DEALLOCATION,
+                    "kernel BLKDISCARD ioctl -> device deallocate/unmap",
+                )
+            )
+        out.append(
+            (
+                "OVERWRITE_ZERO_1PASS",
+                Tiers.HOST_OVERWRITE,
+                "host single-pass overwrite of the full addressable space",
+            )
+        )
         return out
 
     def best_tier(self) -> str:
         return Tiers.best(*[t for _, t, _ in self.available_methods()])
 
     def purge_capable(self) -> bool:
-        return any(t in (Tiers.FIRMWARE_PURGE, Tiers.CRYPTOGRAPHIC_ERASE)
-                   for _, t, _ in self.available_methods())
+        return any(
+            t in (Tiers.FIRMWARE_PURGE, Tiers.CRYPTOGRAPHIC_ERASE) for _, t, _ in self.available_methods()
+        )
 
     def summary_lines(self) -> list[str]:
         lines = [f"Transport            : {self.transport}"]
         if self.controller:
             lines.append(f"Controller           : {self.controller}")
         if self.rotational is not None:
-            lines.append(f"Media                : {'rotational (HDD)' if self.rotational else 'non-rotational (flash)'}")
-        lines.append("ATA Sanitize (0xB4)  : "
-                     + ("supported" if self.ata_sanitize_supported else "not supported"))
+            lines.append(
+                f"Media                : {'rotational (HDD)' if self.rotational else 'non-rotational (flash)'}"
+            )
+        lines.append(
+            "ATA Sanitize (0xB4)  : " + ("supported" if self.ata_sanitize_supported else "not supported")
+        )
         if self.ata_sanitize_supported:
             lines.append("  BLOCK ERASE EXT    : " + _yn(self.ata_sanitize_block_erase))
             lines.append("  CRYPTO SCRAMBLE EXT: " + _yn(self.ata_sanitize_crypto_scramble))
             lines.append("  OVERWRITE EXT      : " + _yn(self.ata_sanitize_overwrite))
-        lines.append("NVMe SANICAP         : "
-                     + (f"crypto={_yn(self.nvme_sanicap_crypto_erase)} block={_yn(self.nvme_sanicap_block_erase)} overwrite={_yn(self.nvme_sanicap_overwrite)} sprrs={_yn(self.nvme_sprrs)}"))
-        lines.append(f"SCSI SANITIZE (0x48) : block={_yn(self.scsi_sanitize_block_erase)} crypto={_yn(self.scsi_sanitize_crypto_erase)} overwrite={_yn(self.scsi_sanitize_overwrite)}")
+        lines.append(
+            "NVMe SANICAP         : "
+            + (
+                f"crypto={_yn(self.nvme_sanicap_crypto_erase)} block={_yn(self.nvme_sanicap_block_erase)} overwrite={_yn(self.nvme_sanicap_overwrite)} sprrs={_yn(self.nvme_sprrs)}"
+            )
+        )
+        lines.append(
+            f"SCSI SANITIZE (0x48) : block={_yn(self.scsi_sanitize_block_erase)} crypto={_yn(self.scsi_sanitize_crypto_erase)} overwrite={_yn(self.scsi_sanitize_overwrite)}"
+        )
         lines.append("Kernel BLKDISCARD    : " + _yn(self.blkdiscard))
         if self.hpa_present is not None:
             lines.append("HPA present          : " + _yn(self.hpa_present))
         if self.dco_present is not None:
             lines.append("DCO present          : " + _yn(self.dco_present))
-        for flag, label in ((self.is_raid_member, "RAID member"),
-                            (self.is_dm_device, "device-mapper device"),
-                            (self.is_lvm, "LVM physical volume"),
-                            (self.is_loop, "loop device"),
-                            (self.is_mounted, "currently mounted")):
+        for flag, label in (
+            (self.is_raid_member, "RAID member"),
+            (self.is_dm_device, "device-mapper device"),
+            (self.is_lvm, "LVM physical volume"),
+            (self.is_loop, "loop device"),
+            (self.is_mounted, "currently mounted"),
+        ):
             if flag:
                 lines.append(f"WARNING             : target is a {label}")
         return lines
@@ -252,8 +322,7 @@ def probe_ata(dev: str, caps: DeviceCapabilities) -> None:
         return
     rc, out, err = _run(["hdparm", "-I", dev])
     if rc != 0 or "ATA device" not in out:
-        caps.notes.append(f"hdparm -I did not identify {dev} as an ATA device "
-                          f"({(err or out).strip()[:120]})")
+        caps.notes.append(f"hdparm -I did not identify {dev} as an ATA device ({(err or out).strip()[:120]})")
         return
     caps.transport = "ata"
     caps.probed = True
@@ -266,8 +335,10 @@ def probe_ata(dev: str, caps: DeviceCapabilities) -> None:
     if m:
         caps.serial = m.group(1).strip()
 
-    caps.ata_sanitize_block_erase = bool(re.search(r"Sanitize.*block erase|SANITIZE.*supported", out, re.I)) \
+    caps.ata_sanitize_block_erase = (
+        bool(re.search(r"Sanitize.*block erase|SANITIZE.*supported", out, re.I))
         and "does not support" not in out.lower()
+    )
     rc2, out2, _ = _run(["hdparm", "-I", dev])
     # hdparm prints the raw identify words; decode the Sanitize flags explicitly.
     for word in re.findall(r"^\s*([0-9a-f]{4})\s*[:=]\s*([0-9a-f]{4})", out2, re.M):
@@ -317,8 +388,10 @@ def probe_nvme(dev: str, caps: DeviceCapabilities) -> None:
 
     rc, out, err = _run(["nvme", "id-ctrl", "-H", ctrl])
     if rc != 0 or "sanicap" not in out:
-        caps.notes.append("nvme id-ctrl did not report a sanicap field; "
-                          "NVMe sanitize capability is unknown, not assumed absent")
+        caps.notes.append(
+            "nvme id-ctrl did not report a sanicap field; "
+            "NVMe sanitize capability is unknown, not assumed absent"
+        )
         return
     m = re.search(r"^sanicap\s*:\s*(0x[0-9a-fA-F]+)", out, re.M)
     if not m:
@@ -329,8 +402,10 @@ def probe_nvme(dev: str, caps: DeviceCapabilities) -> None:
     caps.nvme_sanicap_overwrite = bool(val & (1 << 2))
     caps.nvme_sprrs = bool(val & (1 << 29))
     if val & (1 << 29):
-        caps.notes.append("NDI set: the controller will not deallocate after sanitize, "
-                          "so free space may remain readable until overwritten")
+        caps.notes.append(
+            "NDI set: the controller will not deallocate after sanitize, "
+            "so free space may remain readable until overwritten"
+        )
 
     m = re.search(r"^sn\s*:\s*(.+)$", out, re.M)
     if m:
@@ -408,8 +483,9 @@ def probe_kernel(dev: str, caps: DeviceCapabilities) -> None:
     holders = sysblock / "holders"
     if holders.is_dir() and any(holders.iterdir()):
         caps.is_dm_device = True
-        caps.notes.append("this device is held by a device-mapper/RAID layer; a host "
-                          "overwrite will not reach the media")
+        caps.notes.append(
+            "this device is held by a device-mapper/RAID layer; a host overwrite will not reach the media"
+        )
 
     if (sysblock / "dm" / "name").exists():
         caps.is_lvm = True
@@ -485,7 +561,8 @@ def probe_capabilities(dev: str, *, kind: str = "block") -> DeviceCapabilities:
         caps.errors.append(
             f"could not determine the sanitization capabilities of {dev}; s0 will not "
             f"assume a firmware method is available, and will not assume it is absent "
-            f"either. Supply --key/--force only with a documented reason.")
+            f"either. Supply --key/--force only with a documented reason."
+        )
     return caps
 
 
@@ -495,6 +572,7 @@ def sys_block_exists(dev: str) -> bool:
 
 class LadderStep(TypedDict):
     """One rung: a method, the tier it reaches, and how it achieves it."""
+
     method: str
     tier: str
     mechanism: str
@@ -508,6 +586,7 @@ class LadderPlan(TypedDict):
     serialiser indexed into it blind. A structured result deserves a structured
     type; that is what lets mypy catch a renamed key at the point of use.
     """
+
     requested_tier: str
     satisfiable: bool
     best_available_tier: str
@@ -567,8 +646,6 @@ def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> Ladd
         "satisfiable": satisfiable,
         "best_available_tier": caps.best_tier(),
         "selected": methods[0][0] if methods else None,
-        "ladder": [
-            {"method": m, "tier": t, "mechanism": mech} for m, t, mech in methods
-        ],
+        "ladder": [{"method": m, "tier": t, "mechanism": mech} for m, t, mech in methods],
         "refusal_reason": refusal_reason,
     }

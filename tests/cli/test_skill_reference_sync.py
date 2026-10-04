@@ -21,26 +21,28 @@ REFERENCE = REPO / "skills" / "s0-forensics" / "references" / "carving-signature
 
 
 def test_the_carving_reference_is_in_sync():
-    r = subprocess.run([sys.executable, str(GENERATOR), "--check"],
-                       capture_output=True, text=True, cwd=REPO)
+    r = subprocess.run([sys.executable, str(GENERATOR), "--check"], capture_output=True, text=True, cwd=REPO)
     assert r.returncode == 0, (
         f"{REFERENCE.name} is out of date with the signature table.\n"
-        f"run: python tools/gen_carving_reference.py\n{r.stdout}{r.stderr}")
+        f"run: python tools/gen_carving_reference.py\n{r.stdout}{r.stderr}"
+    )
 
 
 def test_the_reference_does_not_understate_the_tool():
     """The specific regression: the reference claimed 10 signatures."""
     from s0.carve.signatures import SIGNATURES
+
     text = REFERENCE.read_text(encoding="utf-8")
     assert f"{len(SIGNATURES)} signatures" in text, (
-        "the reference's headline signature count does not match the table")
+        "the reference's headline signature count does not match the table"
+    )
 
 
 def test_every_extension_in_the_table_appears_in_the_reference():
     from s0.carve.signatures import SIGNATURES
+
     text = REFERENCE.read_text(encoding="utf-8")
-    missing = sorted({s.extension.lower() for s in SIGNATURES
-                      if f"`{s.extension.lower()}`" not in text})
+    missing = sorted({s.extension.lower() for s in SIGNATURES if f"`{s.extension.lower()}`" not in text})
     assert not missing, f"extensions absent from the reference: {missing}"
 
 
@@ -48,10 +50,12 @@ def test_the_unresolved_extensions_are_named():
     """An agent must be able to see which formats have no derived length."""
     from s0.carve import boundary
     from s0.carve.signatures import SIGNATURES
+
     text = REFERENCE.read_text(encoding="utf-8")
     section = text.split("Extensions without a structural boundary rule")[-1]
-    unresolved = sorted({s.extension.lower() for s in SIGNATURES
-                         if not boundary.has_boundary_rule(s.extension.lower())})
+    unresolved = sorted(
+        {s.extension.lower() for s in SIGNATURES if not boundary.has_boundary_rule(s.extension.lower())}
+    )
     for ext in unresolved:
         assert f"`{ext}`" in section, f"{ext} has no boundary rule but is not listed"
 
@@ -62,8 +66,9 @@ def test_the_skill_states_the_sampling_bound_rather_than_the_sample_count():
     skill = (REPO / "skills" / "s0-forensics" / "SKILL.md").read_text(encoding="utf-8")
     assert "residual_fraction_upper_bound_ppm" in skill
     assert "4.5%" in skill, "the bound for 64 samples should be stated"
-    assert "64 post-wipe verification blocks with 0 non-zero hits" not in skill, \
+    assert "64 post-wipe verification blocks with 0 non-zero hits" not in skill, (
         "the sample count is still presented as the evidence"
+    )
 
 
 def test_the_skill_cites_the_current_nist_revision():
@@ -74,8 +79,15 @@ def test_the_skill_cites_the_current_nist_revision():
 
 def test_the_skill_documents_the_new_capabilities():
     skill = (REPO / "skills" / "s0-forensics" / "SKILL.md").read_text(encoding="utf-8")
-    for term in ("--hash-set", "--bodyfile", "--gaps-bodyfile", "--session",
-                 "Matroska", "mfhd", "Cluster.Timestamp"):
+    for term in (
+        "--hash-set",
+        "--bodyfile",
+        "--gaps-bodyfile",
+        "--session",
+        "Matroska",
+        "mfhd",
+        "Cluster.Timestamp",
+    ):
         assert term in skill, f"{term} is not documented in the skill"
 
 
@@ -121,15 +133,24 @@ def test_every_published_doc_cites_the_current_nist_revision():
             # Allowed only when the sentence is explicitly historical.
             historical = any(
                 token in line
-                for token in ("withdrew", "withdrawn", "replaced", "superseded",
-                              "used to", "previously", "older", "Rev. 1's",
-                              "moved from", "revised to", "was")
+                for token in (
+                    "withdrew",
+                    "withdrawn",
+                    "replaced",
+                    "superseded",
+                    "used to",
+                    "previously",
+                    "older",
+                    "Rev. 1's",
+                    "moved from",
+                    "revised to",
+                    "was",
+                )
             )
             if not historical:
                 offenders.append(f"{path.relative_to(REPO)}:{lineno}: {line.strip()[:90]}")
-    assert not offenders, (
-        "These docs still cite NIST SP 800-88 Rev. 1 as current:\n  "
-        + "\n  ".join(offenders)
+    assert not offenders, "These docs still cite NIST SP 800-88 Rev. 1 as current:\n  " + "\n  ".join(
+        offenders
     )
 
 
@@ -153,13 +174,10 @@ def test_no_doc_makes_a_whole_media_erasure_guarantee():
         text = path.read_text(encoding="utf-8").lower()
         for phrase in banned:
             if phrase in text:
-                lineno = next(
-                    (i for i, line in enumerate(text.splitlines(), 1) if phrase in line), 0
-                )
+                lineno = next((i for i, line in enumerate(text.splitlines(), 1) if phrase in line), 0)
                 offenders.append(f"{path.relative_to(REPO)}:{lineno}: ...{phrase}...")
     assert not offenders, (
-        "Whole-media erasure guarantees found; state the sampling bound instead:\n  "
-        + "\n  ".join(offenders)
+        "Whole-media erasure guarantees found; state the sampling bound instead:\n  " + "\n  ".join(offenders)
     )
 
 
@@ -189,8 +207,7 @@ def test_help_screens_state_the_sampling_bound():
         "confidence for the default 64 blocks), not just the sample count."
     )
     assert "number of readback samples to verify (default: 64)" not in main, (
-        "the old --verify-samples help implied full verification; it should "
-        "describe the bound instead."
+        "the old --verify-samples help implied full verification; it should describe the bound instead."
     )
 
 

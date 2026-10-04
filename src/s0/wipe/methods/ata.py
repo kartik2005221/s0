@@ -42,9 +42,7 @@ TEMP_PASSWORD = generate_temp_password()
 
 
 def _run(cmd: list[str], timeout: int | None = None) -> tuple[int, str, str]:
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=timeout, check=False
-    )
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
     return proc.returncode, proc.stdout, proc.stderr
 
 
@@ -57,8 +55,11 @@ class AtaSecureEraseMethod(WipeMethod):
         self.nist_category = "Purge"
 
     def applies_to(self, target: Target) -> bool:
-        return target.kind == "block" and shutil.which("hdparm") is not None \
+        return (
+            target.kind == "block"
+            and shutil.which("hdparm") is not None
             and not target.path.startswith("/dev/nvme")
+        )
 
     def plan(self, target: Target) -> Plan:
         variant = "enhanced " if self.enhanced else ""
@@ -84,8 +85,13 @@ class AtaSecureEraseMethod(WipeMethod):
     def probe(self, target: Target) -> dict:
         """Parse `hdparm -I` for ATA security state. Regexes are anchored to
         hdparm's documented output shapes and fixture-tested (see tests)."""
-        info = {"supported": False, "enhanced_supported": False, "frozen": False,
-                "enabled": False, "error": None}
+        info = {
+            "supported": False,
+            "enhanced_supported": False,
+            "frozen": False,
+            "enabled": False,
+            "error": None,
+        }
         code, out, err = _run(["hdparm", "-I", target.path], timeout=30)
         if code != 0:
             info["error"] = (err or f"hdparm -I exited {code}").strip()
@@ -95,15 +101,21 @@ class AtaSecureEraseMethod(WipeMethod):
         # Capability lines look like:  "supported: Security Erase"
         #                              "supported: enhanced erase"
         # under the tab-indented Security: block. Enhanced implies standard.
-        info["enhanced_supported"] = bool(re.search(
-            r"^\s+supported:\s*enhanced erase\s*$", sec, re.M))
-        info["supported"] = info["enhanced_supported"] or bool(re.search(
-            r"^\s+supported:\s*Security Erase\s*$", sec, re.M))
+        info["enhanced_supported"] = bool(re.search(r"^\s+supported:\s*enhanced erase\s*$", sec, re.M))
+        info["supported"] = info["enhanced_supported"] or bool(
+            re.search(r"^\s+supported:\s*Security Erase\s*$", sec, re.M)
+        )
         # State words appear as bare indented tokens; 'not' prefixes negate:
         #   "not\tenabled", "frozen", "not\tlocked"
-        info["enabled"] = bool(re.search(r"^\s+enabled\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+enabled\s*$", sec, re.M))
-        info["locked"] = bool(re.search(r"^\s+locked\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+locked\s*$", sec, re.M))
-        info["frozen"] = bool(re.search(r"^\s+frozen\s*$", sec, re.M)) and not bool(re.search(r"^\s+not\s+frozen\s*$", sec, re.M))
+        info["enabled"] = bool(re.search(r"^\s+enabled\s*$", sec, re.M)) and not bool(
+            re.search(r"^\s+not\s+enabled\s*$", sec, re.M)
+        )
+        info["locked"] = bool(re.search(r"^\s+locked\s*$", sec, re.M)) and not bool(
+            re.search(r"^\s+not\s+locked\s*$", sec, re.M)
+        )
+        info["frozen"] = bool(re.search(r"^\s+frozen\s*$", sec, re.M)) and not bool(
+            re.search(r"^\s+not\s+frozen\s*$", sec, re.M)
+        )
         return info
 
     def run(self, target: Target, progress: ProgressFn) -> MethodResult:
@@ -138,9 +150,11 @@ class AtaSecureEraseMethod(WipeMethod):
             ["hdparm", "--user-master", "u", flag, temp_pass, target.path],
             ["hdparm", "--user-master", "u", "--security-disable", temp_pass, target.path],
         ]
-        labels = ["setting temporary security password",
-                  "firmware erase RUNNING — this can take hours; do not cut power",
-                  "removing temporary password"]
+        labels = [
+            "setting temporary security password",
+            "firmware erase RUNNING — this can take hours; do not cut power",
+            "removing temporary password",
+        ]
 
         password_set = False
 
@@ -186,7 +200,7 @@ class AtaSecureEraseMethod(WipeMethod):
 def _context(text: str, phrase: str) -> str:
     """Text from the first occurrence of *phrase* onward (small helper)."""
     i = text.find(phrase)
-    return text[i:i + 120] if i >= 0 else ""
+    return text[i : i + 120] if i >= 0 else ""
 
 
 def _security_block(hdparm_i_output: str) -> str:
@@ -196,13 +210,11 @@ def _security_block(hdparm_i_output: str) -> str:
     parser survives cosmetic changes between hdparm versions.
     """
     lines = hdparm_i_output.splitlines()
-    start = next(
-        (i for i, raw_line in enumerate(lines) if raw_line.strip() == "Security:"), None
-    )
+    start = next((i for i, raw_line in enumerate(lines) if raw_line.strip() == "Security:"), None)
     if start is None:
         return ""
     block = []
-    for line in lines[start + 1:]:
+    for line in lines[start + 1 :]:
         if line and not line[0].isspace():  # next unindented section begins
             break
         block.append(line)
@@ -220,8 +232,14 @@ def hpa_dco_report(target: Target) -> dict:
     {'note': ...} for them. Real-firmware behavior was not observable during
     development; detection/removal commands are fixture-tested only.
     """
-    report = {"hpa_present": None, "dco_present": None, "native_max": None,
-              "visible_max": None, "restore_command": None, "note": None}
+    report = {
+        "hpa_present": None,
+        "dco_present": None,
+        "native_max": None,
+        "visible_max": None,
+        "restore_command": None,
+        "note": None,
+    }
     if target.kind != "block":
         report["note"] = "HPA/DCO detection requires a real ATA block device"
         return report
@@ -231,8 +249,7 @@ def hpa_dco_report(target: Target) -> dict:
         m = re.search(r"max sectors\s*=\s*(\d+)/(\d+)", out)
         if m:
             visible, native = int(m.group(1)), int(m.group(2))
-            report.update(visible_max=visible, native_max=native,
-                          hpa_present=(native > visible))
+            report.update(visible_max=visible, native_max=native, hpa_present=(native > visible))
             if native > visible:
                 report["restore_command"] = f"hdparm -N p{native} {target.path}"
         elif "HPA is disabled" in out:
@@ -247,7 +264,7 @@ def hpa_dco_report(target: Target) -> dict:
         m = re.search(r"real max sectors\s*=\s*(\d+)", out)
         if m and report["visible_max"] is not None:
             real = int(m.group(1))
-            report["dco_present"] = (real > report["visible_max"])
+            report["dco_present"] = real > report["visible_max"]
             if real > report["visible_max"]:
                 report.setdefault("restore_command", f"hdparm --dco-restore {target.path}")
         else:

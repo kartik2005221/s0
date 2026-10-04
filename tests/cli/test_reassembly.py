@@ -43,11 +43,31 @@ def fragmented_mp4(tmp_path_factory):
     out = tmp_path_factory.mktemp("fragmp4")
     dest = out / "frag.mp4"
     proc = subprocess.run(
-        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-         "-i", "testsrc=size=176x144:rate=25:duration=4", "-c:v", "libx264",
-         "-g", "25", "-movflags", "frag_keyframe+empty_moov+default_base_moof",
-         "-frag_duration", "500000", "-f", "mp4", str(dest)],
-        capture_output=True, text=True)
+        [
+            FFMPEG,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=176x144:rate=25:duration=4",
+            "-c:v",
+            "libx264",
+            "-g",
+            "25",
+            "-movflags",
+            "frag_keyframe+empty_moov+default_base_moof",
+            "-frag_duration",
+            "500000",
+            "-f",
+            "mp4",
+            str(dest),
+        ],
+        capture_output=True,
+        text=True,
+    )
     if proc.returncode != 0:
         pytest.skip(proc.stderr[:200])
     return dest.read_bytes()
@@ -61,11 +81,29 @@ def fragmented_mkv(tmp_path_factory):
     out = tmp_path_factory.mktemp("fragmkv")
     dest = out / "frag.mkv"
     proc = subprocess.run(
-        [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-         "-i", "testsrc=size=176x144:rate=25:duration=4", "-c:v", "libx264",
-         "-f", "matroska", "-live", "1", "-cluster_size_limit", "20000",
-         str(dest)],
-        capture_output=True, text=True)
+        [
+            FFMPEG,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=176x144:rate=25:duration=4",
+            "-c:v",
+            "libx264",
+            "-f",
+            "matroska",
+            "-live",
+            "1",
+            "-cluster_size_limit",
+            "20000",
+            str(dest),
+        ],
+        capture_output=True,
+        text=True,
+    )
     if proc.returncode != 0:
         pytest.skip(proc.stderr[:200])
     return dest.read_bytes()
@@ -73,9 +111,9 @@ def fragmented_mkv(tmp_path_factory):
 
 def _pieces(fset, blob):
     """Split a `FragmentSet` into head, keyed pieces, and tail."""
-    head = blob[fset.prefix[0]:fset.prefix[1]] if fset.prefix else b""
-    tail = blob[fset.suffix[0]:fset.suffix[1]] if fset.suffix else b""
-    return head, {f.key: blob[f.image_offset:f.image_end] for f in fset.fragments}, tail
+    head = blob[fset.prefix[0] : fset.prefix[1]] if fset.prefix else b""
+    tail = blob[fset.suffix[0] : fset.suffix[1]] if fset.suffix else b""
+    return head, {f.key: blob[f.image_offset : f.image_end] for f in fset.fragments}, tail
 
 
 def _permute(fset, blob, seed):
@@ -88,6 +126,7 @@ def _permute(fset, blob, seed):
 # --------------------------------------------------------------------------- #
 # The fixtures must be what the tests assume
 # --------------------------------------------------------------------------- #
+
 
 @requires_ffmpeg
 class TestFixtures:
@@ -113,12 +152,14 @@ class TestFixtures:
     def test_the_matroska_segment_size_is_unknown(self, fragmented_mkv):
         """If the Segment declared its size this would not be a fragmented case."""
         from s0.carve import matroska as mk
+
         assert mk.parse(fragmented_mkv).segment_size is None
 
 
 # --------------------------------------------------------------------------- #
 # The claim: order comes from the data, not from position
 # --------------------------------------------------------------------------- #
+
 
 @requires_ffmpeg
 class TestOutOfOrderMP4:
@@ -131,8 +172,8 @@ class TestOutOfOrderMP4:
     @pytest.mark.parametrize("seed", _SEEDS)
     def test_a_full_permutation_reassembles_byte_exact(self, fragmented_mp4, seed):
         image, order = _permute(
-            ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4)),
-            fragmented_mp4, seed)
+            ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4)), fragmented_mp4, seed
+        )
         fset = ra.find_isobmff_fragments(image, 0, len(image))
         # Guard the fixture: the permutation has to actually be out of order.
         assert [f.key for f in fset.fragments] == order
@@ -182,8 +223,8 @@ class TestOutOfOrderMatroska:
     @pytest.mark.parametrize("seed", _SEEDS)
     def test_a_full_permutation_reassembles_byte_exact(self, fragmented_mkv, seed):
         image, order = _permute(
-            ra.find_matroska_fragments(fragmented_mkv, 0, len(fragmented_mkv)),
-            fragmented_mkv, seed)
+            ra.find_matroska_fragments(fragmented_mkv, 0, len(fragmented_mkv)), fragmented_mkv, seed
+        )
         fset = ra.find_matroska_fragments(image, 0, len(image))
         assert [f.key for f in fset.fragments] == order
         assembly = ra.assemble_file(fset, image)
@@ -205,12 +246,14 @@ class TestOutOfOrderMatroska:
         header = fset.prefix[1] - fset.prefix[0] if fset.prefix else 0
         # Extents must tile the file exactly, with no unaccounted bytes.
         assert header + total == len(fragmented_mkv), (
-            f"{len(fragmented_mkv) - header - total} bytes are unaccounted for")
+            f"{len(fragmented_mkv) - header - total} bytes are unaccounted for"
+        )
 
 
 # --------------------------------------------------------------------------- #
 # Refusals: a plausible wrong file is worse than no file
 # --------------------------------------------------------------------------- #
+
 
 @requires_ffmpeg
 class TestRefusals:
@@ -243,8 +286,7 @@ class TestRefusals:
     def test_a_wrong_decode_time_is_caught_by_the_projection(self, fragmented_mp4):
         fset = ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4))
         ra.bind_source(fragmented_mp4)
-        tampered = [replace(f, decode_time=f.decode_time + 7) if f.key == 3 else f
-                    for f in fset.fragments]
+        tampered = [replace(f, decode_time=f.decode_time + 7) if f.key == 3 else f for f in fset.fragments]
         assembly = ra.reassemble(tampered)
         assert not assembly.ok
         assert "not consecutive" in assembly.refusal
@@ -285,8 +327,10 @@ class TestRefusals:
         the failure this adjacency requirement exists to prevent.
         """
         from s0.carve import isobmff
-        image = _permute(ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4)),
-                         fragmented_mp4, 3)[0]
+
+        image = _permute(
+            ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4)), fragmented_mp4, 3
+        )[0]
         fset = ra.find_isobmff_fragments(image, 0, len(image))
         assert fset.fragments, "sanity: the intact image has fragments"
         f0 = fset.fragments[0]
@@ -299,15 +343,15 @@ class TestRefusals:
         broken = image[:at] + b"\x00\x00\x00\x08free" + image[at:]
         after = ra.find_isobmff_fragments(broken, 0, len(broken))
         assert len(after.fragments) == len(fset.fragments) - 1, (
-            "a displaced mdat must not still count as a fragment")
+            "a displaced mdat must not still count as a fragment"
+        )
         assert f0.key not in {f.key for f in after.fragments}
 
 
 class TestNoByteSource:
     def test_reading_a_fragment_without_a_source_is_an_error(self, monkeypatch):
         monkeypatch.setattr(ra, "_IMAGE_SOURCE", None)
-        frag = ra.Fragment(image_offset=0, length=4, key=1,
-                           key_source="test", key_kind="sequence")
+        frag = ra.Fragment(image_offset=0, length=4, key=1, key_source="test", key_kind="sequence")
         with pytest.raises(ra.ReassemblyError):
             ra._read_from_image(frag)
 
@@ -340,6 +384,7 @@ class TestNoise:
 # The scattered case, which is the one that matters
 # --------------------------------------------------------------------------- #
 
+
 def _scatter(fset, blob, seed=3, filler=b"\x9c", pad=5000):
     """Lay the fragments out in random order with unrelated data between them."""
     head, pieces, tail = _pieces(fset, blob)
@@ -365,8 +410,9 @@ class TestScatteredVolume:
         """
         fset = ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4))
         image, _ = _scatter(fset, fragmented_mp4)
-        assert not ra.find_isobmff_fragments(image, 0, len(image)).fragments, \
+        assert not ra.find_isobmff_fragments(image, 0, len(image)).fragments, (
             "fixture is contiguous, so it does not test the scattered case"
+        )
 
     def test_a_scattered_volume_reassembles_byte_exact(self, fragmented_mp4):
         fset = ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4))
@@ -390,8 +436,7 @@ class TestScatteredVolume:
         found = ra.scan_isobmff_fragments(image, 0, len(image))
         total = sum(f.length for f in found.fragments)
         original_total = sum(f.length for f in fset.fragments)
-        assert total == original_total, (
-            f"fragment extents grew by {total - original_total} bytes")
+        assert total == original_total, f"fragment extents grew by {total - original_total} bytes"
 
     def test_the_trailing_index_is_found_by_its_magic(self, fragmented_mp4):
         fset = ra.find_isobmff_fragments(fragmented_mp4, 0, len(fragmented_mp4))
@@ -433,6 +478,6 @@ class TestScanCost:
         """Magic without a valid box tree behind it must not become a fragment."""
         blob = bytearray(os.urandom(2 << 20))
         for i in range(0, len(blob) - 64, 4096):
-            blob[i + 4:i + 8] = b"moof"
-            blob[i:i + 4] = (200).to_bytes(4, "big")
+            blob[i + 4 : i + 8] = b"moof"
+            blob[i : i + 4] = (200).to_bytes(4, "big")
         assert not ra.scan_isobmff_fragments(bytes(blob), 0, len(blob)).fragments

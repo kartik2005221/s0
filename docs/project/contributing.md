@@ -101,10 +101,10 @@ SIGNATURES.append(
         name="WebP Image",
         extension="webp",
         category="image",
-        header=b"RIFF....WEBP",          # Header pattern (or exact magic bytes)
-        footer=None,                     # Optional trailing boundary pattern
-        min_size=64,                     # Minimum plausible byte length
-        max_size=25 * 1024 * 1024,       # Maximum file size cap (25 MB)
+        header=b"RIFF....WEBP",  # Header pattern (or exact magic bytes)
+        footer=None,  # Optional trailing boundary pattern
+        min_size=64,  # Minimum plausible byte length
+        max_size=25 * 1024 * 1024,  # Maximum file size cap (25 MB)
     )
 )
 ```
@@ -124,6 +124,7 @@ New wiping drivers inherit from `s0.wipe.methods.base.Method`:
 from s0.cli.devices import Target
 from s0.wipe.methods.base import Candidate, Method, MethodResult, Plan
 
+
 class CustomPurgeMethod(Method):
     method_id = "CUSTOM_HARDWARE_PURGE"
     nist_category = "Purge"
@@ -139,7 +140,7 @@ class CustomPurgeMethod(Method):
             nist_category=self.nist_category,
             summary="Custom controller-level purge sequence",
             commands=["ioctl(CUSTOM_PURGE_OP)"],
-            warnings=[]
+            warnings=[],
         )
 
     def run(self, target: Target, progress_cb) -> MethodResult:

@@ -340,10 +340,14 @@ def test_cmd_wipe_cross_platform_import_failure_graceful_exit(monkeypatch, capsy
 
     # Mock _resolve_target to return a block target
     from s0.cli.devices import Target as DevTarget
-    monkeypatch.setattr("s0.cli.main._resolve_target", lambda path: DevTarget(path=path, kind="block", capacity_bytes=1000000))
+
+    monkeypatch.setattr(
+        "s0.cli.main._resolve_target", lambda path: DevTarget(path=path, kind="block", capacity_bytes=1000000)
+    )
 
     # Temporarily remove windows from sys.modules and make import fail
     import builtins
+
     real_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
@@ -357,6 +361,3 @@ def test_cmd_wipe_cross_platform_import_failure_graceful_exit(monkeypatch, capsy
     assert rc == 2
     captured = capsys.readouterr()
     assert "error: Windows drive wipe requires the s0 Windows engine" in captured.err
-
-
-

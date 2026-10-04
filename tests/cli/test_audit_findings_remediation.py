@@ -244,17 +244,16 @@ def test_scoring_flags_effectively_constant_data():
     score, heuristics = score_carved_candidate(pdf_sig, zero_buf, has_valid_footer=True)
     assert any("effectively constant" in h for h in heuristics)
 
-    real = b"%PDF-1.7\n" + b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" * 8 \
-        + b"trailer<</Root 1 0 R>>\n%%EOF"
-    score2, h2 = score_carved_candidate(pdf_sig, real,
-                                        boundary_method=boundary.FOOTER_ANCHORED)
+    real = (
+        b"%PDF-1.7\n" + b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" * 8 + b"trailer<</Root 1 0 R>>\n%%EOF"
+    )
+    score2, h2 = score_carved_candidate(pdf_sig, real, boundary_method=boundary.FOOTER_ANCHORED)
     assert score2 > score
     assert not any("effectively constant" in h for h in h2)
 
 
 def test_random_wipe_verification_entropy(tmp_path: Path):
     import os
-
 
     # Create file with random bytes
     rand_file = tmp_path / "random.img"
@@ -336,7 +335,16 @@ def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
     from s0.cli.main import cmd_wipe
 
     monkeypatch.setattr(shutil, "which", lambda cmd: None)
-    monkeypatch.setattr("s0.cli.main._resolve_target", lambda path: Target(path="/dev/sde", kind="block", capacity_bytes=100*1024*1024, sector_size=512, storage_type="HDD"))
+    monkeypatch.setattr(
+        "s0.cli.main._resolve_target",
+        lambda path: Target(
+            path="/dev/sde",
+            kind="block",
+            capacity_bytes=100 * 1024 * 1024,
+            sector_size=512,
+            storage_type="HDD",
+        ),
+    )
     monkeypatch.setattr("s0.cli.main.check_safety", lambda target, force=False: [])
     monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: None)
     monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
@@ -368,5 +376,3 @@ def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
     assert rc == 2
     err = capsys.readouterr().err
     assert "hdparm is not installed" in err
-
-

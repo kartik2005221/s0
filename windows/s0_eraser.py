@@ -11,4 +11,5 @@ from s0.platform.windows.s0_eraser import main  # noqa: F401
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

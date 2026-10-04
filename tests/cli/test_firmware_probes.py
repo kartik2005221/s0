@@ -7,12 +7,17 @@ they do NOT prove real firmware behaves this way, which is exactly why
 LIMITATIONS.md and the certificate notes say "not hardware-validated".
 """
 
-
 from s0.cli.devices import Target
 from s0.wipe.methods import ata as ata_mod
 
-BLOCK = Target(path="/dev/sda", kind="block", capacity_bytes=500 * 2**30,
-               storage_type="HDD", model="ST500LT012", serial="S0VWXYZ")
+BLOCK = Target(
+    path="/dev/sda",
+    kind="block",
+    capacity_bytes=500 * 2**30,
+    storage_type="HDD",
+    model="ST500LT012",
+    serial="S0VWXYZ",
+)
 
 # --- hdparm -I fixtures (shapes per hdparm documentation) --------------------
 # Written out explicitly per scenario — no replace() chains, which silently
@@ -70,11 +75,13 @@ Commands/features:
 
 def fake_hdparm(monkeypatch, outputs):
     """Replace ata_mod._run with a fixture responder keyed by command prefix."""
+
     def _run(cmd, timeout=None):
         for key, out in outputs.items():
             if key in cmd:
                 return 0, out, ""
         return 0, "", ""
+
     monkeypatch.setattr(ata_mod, "_run", _run)
 
 
@@ -82,7 +89,7 @@ def test_probe_detects_frozen_and_enhanced_support(monkeypatch):
     method = ata_mod.AtaSecureEraseMethod(enhanced=True)
     fake_hdparm(monkeypatch, {"-I": HDPARM_I_ENHANCED_FROZEN})
     info = method.probe(BLOCK)
-    assert info["supported"] is True          # enhanced implies standard support
+    assert info["supported"] is True  # enhanced implies standard support
     assert info["enhanced_supported"] is True
     assert info["frozen"] is True
     assert info["enabled"] is False
@@ -132,10 +139,11 @@ def test_run_sets_then_disables_temp_password(monkeypatch):
         return 0, "", ""
 
     monkeypatch.setattr(ata_mod, "_run", scripted)
-    monkeypatch.setattr(method := ata_mod.AtaSecureEraseMethod(enhanced=True),
-                        "probe", lambda t: {"supported": True,
-                                            "enhanced_supported": True,
-                                            "frozen": False})
+    monkeypatch.setattr(
+        method := ata_mod.AtaSecureEraseMethod(enhanced=True),
+        "probe",
+        lambda t: {"supported": True, "enhanced_supported": True, "frozen": False},
+    )
     result = method.run(BLOCK, lambda m: None)
     assert result.status == "success", result.errors
     assert any("--security-set-pass" in s for s in seq)
@@ -146,6 +154,7 @@ def test_run_sets_then_disables_temp_password(monkeypatch):
 
 
 # --- hdparm -N / --dco-identify (HPA/DCO) -----------------------------------
+
 
 def test_hpa_detection_when_native_exceeds_visible(monkeypatch):
     outputs = {
@@ -162,10 +171,13 @@ def test_hpa_detection_when_native_exceeds_visible(monkeypatch):
 
 
 def test_hpa_absent_on_normal_drive(monkeypatch):
-    fake_hdparm(monkeypatch, {
-        "-N": "/dev/sda:\n max sectors   = 500118192/500118192, HPA is disabled\n",
-        "--dco-identify": "DCO Revision: 0x0001\n real max sectors  = 500118192\n",
-    })
+    fake_hdparm(
+        monkeypatch,
+        {
+            "-N": "/dev/sda:\n max sectors   = 500118192/500118192, HPA is disabled\n",
+            "--dco-identify": "DCO Revision: 0x0001\n real max sectors  = 500118192\n",
+        },
+    )
     rep = ata_mod.hpa_dco_report(BLOCK)
     assert rep["hpa_present"] is False
     assert rep["dco_present"] is False
@@ -173,8 +185,7 @@ def test_hpa_absent_on_normal_drive(monkeypatch):
 
 
 def test_image_targets_report_hpa_check_unavailable():
-    img = Target(path="/x/y.img", kind="image", capacity_bytes=1024,
-                 storage_type="IMAGE_FILE")
+    img = Target(path="/x/y.img", kind="image", capacity_bytes=1024, storage_type="IMAGE_FILE")
     rep = ata_mod.hpa_dco_report(img)
     assert rep["note"] and "real ATA block device" in rep["note"]
 
@@ -183,8 +194,9 @@ def test_image_targets_report_hpa_check_unavailable():
 
 from s0.wipe.methods.nvme import NvmeMethod, parse_sanitize_log  # noqa: E402
 
-NVME_DEV = Target(path="/dev/nvme0n1", kind="block", capacity_bytes=1024**3,
-                  storage_type="NVMe", model="QEMU NVMe Ctrl")
+NVME_DEV = Target(
+    path="/dev/nvme0n1", kind="block", capacity_bytes=1024**3, storage_type="NVMe", model="QEMU NVMe Ctrl"
+)
 
 
 def test_parse_sanitize_log_states():

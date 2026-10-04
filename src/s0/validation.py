@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from s0.config import CONFIG
 
-FORBIDDEN_METADATA_CHARS = set('<>&"\'\\|')
+FORBIDDEN_METADATA_CHARS = set("<>&\"'\\|")
 
 
 def validate_metadata_str(field_name: str, v: str | None, max_len: int = 128) -> str | None:
@@ -22,7 +22,9 @@ def validate_metadata_str(field_name: str, v: str | None, max_len: int = 128) ->
         raise ValueError(f"{field_name} cannot be empty")
 
     default_org = CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab")
-    if field_name == "organization" and (v == default_org or v == "Digital Forensics & Data Sanitization Lab"):
+    if field_name == "organization" and (
+        v == default_org or v == "Digital Forensics & Data Sanitization Lab"
+    ):
         if len(v) > max_len:
             raise ValueError(f"{field_name} exceeds maximum length of {max_len} characters")
         return v

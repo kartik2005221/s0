@@ -57,8 +57,16 @@ WIPE_METHODS = {
 }
 
 NIST_CATEGORIES = {"Clear", "Purge", "Destroy", "N/A"}
-PATTERNS = {"zero", "random", "firmware", "key_destruction", "carving", "imaging",
-            "cloning", "not_applicable"}
+PATTERNS = {
+    "zero",
+    "random",
+    "firmware",
+    "key_destruction",
+    "carving",
+    "imaging",
+    "cloning",
+    "not_applicable",
+}
 
 # Permitted NIST tier per method — mirrors docs/compliance/nist-800-88-mapping.md §3.
 # Enforced by validate() so a certificate cannot claim a tier its method never earned.
@@ -106,12 +114,36 @@ METHOD_TIERS = {
     "RAID_CONTROLLER_PASSTHROUGH_SANITIZE": {"Purge"},
 }
 STATUSES = {"success", "failure", "partial", "reset_triggered"}
-DEVICE_TYPES = {"internal_disk", "removable_disk", "image_file", "phone",
-                "file", "file_set", "folder", "folder_tree",
-                "logical_volume", "virtual_disk", "raid_logical_volume", "cloud_volume"}
-STORAGE_TYPES = {"HDD", "SSD", "NVMe", "eMMC", "UFS", "SDCARD", "IMAGE_FILE", "UNKNOWN",
-                 "file", "folder_tree", "LOGICAL_VOLUME", "VIRTUAL_DISK",
-                 "RAID_LOGICAL_VOLUME", "CLOUD_BLOCK"}
+DEVICE_TYPES = {
+    "internal_disk",
+    "removable_disk",
+    "image_file",
+    "phone",
+    "file",
+    "file_set",
+    "folder",
+    "folder_tree",
+    "logical_volume",
+    "virtual_disk",
+    "raid_logical_volume",
+    "cloud_volume",
+}
+STORAGE_TYPES = {
+    "HDD",
+    "SSD",
+    "NVMe",
+    "eMMC",
+    "UFS",
+    "SDCARD",
+    "IMAGE_FILE",
+    "UNKNOWN",
+    "file",
+    "folder_tree",
+    "LOGICAL_VOLUME",
+    "VIRTUAL_DISK",
+    "RAID_LOGICAL_VOLUME",
+    "CLOUD_BLOCK",
+}
 PLATFORMS = {"linux", "windows", "macos", "android"}
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -128,6 +160,7 @@ class CertificateError(ValueError):
 # time helpers — integer-second UTC ISO 8601, cross-language friendly
 # --------------------------------------------------------------------------- #
 
+
 def now_utc() -> str:
     return format_utc(datetime.now(timezone.utc))
 
@@ -139,6 +172,7 @@ def format_utc(dt: datetime) -> str:
 # --------------------------------------------------------------------------- #
 # validation
 # --------------------------------------------------------------------------- #
+
 
 def _walk_floats(node: Any, path: str, *, _depth: int = 0) -> list[str]:
     """Find any float anywhere in the payload — schema v1 is integers-only."""
@@ -181,15 +215,29 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
     if not isinstance(cert, dict):
         return errs
 
-    check_obj(cert, "", {"schema_version", "cert_uuid", "issued_at", "issuer", "tool",
-                         "device", "wipe", "result"},
-              {"schema_version", "cert_uuid", "issued_at", "issuer", "tool", "device",
-               "wipe", "result", "notes", "signature"})
-    need(cert.get("schema_version") == SCHEMA_VERSION,
-         f"schema_version must be {SCHEMA_VERSION!r}")
+    check_obj(
+        cert,
+        "",
+        {"schema_version", "cert_uuid", "issued_at", "issuer", "tool", "device", "wipe", "result"},
+        {
+            "schema_version",
+            "cert_uuid",
+            "issued_at",
+            "issuer",
+            "tool",
+            "device",
+            "wipe",
+            "result",
+            "notes",
+            "signature",
+        },
+    )
+    need(cert.get("schema_version") == SCHEMA_VERSION, f"schema_version must be {SCHEMA_VERSION!r}")
     need(bool(_UUID_RE.match(str(cert.get("cert_uuid", "")))), "cert_uuid: not a lowercase UUID")
-    need(bool(_DATETIME_RE.match(str(cert.get("issued_at", "")))),
-         "issued_at: must be ISO 8601 UTC 'YYYY-MM-DDTHH:MM:SSZ'")
+    need(
+        bool(_DATETIME_RE.match(str(cert.get("issued_at", "")))),
+        "issued_at: must be ISO 8601 UTC 'YYYY-MM-DDTHH:MM:SSZ'",
+    )
 
     issuer = cert.get("issuer")
     need(isinstance(issuer, dict), "issuer: must be a JSON object")
@@ -207,48 +255,73 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
     device = cert.get("device")
     need(isinstance(device, dict), "device: must be a JSON object")
     if isinstance(device, dict):
-        check_obj(device, "device",
-                  {"device_id", "device_type", "storage_type", "capacity_bytes"},
-                  {"device_id", "device_type", "storage_type", "model", "serial_number",
-                   "capacity_bytes", "sector_size"})
+        check_obj(
+            device,
+            "device",
+            {"device_id", "device_type", "storage_type", "capacity_bytes"},
+            {
+                "device_id",
+                "device_type",
+                "storage_type",
+                "model",
+                "serial_number",
+                "capacity_bytes",
+                "sector_size",
+            },
+        )
         need(device.get("device_type") in DEVICE_TYPES, "device.device_type: invalid")
         need(device.get("storage_type") in STORAGE_TYPES, "device.storage_type: invalid")
         cap = device.get("capacity_bytes")
-        need(cap is None or (isinstance(cap, int) and not isinstance(cap, bool) and cap >= 0),
-             "device.capacity_bytes: must be a non-negative integer")
+        need(
+            cap is None or (isinstance(cap, int) and not isinstance(cap, bool) and cap >= 0),
+            "device.capacity_bytes: must be a non-negative integer",
+        )
         sector = device.get("sector_size")
-        need(sector is None or (isinstance(sector, int) and not isinstance(sector, bool) and sector >= 1),
-             "device.sector_size: must be a positive integer (minimum 1)")
+        need(
+            sector is None or (isinstance(sector, int) and not isinstance(sector, bool) and sector >= 1),
+            "device.sector_size: must be a positive integer (minimum 1)",
+        )
 
     wipe = cert.get("wipe")
     need(isinstance(wipe, dict), "wipe: must be a JSON object")
     if isinstance(wipe, dict):
-        check_obj(wipe, "wipe",
-                  {"method", "nist_category", "start_time", "end_time", "bytes_processed"},
-                  {"method", "nist_category", "passes", "pattern", "start_time", "end_time",
-                   "bytes_processed"})
+        check_obj(
+            wipe,
+            "wipe",
+            {"method", "nist_category", "start_time", "end_time", "bytes_processed"},
+            {"method", "nist_category", "passes", "pattern", "start_time", "end_time", "bytes_processed"},
+        )
         need(wipe.get("method") in WIPE_METHODS, "wipe.method: invalid")
         need(wipe.get("nist_category") in NIST_CATEGORIES, "wipe.nist_category: invalid")
         if wipe.get("method") in WIPE_METHODS and wipe.get("nist_category") in NIST_CATEGORIES:
-            need(wipe["nist_category"] in METHOD_TIERS[wipe["method"]],
-                 f"wipe.nist_category {wipe['nist_category']!r} exceeds the tier permitted "
-                 f"for method {wipe['method']!r} per the NIST mapping registry")
+            need(
+                wipe["nist_category"] in METHOD_TIERS[wipe["method"]],
+                f"wipe.nist_category {wipe['nist_category']!r} exceeds the tier permitted "
+                f"for method {wipe['method']!r} per the NIST mapping registry",
+            )
             if wipe["method"] == "BLKDISCARD" and wipe["nist_category"] == "Purge":
                 notes_text = " ".join(cert.get("notes", []))
-                need("deterministic" in notes_text.lower() or "drat" in notes_text.lower()
-                     or "rzat" in notes_text.lower(),
-                     "BLKDISCARD claiming Purge requires documented deterministic-read-"
-                     "after-discard justification in notes")
+                need(
+                    "deterministic" in notes_text.lower()
+                    or "drat" in notes_text.lower()
+                    or "rzat" in notes_text.lower(),
+                    "BLKDISCARD claiming Purge requires documented deterministic-read-"
+                    "after-discard justification in notes",
+                )
         p = wipe.get("pattern")
         need(p is None or p in PATTERNS, "wipe.pattern: invalid")
         passes = wipe.get("passes")
-        need(passes is None or (isinstance(passes, int) and not isinstance(passes, bool) and passes >= 1),
-             "wipe.passes: must be an integer >= 1")
+        need(
+            passes is None or (isinstance(passes, int) and not isinstance(passes, bool) and passes >= 1),
+            "wipe.passes: must be an integer >= 1",
+        )
         for f in ("start_time", "end_time"):
             need(bool(_DATETIME_RE.match(str(wipe.get(f, "")))), f"wipe.{f}: must be 'YYYY-MM-DDTHH:MM:SSZ'")
         bp = wipe.get("bytes_processed")
-        need(isinstance(bp, int) and not isinstance(bp, bool) and bp >= 0,
-             "wipe.bytes_processed: non-negative integer required")
+        need(
+            isinstance(bp, int) and not isinstance(bp, bool) and bp >= 0,
+            "wipe.bytes_processed: non-negative integer required",
+        )
 
     result = cert.get("result")
     need(isinstance(result, dict), "result: must be a JSON object")
@@ -256,61 +329,92 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
         check_obj(result, "result", {"status"}, {"status", "errors", "verification"})
         need(result.get("status") in STATUSES, "result.status: invalid")
         errors_list = result.get("errors")
-        need(errors_list is None or (isinstance(errors_list, list)
-                                     and all(isinstance(e, str) for e in errors_list)),
-             "result.errors: array of strings")
+        need(
+            errors_list is None
+            or (isinstance(errors_list, list) and all(isinstance(e, str) for e in errors_list)),
+            "result.errors: array of strings",
+        )
         verif = result.get("verification")
         if verif is not None:
             if not isinstance(verif, dict):
                 errs.append("result.verification: must be an object")
             else:
-                check_obj(verif, "result.verification", set(),
-                          {"method", "samples_checked", "sample_bytes_each",
-                           "all_samples_match_wipe_pattern", "planted_pattern_hits_after",
-                           "pre_wipe_sample_hash", "sample_strategy", "population_blocks",
-                           "confidence_percent", "residual_fraction_upper_bound_ppm",
-                           "attestation", "smart_delta"})
-                for f in ("samples_checked", "sample_bytes_each", "planted_pattern_hits_after",
-                          "population_blocks", "confidence_percent",
-                          "residual_fraction_upper_bound_ppm"):
+                check_obj(
+                    verif,
+                    "result.verification",
+                    set(),
+                    {
+                        "method",
+                        "samples_checked",
+                        "sample_bytes_each",
+                        "all_samples_match_wipe_pattern",
+                        "planted_pattern_hits_after",
+                        "pre_wipe_sample_hash",
+                        "sample_strategy",
+                        "population_blocks",
+                        "confidence_percent",
+                        "residual_fraction_upper_bound_ppm",
+                        "attestation",
+                        "smart_delta",
+                    },
+                )
+                for f in (
+                    "samples_checked",
+                    "sample_bytes_each",
+                    "planted_pattern_hits_after",
+                    "population_blocks",
+                    "confidence_percent",
+                    "residual_fraction_upper_bound_ppm",
+                ):
                     v = verif.get(f)
-                    need(v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
-                         f"result.verification.{f}: non-negative integer")
+                    need(
+                        v is None or (isinstance(v, int) and not isinstance(v, bool) and v >= 0),
+                        f"result.verification.{f}: non-negative integer",
+                    )
                 cp = verif.get("confidence_percent")
-                need(cp is None or cp <= 100,
-                     "result.verification.confidence_percent: must be 0-100")
+                need(cp is None or cp <= 100, "result.verification.confidence_percent: must be 0-100")
                 for f in ("sample_strategy", "attestation"):
                     v = verif.get(f)
-                    need(v is None or isinstance(v, str),
-                         f"result.verification.{f}: string")
+                    need(v is None or isinstance(v, str), f"result.verification.{f}: string")
                 sd = verif.get("smart_delta")
-                need(sd is None or isinstance(sd, dict),
-                     "result.verification.smart_delta: object")
+                need(sd is None or isinstance(sd, dict), "result.verification.smart_delta: object")
                 asm = verif.get("all_samples_match_wipe_pattern")
-                need(asm is None or isinstance(asm, bool),
-                     "result.verification.all_samples_match_wipe_pattern: boolean")
+                need(
+                    asm is None or isinstance(asm, bool),
+                    "result.verification.all_samples_match_wipe_pattern: boolean",
+                )
 
     notes = cert.get("notes")
-    need(notes is None or (isinstance(notes, list) and all(isinstance(n, str) for n in notes)),
-         "notes: array of strings")
+    need(
+        notes is None or (isinstance(notes, list) and all(isinstance(n, str) for n in notes)),
+        "notes: array of strings",
+    )
 
     sig = cert.get("signature")
     if require_signature:
         need(isinstance(sig, dict), "signature: required object")
         if isinstance(sig, dict):
-            check_obj(sig, "signature",
-                      {"algorithm", "public_key_fingerprint", "signature_base64url"},
-                      {"algorithm", "public_key_fingerprint", "signature_base64url",
-                       "signed_payload_hash"})
+            check_obj(
+                sig,
+                "signature",
+                {"algorithm", "public_key_fingerprint", "signature_base64url"},
+                {"algorithm", "public_key_fingerprint", "signature_base64url", "signed_payload_hash"},
+            )
             need(sig.get("algorithm") == "Ed25519", "signature.algorithm: only Ed25519 supported")
-            need(bool(_FINGERPRINT_RE.match(str(sig.get("public_key_fingerprint", "")))),
-                 "signature.public_key_fingerprint: must match 'sha256:<64 hex>'")
-            need(bool(_B64URL_RE.match(str(sig.get("signature_base64url", "").rstrip("=")))) and
-                 len(sig.get("signature_base64url", "")) >= 80,
-                 "signature.signature_base64url: not a plausible base64url signature")
+            need(
+                bool(_FINGERPRINT_RE.match(str(sig.get("public_key_fingerprint", "")))),
+                "signature.public_key_fingerprint: must match 'sha256:<64 hex>'",
+            )
+            need(
+                bool(_B64URL_RE.match(str(sig.get("signature_base64url", "").rstrip("="))))
+                and len(sig.get("signature_base64url", "")) >= 80,
+                "signature.signature_base64url: not a plausible base64url signature",
+            )
             sph = sig.get("signed_payload_hash")
-            need(sph is None or bool(_FINGERPRINT_RE.match(str(sph))),
-                 "signature.signed_payload_hash: must match 'sha256:<64 hex>'")
+            need(
+                sph is None or bool(_FINGERPRINT_RE.match(str(sph))),
+                "signature.signed_payload_hash: must match 'sha256:<64 hex>'",
+            )
 
     # Schema-wide rule: no floats, anywhere (see CANONICAL_JSON.md rule 5).
     try:
@@ -324,6 +428,7 @@ def validate(cert: dict, *, require_signature: bool = True) -> list[str]:
 # --------------------------------------------------------------------------- #
 # build / sign / verify
 # --------------------------------------------------------------------------- #
+
 
 def new_cert_uuid() -> str:
     return str(uuid.uuid4())
@@ -466,8 +571,7 @@ def verify_certificate(cert: dict, trusted_keys) -> tuple[bool, str]:
                     f"but recomputed payload hash is {actual_payload_hash}"
                 )
             return True, (
-                f"valid Ed25519 signature from pinned key {claimed_fp}; "
-                f"payload sha256 {actual_payload_hash}"
+                f"valid Ed25519 signature from pinned key {claimed_fp}; payload sha256 {actual_payload_hash}"
             )
     return False, (
         "signature does NOT match payload — the certificate content has been "

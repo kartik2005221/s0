@@ -51,20 +51,23 @@ def test_verify_no_keys_supplied(signed_cert):
     assert not ok and "no trusted public keys" in reason
 
 
-@pytest.mark.parametrize("mutator", [
-    lambda c: c.pop("wipe"),
-    lambda c: c.update(schema_version="9.9.9"),
-    lambda c: c.update(cert_uuid="not-a-uuid"),
-    lambda c: c["wipe"].update(method="MAGIC_FAIRY_DUST"),
-    lambda c: c["wipe"].update(nist_category="Purge"),  # overwrite can never claim Purge
-    lambda c: c["wipe"].update(nist_category="Destroy"),  # nothing software-based claims Destroy
-    lambda c: c["result"].update(status="sort_of_ok"),
-    lambda c: c["device"].update(capacity_bytes=268435456.0),  # float smuggle
-    lambda c: c["device"].update(sector_size=0),  # 0 must be rejected per schema minimum 1
-    lambda c: c["device"].update(sector_size=-512),  # negative must be rejected
-    lambda c: c["issuer"].update(organization=""),
-    lambda c: c["wipe"].update(start_time="Aug 22 2026"),
-])
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda c: c.pop("wipe"),
+        lambda c: c.update(schema_version="9.9.9"),
+        lambda c: c.update(cert_uuid="not-a-uuid"),
+        lambda c: c["wipe"].update(method="MAGIC_FAIRY_DUST"),
+        lambda c: c["wipe"].update(nist_category="Purge"),  # overwrite can never claim Purge
+        lambda c: c["wipe"].update(nist_category="Destroy"),  # nothing software-based claims Destroy
+        lambda c: c["result"].update(status="sort_of_ok"),
+        lambda c: c["device"].update(capacity_bytes=268435456.0),  # float smuggle
+        lambda c: c["device"].update(sector_size=0),  # 0 must be rejected per schema minimum 1
+        lambda c: c["device"].update(sector_size=-512),  # negative must be rejected
+        lambda c: c["issuer"].update(organization=""),
+        lambda c: c["wipe"].update(start_time="Aug 22 2026"),
+    ],
+)
 def test_validation_catches_mutation(base_cert, mutator):
     cert = json.loads(json.dumps(base_cert))
     mutator(cert)
@@ -100,8 +103,7 @@ def test_method_tier_registry_consistent():
     for method, tiers in certificate.METHOD_TIERS.items():
         assert tiers <= certificate.NIST_CATEGORIES
         # No host-overwrite method may ever be registered as Purge-only:
-        if method.startswith(("OVERWRITE", "SHRED", "WINDOWS_CLEAN", "WINDOWS_CIPHER",
-                              "ANDROID_USER_SPACE")):
+        if method.startswith(("OVERWRITE", "SHRED", "WINDOWS_CLEAN", "WINDOWS_CIPHER", "ANDROID_USER_SPACE")):
             assert "Purge" not in tiers or method == "BLKDISCARD"
 
 
@@ -113,4 +115,3 @@ def test_certificate_deep_nesting_handled():
         deep = {"nested": deep}
     errors = certificate.validate(deep, require_signature=False)
     assert any("exceeds" in e or "missing" in e for e in errors)
-

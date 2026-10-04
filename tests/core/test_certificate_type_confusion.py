@@ -76,6 +76,7 @@ def baseline() -> dict:
 # Python validator
 # --------------------------------------------------------------------------- #
 
+
 @pytest.mark.parametrize("section", SECTIONS)
 @pytest.mark.parametrize("value", [5, "x", True, 3.14, ["a"]], ids=repr)
 def test_hostile_section_type_is_rejected(baseline, section, value):
@@ -86,9 +87,7 @@ def test_hostile_section_type_is_rejected(baseline, section, value):
         f"{section} = {value!r} is not an object, but validate() reported no "
         "error at all -- the section's field checks were skipped"
     )
-    assert any(section in p for p in problems), (
-        f"expected an error naming {section}, got: {problems}"
-    )
+    assert any(section in p for p in problems), f"expected an error naming {section}, got: {problems}"
 
 
 def test_all_five_sections_corrupted_at_once_is_rejected(baseline):
@@ -129,6 +128,7 @@ def test_object_with_wrong_field_types_is_still_rejected(baseline):
 # Browser verifier -- the same bug shipped in two implementations
 # --------------------------------------------------------------------------- #
 
+
 def _node_available() -> bool:
     return shutil.which("node") is not None
 
@@ -163,9 +163,7 @@ def test_js_verifier_rejects_hostile_section_type(baseline, section, value):
         f"verify.js accepted {section} = {value!r} with no error -- the browser "
         "verifier has the same type-confusion skip the Python one had"
     )
-    assert any(section in e for e in errors), (
-        f"expected an error naming {section}, got: {errors}"
-    )
+    assert any(section in e for e in errors), f"expected an error naming {section}, got: {errors}"
 
 
 @requires_node
@@ -192,18 +190,17 @@ def test_both_verifiers_agree_on_hostile_types(baseline):
             js_rejects = bool(js)
             if py_rejects != js_rejects:
                 disagreements.append(
-                    f"{section}={value!r}: python_rejects={py_rejects} "
-                    f"js_rejects={js_rejects}"
+                    f"{section}={value!r}: python_rejects={py_rejects} js_rejects={js_rejects}"
                 )
-    assert not disagreements, (
-        "the two verifiers disagree on the same signed bytes:\n  "
-        + "\n  ".join(disagreements)
+    assert not disagreements, "the two verifiers disagree on the same signed bytes:\n  " + "\n  ".join(
+        disagreements
     )
 
 
 # --------------------------------------------------------------------------- #
 # The JSON Schema is the third opinion
 # --------------------------------------------------------------------------- #
+
 
 def test_cert_schema_also_requires_objects():
     """`cert_schema.json` already rejected these; the code now matches it.
@@ -215,6 +212,5 @@ def test_cert_schema_also_requires_objects():
     props = schema["properties"]
     for section in SECTIONS:
         assert props[section]["type"] == "object", (
-            f"cert_schema.json says {section} must be an object; the validators "
-            "must agree"
+            f"cert_schema.json says {section} must be an object; the validators must agree"
         )

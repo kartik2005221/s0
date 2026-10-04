@@ -44,8 +44,11 @@ class NvmeMethod(WipeMethod):
         self.nist_category = "Purge"
 
     def applies_to(self, target: Target) -> bool:
-        return target.kind == "block" and target.path.startswith("/dev/nvme") \
+        return (
+            target.kind == "block"
+            and target.path.startswith("/dev/nvme")
             and shutil.which("nvme") is not None
+        )
 
     def plan(self, target: Target) -> Plan:
         cmds = {
@@ -118,8 +121,9 @@ class NvmeMethod(WipeMethod):
         )
         return result
 
-    def _wait_for_sanitize(self, target: Target, progress: ProgressFn,
-                           poll_seconds: int = 15, max_polls: int = 720) -> tuple[bool, str]:
+    def _wait_for_sanitize(
+        self, target: Target, progress: ProgressFn, poll_seconds: int = 15, max_polls: int = 720
+    ) -> tuple[bool, str]:
         """Poll `nvme sanitize-log` until completion. Parsing is fixture-tested."""
         for _ in range(max_polls):
             code, out, _ = _run(["nvme", "sanitize-log", target.path], timeout=20)

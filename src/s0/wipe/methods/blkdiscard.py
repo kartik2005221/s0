@@ -42,18 +42,18 @@ class BlkdiscardMethod(WipeMethod):
             method_id=self.id,
             nist_category=self.nist_category,
             summary=(
-                f"ioctl(BLKDISCARD) over the full {target.display} address space "
-                f"(trim/unmap every sector)"
+                f"ioctl(BLKDISCARD) over the full {target.display} address space (trim/unmap every sector)"
             ),
             commands=[f"ioctl(fd, BLKDISCARD=0x1277, [0, {target.capacity_bytes}])"],
             warnings=(
-                ["Discard claims Clear by default: without a documented "
-                 "deterministic-read-after-discard guarantee (DRAT/RZAT) from the "
-                 "drive spec, recovery from unmapped-but-unerased cells is not "
-                 "excluded."]
-                if not self.purge_justification else
-                [f"Purge claimed per operator-supplied justification: "
-                 f"{self.purge_justification}"]
+                [
+                    "Discard claims Clear by default: without a documented "
+                    "deterministic-read-after-discard guarantee (DRAT/RZAT) from the "
+                    "drive spec, recovery from unmapped-but-unerased cells is not "
+                    "excluded."
+                ]
+                if not self.purge_justification
+                else [f"Purge claimed per operator-supplied justification: {self.purge_justification}"]
             ),
         )
 
@@ -73,7 +73,9 @@ class BlkdiscardMethod(WipeMethod):
 
         if not supports_discard(target.path):
             result.status = "failure"
-            result.errors.append(f"Device {target.path} does not accept BLKDISCARD (discard/TRIM not supported)")
+            result.errors.append(
+                f"Device {target.path} does not accept BLKDISCARD (discard/TRIM not supported)"
+            )
             return result
 
         import fcntl
@@ -92,7 +94,9 @@ class BlkdiscardMethod(WipeMethod):
                 fcntl.ioctl(fd, BLKDISCARD, buf, True)
                 done += n
                 pct = (done * 100) // max_bytes if max_bytes else 100
-                progress(f"discarding {target.path}: {done // (1024*1024):,} MiB / {max_bytes // (1024*1024):,} MiB ({pct}%)")
+                progress(
+                    f"discarding {target.path}: {done // (1024 * 1024):,} MiB / {max_bytes // (1024 * 1024):,} MiB ({pct}%)"
+                )
             result.bytes_processed = max_bytes
         except OSError as exc:
             result.status = "partial" if result.bytes_processed else "failure"

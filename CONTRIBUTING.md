@@ -110,10 +110,10 @@ To add support for recovering a new file type, register its magic bytes in `src/
 ```python
 BUILTIN_SIGNATURES["webp"] = FileSignature(
     extension="webp",
-    header=b"RIFF....WEBP",    # Use dots (.) for wildcard bytes
+    header=b"RIFF....WEBP",  # Use dots (.) for wildcard bytes
     footer=None,
     max_size=50 * 1024 * 1024,
-    description="WebP Image"
+    description="WebP Image",
 )
 ```
 

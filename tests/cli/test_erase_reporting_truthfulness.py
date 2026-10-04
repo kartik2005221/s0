@@ -51,7 +51,8 @@ class TestFsyncFailureIsNotSuccess:
 
         assert result.status == "failure", (
             "an overwrite whose write cache never flushed reported success; the "
-            "bytes may still be in cache, so 'erased' is not yet a fact")
+            "bytes may still be in cache, so 'erased' is not yet a fact"
+        )
         assert "cache" in (result.error or "").lower()
         # The claim must also be actionable, not merely negative.
         assert "power-cycle" in (result.error or "")
@@ -95,8 +96,7 @@ class TestPostEraseCheckCanActuallyFail:
         with mock.patch("os.unlink", side_effect=OSError(13, "Permission denied")):
             result = erase_single_file(str(sample), passes=1, pattern="zero")
 
-        assert result.status == "failure", (
-            "the data was zeroed but never removed, and the tool said success")
+        assert result.status == "failure", "the data was zeroed but never removed, and the tool said success"
         assert result.error and "still present" in result.error
         # The claim must distinguish "zeroed" from "removed" rather than blur them.
         assert "not removed" in result.error
@@ -119,22 +119,27 @@ class TestPostEraseCheckCanActuallyFail:
         outcome tests, if it happened to also unlink successfully.
         """
         import inspect
+
         source = inspect.getsource(file_eraser.erase_single_file)
         body = source.split("Post-erase verification", 1)[-1]
         assert "path_obj.exists()" not in body, (
             "the post-erase check is testing the original path again; the data is "
-            "renamed away before the unlink, so that check can never fail")
+            "renamed away before the unlink, so that check can never fail"
+        )
 
 
 class TestMethodLabelDescribesWhatWasWritten:
-    @pytest.mark.parametrize("pattern,passes,expected", [
-        ("zero", 1, "OVERWRITE_ZERO_1PASS"),
-        ("zero", 3, "OVERWRITE_ZERO_3PASS"),
-        ("zero", 2, "OVERWRITE_ZERO_2PASS"),
-        ("random", 1, "SHRED_RANDOM_1PASS"),
-        ("random", 3, "SHRED_RANDOM_3PASS"),
-        ("random", 2, "SHRED_RANDOM_2PASS"),
-    ])
+    @pytest.mark.parametrize(
+        "pattern,passes,expected",
+        [
+            ("zero", 1, "OVERWRITE_ZERO_1PASS"),
+            ("zero", 3, "OVERWRITE_ZERO_3PASS"),
+            ("zero", 2, "OVERWRITE_ZERO_2PASS"),
+            ("random", 1, "SHRED_RANDOM_1PASS"),
+            ("random", 3, "SHRED_RANDOM_3PASS"),
+            ("random", 2, "SHRED_RANDOM_2PASS"),
+        ],
+    )
     def test_label_matches_the_pattern_and_pass_count(self, pattern, passes, expected):
         assert _wipe_method_label(pattern, passes) == expected
 
@@ -162,15 +167,29 @@ class TestMethodLabelDescribesWhatWasWritten:
         monkeypatch.setenv("S0_AUDIT_DB", str(tmp_path / "audit.db"))
 
         from s0.cli.main import main
-        rc = main(["wipe", "--target", str(sample), "--passes", "3",
-                   "--pattern", "zero", "--yes", "--no-pdf",
-                   "--out-dir", str(out)])
+
+        rc = main(
+            [
+                "wipe",
+                "--target",
+                str(sample),
+                "--passes",
+                "3",
+                "--pattern",
+                "zero",
+                "--yes",
+                "--no-pdf",
+                "--out-dir",
+                str(out),
+            ]
+        )
         assert rc == 0
 
         written = list(out.glob("*.json"))
         assert written, "no certificate was written"
 
         import json
+
         method = None
         for cert_file in written:
             cert = json.loads(cert_file.read_text())
@@ -179,7 +198,8 @@ class TestMethodLabelDescribesWhatWasWritten:
             assert pattern == "zero"
             # The two must agree: a random label over a zero pattern is the bug.
             assert ("RANDOM" in method) == (pattern == "random"), (
-                f"certificate says pattern={pattern!r} but method={method!r}")
+                f"certificate says pattern={pattern!r} but method={method!r}"
+            )
 
 
 class TestNoUnsampledReadbackClaim:
@@ -191,9 +211,11 @@ class TestNoUnsampledReadbackClaim:
         a property of the code path, not of any one run.
         """
         import inspect
+
         source = inspect.getsource(file_eraser)
         assert '"all_samples_match_wipe_pattern": None' in source, (
-            "the file path has no readback, so it must not assert a pattern match")
+            "the file path has no readback, so it must not assert a pattern match"
+        )
         assert "post_erase_absence_and_overwrite_readback" not in source, (
-            "the verification method string still claims an overwrite readback "
-            "that this path never performs")
+            "the verification method string still claims an overwrite readback that this path never performs"
+        )

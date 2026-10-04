@@ -55,6 +55,7 @@ LFN_MAX_CHARS = 255
 @dataclass
 class FatDirectoryEntry:
     """One 32-byte directory slot, decoded but not yet interpreted."""
+
     offset: int
     raw: bytes
 
@@ -120,6 +121,7 @@ class FatDirectoryEntry:
 @dataclass
 class FatLfnFragment:
     """One long-filename fragment, before it is joined to its neighbours."""
+
     sequence: int
     is_last: bool
     checksum: int
@@ -128,14 +130,15 @@ class FatLfnFragment:
 
 
 # How far a long name can be trusted.
-VERIFY_CHECKSUM = "checksum"        # bound to a live 8.3 entry by its checksum
+VERIFY_CHECKSUM = "checksum"  # bound to a live 8.3 entry by its checksum
 VERIFY_ADJACENT = "adjacency-only"  # structurally sound, checksum unrecoverable
-VERIFY_FAILED = "failed"            # the evidence contradicts the name
+VERIFY_FAILED = "failed"  # the evidence contradicts the name
 
 
 @dataclass
 class FatRecoveredName:
     """A filename as recovered, with what supports it."""
+
     short_name: str
     long_name: str | None = None
     verification: str = VERIFY_FAILED
@@ -148,8 +151,7 @@ class FatRecoveredName:
         A name that merely looks plausible is more dangerous than none at all: it
         reads as authoritative and may belong to a different file.
         """
-        return bool(self.long_name) and self.verification in (VERIFY_CHECKSUM,
-                                                              VERIFY_ADJACENT)
+        return bool(self.long_name) and self.verification in (VERIFY_CHECKSUM, VERIFY_ADJACENT)
 
     @property
     def name(self) -> str:
@@ -169,11 +171,15 @@ class FatRecoveredName:
         if self.long_name and self.verification == VERIFY_CHECKSUM:
             return "long filename (checksum verified against the 8.3 entry)"
         if self.long_name and self.verification == VERIFY_ADJACENT:
-            return ("long filename (sequence and adjacency only - the entry is "
-                    "deleted, so its 8.3 checksum cannot be recomputed)")
+            return (
+                "long filename (sequence and adjacency only - the entry is "
+                "deleted, so its 8.3 checksum cannot be recomputed)"
+            )
         if self.fragments:
-            return ("long filename present but UNVERIFIED - short name reported "
-                    "instead; the fragments may belong to a different file")
+            return (
+                "long filename present but UNVERIFIED - short name reported "
+                "instead; the fragments may belong to a different file"
+            )
         return "8.3 name only"
 
 
@@ -237,9 +243,9 @@ def parse_lfn_fragment(entry: FatDirectoryEntry) -> FatLfnFragment | None:
         return None
 
     parts = [
-        raw[1:11],        # characters 1-5
-        raw[14:26],       # characters 6-11
-        raw[28:32],       # characters 12-13
+        raw[1:11],  # characters 1-5
+        raw[14:26],  # characters 6-11
+        raw[28:32],  # characters 12-13
     ]
     text = ""
     for chunk in parts:
@@ -262,9 +268,10 @@ def parse_lfn_fragment(entry: FatDirectoryEntry) -> FatLfnFragment | None:
     )
 
 
-def assemble_long_name(fragments: list[FatLfnFragment],
-                       expected_checksum: int | None,
-                       ) -> tuple[str | None, str]:
+def assemble_long_name(
+    fragments: list[FatLfnFragment],
+    expected_checksum: int | None,
+) -> tuple[str | None, str]:
     """Join fragments into a name, and report how far it can be trusted.
 
     `expected_checksum` is the checksum of the 8.3 entry, or None when that
@@ -348,6 +355,7 @@ def expected_checksum_for(entry: FatDirectoryEntry) -> int | None:
 @dataclass
 class FatNamedEntry:
     """A 8.3 entry together with the long name recovered for it."""
+
     entry: FatDirectoryEntry
     recovered: FatRecoveredName
 
@@ -392,15 +400,17 @@ def name_entries(
 
         expected = expected_checksum_for(entry)
         long_name, verification = assemble_long_name(pending, expected)
-        out.append(FatNamedEntry(
-            entry=entry,
-            recovered=FatRecoveredName(
-                short_name=entry.short_name(),
-                long_name=long_name,
-                verification=verification,
-                fragments=pending,
-            ),
-        ))
+        out.append(
+            FatNamedEntry(
+                entry=entry,
+                recovered=FatRecoveredName(
+                    short_name=entry.short_name(),
+                    long_name=long_name,
+                    verification=verification,
+                    fragments=pending,
+                ),
+            )
+        )
         pending = []
 
     return out

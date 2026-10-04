@@ -84,10 +84,10 @@ class Chunk:
     """One RIFF chunk or LIST header."""
 
     fourcc: bytes
-    start: int          # offset of the FOURCC
-    size: int           # payload size, excluding the 8-byte header
+    start: int  # offset of the FOURCC
+    size: int  # payload size, excluding the 8-byte header
     depth: int = 0
-    list_type: bytes | None = None   # for LIST/RIFF, the type FOURCC at +8
+    list_type: bytes | None = None  # for LIST/RIFF, the type FOURCC at +8
 
     @property
     def payload_start(self) -> int:
@@ -132,7 +132,7 @@ def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> list[Chunk
     out: list[Chunk] = []
     pos = start
     while pos + _CHUNK_HEADER <= end:
-        fourcc = data[pos:pos + 4]
+        fourcc = data[pos : pos + 4]
         size = struct.unpack_from("<I", data, pos + 4)[0]
         nxt = pos + _CHUNK_HEADER + size + (size & 1)
         if nxt <= pos or nxt > end:
@@ -143,13 +143,13 @@ def walk_chunks(data: bytes, start: int, end: int, depth: int = 0) -> list[Chunk
             if pos + _CHUNK_HEADER + size != end:
                 raise RiffError(
                     f"chunk {fourcc!r} at {pos} declares {size} bytes, "
-                    f"overrunning its parent which ends at {end}")
+                    f"overrunning its parent which ends at {end}"
+                )
         chunk = Chunk(fourcc, pos, size, depth)
         if fourcc in (b"LIST", b"RIFF"):
-            chunk = Chunk(fourcc, pos, size, depth, data[pos + 8:pos + 12])
+            chunk = Chunk(fourcc, pos, size, depth, data[pos + 8 : pos + 12])
             if size >= 4 and pos + 12 <= end:
-                out.extend(walk_chunks(data, pos + 12, min(pos + 8 + size, end),
-                                       depth + 1))
+                out.extend(walk_chunks(data, pos + 12, min(pos + 8 + size, end), depth + 1))
         out.append(chunk)
         if nxt <= pos:
             break
@@ -169,13 +169,14 @@ def find_movi(chunks: list[Chunk]) -> Chunk | None:
 # AVI 1.0: idx1
 # --------------------------------------------------------------------------- #
 
+
 @dataclass
 class IndexEntry:
     """One ``idx1`` row, or one OpenDML super-index row."""
 
     chunk_id: bytes
     flags: int
-    offset: int          # as stored; relative or absolute, see resolve_index
+    offset: int  # as stored; relative or absolute, see resolve_index
     size: int
     base_is_absolute: bool = False
 
@@ -200,14 +201,14 @@ def parse_idx1(data: bytes, offset: int) -> list[IndexEntry]:
 
     Each row is 16 bytes: ``dwChunkId``, ``dwFlags``, ``dwOffset``, ``dwSize``.
     """
-    if offset + 8 > len(data) or data[offset:offset + 4] != b"idx1":
+    if offset + 8 > len(data) or data[offset : offset + 4] != b"idx1":
         return []
     size = struct.unpack_from("<I", data, offset + 4)[0]
     end = min(len(data), offset + 8 + size)
     entries: list[IndexEntry] = []
     pos = offset + 8
     while pos + 16 <= end:
-        chunk_id = data[pos:pos + 4]
+        chunk_id = data[pos : pos + 4]
         flags, off, sz = struct.unpack_from("<III", data, pos + 4)
         entries.append(IndexEntry(chunk_id, flags, off, sz))
         pos += 16
@@ -217,6 +218,7 @@ def parse_idx1(data: bytes, offset: int) -> list[IndexEntry]:
 # --------------------------------------------------------------------------- #
 # AVI 2.0: OpenDML indx / ix##
 # --------------------------------------------------------------------------- #
+
 
 def parse_opendml_indx(data: bytes, offset: int) -> list[IndexEntry]:
     """Parse an OpenDML ``indx`` super-index at ``offset``.
@@ -228,7 +230,7 @@ def parse_opendml_indx(data: bytes, offset: int) -> list[IndexEntry]:
     that matter: ``dwOffset`` is relative to ``dwBaseOffset``, and bit 31 of
     ``dwSize`` means *not* a keyframe.
     """
-    if offset + 8 > len(data) or data[offset:offset + 4] != b"indx":
+    if offset + 8 > len(data) or data[offset : offset + 4] != b"indx":
         return []
     if offset + 40 > len(data):
         return []
@@ -245,7 +247,7 @@ def parse_opendml_indx(data: bytes, offset: int) -> list[IndexEntry]:
     pos = payload + 32
     end = min(len(data), payload + 32 + 16 * chunk_count)
     while pos + 16 <= end:
-        chunk_id = data[pos:pos + 4]
+        chunk_id = data[pos : pos + 4]
         flags, off, sz = struct.unpack_from("<III", data, pos + 4)
         entries.append(IndexEntry(chunk_id, flags, base + off, sz, base_is_absolute=True))
         pos += 16
@@ -255,6 +257,7 @@ def parse_opendml_indx(data: bytes, offset: int) -> list[IndexEntry]:
 # --------------------------------------------------------------------------- #
 # Base resolution
 # --------------------------------------------------------------------------- #
+
 
 @dataclass
 class AviIndex:
@@ -274,8 +277,7 @@ class AviIndex:
 
     def extent(self, entry: IndexEntry) -> tuple[int, int]:
         """Absolute ``(offset, length)`` of a referenced chunk's *header*."""
-        return (entry.offset if self.base_is_absolute
-                else self.base + entry.offset, entry.size)
+        return (entry.offset if self.base_is_absolute else self.base + entry.offset, entry.size)
 
     def media_extent(self) -> tuple[int, int]:
         """``(first_offset, last_end)`` of all indexed chunks, or (0, 0)."""
@@ -288,8 +290,7 @@ class AviIndex:
         return (min(o for o, _ in offs), max(n for _, n in offs))
 
 
-def _fourcc_hits(data: bytes, entries: list[IndexEntry], base: int,
-                 absolute: bool) -> int:
+def _fourcc_hits(data: bytes, entries: list[IndexEntry], base: int, absolute: bool) -> int:
     """How many indexed entries land on a matching chunk header under one base.
 
     This is the discriminator between the two documented offset bases. It does
@@ -301,19 +302,18 @@ def _fourcc_hits(data: bytes, entries: list[IndexEntry], base: int,
         off = e.offset if absolute else base + e.offset
         if off < 0 or off + 4 > len(data):
             continue
-        got = data[off:off + 4]
+        got = data[off : off + 4]
         if got == e.chunk_id:
             hits += 1
         elif e.is_list and got in _LIST_LIKE:
             hits += 1
-        elif e.is_list and data[off + 4:off + 8] == e.chunk_id:
+        elif e.is_list and data[off + 4 : off + 8] == e.chunk_id:
             # The entry points at a LIST header whose type is the listed id.
             hits += 1
     return hits
 
 
-def resolve_index(data: bytes, movi: Chunk | None,
-                  entries: list[IndexEntry]) -> AviIndex | None:
+def resolve_index(data: bytes, movi: Chunk | None, entries: list[IndexEntry]) -> AviIndex | None:
     """Decide whether ``entries`` are movi-relative or file-absolute.
 
     Trap 1: both are legal and real files use both, so this tests both and keeps
@@ -340,16 +340,26 @@ def resolve_index(data: bytes, movi: Chunk | None,
 
     if hits_rel > hits_abs:
         base, absolute = movi_start or 0, False
-        resolution = (f"{hits_rel} of {total} index entries land on their own FOURCC "
-                      f"when read relative to the movi identifier at {base}")
+        resolution = (
+            f"{hits_rel} of {total} index entries land on their own FOURCC "
+            f"when read relative to the movi identifier at {base}"
+        )
     else:
         base, absolute = 0, True
-        resolution = (f"{hits_abs} of {total} index entries land on their own FOURCC "
-                      "when read relative to the start of the file")
+        resolution = (
+            f"{hits_abs} of {total} index entries land on their own FOURCC "
+            "when read relative to the start of the file"
+        )
 
     keyframes = sum(1 for e in entries if e.is_keyframe)
-    return AviIndex(entries=entries, base=base, base_is_absolute=absolute,
-                    movi_start=movi_start, keyframes=keyframes, resolution=resolution)
+    return AviIndex(
+        entries=entries,
+        base=base,
+        base_is_absolute=absolute,
+        movi_start=movi_start,
+        keyframes=keyframes,
+        resolution=resolution,
+    )
 
 
 def find_avi_index(data: bytes) -> AviIndex | None:

@@ -43,6 +43,7 @@ pil = pytest.importorskip("PIL.Image", reason="Pillow required to build image fi
 
 def _png_bytes(w=64, h=64, colour=(200, 30, 60)):
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("RGB", (w, h), colour).save(buf, format="PNG")
     return buf.getvalue()
@@ -50,6 +51,7 @@ def _png_bytes(w=64, h=64, colour=(200, 30, 60)):
 
 def _jpeg_bytes(w=64, h=64):
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("RGB", (w, h), (10, 120, 200)).save(buf, format="JPEG", quality=85)
     return buf.getvalue()
@@ -57,6 +59,7 @@ def _jpeg_bytes(w=64, h=64):
 
 def _gif_bytes():
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("P", (32, 24)).save(buf, format="GIF")
     return buf.getvalue()
@@ -64,6 +67,7 @@ def _gif_bytes():
 
 def _bmp_bytes():
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("RGB", (32, 24), (7, 7, 7)).save(buf, format="BMP")
     return buf.getvalue()
@@ -109,8 +113,10 @@ def _tar_bytes():
 
 
 def _pdf_bytes(title="Case 42"):
-    return (f"%PDF-1.7\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-            f"trailer<</Root 1 0 R/Info<</Title({title})>>>>\n%%EOF\n").encode()
+    return (
+        f"%PDF-1.7\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        f"trailer<</Root 1 0 R/Info<</Title({title})>>>>\n%%EOF\n"
+    ).encode()
 
 
 def _deterministic_fill(size=1 << 20) -> bytes:
@@ -132,7 +138,7 @@ def _deterministic_fill(size=1 << 20) -> bytes:
     """
     import random
 
-    rng = random.Random(20240917)          # fixed on purpose; see docstring
+    rng = random.Random(20240917)  # fixed on purpose; see docstring
     return bytes(rng.getrandbits(8) for _ in range(size))
 
 
@@ -143,11 +149,11 @@ def _write_image_with_payloads(tmp_path, payloads, total=48 * 1024 * 1024, fill=
     buf = bytearray()
     placements = {}
     for _i, (name, data) in enumerate(payloads.items()):
-        pad = (fill * ((span * 2) // len(fill) + 2))[: span]
+        pad = (fill * ((span * 2) // len(fill) + 2))[:span]
         buf += pad
         placements[name] = len(buf)
         buf += data
-    pad = (fill * ((span * 2) // len(fill) + 2))[: span]
+    pad = (fill * ((span * 2) // len(fill) + 2))[:span]
     buf += pad
     p = tmp_path / "evidence.raw"
     p.write_bytes(bytes(buf))
@@ -162,6 +168,7 @@ def _write_image_with_payloads(tmp_path, payloads, total=48 * 1024 * 1024, fill=
 def test_shannon_entropy():
     assert calculate_shannon_entropy(b"\x00" * 1024) == 0.0
     import secrets
+
     assert 7.5 <= calculate_shannon_entropy(secrets.token_bytes(4096)) <= 8.0
 
 
@@ -170,14 +177,17 @@ def test_shannon_entropy():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("name,data,expected_size", [
-    ("png", _png_bytes, 0),
-    ("jpg", _jpeg_bytes, 0),
-    ("gif", _gif_bytes, 0),
-    ("bmp", _bmp_bytes, 0),
-    ("zip", _zip_bytes, 0),
-    ("wav", _wav_bytes, 0),
-])
+@pytest.mark.parametrize(
+    "name,data,expected_size",
+    [
+        ("png", _png_bytes, 0),
+        ("jpg", _jpeg_bytes, 0),
+        ("gif", _gif_bytes, 0),
+        ("bmp", _bmp_bytes, 0),
+        ("zip", _zip_bytes, 0),
+        ("wav", _wav_bytes, 0),
+    ],
+)
 def test_boundary_resolves_exact_size(tmp_path, name, data, expected_size):
     blob = data()
     path = tmp_path / "blob.bin"
@@ -217,7 +227,7 @@ def test_tar_boundary_accounts_for_the_257_byte_magic_offset(tmp_path):
     blob = _tar_bytes()
     path = tmp_path / "blob.tar"
     path.write_bytes(blob)
-    ustar = blob.index(b"ustar")           # the signature is 257 bytes in
+    ustar = blob.index(b"ustar")  # the signature is 257 bytes in
     with open(path, "rb") as fh:
         src = boundary.ByteSource(fh, len(blob))
         sig = get_signature_by_ext("tar")
@@ -245,23 +255,33 @@ def test_no_boundary_rule_means_reject_not_guess(tmp_path):
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("name,data", [
-    ("png", _png_bytes), ("jpg", _jpeg_bytes), ("gif", _gif_bytes),
-    ("bmp", _bmp_bytes), ("zip", _zip_bytes), ("wav", _wav_bytes),
-])
+@pytest.mark.parametrize(
+    "name,data",
+    [
+        ("png", _png_bytes),
+        ("jpg", _jpeg_bytes),
+        ("gif", _gif_bytes),
+        ("bmp", _bmp_bytes),
+        ("zip", _zip_bytes),
+        ("wav", _wav_bytes),
+    ],
+)
 def test_structural_validation_accepts_real_files(name, data):
     ok, reason = boundary.validate_structure(data(), name)
     assert ok, reason
 
 
-@pytest.mark.parametrize("name,blob", [
-    ("png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 200),
-    ("jpg", b"\xff\xd8\xff" + b"\x00" * 200),
-    ("zip", b"PK\x03\x04" + b"\x00" * 200),
-    ("gif", b"GIF8" + b"\x00" * 200),
-    ("bmp", b"BM" + os.urandom(400)),
-    ("sqlite", b"SQLite format 3\x00" + b"\x00" * 900),
-])
+@pytest.mark.parametrize(
+    "name,blob",
+    [
+        ("png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 200),
+        ("jpg", b"\xff\xd8\xff" + b"\x00" * 200),
+        ("zip", b"PK\x03\x04" + b"\x00" * 200),
+        ("gif", b"GIF8" + b"\x00" * 200),
+        ("bmp", b"BM" + os.urandom(400)),
+        ("sqlite", b"SQLite format 3\x00" + b"\x00" * 900),
+    ],
+)
 def test_structural_validation_rejects_truncated_or_random_data(name, blob):
     ok, reason = boundary.validate_structure(blob, name)
     assert not ok
@@ -277,8 +297,7 @@ def test_mp3_frame_chain_rejects_a_lone_sync_word():
     # Two independent gates reject this: the MPEG frame chain, and the
     # uniform-random entropy profile. Either is a correct answer, so accept
     # both and let the next test pin the frame chain specifically.
-    assert ("consecutive" in reason
-            or "maximum entropy" in reason), reason
+    assert "consecutive" in reason or "maximum entropy" in reason, reason
 
 
 def test_mp3_frame_chain_rejects_a_non_random_lone_sync_word():
@@ -311,8 +330,8 @@ def test_mp3_frame_chain_accepts_a_real_frame_sequence(tmp_path):
 
 def _synth_mp3_frames(n=40):
     """Build a valid MPEG-1 Layer III frame chain: 128 kbps, 44.1 kHz, mono."""
-    header = bytes([0xFF, 0xFB, 0x90, 0x00])       # MPEG1 L3 128kbps 44.1k no-CRC
-    frame_len = 144 * 128_000 // 44100              # 417
+    header = bytes([0xFF, 0xFB, 0x90, 0x00])  # MPEG1 L3 128kbps 44.1k no-CRC
+    frame_len = 144 * 128_000 // 44100  # 417
     hdr = boundary.parse_mpeg_frame_header(header, 0)
     if hdr is None or hdr["frame_len"] != frame_len:
         return None
@@ -333,14 +352,15 @@ def test_valid_bmp_scores_high_despite_low_entropy():
         b = boundary.resolve_boundary(src, 0, sig, sig.max_size)
     assert b.resolved
     score, heuristics = score_carved_candidate(
-        sig, blob, boundary_method=b.method, boundary_notes=tuple(b.notes))
+        sig, blob, boundary_method=b.method, boundary_notes=tuple(b.notes)
+    )
     assert score >= 90, heuristics
 
 
 def test_entropy_alone_can_never_reject_a_valid_file():
     """Entropy is capped at a small share of the score and may not go negative
     except for effectively constant data."""
-    blob = _png_bytes(8, 8, (0, 0, 0))          # near-constant image
+    blob = _png_bytes(8, 8, (0, 0, 0))  # near-constant image
     sig = get_signature_by_ext("png")
     score, heuristics = score_carved_candidate(sig, blob, boundary_method=boundary.CONTAINER_WALK)
     assert score >= 85, heuristics
@@ -355,6 +375,7 @@ def test_header_only_signature_without_a_resolvable_boundary_is_not_scored():
 
 def _tmpfile(blob):
     import tempfile
+
     fd, path = tempfile.mkstemp()
     os.write(fd, blob)
     os.close(fd)
@@ -394,7 +415,8 @@ def test_carve_recovers_every_planted_file_and_no_others(tmp_path):
     for c in summary.carved_files:
         truth = next(n for n, o in placements.items() if o == c.offset)
         assert c.size_bytes == expected_sizes[truth], (
-            f"{truth}: carved {c.size_bytes} but planted {expected_sizes[truth]}")
+            f"{truth}: carved {c.size_bytes} but planted {expected_sizes[truth]}"
+        )
 
     assert summary.files_recovered == len(payloads)
     assert all(c.confidence_score >= 60 for c in summary.carved_files)
@@ -408,7 +430,8 @@ def test_carve_recovers_every_planted_file_and_no_others(tmp_path):
     assert not spurious, (
         f"the carver reported {len(spurious)} file(s) at offsets that were never "
         f"planted: {spurious}. A forensic carver that invents files is worse than "
-        f"one that misses them, because the invention enters evidence.")
+        f"one that misses them, because the invention enters evidence."
+    )
 
 
 @contextlib.contextmanager
@@ -444,12 +467,14 @@ def _mpegts_packets(count: int, pid: int = 0x0100, payload: bytes = b"\x00" * 18
     """A well-formed MPEG-TS run: 188-byte packets, one PID, AFC=1, CC counting."""
     out = bytearray()
     for i in range(count):
-        hdr = bytes([
-            0x47,
-            ((pid >> 8) & 0x1F),          # TEI=0, PUSI, priority=0
-            pid & 0xFF,
-            (0x01 << 4) | (i & 0x0F),     # scrambling=0, AFC=1 (payload only), CC
-        ])
+        hdr = bytes(
+            [
+                0x47,
+                ((pid >> 8) & 0x1F),  # TEI=0, PUSI, priority=0
+                pid & 0xFF,
+                (0x01 << 4) | (i & 0x0F),  # scrambling=0, AFC=1 (payload only), CC
+            ]
+        )
         out += hdr + payload
     return bytes(out)
 
@@ -461,9 +486,9 @@ def test_mpegts_transport_header_rules():
     8 MiB of noise the 0x47 sync byte alone occurs every 256 bytes. These are the
     rules that make a 0x47 run distinguishable from coincidence.
     """
+
     def hdr(tei=0, pusi=0, scrambling=0, afc=1, cc=0):
-        return bytes([0x47, (tei << 7) | (pusi << 6) | 0x00, 0x00,
-                      (scrambling << 6) | (afc << 4) | cc])
+        return bytes([0x47, (tei << 7) | (pusi << 6) | 0x00, 0x00, (scrambling << 6) | (afc << 4) | cc])
 
     assert boundary._ts_packet_header(hdr()) is not None
     assert boundary._ts_packet_header(hdr(tei=1)) is None, "transport_error_indicator"
@@ -477,7 +502,7 @@ def test_mpegts_rejects_a_short_sync_run_and_random_payloads():
     # A run of 0x47s with no valid transport headers anywhere.
     junk = bytearray(b"\x47" * (188 * 16))
     for i in range(0, len(junk), 188):
-        junk[i + 3] = 0x00          # AFC = 0, which the standard forbids
+        junk[i + 3] = 0x00  # AFC = 0, which the standard forbids
     ok, why = boundary._validate_mpegts(bytes(junk))
     assert not ok
     assert "transport header" in why or "PID" in why
@@ -563,13 +588,29 @@ def test_mpegts_adaptation_fields_do_not_move_the_stride(tmp_path):
 def test_a_real_ffmpeg_transport_stream_is_recovered(tmp_path):
     """End to end: a real multiplexed stream must carve byte-exact."""
     from s0.carve import carve_image
+
     ffmpeg = shutil.which("ffmpeg")
     src = tmp_path / "real.ts"
     proc = subprocess.run(
-        [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-         "-i", "testsrc=size=160x120:rate=15:duration=2",
-         "-c:v", "mpeg2video", "-f", "mpegts", str(src)],
-        capture_output=True, text=True)
+        [
+            ffmpeg,
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=size=160x120:rate=15:duration=2",
+            "-c:v",
+            "mpeg2video",
+            "-f",
+            "mpegts",
+            str(src),
+        ],
+        capture_output=True,
+        text=True,
+    )
     if proc.returncode != 0:
         pytest.skip(proc.stderr[:200])
     original = src.read_bytes()
@@ -590,6 +631,7 @@ def test_jpeg_sof_length_must_match_component_count():
     ``length == 8 + 3 * components`` about once in 32,768.
     """
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("RGB", (64, 64), (10, 120, 200)).save(buf, format="JPEG", quality=85)
     jpg = bytearray(buf.getvalue())
@@ -597,7 +639,7 @@ def test_jpeg_sof_length_must_match_component_count():
     # Find SOF0 and lie about the component count.
     i = jpg.index(b"\xff\xc0")
     original = jpg[i + 9]
-    jpg[i + 9] = 1                      # claims 1 component but length says 17
+    jpg[i + 9] = 1  # claims 1 component but length says 17
     with _tmp_bytes(bytes(jpg)) as path:
         bnd = _resolve_boundary(boundary._jpeg_end, path)
     assert bnd.method == boundary.UNDETERMINED
@@ -612,12 +654,13 @@ def test_jpeg_sof_length_must_match_component_count():
 def test_jpeg_without_dqt_and_dht_is_rejected():
     """A scan with no quantisation or Huffman table is undecodable, so not a file."""
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("L", (64, 64), 128).save(buf, format="JPEG", quality=85)
     jpg = buf.getvalue()
     dqt = jpg.index(b"\xff\xdb")
-    ln = int.from_bytes(jpg[dqt + 2:dqt + 4], "big")
-    stripped = jpg[:dqt] + jpg[dqt + 2 + ln:]      # delete the DQT segment
+    ln = int.from_bytes(jpg[dqt + 2 : dqt + 4], "big")
+    stripped = jpg[:dqt] + jpg[dqt + 2 + ln :]  # delete the DQT segment
     with _tmp_bytes(stripped) as path:
         bnd = _resolve_boundary(boundary._jpeg_end, path)
     assert bnd.method == boundary.UNDETERMINED
@@ -625,14 +668,14 @@ def test_jpeg_without_dqt_and_dht_is_rejected():
 
 
 def test_dqt_and_dht_length_helpers():
-    assert boundary._dqt_length_is_exact(bytes([0x00]) + bytes(64))       # 8-bit table
-    assert boundary._dqt_length_is_exact(bytes([0x10]) + bytes(128))      # 16-bit table
-    assert boundary._dqt_length_is_exact((bytes([0x00]) + bytes(64)) * 2)   # two tables
-    assert not boundary._dqt_length_is_exact(bytes([0x00]) + bytes(63))   # short table
-    assert not boundary._dqt_length_is_exact(bytes([0x20]) + bytes(64))   # Pq=2 invalid
+    assert boundary._dqt_length_is_exact(bytes([0x00]) + bytes(64))  # 8-bit table
+    assert boundary._dqt_length_is_exact(bytes([0x10]) + bytes(128))  # 16-bit table
+    assert boundary._dqt_length_is_exact((bytes([0x00]) + bytes(64)) * 2)  # two tables
+    assert not boundary._dqt_length_is_exact(bytes([0x00]) + bytes(63))  # short table
+    assert not boundary._dqt_length_is_exact(bytes([0x20]) + bytes(64))  # Pq=2 invalid
     counts = bytes([0] * 15 + [1])
     assert boundary._dht_length_is_plausible(bytes([0x00]) + counts + b"\x00")
-    assert not boundary._dht_length_is_plausible(bytes([0x00]) + counts)   # truncated
+    assert not boundary._dht_length_is_plausible(bytes([0x00]) + counts)  # truncated
     assert not boundary._dht_length_is_plausible(bytes([0x00]) + bytes(16))  # zero symbols
 
 
@@ -656,8 +699,7 @@ def test_carve_output_never_exceeds_its_budget(tmp_path):
     policy = CarvePolicy.for_target(path.stat().st_size, max_files_total=10)
     summary = carve_image(path, out, generate_certificate=False, policy=policy)
     assert summary.files_recovered <= 10
-    written = sum(p.stat().st_size for p in out.iterdir()
-                  if p.is_file() and p.suffix != ".json")
+    written = sum(p.stat().st_size for p in out.iterdir() if p.is_file() and p.suffix != ".json")
     assert written <= policy.max_output_bytes
 
 
@@ -686,6 +728,7 @@ def test_carve_records_why_candidates_were_rejected(tmp_path):
 
 def test_recovery_index_is_written_and_machine_readable(tmp_path):
     import json
+
     payloads = {"a.png": _png_bytes(), "b.zip": _zip_bytes()}
     path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
     out = tmp_path / "out"
@@ -700,6 +743,7 @@ def test_recovery_index_is_written_and_machine_readable(tmp_path):
 
 def test_carve_issues_a_verifiable_manifest_certificate(tmp_path):
     from s0.crypto import DEMO_KEY_FINGERPRINT
+
     payloads = {"a.png": _png_bytes(), "b.zip": _zip_bytes()}
     path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
     out = tmp_path / "out"
@@ -718,10 +762,18 @@ def test_custom_signature_is_honoured(tmp_path):
     payload = blob + os.urandom(4096)
     path = tmp_path / "custom.raw"
     path.write_bytes(os.urandom(1 << 20) + payload + os.urandom(1 << 20))
-    sigs = [signatures.signature_from_dict({
-        "name": "S0 Marker", "extension": "s0m", "category": "custom",
-        "header": "9353304d41524b4552", "min_size": 64, "max_size": 65536,
-    })]
+    sigs = [
+        signatures.signature_from_dict(
+            {
+                "name": "S0 Marker",
+                "extension": "s0m",
+                "category": "custom",
+                "header": "9353304d41524b4552",
+                "min_size": 64,
+                "max_size": 65536,
+            }
+        )
+    ]
     out = tmp_path / "out"
     summary = carve_image(path, out, custom_signatures=sigs, generate_certificate=False)
     assert summary.files_recovered == 1
@@ -756,10 +808,15 @@ def test_budget_scales_with_target_size():
 
 
 def test_budget_admission_is_ordered_and_explained():
-    b = CarveBudget(policy=CarvePolicy(max_files_total=2, max_file_bytes=1024,
-                                       max_output_bytes=4096,
-                                       max_files_per_category=5,
-                                       max_files_per_extension=5))
+    b = CarveBudget(
+        policy=CarvePolicy(
+            max_files_total=2,
+            max_file_bytes=1024,
+            max_output_bytes=4096,
+            max_files_per_category=5,
+            max_files_per_extension=5,
+        )
+    )
     assert b.admit("image", "png", 500)[0]
     b.commit("image", "png", 500)
     ok, reason = b.admit("image", "png", 999_999)
@@ -779,10 +836,12 @@ def _jpg_bytes(seed: int = 0, size: tuple = (48, 48)) -> bytes:
     import random
 
     from PIL import Image
+
     rnd = random.Random(seed)
     im = Image.new("RGB", size)
-    im.putdata([(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256))
-                for _ in range(size[0] * size[1])])
+    im.putdata(
+        [(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256)) for _ in range(size[0] * size[1])]
+    )
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=90)
     return buf.getvalue()
@@ -801,12 +860,14 @@ def _ext4_with_two_jpegs(tmp_path: Path, allocated: bool):
     content is still sitting in free space.
     """
     import sys as _sys
+
     _sys.path.insert(0, str(Path(__file__).parent))
     from test_allocation import _ext4_image
 
     BLOCK = 1024
-    img = _ext4_image(tmp_path / "vol.img", block_size=BLOCK, blocks=64,
-                      blocks_per_group=32, free_per_group=8)
+    img = _ext4_image(
+        tmp_path / "vol.img", block_size=BLOCK, blocks=64, blocks_per_group=32, free_per_group=8
+    )
 
     live = _jpg_bytes(seed=1, size=(48, 48))
     deleted = _jpg_bytes(seed=2, size=(56, 56))
@@ -855,11 +916,11 @@ def test_carve_restricted_to_free_space_does_not_report_live_files(tmp_path):
         policy = CarvePolicy.for_target(img.stat().st_size)
         policy.use_free_space_only = free_only
         policy.structure_recovery_enabled = False
-        s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy,
-                        generate_certificate=False)
+        s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy, generate_certificate=False)
         results[free_only] = {
             hashlib.sha256(Path(f.recovered_path).read_bytes()).hexdigest()
-            for f in s.carved_files if f.recovered_path
+            for f in s.carved_files
+            if f.recovered_path
         }
         if free_only:
             assert s.free_space is not None
@@ -883,10 +944,12 @@ def test_carve_in_unallocated_space_still_finds_a_deleted_file(tmp_path):
     out = tmp_path / "out"
     policy = CarvePolicy.for_target(img.stat().st_size)
     policy.structure_recovery_enabled = False
-    s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy,
-                    generate_certificate=False)
-    hashes = {hashlib.sha256(Path(f.recovered_path).read_bytes()).hexdigest()
-              for f in s.carved_files if f.recovered_path}
+    s = carve_image(str(img), str(out), extensions=[".jpg"], policy=policy, generate_certificate=False)
+    hashes = {
+        hashlib.sha256(Path(f.recovered_path).read_bytes()).hexdigest()
+        for f in s.carved_files
+        if f.recovered_path
+    }
     assert hashlib.sha256(deleted).hexdigest() in hashes
 
 
@@ -895,12 +958,15 @@ def test_unknown_filesystem_searches_everything_and_says_so(tmp_path):
     blob = tmp_path / "raw.img"
     blob.write_bytes(_jpg_bytes(seed=3) + b"\x00" * 4096)
     out = tmp_path / "out"
-    s = carve_image(str(blob), str(out), extensions=[".jpg"],
-                    policy=CarvePolicy.for_target(blob.stat().st_size),
-                    generate_certificate=False)
+    s = carve_image(
+        str(blob),
+        str(out),
+        extensions=[".jpg"],
+        policy=CarvePolicy.for_target(blob.stat().st_size),
+        generate_certificate=False,
+    )
     assert s.free_space is None
-    assert any("whole volume" in w or "not a recognised filesystem" in w
-               for w in s.warnings), s.warnings
+    assert any("whole volume" in w or "not a recognised filesystem" in w for w in s.warnings), s.warnings
 
 
 class TestUniformRandomGate:
@@ -914,6 +980,7 @@ class TestUniformRandomGate:
 
     def test_uniform_noise_is_rejected(self):
         from s0.carve import scoring
+
         for size in (8 * 1024, 64 * 1024, 512 * 1024):
             data = os.urandom(size)
             complaint = scoring.uniform_random_complaint(data)
@@ -929,6 +996,7 @@ class TestUniformRandomGate:
         """
         payload = b"G" + os.urandom(64 * 1024)
         from s0.carve import scoring
+
         assert scoring.uniform_random_complaint(payload) is not None
 
     def test_a_repetitive_real_file_is_not_caught(self):
@@ -939,12 +1007,14 @@ class TestUniformRandomGate:
         is why the gate also requires the mean to be near-maximal.
         """
         from s0.carve import scoring
-        for data in (b"\x00" * 64 * 1024,
-                     b"\xff" * 64 * 1024,
-                     b"A" * 200_000,
-                     b"the quick brown fox jumps over the lazy dog. " * 3000):
-            assert scoring.uniform_random_complaint(data) is None, \
-                "a low-entropy payload is not noise"
+
+        for data in (
+            b"\x00" * 64 * 1024,
+            b"\xff" * 64 * 1024,
+            b"A" * 200_000,
+            b"the quick brown fox jumps over the lazy dog. " * 3000,
+        ):
+            assert scoring.uniform_random_complaint(data) is None, "a low-entropy payload is not noise"
 
     def test_a_deterministic_maximally_uniform_pattern_is_also_rejected(self):
         """The gate does not care that the noise is predictable.
@@ -955,37 +1025,59 @@ class TestUniformRandomGate:
         distributed is not.
         """
         from s0.carve import scoring
+
         complaint = scoring.uniform_random_complaint(bytes(range(256)) * 256)
         assert complaint is not None
         assert "maximum entropy" in complaint
 
     def test_a_real_encoded_file_is_not_caught(self, tmp_path):
         from s0.carve import scoring
+
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
             pytest.skip("ffmpeg not available")
-        for codec, fmt, ext in (("mpeg4", "avi", "avi"), ("libx264", "mp4", "mp4"),
-                                ("libx264", "matroska", "mkv"), ("ffv1", "avi", "avi")):
+        for codec, fmt, ext in (
+            ("mpeg4", "avi", "avi"),
+            ("libx264", "mp4", "mp4"),
+            ("libx264", "matroska", "mkv"),
+            ("ffv1", "avi", "avi"),
+        ):
             out = tmp_path / f"r{len(list(tmp_path.iterdir()))}.{ext}"
             proc = subprocess.run(
-                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-                 "-i", "testsrc=size=320x240:rate=25:duration=4",
-                 "-c:v", codec, "-f", fmt, str(out)],
-                capture_output=True, text=True)
+                [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc=size=320x240:rate=25:duration=4",
+                    "-c:v",
+                    codec,
+                    "-f",
+                    fmt,
+                    str(out),
+                ],
+                capture_output=True,
+                text=True,
+            )
             if proc.returncode != 0 or not out.is_file():
                 continue
             data = out.read_bytes()
-            assert scoring.uniform_random_complaint(data) is None, \
-                f"{codec}/{fmt} was wrongly called noise"
+            assert scoring.uniform_random_complaint(data) is None, f"{codec}/{fmt} was wrongly called noise"
 
     def test_payloads_too_small_to_judge_are_not_complained_about(self):
         from s0.carve import scoring
+
         for size in (16, 512, 4096, 8191):
             assert scoring.uniform_random_complaint(os.urandom(size)) is None
 
     def test_the_gate_is_applied_before_the_format_specific_check(self):
         """A bare magic byte plus noise must not reach the format validator."""
         from s0.carve import boundary
+
         ok, reason = boundary.validate_structure(b"RIFF" + os.urandom(32 * 1024), "avi")
         assert not ok
         assert "maximum entropy" in reason
@@ -993,6 +1085,7 @@ class TestUniformRandomGate:
     def test_solid_containers_still_validate(self):
         """A deliberately tiny but real PNG must not be caught by the gate."""
         from s0.carve import boundary
+
         data = _png_bytes(16, 16)
         ok, reason = boundary.validate_structure(data, "png")
         assert ok, reason
@@ -1009,41 +1102,61 @@ class TestCandidatePrefilter:
 
     def _sig(self, ext):
         from s0.carve.signatures import SIGNATURES
+
         return next(s for s in SIGNATURES if s.extension == ext)
 
     def test_noise_matching_a_one_byte_magic_is_rejected_in_memory(self):
         from s0.carve.engine import _plausible_header
+
         sig = self._sig("ts")
         window = bytes([0x47]) + os.urandom(64 * 1024)
         # Force an invalid adaptation_field_control at +3 on the first packets.
         window = bytearray(window)
         for i in range(0, 8 * 188, 188):
-            window[i + 3] = 0x00            # AFC 0 is forbidden
+            window[i + 3] = 0x00  # AFC 0 is forbidden
         window = bytes(window)
         assert _plausible_header(sig, window, 0) is not None
         assert "consecutive valid" in _plausible_header(sig, window, 0)
 
     def test_a_real_transport_stream_passes_the_prefilter(self, tmp_path):
         from s0.carve.engine import _plausible_header
+
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
             pytest.skip("ffmpeg not available")
         src = tmp_path / "r.ts"
         proc = subprocess.run(
-            [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-             "-i", "testsrc=size=160x120:rate=15:duration=2",
-             "-c:v", "mpeg2video", "-f", "mpegts", str(src)],
-            capture_output=True, text=True)
+            [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=160x120:rate=15:duration=2",
+                "-c:v",
+                "mpeg2video",
+                "-f",
+                "mpegts",
+                str(src),
+            ],
+            capture_output=True,
+            text=True,
+        )
         if proc.returncode != 0:
             pytest.skip(proc.stderr[:200])
         data = src.read_bytes()
         sig = self._sig("ts")
-        assert _plausible_header(sig, data, 0) is None, \
+        assert _plausible_header(sig, data, 0) is None, (
             "a real multiplexed stream must not be prefiltered away"
+        )
 
     @pytest.mark.parametrize("ext", ["avi", "mp4"])
     def test_real_container_starts_pass(self, tmp_path, ext):
         from s0.carve.engine import _plausible_header
+
         sig = self._sig(ext)
         if ext == "avi":
             ffmpeg = shutil.which("ffmpeg")
@@ -1051,21 +1164,53 @@ class TestCandidatePrefilter:
                 pytest.skip("ffmpeg not available")
             src = tmp_path / "a.avi"
             proc = subprocess.run(
-                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-                 "-i", "testsrc=size=160x120:rate=15:duration=2", "-c:v", "mpeg4",
-                 "-f", "avi", str(src)], capture_output=True, text=True)
+                [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc=size=160x120:rate=15:duration=2",
+                    "-c:v",
+                    "mpeg4",
+                    "-f",
+                    "avi",
+                    str(src),
+                ],
+                capture_output=True,
+                text=True,
+            )
             if proc.returncode != 0:
                 pytest.skip(proc.stderr[:200])
         else:
-            src = _png_bytes()          # placeholder, replaced below
+            src = _png_bytes()  # placeholder, replaced below
             src = tmp_path / "a.mp4"
             ffmpeg = shutil.which("ffmpeg")
             if ffmpeg is None:
                 pytest.skip("ffmpeg not available")
             proc = subprocess.run(
-                [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-                 "-i", "testsrc=size=160x120:rate=15:duration=2", "-c:v", "libx264",
-                 "-f", "mp4", str(src)], capture_output=True, text=True)
+                [
+                    ffmpeg,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-y",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "testsrc=size=160x120:rate=15:duration=2",
+                    "-c:v",
+                    "libx264",
+                    "-f",
+                    "mp4",
+                    str(src),
+                ],
+                capture_output=True,
+                text=True,
+            )
             if proc.returncode != 0:
                 pytest.skip(proc.stderr[:200])
         data = src.read_bytes()
@@ -1077,20 +1222,22 @@ class TestCandidatePrefilter:
         import struct as _struct
 
         from s0.carve.engine import _plausible_header
+
         sig = self._sig("bmp")
         window = bytearray(64)
         window[0:2] = b"BM"
-        _struct.pack_into("<I", window, 2, 1000)      # declared size
-        _struct.pack_into("<HHI", window, 6, 0, 0, 54)   # data offset
+        _struct.pack_into("<I", window, 2, 1000)  # declared size
+        _struct.pack_into("<HHI", window, 6, 0, 0, 54)  # data offset
         window = bytes(window)
         assert _plausible_header(sig, window, 0) is None
         bad = bytearray(window)
-        _struct.pack_into("<H", bad, 6, 0x1234)       # non-zero reserved word
+        _struct.pack_into("<H", bad, 6, 0x1234)  # non-zero reserved word
         assert "reserved" in (_plausible_header(sig, bytes(bad), 0) or "")
 
     def test_prefilter_near_the_window_edge_defers_to_the_boundary_walker(self):
         """Incomplete evidence must not be treated as disproof."""
         from s0.carve.engine import _plausible_header
+
         sig = self._sig("ts")
         assert _plausible_header(sig, b"G", 0) is None
 
@@ -1100,16 +1247,19 @@ class TestScanThroughput:
 
     def test_noise_scan_does_not_drown_in_candidates(self, tmp_path):
         from s0.carve import carve_image
+
         img = tmp_path / "noise.raw"
         img.write_bytes(os.urandom(8 * 1024 * 1024))
         out = tmp_path / "out"
         summary = carve_image(img, out, generate_certificate=False)
         # Before the prefilter this was ~66,000 candidates per 8 MiB.
-        assert summary.total_candidates_found < 500, \
+        assert summary.total_candidates_found < 500, (
             f"{summary.total_candidates_found} candidates from 8 MiB of noise"
+        )
 
     def test_a_sparse_window_skips_magics_that_cannot_match(self, tmp_path):
         from s0.carve import carve_image
+
         img = tmp_path / "sparse.raw"
         with open(img, "wb") as f:
             for _ in range(8):
@@ -1121,6 +1271,7 @@ class TestScanThroughput:
 
     def test_a_real_file_is_still_found_in_a_sparse_image(self, tmp_path):
         from s0.carve import carve_image
+
         payload = _png_bytes(64, 64)
         img = tmp_path / "sparse.raw"
         img.write_bytes(b"\x00" * 4096 + payload + b"\x00" * 4096)
@@ -1134,6 +1285,7 @@ class TestScanThroughput:
 # --------------------------------------------------------------------------- #
 # Findings 2.1 and 2.2 from the adversarial pass on this branch.
 # --------------------------------------------------------------------------- #
+
 
 def test_valid_compressed_and_encrypted_containers_are_not_entropy_rejected():
     """Regression: the entropy gate vetoed files whose container had validated.
@@ -1223,30 +1375,34 @@ def test_gif_with_extension_blocks_reaches_its_trailer():
             self.size = len(data)
 
         def read(self, offset: int, count: int) -> bytes:
-            return self.d[offset:offset + count] if 0 <= offset < len(self.d) else b""
+            return self.d[offset : offset + count] if 0 <= offset < len(self.d) else b""
 
     def build(animated: bool) -> bytes:
         # logical screen descriptor, 2-entry global colour table (flag 0x80, size 0)
         out = b"GIF89a" + struct.pack("<HH", 2, 2) + bytes([0x80, 0, 0]) + b"\x00" * 6
-        gce = b"\x21\xF9\x04\x00\x00\x00\x00\x00"      # graphic control extension
-        img = b"\x2C" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
-        return out + (gce + img if animated else img) + b"\x3B"
+        gce = b"\x21\xf9\x04\x00\x00\x00\x00\x00"  # graphic control extension
+        img = b"\x2c" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
+        return out + (gce + img if animated else img) + b"\x3b"
 
     # An application extension as ffmpeg writes it: 0x21 0xFF, a 12-byte block
     # (size byte + "NETSCAPE2.0" + auth code), then the sub-blocks. Getting that
     # 12 wrong by one desynchronises the walk and the rest of the file reads as
     # garbage, so it is pinned here explicitly.
-    with_app = b"\x21\xFF\x0BNETSCAPE2.0\x03\x01\x00\x00\x00"
+    with_app = b"\x21\xff\x0bNETSCAPE2.0\x03\x01\x00\x00\x00"
 
     def build_app(animated: bool) -> bytes:
         out = b"GIF89a" + struct.pack("<HH", 2, 2) + bytes([0x80, 0, 0]) + b"\x00" * 6
         out += with_app
-        gce = b"\x21\xF9\x04\x00\x00\x00\x00\x00"
-        img = b"\x2C" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
-        return out + (gce + img if animated else img) + b"\x3B"
+        gce = b"\x21\xf9\x04\x00\x00\x00\x00\x00"
+        img = b"\x2c" + struct.pack("<HHHH", 0, 0, 2, 2) + b"\x00\x02\x02ab\x00"
+        return out + (gce + img if animated else img) + b"\x3b"
 
-    cases = [("static", build(False)), ("animated", build(True)),
-             ("app-extension", build_app(False)), ("app-ext + GCE", build_app(True))]
+    cases = [
+        ("static", build(False)),
+        ("animated", build(True)),
+        ("app-extension", build_app(False)),
+        ("app-ext + GCE", build_app(True)),
+    ]
     for label, data in cases:
         boundary = _gif_end(Src(data), 0, 1 << 20)
         assert boundary.end == len(data), (

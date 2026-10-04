@@ -55,10 +55,24 @@ __all__ = [
 ]
 
 #: Boxes whose payload is a list of child boxes rather than data.
-CONTAINER_BOXES = frozenset({
-    b"moov", b"trak", b"mdia", b"minf", b"stbl", b"dinf", b"edts", b"udta",
-    b"mvex", b"moof", b"traf", b"mfra", b"skip", b"meta",
-})
+CONTAINER_BOXES = frozenset(
+    {
+        b"moov",
+        b"trak",
+        b"mdia",
+        b"minf",
+        b"stbl",
+        b"dinf",
+        b"edts",
+        b"udta",
+        b"mvex",
+        b"moof",
+        b"traf",
+        b"mfra",
+        b"skip",
+        b"meta",
+    }
+)
 
 #: Boxes that carry no children despite looking like containers.
 _LEAF_CONTAINERS = frozenset({b"meta"})
@@ -75,6 +89,7 @@ class BoxError(ValueError):
 # Box layer
 # --------------------------------------------------------------------------- #
 
+
 @dataclass(frozen=True)
 class Box:
     """One box header and the byte range of its payload.
@@ -84,9 +99,9 @@ class Box:
     """
 
     type: bytes
-    start: int          # absolute offset of the box's first byte
+    start: int  # absolute offset of the box's first byte
     header_size: int
-    size: int           # total box size including the header
+    size: int  # total box size including the header
     payload_start: int
     payload_end: int
 
@@ -104,7 +119,7 @@ def _read_header(buf: bytes, pos: int) -> Box | None:
     if pos + 8 > len(buf):
         return None
     size = struct.unpack_from(">I", buf, pos)[0]
-    btype = buf[pos + 4:pos + 8]
+    btype = buf[pos + 4 : pos + 8]
     header = 8
     if size == 1:
         if pos + 16 > len(buf):
@@ -121,8 +136,7 @@ def _read_header(buf: bytes, pos: int) -> Box | None:
     return Box(btype, pos, header, size, pos + header, pos + size)
 
 
-def iter_boxes(buf: bytes, start: int = 0, end: int | None = None,
-               depth: int = 0) -> Iterator[Box]:
+def iter_boxes(buf: bytes, start: int = 0, end: int | None = None, depth: int = 0) -> Iterator[Box]:
     """Yield every box in ``buf[start:end]``, descending into containers.
 
     Raises :class:`BoxError` on a malformed header rather than yielding
@@ -200,16 +214,17 @@ class BoxHeader:
 # Sample table layer
 # --------------------------------------------------------------------------- #
 
+
 def _fullbox_body(buf: bytes, pos: int, nbytes: int) -> bytes:
     """Return ``nbytes`` starting after a FullBox's 4-byte version/flags."""
     start = pos + 4
     if start + nbytes > len(buf):
         raise BoxError("table truncated")
-    return buf[start:start + nbytes]
+    return buf[start : start + nbytes]
 
 
 def _u32s(buf: bytes) -> list[int]:
-    return list(struct.unpack(f">{len(buf) // 4}I", buf[:len(buf) // 4 * 4]))
+    return list(struct.unpack(f">{len(buf) // 4}I", buf[: len(buf) // 4 * 4]))
 
 
 @dataclass
@@ -217,17 +232,17 @@ class Track:
     """One track's sample table, reduced to what reassembly needs."""
 
     track_id: int
-    handler: str                    # e.g. "vide", "soun"
+    handler: str  # e.g. "vide", "soun"
     timescale: int
-    sample_size: int                # 0 means "per-sample, see entry_sizes"
+    sample_size: int  # 0 means "per-sample, see entry_sizes"
     sample_count: int
     entry_sizes: list[int] = field(default_factory=list)
-    stsc: list[tuple[int, int, int]] = field(default_factory=list)   # (first_chunk, spc, sdi)
+    stsc: list[tuple[int, int, int]] = field(default_factory=list)  # (first_chunk, spc, sdi)
     chunk_offsets: list[int] = field(default_factory=list)
     offsets_are_64bit: bool = False
     stts_sample_count: int | None = None
     stts_delta_sum: int = 0
-    sync_samples: list[int] | None = None      # 1-based, as the spec stores them
+    sync_samples: list[int] | None = None  # 1-based, as the spec stores them
     duration: int = 0
 
     # -- derived, filled in by validate() ------------------------------------
@@ -273,8 +288,7 @@ class Track:
             return 0
         self.prepare()
         last_chunk, last_spc, _ = self.stsc[-1]
-        return (self.samples_before_run[-1]
-                + max(0, len(self.chunk_offsets) - last_chunk + 1) * last_spc)
+        return self.samples_before_run[-1] + max(0, len(self.chunk_offsets) - last_chunk + 1) * last_spc
 
     def chunk_of(self, sample: int) -> tuple[int, int, int]:
         """Return ``(run_index, chunk_number_1based, first_sample_in_chunk)``."""
@@ -309,8 +323,10 @@ class Track:
         """
         _j, chunk, first_sample = self.chunk_of(sample)
         if chunk < 1 or chunk > len(self.chunk_offsets):
-            raise BoxError(f"sample {sample} maps to chunk {chunk}, "
-                           f"but the chunk table has {len(self.chunk_offsets)} entries")
+            raise BoxError(
+                f"sample {sample} maps to chunk {chunk}, "
+                f"but the chunk table has {len(self.chunk_offsets)} entries"
+            )
         base = self.chunk_offsets[chunk - 1]
         if base < 0:
             raise BoxError(f"sample {sample} maps to chunk {chunk}, which has no offset")
@@ -383,8 +399,10 @@ class SampleTable:
         """
         reasons: list[str] = []
         if self.fragmented:
-            return False, ["file is fragmented MP4: moov sample tables are empty by "
-                           "specification, so no index can be recovered from it"]
+            return False, [
+                "file is fragmented MP4: moov sample tables are empty by "
+                "specification, so no index can be recovered from it"
+            ]
         if not self.tracks:
             return False, ["moov contains no track with a sample table"]
 
@@ -401,13 +419,16 @@ class SampleTable:
                 reasons.append(f"{label}: no chunk offset table")
                 continue
             if t.is_variable_size and len(t.entry_sizes) != t.sample_count:
-                reasons.append(f"{label}: stsz declares {t.sample_count} samples but "
-                               f"lists {len(t.entry_sizes)} sizes")
+                reasons.append(
+                    f"{label}: stsz declares {t.sample_count} samples but lists {len(t.entry_sizes)} sizes"
+                )
                 continue
             if t.stts_sample_count is not None and t.stts_sample_count != t.sample_count:
-                reasons.append(f"{label}: stts accounts for {t.stts_sample_count} samples "
-                               f"but stsz declares {t.sample_count} -- this moov is not "
-                               "the index for this data")
+                reasons.append(
+                    f"{label}: stts accounts for {t.stts_sample_count} samples "
+                    f"but stsz declares {t.sample_count} -- this moov is not "
+                    "the index for this data"
+                )
                 continue
 
             # stsc.first_chunk must be strictly ascending and start at 1.
@@ -423,18 +444,22 @@ class SampleTable:
 
             described = t.samples_described
             if described < t.sample_count:
-                reasons.append(f"{label}: stsc describes {described} samples, "
-                               f"fewer than the {t.sample_count} stsz declares")
+                reasons.append(
+                    f"{label}: stsc describes {described} samples, "
+                    f"fewer than the {t.sample_count} stsz declares"
+                )
                 continue
 
             if file_size is not None:
                 if t.media_start < 0 or t.media_start >= file_size:
-                    reasons.append(f"{label}: first chunk offset {t.media_start} is outside "
-                                   f"the {file_size}-byte file")
+                    reasons.append(
+                        f"{label}: first chunk offset {t.media_start} is outside the {file_size}-byte file"
+                    )
                     continue
                 if t.media_end > file_size:
-                    reasons.append(f"{label}: last sample ends at {t.media_end}, past the "
-                                   f"{file_size}-byte file end")
+                    reasons.append(
+                        f"{label}: last sample ends at {t.media_end}, past the {file_size}-byte file end"
+                    )
                     continue
 
         return (not reasons), reasons
@@ -469,8 +494,11 @@ def _parse_stsd_handler(buf: bytes, stsd: Box) -> str:
         first = _ascii4(buf, stsd.payload_start + 8)
     except Exception:
         return ""
-    if first.startswith(b"avc") or first.startswith(b"hvc") or first in (
-            b"hev1", b"hvc1", b"vp09", b"av01", b"mp4v", b"s263"):
+    if (
+        first.startswith(b"avc")
+        or first.startswith(b"hvc")
+        or first in (b"hev1", b"hvc1", b"vp09", b"av01", b"mp4v", b"s263")
+    ):
         return "vide"
     if first in (b"mp4a", b"ac-3", b"ec-3", b"Opus", b"fLaC", b"alac"):
         return "soun"
@@ -478,7 +506,7 @@ def _parse_stsd_handler(buf: bytes, stsd: Box) -> str:
 
 
 def _ascii4(buf: bytes, pos: int) -> bytes:
-    return buf[pos:pos + 4]
+    return buf[pos : pos + 4]
 
 
 def _parse_track(buf: bytes, trak: Box) -> Track | None:
@@ -522,8 +550,14 @@ def _parse_track(buf: bytes, trak: Box) -> Track | None:
     if not handler and stsd is not None:
         handler = _parse_stsd_handler(buf, stsd)
 
-    track = Track(track_id=track_id, handler=handler, timescale=timescale,
-                  sample_size=0, sample_count=0, duration=duration)
+    track = Track(
+        track_id=track_id,
+        handler=handler,
+        timescale=timescale,
+        sample_size=0,
+        sample_count=0,
+        duration=duration,
+    )
 
     for box in iter_boxes(buf, stbl.payload_start, stbl.payload_end):
         try:
@@ -532,8 +566,7 @@ def _parse_track(buf: bytes, trak: Box) -> Track | None:
                 track.sample_size, track.sample_count = struct.unpack(">II", body)
                 if track.sample_size == 0:
                     if track.sample_count > (1 << 24):
-                        raise BoxError(f"stsz declares {track.sample_count} samples, "
-                                       "which is not plausible")
+                        raise BoxError(f"stsz declares {track.sample_count} samples, which is not plausible")
                     raw = _fullbox_body(buf, box.payload_start + 8, 4 * track.sample_count)
                     track.entry_sizes = _u32s(raw)
             elif box.type == b"stsc":
@@ -543,7 +576,7 @@ def _parse_track(buf: bytes, trak: Box) -> Track | None:
                     raise BoxError(f"stsc declares {n} entries")
                 raw = _fullbox_body(buf, box.payload_start + 4, 12 * n)
                 vals = _u32s(raw)
-                track.stsc = [tuple(vals[k:k + 3]) for k in range(0, len(vals), 3)]
+                track.stsc = [tuple(vals[k : k + 3]) for k in range(0, len(vals), 3)]
             elif box.type in (b"stco", b"co64"):
                 body = _fullbox_body(buf, box.payload_start, 4)
                 n = struct.unpack(">I", body)[0]
@@ -613,14 +646,14 @@ def parse_moov(buf: bytes, moov_offset: int | None = None) -> SampleTable:
         tracks=tracks,
         ftyp_offset=None,
         moov_offset=moov_offset,
-        fragmented=any(b.type == b"mvex" for b in iter_boxes(buf, moov.payload_start,
-                                                             moov.payload_end)),
+        fragmented=any(b.type == b"mvex" for b in iter_boxes(buf, moov.payload_start, moov.payload_end)),
     )
 
 
 # --------------------------------------------------------------------------- #
 # Reassembly support
 # --------------------------------------------------------------------------- #
+
 
 def chunk_extents(table: SampleTable) -> list[tuple[int, int, int]]:
     """Every media extent in the file, in file order.
@@ -644,8 +677,7 @@ def chunk_extents(table: SampleTable) -> list[tuple[int, int, int]]:
     return out
 
 
-def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
-                        mapping: dict[int, int]) -> bytes:
+def remap_chunk_offsets(file_bytes: bytes, table: SampleTable, mapping: dict[int, int]) -> bytes:
     """Return ``file_bytes`` with every chunk offset moved through ``mapping``.
 
     ``mapping`` translates an offset *within the original file* to an offset
@@ -670,7 +702,7 @@ def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
 
     # Collect the stco/co64 boxes to patch, innermost first, tracking byte paths
     # so each patch is applied to the correct copy of the box.
-    patches: list[tuple[int, int, int, int, int]] = []   # (box_start, count, width, table_start, track)
+    patches: list[tuple[int, int, int, int, int]] = []  # (box_start, count, width, table_start, track)
     for trak in _iter_children(file_bytes, moov.payload_start, moov.payload_end, b"trak"):
         stbl = _find_child(file_bytes, trak.payload_start, trak.payload_end, b"stbl")
         if stbl is None:
@@ -687,8 +719,11 @@ def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
     for table_start, count, width, _ts, _tk in patches:
         new_vals: list[int] = []
         for k in range(count):
-            old = (struct.unpack_from(">I", out, table_start + 4 * k)[0] if width == 4
-                   else struct.unpack_from(">Q", out, table_start + 8 * k)[0])
+            old = (
+                struct.unpack_from(">I", out, table_start + 4 * k)[0]
+                if width == 4
+                else struct.unpack_from(">Q", out, table_start + 8 * k)[0]
+            )
             if old not in mapping:
                 new_vals = []
                 break
@@ -698,8 +733,10 @@ def remap_chunk_offsets(file_bytes: bytes, table: SampleTable,
         for k, v in enumerate(new_vals):
             if width == 4:
                 if v > 0xFFFFFFFF:
-                    raise BoxError("remapped offset does not fit in a 32-bit stco; "
-                                   "the track would need promoting to co64")
+                    raise BoxError(
+                        "remapped offset does not fit in a 32-bit stco; "
+                        "the track would need promoting to co64"
+                    )
                 struct.pack_into(">I", out, table_start + 4 * k, v)
             else:
                 struct.pack_into(">Q", out, table_start + 8 * k, v)
@@ -721,6 +758,7 @@ def _find_child(buf: bytes, start: int, end: int, box_type: bytes) -> Box | None
 # --------------------------------------------------------------------------- #
 # Two-fragment reassembly
 # --------------------------------------------------------------------------- #
+
 
 @dataclass
 class Fragment:
@@ -761,8 +799,9 @@ class Reassembly:
         return max(0, f[-1].image_offset - (f[0].image_offset + f[0].length))
 
 
-def reassemble_two_fragment(source, start: int, table: SampleTable,
-                            image_size: int, search_limit: int) -> Reassembly | None:
+def reassemble_two_fragment(
+    source, start: int, table: SampleTable, image_size: int, search_limit: int
+) -> Reassembly | None:
     """Rebuild a camera-style fragmented MP4 from its two physical fragments.
 
     The shape this handles is the one every camera card actually produces, and
@@ -856,10 +895,8 @@ def reassemble_two_fragment(source, start: int, table: SampleTable,
 
     payload = head + body
     fragments = [
-        Fragment(file_offset=0, image_offset=start,
-                 length=index_end - start, label="index (ftyp + moov)"),
-        Fragment(file_offset=index_end - start, image_offset=box_start,
-                 length=size, label="media (mdat)"),
+        Fragment(file_offset=0, image_offset=start, length=index_end - start, label="index (ftyp + moov)"),
+        Fragment(file_offset=index_end - start, image_offset=box_start, length=size, label="media (mdat)"),
     ]
     gap = box_start - index_end
     notes = [

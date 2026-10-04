@@ -189,30 +189,56 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
 
     # 14. README.md (Release badge)
     p = REPO_ROOT / "README.md"
-    if update_file_regex(p, r'badge/Release-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue\.svg', f'badge/Release-v{target_version}-blue.svg', dry_run):
+    if update_file_regex(
+        p,
+        r"badge/Release-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue\.svg",
+        f"badge/Release-v{target_version}-blue.svg",
+        dry_run,
+    ):
         modified_files.append(p)
 
     # 15. PLAN.md
     p = REPO_ROOT / "PLAN.md"
-    if update_file_regex(p, r'Production Release \(v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?\)', f'Production Release (v{target_version})', dry_run):
+    if update_file_regex(
+        p,
+        r"Production Release \(v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?\)",
+        f"Production Release (v{target_version})",
+        dry_run,
+    ):
         modified_files.append(p)
 
     # 16. docs/project/evaluator-guide.md
     p = REPO_ROOT / "docs" / "project" / "evaluator-guide.md"
-    if update_file_regex(p, r'(\*\*Software Release:\*\*\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?', f'\\g<1>{target_version}', dry_run):
+    if update_file_regex(
+        p,
+        r"(\*\*Software Release:\*\*\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",
+        f"\\g<1>{target_version}",
+        dry_run,
+    ):
         modified_files.append(p)
 
     # 17. docs/project/README.md
     p = REPO_ROOT / "docs" / "project" / "README.md"
-    if update_file_regex(p, r'(current\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*release)', f'\\g<1>{target_version}\\g<3>', dry_run):
+    if update_file_regex(
+        p,
+        r"(current\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*release)",
+        f"\\g<1>{target_version}\\g<3>",
+        dry_run,
+    ):
         modified_files.append(p)
 
     # 18. docs/getting-started/quickstart.md (CLI output & config JSON samples)
     p = REPO_ROOT / "docs" / "getting-started" / "quickstart.md"
     if p.is_file():
         content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r'("version"\s*:\s*)"[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",', f'\\g<1>"{target_version}",', content)
-        c2, n2 = re.subn(r'(\n\s*s0\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\n)', f'\\g<1>{target_version}\\g<3>', c1)
+        c1, n1 = re.subn(
+            r'("version"\s*:\s*)"[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",',
+            f'\\g<1>"{target_version}",',
+            content,
+        )
+        c2, n2 = re.subn(
+            r"(\n\s*s0\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\n)", f"\\g<1>{target_version}\\g<3>", c1
+        )
         if (n1 > 0 or n2 > 0) and c2 != content:
             if not dry_run:
                 p.write_text(c2, encoding="utf-8")
@@ -220,7 +246,9 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
 
     # 19. docs/architecture/certificate-spec.md (tool version in JSON sample)
     p = REPO_ROOT / "docs" / "architecture" / "certificate-spec.md"
-    if update_file_regex(p, r'("name":\s*"s0",\s*\n\s*"version":\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run):
+    if update_file_regex(
+        p, r'("name":\s*"s0",\s*\n\s*"version":\s*)"[^"]+"', f'\\g<1>"{target_version}"', dry_run
+    ):
         modified_files.append(p)
 
     # 20. docs/architecture/system-architecture.md (tool_version in JSON sample)
@@ -230,15 +258,25 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
 
     # 21. docs/architecture/performance.md (benchmark evaluation version)
     p = REPO_ROOT / "docs" / "architecture" / "performance.md"
-    if update_file_regex(p, r'(\(\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\))', f'\\g<1>{target_version}\\g<3>', dry_run):
+    if update_file_regex(
+        p, r"(\(\s*v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s*\))", f"\\g<1>{target_version}\\g<3>", dry_run
+    ):
         modified_files.append(p)
 
     # 22. docs/guides/cli-reference.md (upgrade notice & version parameter)
     p = REPO_ROOT / "docs" / "guides" / "cli-reference.md"
     if p.is_file():
         content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r'(S0 upgraded successfully to\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?', f'\\g<1>{target_version}', content)
-        c2, n2 = re.subn(r'(\(e\.g\.,\s*`v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(`\))', f'\\g<1>{target_version}\\g<3>', c1)
+        c1, n1 = re.subn(
+            r"(S0 upgraded successfully to\s+)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?",
+            f"\\g<1>{target_version}",
+            content,
+        )
+        c2, n2 = re.subn(
+            r"(\(e\.g\.,\s*`v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(`\))",
+            f"\\g<1>{target_version}\\g<3>",
+            c1,
+        )
         if (n1 > 0 or n2 > 0) and c2 != content:
             if not dry_run:
                 p.write_text(c2, encoding="utf-8")
@@ -248,9 +286,19 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
     p = REPO_ROOT / "docs" / "guides" / "live-iso.md"
     if p.is_file():
         content = p.read_text(encoding="utf-8")
-        c1, n1 = re.subn(r's0-live-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-amd64', f's0-live-v{target_version}-amd64', content)
-        c2, n2 = re.subn(r'download/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?/', f'download/v{target_version}/', c1)
-        c3, n3 = re.subn(r'(download\s+v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s+-R)', f'\\g<1>{target_version}\\g<3>', c2)
+        c1, n1 = re.subn(
+            r"s0-live-v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-amd64",
+            f"s0-live-v{target_version}-amd64",
+            content,
+        )
+        c2, n2 = re.subn(
+            r"download/v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?/", f"download/v{target_version}/", c1
+        )
+        c3, n3 = re.subn(
+            r"(download\s+v)[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\s+-R)",
+            f"\\g<1>{target_version}\\g<3>",
+            c2,
+        )
         if (n1 > 0 or n2 > 0 or n3 > 0) and c3 != content:
             if not dry_run:
                 p.write_text(c3, encoding="utf-8")
@@ -280,12 +328,7 @@ def ensure_changelog_entry(target_version: str, dry_run: bool = False) -> bool:
 
     # Section is missing; stub a new entry
     today_str = datetime.date.today().isoformat()
-    stub = (
-        f"## [{target_version}] — {today_str}\n\n"
-        f"### Changed\n"
-        f"- Release v{target_version}.\n\n"
-        f"---\n\n"
-    )
+    stub = f"## [{target_version}] — {today_str}\n\n### Changed\n- Release v{target_version}.\n\n---\n\n"
 
     # Find the first existing release header e.g. ## [2.4.2]
     first_header = re.search(r"(##\s*\[[0-9]+\.[0-9]+\.[0-9]+)", content)
@@ -299,7 +342,9 @@ def ensure_changelog_entry(target_version: str, dry_run: bool = False) -> bool:
         changelog_path.write_text(new_content, encoding="utf-8")
         print(f"[+] Created release notes stub in docs/project/changelog.md for [{target_version}].")
     else:
-        print(f"[dry-run] Would prepend release notes stub in docs/project/changelog.md for [{target_version}].")
+        print(
+            f"[dry-run] Would prepend release notes stub in docs/project/changelog.md for [{target_version}]."
+        )
     return True
 
 

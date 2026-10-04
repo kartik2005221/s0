@@ -48,8 +48,8 @@ def test_ntfs_multi_fragment_runlist_reconstruction(tmp_path: Path):
     # Build MFT record with multi-run non-resident DATA attribute
     rec = bytearray(1024)
     rec[0:4] = MFT_RECORD_MAGIC
-    struct.pack_into("<H", rec, 0x14, 56)   # First attribute offset
-    struct.pack_into("<H", rec, 0x16, 0x00) # Unallocated / deleted
+    struct.pack_into("<H", rec, 0x14, 56)  # First attribute offset
+    struct.pack_into("<H", rec, 0x16, 0x00)  # Unallocated / deleted
     struct.pack_into("<I", rec, 0x2C, 101)  # Record number
 
     attr_off = 56
@@ -57,8 +57,8 @@ def test_ntfs_multi_fragment_runlist_reconstruction(tmp_path: Path):
     struct.pack_into("<I", rec, attr_off + 0, ATTR_DATA)
     attr_len = 88
     struct.pack_into("<I", rec, attr_off + 4, attr_len)
-    rec[attr_off + 8] = 1   # Non-resident
-    rec[attr_off + 9] = 0   # Name length
+    rec[attr_off + 8] = 1  # Non-resident
+    rec[attr_off + 9] = 0  # Name length
     struct.pack_into("<H", rec, attr_off + 32, 64)  # Runlist offset
     struct.pack_into("<Q", rec, attr_off + 48, len(expected_full))  # Real size
 
@@ -67,12 +67,20 @@ def test_ntfs_multi_fragment_runlist_reconstruction(tmp_path: Path):
     # Run 2: len=1 (1 byte), delta=+7 (1 byte signed) -> 0x11, 0x01, 0x07
     # Run 3: len=1 (1 byte), delta=-3 (1 byte signed = 0xFD) -> 0x11, 0x01, 0xFD
     # End marker: 0x00
-    runlist_bytes = bytes([
-        0x11, 0x01, 0x05,
-        0x11, 0x01, 0x07,
-        0x11, 0x01, 0xFD,
-        0x00,
-    ])
+    runlist_bytes = bytes(
+        [
+            0x11,
+            0x01,
+            0x05,
+            0x11,
+            0x01,
+            0x07,
+            0x11,
+            0x01,
+            0xFD,
+            0x00,
+        ]
+    )
     rec[attr_off + 64 : attr_off + 64 + len(runlist_bytes)] = runlist_bytes
     struct.pack_into("<I", rec, attr_off + attr_len, ATTR_END_MARKER)
 
@@ -121,7 +129,7 @@ def test_ext4_multi_extent_reconstruction(tmp_path: Path):
     struct.pack_into("<H", img, ino15_off + 0, 0x81A4)
     struct.pack_into("<I", img, ino15_off + 4, len(expected))
     struct.pack_into("<I", img, ino15_off + 20, 1700000000)  # dtime > 0
-    struct.pack_into("<H", img, ino15_off + 26, 0)           # links == 0
+    struct.pack_into("<H", img, ino15_off + 26, 0)  # links == 0
     struct.pack_into("<I", img, ino15_off + 32, 0x00080000)  # EXTENTS_FL
 
     # Extent header in i_block (offset 40)

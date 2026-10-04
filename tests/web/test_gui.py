@@ -178,7 +178,6 @@ def test_unauthenticated_destructive_endpoints_fail_401():
     assert r.status_code == 401
 
 
-
 def test_devices_lists_images(client, small_image):
     r = client.get("/api/devices")
     assert r.status_code == 200
@@ -256,6 +255,7 @@ def test_carve_api(client, tmp_path):
     import io as _io
 
     from PIL import Image as _Image
+
     buf = _io.BytesIO()
     _Image.new("RGB", (32, 32), (12, 34, 56)).save(buf, format="JPEG", quality=85)
     jpeg_payload = buf.getvalue()
@@ -304,7 +304,7 @@ def test_operator_id_xss_injection_rejected(client, tmp_path):
     xss_payloads = [
         "<img src=x onerror=alert(1)>XSSPROBE",
         "<script>alert(1)</script>",
-        "operator\"><svg onload=alert(1)>",
+        'operator"><svg onload=alert(1)>',
         "op' OR '1'='1",
     ]
     for p in xss_payloads:
@@ -315,7 +315,9 @@ def test_operator_id_xss_injection_rejected(client, tmp_path):
         assert r_carve.status_code == 422, f"Failed to reject payload in carve: {p}"
 
     # Valid operator IDs must be accepted
-    r_valid = client.post("/api/erase-files", json={"targets": [str(target)], "operator_id": "op-forensic_01@lab"})
+    r_valid = client.post(
+        "/api/erase-files", json={"targets": [str(target)], "operator_id": "op-forensic_01@lab"}
+    )
     assert r_valid.status_code == 200
 
 
@@ -347,7 +349,11 @@ def test_download_path_traversal_blocked(client, tmp_path):
 
 def test_index_html_safe_rendering():
     js_file = STATIC_ROOT / "static" / "js" / "dashboard.js"
-    source = js_file.read_text(encoding="utf-8") if js_file.exists() else (STATIC_ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    source = (
+        js_file.read_text(encoding="utf-8")
+        if js_file.exists()
+        else (STATIC_ROOT / "static" / "index.html").read_text(encoding="utf-8")
+    )
     assert "function escapeHtml" in source
     # Ensure unescaped injection into innerHTML is absent
     assert "${b.operator}" not in source
@@ -358,13 +364,16 @@ def test_index_html_safe_rendering():
 
 def test_image_api(client, small_image, tmp_path):
     dst = tmp_path / "cloned.img"
-    r = client.post("/api/image", json={
-        "source": small_image,
-        "destination": str(dst),
-        "block_size": 65536,
-        "no_recovery": False,
-        "is_clone": False,
-    })
+    r = client.post(
+        "/api/image",
+        json={
+            "source": small_image,
+            "destination": str(dst),
+            "block_size": 65536,
+            "no_recovery": False,
+            "is_clone": False,
+        },
+    )
     assert r.status_code == 200
     job_id = r.json()["job_id"]
 
@@ -415,17 +424,22 @@ def test_carve_with_custom_signatures(client, tmp_path):
     with open(img, "wb") as f:
         f.write(os.urandom(4096) + payload + os.urandom(4096))
 
-    r = client.post("/api/carve", json={
-        "target": str(img),
-        "custom_signatures": [{
-            "name": "Secure Vault Test",
-            "extension": "svt",
-            "category": "archive",
-            "header_hex": "53 45 43 56 41 55 4C 54",
-            "footer_hex": "45 4E 44 56 41 55 4C 54",
-        }],
-        "min_confidence": 40,
-    })
+    r = client.post(
+        "/api/carve",
+        json={
+            "target": str(img),
+            "custom_signatures": [
+                {
+                    "name": "Secure Vault Test",
+                    "extension": "svt",
+                    "category": "archive",
+                    "header_hex": "53 45 43 56 41 55 4C 54",
+                    "footer_hex": "45 4E 44 56 41 55 4C 54",
+                }
+            ],
+            "min_confidence": 40,
+        },
+    )
     assert r.status_code == 200
     job_id = r.json()["job_id"]
 
@@ -506,7 +520,7 @@ def test_metadata_pipe_rejected(client, tmp_path):
         "op<script>",
         "op>redirect",
         "op&param",
-        "op\"quote",
+        'op"quote',
         "op'quote",
         "op\\backslash",
     ]
@@ -558,12 +572,7 @@ def test_image_windows_device_path_confirmation(client, small_image, monkeypatch
 
     win_target = r"\\.\C:"
     # Missing confirmation text for Windows block device target -> 400
-    payload = {
-        "source": small_image,
-        "destination": win_target,
-        "confirm_text": "",
-        "operator_id": "test-op"
-    }
+    payload = {"source": small_image, "destination": win_target, "confirm_text": "", "operator_id": "test-op"}
     r = client.post("/api/image", json=payload)
     assert r.status_code == 400
     assert "Cloning to target block device requires typing exact destination" in r.json()["detail"]
@@ -624,12 +633,11 @@ def test_download_via_query_token(tmp_path):
     # on every route, which defeated the reason for restricting it: a token in a
     # URL leaks into browser history, Referer headers and proxy logs.
     r_query = raw_client.get(f"/api/download/{fake_job_id}/sample.json?token={gui_app._SESSION_AUTH_TOKEN}")
-    assert r_query.status_code == 401, (
-        "?token= was accepted on an API route; it must be bootstrap-only")
+    assert r_query.status_code == 401, "?token= was accepted on an API route; it must be bootstrap-only"
     # The header form is the supported one for API routes.
     r_auth = raw_client.get(
-        f"/api/download/{fake_job_id}/sample.json",
-        headers={"X-S0-Auth-Token": gui_app._SESSION_AUTH_TOKEN})
+        f"/api/download/{fake_job_id}/sample.json", headers={"X-S0-Auth-Token": gui_app._SESSION_AUTH_TOKEN}
+    )
     assert r_auth.status_code == 200
     assert r_auth.json() == {"test": True}
 
@@ -662,13 +670,19 @@ def test_input_bounds_validation(client, small_image):
     r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "passes": 0})
     assert r.status_code == 422
 
-    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "verify_samples": 0})
+    r = client.post(
+        "/api/wipe", json={"target": small_image, "confirm_text": small_image, "verify_samples": 0}
+    )
     assert r.status_code == 422
 
-    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "out_dir": "/etc/cron.d"})
+    r = client.post(
+        "/api/wipe", json={"target": small_image, "confirm_text": small_image, "out_dir": "/etc/cron.d"}
+    )
     assert r.status_code == 422
 
-    r = client.post("/api/wipe", json={"target": small_image, "confirm_text": small_image, "key_path": "/etc/shadow"})
+    r = client.post(
+        "/api/wipe", json={"target": small_image, "confirm_text": small_image, "key_path": "/etc/shadow"}
+    )
     assert r.status_code in (403, 422)
 
 
@@ -677,8 +691,3 @@ def test_non_ascii_auth_token_returns_401():
     raw_client = TestClient(gui_app.app)
     r = raw_client.get("/api/devices?token=%C3%B6%C3%B1")
     assert r.status_code == 401
-
-
-
-
-

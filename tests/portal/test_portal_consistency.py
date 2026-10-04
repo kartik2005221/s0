@@ -79,11 +79,7 @@ def csp_for_block(text: str, pattern: str) -> str:
     return ""
 
 
-ALL_CSP_BLOCKS = [
-    (html, block)
-    for html, blocks in CSP_BLOCKS.items()
-    for block in blocks
-]
+ALL_CSP_BLOCKS = [(html, block) for html, blocks in CSP_BLOCKS.items() for block in blocks]
 
 # Every public page. The loopback dashboard is deliberately absent: its policy
 # allows 'unsafe-inline' by design and its inline handlers are tracked in
@@ -111,7 +107,9 @@ def test_no_inline_event_handlers(html):
     assert not handlers, (
         f"{rel} has inline event handlers, which this page's script-src blocks: "
         f"{handlers[:3]}. Bind them in JS and pass the argument through a data- "
-        f"attribute instead.")
+        f"attribute instead."
+    )
+
 
 # Tokens a surface may declare as a *literal value*. A surface declaring one of
 # these in its own :root is bypassing the shared file.
@@ -119,7 +117,8 @@ TOKEN_NAME_RE = re.compile(r"^\s*(--[a-z0-9-]+)\s*:", re.I)
 LEGACY_TOKEN_RE = re.compile(
     r"^\s*--(bg|text|primary|secondary|accent|success|danger|warning|info|border|code|header|btn)"
     r"[a-z0-9-]*\s*:\s*(#[0-9A-Fa-f]{3,8}|rgba?\()",
-    re.I | re.M)
+    re.I | re.M,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -133,8 +132,8 @@ def test_token_copies_are_identical_to_the_source():
         assert copy.is_file(), f"missing generated token copy: {copy.relative_to(REPO)}"
         text = copy.read_text(encoding="utf-8")
         assert canonical.decode("utf-8") in text, (
-            f"{copy.relative_to(REPO)} has drifted from shared/tokens.css; "
-            f"run: python tools/sync_tokens.py")
+            f"{copy.relative_to(REPO)} has drifted from shared/tokens.css; run: python tools/sync_tokens.py"
+        )
 
 
 @pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
@@ -143,8 +142,8 @@ def test_surface_css_imports_the_shared_tokens(css):
     assert css.is_file(), f"missing stylesheet {rel}"
     text = css.read_text(encoding="utf-8")
     assert '@import url("tokens.css")' in text, (
-        f"{rel} does not import the shared tokens; every colour must come from "
-        f"shared/tokens.css")
+        f"{rel} does not import the shared tokens; every colour must come from shared/tokens.css"
+    )
     # @import must be the first rule or the whole sheet is ignored.
     first = next(line.strip() for line in text.splitlines() if line.strip())
     assert first.startswith("@import"), f"{rel}: @import is not the first rule"
@@ -157,18 +156,32 @@ def test_no_surface_redeclares_a_token_value(css):
     offenders = [m.group(0).strip() for m in LEGACY_TOKEN_RE.finditer(css.read_text())]
     assert not offenders, (
         f"{rel} still declares literal token values, e.g. {offenders[:3]}. "
-        f"Every colour must resolve through shared/tokens.css.")
+        f"Every colour must resolve through shared/tokens.css."
+    )
 
 
 def test_shared_tokens_cover_the_full_surface_area():
     text = SHARED_TOKENS.read_text(encoding="utf-8")
     required = [
-        "--surface-canvas", "--surface-raised", "--surface-overlay", "--surface-sunken",
-        "--text-primary", "--text-secondary", "--text-tertiary",
-        "--border-subtle", "--border-strong", "--border-focus",
-        "--brand", "--brand-hover",
-        "--status-ok", "--status-warn", "--status-danger", "--status-info",
-        "--focus-ring", "--font-sans", "--font-mono",
+        "--surface-canvas",
+        "--surface-raised",
+        "--surface-overlay",
+        "--surface-sunken",
+        "--text-primary",
+        "--text-secondary",
+        "--text-tertiary",
+        "--border-subtle",
+        "--border-strong",
+        "--border-focus",
+        "--brand",
+        "--brand-hover",
+        "--status-ok",
+        "--status-warn",
+        "--status-danger",
+        "--status-info",
+        "--focus-ring",
+        "--font-sans",
+        "--font-mono",
     ]
     missing = [t for t in required if f"{t}:" not in text]
     assert not missing, f"shared/tokens.css is missing {missing}"
@@ -178,16 +191,19 @@ def test_shared_tokens_honour_system_preference_and_explicit_choice():
     text = SHARED_TOKENS.read_text(encoding="utf-8")
     assert "prefers-color-scheme: light" in text, (
         "a portal must respect the OS light/dark preference when the operator has "
-        "expressed no choice of their own")
+        "expressed no choice of their own"
+    )
     assert ':root:not([data-theme="dark"])' in text, (
-        "the system preference must not override an explicit dark choice")
+        "the system preference must not override an explicit dark choice"
+    )
     assert '[data-theme="light"]' in text
 
 
 def test_shared_tokens_disable_animation_for_reduced_motion():
     text = SHARED_TOKENS.read_text(encoding="utf-8")
     assert "prefers-reduced-motion: reduce" in text, (
-        "WCAG 2.2 SC 2.3.3: non-essential animation must be switchable off")
+        "WCAG 2.2 SC 2.3.3: non-essential animation must be switchable off"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -195,8 +211,9 @@ def test_shared_tokens_disable_animation_for_reduced_motion():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
-                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+@pytest.mark.parametrize(
+    "html,block", ALL_CSP_BLOCKS, ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS]
+)
 def test_every_public_surface_has_a_strict_csp(html, block):
     rel = f"{HEADERS.relative_to(REPO)} [{block}]"
     csp = csp_for_block(HEADERS.read_text(encoding="utf-8"), block)
@@ -211,10 +228,12 @@ def test_every_public_surface_has_a_strict_csp(html, block):
     assert script_src, f"{rel}: no script-src directive"
     assert "unsafe-inline" not in script_src.group(1), (
         f"{rel}: script-src allows 'unsafe-inline'. This is the directive that "
-        f"actually matters -- an injected inline script could rewrite a verdict.")
+        f"actually matters -- an injected inline script could rewrite a verdict."
+    )
     assert "'self'" in script_src.group(1)
     assert "sha256-" in script_src.group(1), (
-        f"{rel}: the inline theme resolver is unhashed, so it would be blocked")
+        f"{rel}: the inline theme resolver is unhashed, so it would be blocked"
+    )
 
 
 def test_no_csp_is_declared_under_the_catch_all_block():
@@ -227,30 +246,37 @@ def test_no_csp_is_declared_under_the_catch_all_block():
     offenders = [h for h in catch_all if h.startswith("Content-Security-Policy:")]
     assert not offenders, (
         f"{HEADERS.relative_to(REPO)}: /* must not set a CSP, it would be "
-        f"combined with the per-surface policy rather than replaced by it")
+        f"combined with the per-surface policy rather than replaced by it"
+    )
 
 
 def test_every_csp_block_belongs_to_a_surface():
     """A CSP nobody claims is a policy for a page that does not exist, or one
     that lost its owner in a rename. Either way it ships."""
     text = HEADERS.read_text(encoding="utf-8")
-    declared = {p for p, hs in headers_blocks(text).items()
-                if any(h.startswith("Content-Security-Policy:") for h in hs)}
+    declared = {
+        p
+        for p, hs in headers_blocks(text).items()
+        if any(h.startswith("Content-Security-Policy:") for h in hs)
+    }
     claimed = {b for blocks in CSP_BLOCKS.values() for b in blocks}
     assert declared == claimed, (
-        f"unclaimed: {sorted(declared - claimed)}; "
-        f"missing: {sorted(claimed - declared)}")
+        f"unclaimed: {sorted(declared - claimed)}; missing: {sorted(claimed - declared)}"
+    )
 
 
-@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
-                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+@pytest.mark.parametrize(
+    "html,block", ALL_CSP_BLOCKS, ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS]
+)
 def test_every_public_surface_sends_the_baseline_security_headers(html, block):
     rel = HEADERS.relative_to(REPO)
     text = HEADERS.read_text(encoding="utf-8")
-    for header in ("X-Content-Type-Options: nosniff",
-                   "Referrer-Policy:",
-                   "Permissions-Policy:",
-                   "Content-Security-Policy:"):
+    for header in (
+        "X-Content-Type-Options: nosniff",
+        "Referrer-Policy:",
+        "Permissions-Policy:",
+        "Content-Security-Policy:",
+    ):
         assert header in text, f"{rel} is missing {header.split(':')[0]}"
     assert "Strict-Transport-Security" in text, f"{rel}: no HSTS"
 
@@ -262,11 +288,13 @@ def test_the_landing_page_is_covered_by_a_policy_at_both_urls():
     for pattern in ("/", "/index.html"):
         assert csp_for_block(text, pattern), (
             f"{HEADERS.relative_to(REPO)}: no CSP for {pattern}. A direct request "
-            f"for {pattern} must not fall back to a policy-free response.")
+            f"for {pattern} must not fall back to a policy-free response."
+        )
 
 
-@pytest.mark.parametrize("html,block", ALL_CSP_BLOCKS,
-                         ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS])
+@pytest.mark.parametrize(
+    "html,block", ALL_CSP_BLOCKS, ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS]
+)
 def test_csp_hashes_match_the_inline_blocks(html, block):
     """A hash-based CSP is only correct if the hash matches. Drift makes the
     whole page stop executing, which is loud -- but it must not happen in a
@@ -280,11 +308,11 @@ def test_csp_hashes_match_the_inline_blocks(html, block):
     blocks = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
     assert blocks, f"{rel} has no inline script to hash"
     for inline in blocks:
-        digest = "sha256-" + base64.b64encode(
-            hashlib.sha256(inline.encode("utf-8")).digest()).decode("ascii")
+        digest = "sha256-" + base64.b64encode(hashlib.sha256(inline.encode("utf-8")).digest()).decode("ascii")
         assert digest in listed, (
             f"{rel}: inline script is not covered by the CSP hash {digest} in "
-            f"block {block}. Run: python tools/sync_csp.py --write")
+            f"block {block}. Run: python tools/sync_csp.py --write"
+        )
 
 
 @pytest.mark.parametrize("html", PUBLIC_HTML, ids=lambda p: p.parent.name)
@@ -295,10 +323,12 @@ def test_no_unsafe_inline_csp_in_the_document(html):
     stripped = re.sub(r"<!--.*?-->", "", text, flags=re.S)
     assert "unsafe-inline" not in stripped, (
         f"{rel} still carries an inline meta CSP. A static site cannot use "
-        f"per-response nonces, so the policy belongs in _headers as a hash.")
+        f"per-response nonces, so the policy belongs in _headers as a hash."
+    )
     assert 'http-equiv="Content-Security-Policy"' not in stripped, (
         f"{rel} ships a meta CSP; the _headers policy is the one that counts, and "
-        f"having both means only the weaker is applied by some clients.")
+        f"having both means only the weaker is applied by some clients."
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -325,8 +355,7 @@ def _resolve(base: Path, ref: str) -> Path:
     return (SITE / ref.lstrip("/")) if ref.startswith("/") else (base / ref)
 
 
-@pytest.mark.parametrize("page", sorted(SITE.rglob("*.html")),
-                         ids=lambda p: str(p.relative_to(SITE)))
+@pytest.mark.parametrize("page", sorted(SITE.rglob("*.html")), ids=lambda p: str(p.relative_to(SITE)))
 def test_every_local_reference_resolves(page):
     """A 404 for a stylesheet is invisible: the page renders unstyled and the
     console says nothing an operator would read. The move to one deploy root
@@ -340,13 +369,10 @@ def test_every_local_reference_resolves(page):
                 broken.append(f"{ref} (directory without index.html)")
         elif not target.exists():
             broken.append(ref)
-    assert not broken, (
-        f"{page.relative_to(REPO)} references files that do not exist: "
-        f"{sorted(set(broken))}")
+    assert not broken, f"{page.relative_to(REPO)} references files that do not exist: {sorted(set(broken))}"
 
 
-@pytest.mark.parametrize("sheet", sorted(SITE.rglob("*.css")),
-                         ids=lambda p: str(p.relative_to(SITE)))
+@pytest.mark.parametrize("sheet", sorted(SITE.rglob("*.css")), ids=lambda p: str(p.relative_to(SITE)))
 def test_every_local_url_resolves(sheet):
     broken = []
     for url in re.findall(r"url\(['\"]?([^'\")]+)", sheet.read_text(encoding="utf-8")):
@@ -355,13 +381,15 @@ def test_every_local_url_resolves(sheet):
         if not (sheet.parent / url.split("#", 1)[0]).is_file():
             broken.append(url)
     assert not broken, (
-        f"{sheet.relative_to(REPO)} references fonts or images that do not exist: "
-        f"{sorted(set(broken))}")
+        f"{sheet.relative_to(REPO)} references fonts or images that do not exist: {sorted(set(broken))}"
+    )
 
 
 MANIFESTS = sorted(
-    p for p in REPO.glob("**/site.webmanifest")
-    if not {".venv", "node_modules", "demo-out", "build", ".git"} & set(p.parts))
+    p
+    for p in REPO.glob("**/site.webmanifest")
+    if not {".venv", "node_modules", "demo-out", "build", ".git"} & set(p.parts)
+)
 
 
 @pytest.mark.parametrize("manifest", MANIFESTS, ids=lambda p: p.parent.parent.name)
@@ -379,14 +407,15 @@ def test_web_manifests_are_usable(manifest):
         assert re.fullmatch(r"#[0-9A-Fa-f]{6}", colour), f"{rel}: {key} is {colour!r}"
         assert colour.lower() not in ("#ffffff", "#fff"), (
             f"{rel}: {key} is white, which flashes white behind a dark interface. "
-            f"Use the canvas colour for the theme this manifest is for.")
+            f"Use the canvas colour for the theme this manifest is for."
+        )
     icons = data.get("icons") or []
     assert icons, f"{rel} declares no icons"
     for icon in icons:
         src = icon.get("src", "")
         assert not src.startswith("/"), (
-            f"{rel}: icon {src!r} is root-absolute and resolves to the site root, "
-            f"not to {manifest.parent}")
+            f"{rel}: icon {src!r} is root-absolute and resolves to the site root, not to {manifest.parent}"
+        )
         assert (manifest.parent / src).is_file(), f"{rel}: icon {src!r} does not exist"
 
 
@@ -403,16 +432,17 @@ def test_vendored_javascript_is_pinned_with_sri():
     for rel in tools:
         tag = re.search(rf'<script src="{re.escape(rel)}"[^>]*>', html)
         assert tag, rel
-        assert "integrity=" in tag.group(0), (
-            f"{rel} is loaded without Subresource Integrity")
+        assert "integrity=" in tag.group(0), f"{rel} is loaded without Subresource Integrity"
         assert 'crossorigin="anonymous"' in tag.group(0), (
-            f"{rel}: SRI requires crossorigin=anonymous or the check is a no-op")
+            f"{rel}: SRI requires crossorigin=anonymous or the check is a no-op"
+        )
         want = "sha384-" + base64.b64encode(
             hashlib.sha384((vendor / rel.split("/")[-1]).read_bytes()).digest()
         ).decode("ascii")
         assert want in tag.group(0), (
             f"{rel}: integrity hash does not match the file. The browser will "
-            f"REFUSE TO EXECUTE it. Expected {want}")
+            f"REFUSE TO EXECUTE it. Expected {want}"
+        )
 
 
 def test_vendored_assets_have_licence_attribution():
@@ -429,10 +459,14 @@ def test_every_vendored_file_is_listed_in_the_manifest():
     manifest = REPO / "site/verify" / "vendor" / "manifest.json"
     assert manifest.is_file(), "vendor/manifest.json is required to pin re-vendoring"
     import json
+
     data = json.loads(manifest.read_text(encoding="utf-8"))
     listed = {e["path"] for e in data["files"]}
-    on_disk = {f"vendor/{p.name}" for p in (REPO / "site/verify" / "vendor").iterdir()
-               if p.is_file() and p.suffix in (".js",)}
+    on_disk = {
+        f"vendor/{p.name}"
+        for p in (REPO / "site/verify" / "vendor").iterdir()
+        if p.is_file() and p.suffix in (".js",)
+    }
     assert on_disk <= listed, f"unlisted vendored files: {sorted(on_disk - listed)}"
     for entry in data["files"]:
         actual = hashlib.sha256((REPO / "site/verify" / entry["path"]).read_bytes()).hexdigest()
@@ -456,14 +490,16 @@ def test_no_third_party_font_or_cdn_reference_anywhere():
                     offenders.append(f"{path.relative_to(REPO)} -> {needle}")
     assert not offenders, (
         "self-host every font. A portal that phones a CDN leaks the visitor's IP "
-        "and breaks the air-gapped live-ISO claim.\n  " + "\n  ".join(offenders))
+        "and breaks the air-gapped live-ISO claim.\n  " + "\n  ".join(offenders)
+    )
 
 
 def test_every_surface_self_hosts_its_fonts():
     for html in PUBLIC_HTML + [REPO / "site/verify" / "tests" / "test_runner.html"]:
         text = html.read_text(encoding="utf-8")
         assert "fonts/fonts.css" in text or "../fonts/fonts.css" in text, (
-            f"{html.relative_to(REPO)} does not load the self-hosted font sheet")
+            f"{html.relative_to(REPO)} does not load the self-hosted font sheet"
+        )
 
 
 FONT_DIRS = [
@@ -489,7 +525,8 @@ def test_every_surface_font_sheet_resolves_to_real_files(d):
     orphans = shipped - referenced
     assert not orphans, (
         f"{d.relative_to(REPO)} ships woff2 files nothing loads, which means one "
-        f"variable font was copied out per weight again:\n  " + "\n  ".join(sorted(orphans)))
+        f"variable font was copied out per weight again:\n  " + "\n  ".join(sorted(orphans))
+    )
 
 
 @pytest.mark.parametrize("d", FONT_DIRS, ids=lambda p: str(p.parent.name))
@@ -502,7 +539,8 @@ def test_every_surface_declares_font_weight_ranges(d):
     ranges = re.findall(r"font-weight:\s*(\d+)\s+(\d+)\s*;", sheet)
     assert len(ranges) >= 2, (
         f"{d.relative_to(REPO)} declares single-weight faces; both families ship "
-        "as variable fonts and must be declared with a range")
+        "as variable fonts and must be declared with a range"
+    )
     for lo, hi in ranges:
         assert lo < hi, f"{d.relative_to(REPO)} has a degenerate weight range {lo} {hi}"
 
@@ -561,7 +599,7 @@ def test_every_external_link_is_safe():
         for tag in re.findall(r"<a\b[^>]*>", text, flags=re.I):
             if 'target="_blank"' in tag and "noopener" not in tag:
                 offenders.append(f"{html.relative_to(REPO)}: {tag[:80]}")
-    assert not offenders, "add rel=\"noopener noreferrer\":\n  " + "\n  ".join(offenders)
+    assert not offenders, 'add rel="noopener noreferrer":\n  ' + "\n  ".join(offenders)
 
 
 def test_portals_declare_language_and_viewport():
@@ -575,17 +613,20 @@ def test_async_status_regions_are_announced():
     """WCAG 2.2 SC 4.1.3: a status the user must perceive cannot require focus."""
     for html in PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"]:
         text = html.read_text(encoding="utf-8")
-        if 'aria-live' in text:
+        if "aria-live" in text:
             continue
         # 'log' must not match inside 'logo'. The header brand mark is a static
         # image whose src follows the theme; it is not a status region, and
         # reading its id as one would mean every page with a logo fails here.
-        offenders = list(re.findall(
-            r'id="([A-Za-z0-9_]*(?:status|progress|log(?!o)|result)[A-Za-z0-9_]*)"',
-            text, flags=re.I))
+        offenders = list(
+            re.findall(
+                r'id="([A-Za-z0-9_]*(?:status|progress|log(?!o)|result)[A-Za-z0-9_]*)"', text, flags=re.I
+            )
+        )
         assert not offenders, (
             f"{html.relative_to(REPO)} has {offenders} but declares no aria-live region; "
-            f"screen-reader users will not hear the outcome")
+            f"screen-reader users will not hear the outcome"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -593,23 +634,22 @@ def test_async_status_regions_are_announced():
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize("html", PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"],
-                         ids=lambda p: p.parent.name)
+@pytest.mark.parametrize(
+    "html", PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"], ids=lambda p: p.parent.name
+)
 def test_no_emoji_in_user_facing_markup(html):
     """Emoji render inconsistently across terminals, break monospace alignment
     and are read out unpredictably. s0 uses geometric Unicode only."""
     text = html.read_text(encoding="utf-8")
-    emoji = re.compile("[\U0001F300-\U0001FAFF☀-➿⬀-⯿️]")
+    emoji = re.compile("[\U0001f300-\U0001faff☀-➿⬀-⯿️]")
     found = emoji.findall(text)
     assert not found, f"{html.relative_to(REPO)} contains emoji {sorted(set(found))}"
 
 
 def test_brand_colour_is_identical_on_every_surface():
     """The accent is chosen once, in shared/tokens.css, and nowhere else."""
-    brand = re.search(r"^\s*--brand:\s*(#[0-9A-Fa-f]{6})",
-                      SHARED_TOKENS.read_text(encoding="utf-8"), re.M)
+    brand = re.search(r"^\s*--brand:\s*(#[0-9A-Fa-f]{6})", SHARED_TOKENS.read_text(encoding="utf-8"), re.M)
     assert brand, "shared/tokens.css does not define --brand"
     for css in SURFACE_CSS:
         text = css.read_text(encoding="utf-8")
-        assert f"--brand: {brand.group(1)}" not in text, (
-            f"{css.relative_to(REPO)} redefines the brand colour")
+        assert f"--brand: {brand.group(1)}" not in text, f"{css.relative_to(REPO)} redefines the brand colour"

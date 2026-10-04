@@ -124,6 +124,7 @@ def test_erase_symlink_rejected(tmp_path):
 
 def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
     from s0.cli.main import main as s0_main
+
     target = tmp_path / "erase_target.txt"
     target.write_bytes(b"DATA FOR S0 ERASE PDF TEST")
     out_dir = tmp_path / "s0_erase_out"
@@ -171,4 +172,3 @@ def test_erase_hardlink_safety(tmp_path):
     res_force = erase_single_file(orig, force=True)
     assert res_force.status == "success"
     assert not orig.exists()
-

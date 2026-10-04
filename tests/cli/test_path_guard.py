@@ -39,7 +39,10 @@ REPO = Path(__file__).resolve().parent.parent.parent
 def _s0(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
         [str(Path(sys.executable).parent / "s0"), *args],
-        capture_output=True, text=True, cwd=str(cwd or REPO), timeout=120,
+        capture_output=True,
+        text=True,
+        cwd=str(cwd or REPO),
+        timeout=120,
     )
 
 
@@ -47,12 +50,21 @@ def _s0(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
 # The guard itself
 # --------------------------------------------------------------------------- #
 
+
 @pytest.mark.parametrize(
     "path",
     [
-        "/etc/hostname", "/etc/passwd", "/usr/bin/python3", "/bin/sh",
-        "/proc/self/environ", "/sys/kernel", "/root/.bashrc", "/var/log/syslog",
-        "/boot/vmlinuz", "/lib/x86_64-linux-gnu/libc.so.6", "/sbin/init",
+        "/etc/hostname",
+        "/etc/passwd",
+        "/usr/bin/python3",
+        "/bin/sh",
+        "/proc/self/environ",
+        "/sys/kernel",
+        "/root/.bashrc",
+        "/var/log/syslog",
+        "/boot/vmlinuz",
+        "/lib/x86_64-linux-gnu/libc.so.6",
+        "/sbin/init",
     ],
 )
 def test_system_paths_are_refused(path):
@@ -134,25 +146,24 @@ def test_boolean_helper_agrees():
 # End to end through the CLI
 # --------------------------------------------------------------------------- #
 
+
 def test_cli_refuses_a_system_path_and_leaves_the_file(tmp_path):
     probe = tmp_path / "etc" / "hostname"
     probe.parent.mkdir()
     probe.write_text("original")
     # Pretend it is /etc for the purposes of the prefix match by using a real
     # system path in a scratch copy of the tree instead.
-    result = _s0("wipe", "--targets", str(REPO / "src" / "s0" / "safety.py"),
-                 "--yes", "--no-pdf", "--no-certificate")
-    assert result.returncode != 0, (
-        f"targeting the tool's own source must not succeed:\n{result.stdout}"
+    result = _s0(
+        "wipe", "--targets", str(REPO / "src" / "s0" / "safety.py"), "--yes", "--no-pdf", "--no-certificate"
     )
+    assert result.returncode != 0, f"targeting the tool's own source must not succeed:\n{result.stdout}"
     assert "refus" in (result.stdout + result.stderr).lower()
     assert (REPO / "src" / "s0" / "safety.py").is_file(), "the file must survive"
 
 
 def test_cli_refusal_is_not_a_traceback(tmp_path):
     """It used to end in `raise SafetyError(str(exc)) from exc` on stderr."""
-    result = _s0("wipe", "--targets", str(REPO / "pyproject.toml"),
-                 "--yes", "--no-pdf", "--no-certificate")
+    result = _s0("wipe", "--targets", str(REPO / "pyproject.toml"), "--yes", "--no-pdf", "--no-certificate")
     assert "Traceback" not in result.stderr, result.stderr[-600:]
     assert result.returncode == 77, f"expected EX_NOPERM, got {result.returncode}"
 
@@ -160,8 +171,9 @@ def test_cli_refusal_is_not_a_traceback(tmp_path):
 def test_cli_still_erases_an_ordinary_file(tmp_path):
     victim = tmp_path / "evidence.txt"
     victim.write_text("to be erased")
-    result = _s0("wipe", "--targets", str(victim), "--yes", "--no-pdf",
-                 "--no-certificate", "--out-dir", str(tmp_path))
+    result = _s0(
+        "wipe", "--targets", str(victim), "--yes", "--no-pdf", "--no-certificate", "--out-dir", str(tmp_path)
+    )
     assert result.returncode == 0, result.stderr[-500:]
     assert not victim.exists(), "an ordinary file must still be erased"
 
@@ -171,8 +183,9 @@ def test_cli_still_erases_an_ordinary_directory(tmp_path):
     folder.mkdir()
     (folder / "a.txt").write_text("a")
     (folder / "b.txt").write_text("b")
-    result = _s0("wipe", "--targets", str(folder), "--yes", "--no-pdf",
-                 "--no-certificate", "--out-dir", str(tmp_path))
+    result = _s0(
+        "wipe", "--targets", str(folder), "--yes", "--no-pdf", "--no-certificate", "--out-dir", str(tmp_path)
+    )
     assert result.returncode == 0, result.stderr[-500:]
     assert not (folder / "a.txt").exists()
 
@@ -182,8 +195,17 @@ def test_a_batch_with_one_protected_target_is_refused_whole(tmp_path):
     good = tmp_path / "fine.txt"
     good.write_text("keep until the batch is allowed")
     protected = REPO / "README.md"
-    result = _s0("wipe", "--targets", str(good), str(protected),
-                 "--yes", "--no-pdf", "--no-certificate", "--out-dir", str(tmp_path))
+    result = _s0(
+        "wipe",
+        "--targets",
+        str(good),
+        str(protected),
+        "--yes",
+        "--no-pdf",
+        "--no-certificate",
+        "--out-dir",
+        str(tmp_path),
+    )
     assert result.returncode != 0
     assert good.is_file(), (
         "the safe target must not be erased when a sibling in the same batch is "
@@ -217,6 +239,7 @@ def test_relative_paths_resolve_absolutely(tmp_path):
 # H1: `s0 web` must start from an installed package, not a source-tree path.
 # --------------------------------------------------------------------------- #
 
+
 def test_web_launcher_does_not_depend_on_a_source_tree_layout():
     """Regression: the launcher searched `<repo>/web/app.py`.
 
@@ -226,27 +249,24 @@ def test_web_launcher_does_not_depend_on_a_source_tree_layout():
     all, only site-packages, so path discovery could never have worked for them.
     """
     main = (REPO / "src" / "s0" / "cli" / "main.py").read_text(encoding="utf-8")
-    body = main[main.index("def cmd_web("):]
+    body = main[main.index("def cmd_web(") :]
     body = body[: body.index("\ndef ", 5)]
 
     # Check code, not prose: the old error string survives in the explanatory
     # comment describing the bug.
     code = "\n".join(line for line in body.splitlines() if not line.strip().startswith("#"))
     assert "Could not locate s0 Web Dashboard files" not in code, (
-        "the filesystem search for <root>/web/app.py is back; resolve the module "
-        "instead"
+        "the filesystem search for <root>/web/app.py is back; resolve the module instead"
     )
-    assert "/ \"web\"" not in code and "root / \"web\"" not in code, (
+    assert '/ "web"' not in code and 'root / "web"' not in code, (
         "the launcher must not probe <root>/web on disk"
     )
     assert '"s0.web.app:app"' in body, "uvicorn must be pointed at the module path"
     assert 'find_spec("s0.web.app")' in body, (
-        "the launcher must check the module is importable and, if not, say to "
-        "install the web extra"
+        "the launcher must check the module is importable and, if not, say to install the web extra"
     )
     assert "cwd=str(web_dir)" not in body, (
-        "uvicorn must not be pinned to a source directory; the app resolves its own "
-        "package data"
+        "uvicorn must not be pinned to a source directory; the app resolves its own package data"
     )
 
 

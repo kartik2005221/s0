@@ -64,6 +64,7 @@ def pytest_report_header(config) -> list[str]:
     """
     return [f"s0: HOME redirected to {_SANDBOX_HOME} for the duration of the run"]
 
+
 def test_home_is_redirected_for_the_whole_run() -> None:
     """The isolation is load-bearing, so assert it rather than trust it.
 

@@ -80,7 +80,8 @@ class TestTokenFilePermissions:
         assert mode == 0o600, (
             f"a pre-existing token file was left at {mode:04o} while holding the "
             f"live session token; os.open's mode argument is ignored for an "
-            f"existing file, so it must be chmod'ed explicitly")
+            f"existing file, so it must be chmod'ed explicitly"
+        )
 
     def test_the_adopted_token_is_the_one_on_disk(self, tmp_path, monkeypatch):
         token_file = tmp_path / ".s0" / "web_auth_token"
@@ -98,8 +99,7 @@ class TestTokenFilePermissions:
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.delenv("S0_WEB_AUTH_TOKEN", raising=False)
         issued = gui._load_or_create_session_token()
-        assert issued != "truncated", (
-            "a malformed token file was adopted as the credential")
+        assert issued != "truncated", "a malformed token file was adopted as the credential"
         assert len(issued) == 64
 
     def test_a_fresh_token_file_is_0600(self, tmp_path, monkeypatch):
@@ -129,13 +129,14 @@ class TestQueryTokenIsBootstrapOnly:
         r = client.get(f"{self.API}?token={_token()}")
         assert r.status_code == 401, (
             "?token= was accepted on an API route; it is a bootstrap for the kiosk "
-            "and leaks into browser history, Referer headers and proxy logs")
+            "and leaks into browser history, Referer headers and proxy logs"
+        )
 
     def test_the_error_explains_what_to_use_instead(self, client):
         detail = client.get(f"{self.API}?token={_token()}").json()["detail"]
         assert "X-S0-Auth-Token" in detail, (
-            "the rejection does not say how to authenticate, so an integrator is "
-            "left guessing")
+            "the rejection does not say how to authenticate, so an integrator is left guessing"
+        )
 
     def test_the_header_still_works_on_an_api_route(self, client):
         assert client.get(self.API, headers=_auth()).status_code == 200
@@ -150,8 +151,7 @@ class TestQueryTokenIsBootstrapOnly:
     def test_the_bootstrap_route_still_accepts_the_query_token(self, client):
         """The kiosk has nowhere to put a header, so '/' must keep working."""
         r = client.get(f"/?token={_token()}", follow_redirects=False)
-        assert r.status_code in (302, 303, 307), (
-            f"the kiosk bootstrap stopped working: {r.status_code}")
+        assert r.status_code in (302, 303, 307), f"the kiosk bootstrap stopped working: {r.status_code}"
 
 
 class TestCrossOriginRequestsAreRefused:
@@ -165,7 +165,8 @@ class TestCrossOriginRequestsAreRefused:
             )
             assert r.status_code == 403, (
                 "a cross-origin cookie-authenticated POST was accepted; the only "
-                "thing that stopped it was the client honouring SameSite")
+                "thing that stopped it was the client honouring SameSite"
+            )
         finally:
             client.cookies.clear()
 
@@ -219,41 +220,35 @@ class TestInputValidation:
         """It used to reach Path.resolve() and return an unhandled 500."""
         job_id = "nultest"
         with gui._lock:
-            gui._jobs[job_id] = {"status": "done", "out_dir": "/tmp",
-                                 "result": {"cert_filename": "c.json"}}
+            gui._jobs[job_id] = {"status": "done", "out_dir": "/tmp", "result": {"cert_filename": "c.json"}}
         try:
             r = client.get(f"/api/download/{job_id}/a%00b.json", headers=_auth())
-            assert r.status_code == 400, (
-                f"a NUL byte in the filename returned {r.status_code}, not 400")
+            assert r.status_code == 400, f"a NUL byte in the filename returned {r.status_code}, not 400"
         finally:
             with gui._lock:
                 gui._jobs.pop(job_id, None)
 
     def test_out_of_range_min_confidence_is_rejected(self, client):
-        r = client.post("/api/carve", json={
-            "target": "/tmp/x.img", "min_confidence": 999}, headers=_auth())
-        assert r.status_code == 422, (
-            "min_confidence=999 was accepted; the CLI documents and enforces 0-100")
+        r = client.post("/api/carve", json={"target": "/tmp/x.img", "min_confidence": 999}, headers=_auth())
+        assert r.status_code == 422, "min_confidence=999 was accepted; the CLI documents and enforces 0-100"
 
     def test_negative_min_confidence_is_rejected(self, client):
-        r = client.post("/api/carve", json={
-            "target": "/tmp/x.img", "min_confidence": -5}, headers=_auth())
+        r = client.post("/api/carve", json={"target": "/tmp/x.img", "min_confidence": -5}, headers=_auth())
         assert r.status_code == 422
 
     @pytest.mark.parametrize("value", [0, 50, 100])
     def test_the_documented_range_is_accepted(self, client, value):
         """The bound must not be so tight it rejects legitimate values."""
-        r = client.post("/api/carve", json={
-            "target": "/nonexistent-target.img", "min_confidence": value},
-            headers=_auth())
+        r = client.post(
+            "/api/carve", json={"target": "/nonexistent-target.img", "min_confidence": value}, headers=_auth()
+        )
         assert r.status_code != 422, f"min_confidence={value} was rejected"
 
     @pytest.mark.parametrize("host", ["LOCALHOST", "LocalHost", "localhost"])
     def test_host_matching_is_case_insensitive(self, client, host):
         """RFC 9110: host names are case-insensitive."""
         r = client.get("/api/devices", headers={"Host": host, **_auth()})
-        assert r.status_code != 400, (
-            f"Host: {host} was refused; host names are case-insensitive per RFC 9110")
+        assert r.status_code != 400, f"Host: {host} was refused; host names are case-insensitive per RFC 9110"
 
     def test_a_genuinely_foreign_host_is_still_refused(self, client):
         """The case fix must not weaken DNS-rebinding protection."""
@@ -262,26 +257,22 @@ class TestInputValidation:
 
 
 class TestImagingPreFlight:
-    def test_an_existing_destination_is_a_409_with_an_actionable_message(
-            self, client, tmp_path):
+    def test_an_existing_destination_is_a_409_with_an_actionable_message(self, client, tmp_path):
         src = tmp_path / "src.raw"
         src.write_bytes(b"\x00" * 4096)
         dst = tmp_path / "dst.img"
         dst.write_bytes(b"already here")
 
-        r = client.post("/api/image", json={
-            "source": str(src), "destination": str(dst)}, headers=_auth())
+        r = client.post("/api/image", json={"source": str(src), "destination": str(dst)}, headers=_auth())
         assert r.status_code == 409, (
             f"imaging onto an existing file returned {r.status_code}; the operator "
-            f"got an opaque code instead of the one thing they could act on")
-        assert "force" in r.json()["detail"], (
-            "the rejection does not say how to proceed")
+            f"got an opaque code instead of the one thing they could act on"
+        )
+        assert "force" in r.json()["detail"], "the rejection does not say how to proceed"
 
     def test_the_check_does_not_prevent_a_new_destination(self, client, tmp_path):
         src = tmp_path / "src.raw"
         src.write_bytes(b"\x00" * 4096)
         dst = tmp_path / "brand-new.img"
-        r = client.post("/api/image", json={
-            "source": str(src), "destination": str(dst)}, headers=_auth())
-        assert r.status_code == 200, (
-            "the pre-flight check rejected a destination that does not exist")
+        r = client.post("/api/image", json={"source": str(src), "destination": str(dst)}, headers=_auth())
+        assert r.status_code == 200, "the pre-flight check rejected a destination that does not exist"

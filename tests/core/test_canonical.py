@@ -7,9 +7,9 @@ import pytest
 
 from s0.canonical import CanonicalizationError, canonicalize, canonicalize_str
 
-VECTORS = json.loads(
-    (Path(__file__).parent / "data" / "canonical_vectors.json").read_text("utf-8")
-)["vectors"]
+VECTORS = json.loads((Path(__file__).parent / "data" / "canonical_vectors.json").read_text("utf-8"))[
+    "vectors"
+]
 
 
 @pytest.mark.parametrize("vector", VECTORS, ids=lambda v: v["name"])
@@ -74,4 +74,3 @@ def test_canonical_json_spec_no_drift():
         "7. **Arrays.**",
     ]:
         assert rule in text, f"Missing rule {rule} in docs/architecture/canonical-json.md"
-

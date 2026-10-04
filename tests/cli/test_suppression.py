@@ -31,16 +31,22 @@ FFMPEG = shutil.which("ffmpeg")
 # Hash sets
 # --------------------------------------------------------------------------- #
 
+
 class TestParsingHashLists:
     def test_bare_digest_of_each_algorithm(self, tmp_path):
         data = b"evidence"
         p = tmp_path / "known.txt"
-        p.write_text("\n".join([
-            hashlib.md5(data).hexdigest(),
-            hashlib.sha1(data).hexdigest(),
-            hashlib.sha256(data).hexdigest(),
-            hashlib.sha512(data).hexdigest(),
-        ]) + "\n")
+        p.write_text(
+            "\n".join(
+                [
+                    hashlib.md5(data).hexdigest(),
+                    hashlib.sha1(data).hexdigest(),
+                    hashlib.sha256(data).hexdigest(),
+                    hashlib.sha512(data).hexdigest(),
+                ]
+            )
+            + "\n"
+        )
         s = suppression.load_hash_set(p)
         assert len(s) == 4
         assert set(s.algorithms) == {"md5", "sha1", "sha256", "sha512"}
@@ -76,25 +82,28 @@ class TestParsingHashLists:
         that refuses, so skipped lines are reported with a reason."""
         data = b"y"
         p = tmp_path / "known.txt"
-        p.write_text("\n".join([
-            hashlib.sha256(data).hexdigest(),
-            "not a digest at all",
-            "ZZZZZZZZ",                       # right length for md5, not hex
-            "ab" * 20,                        # 40 hex chars: a valid sha1
-        ]) + "\n")
+        p.write_text(
+            "\n".join(
+                [
+                    hashlib.sha256(data).hexdigest(),
+                    "not a digest at all",
+                    "ZZZZZZZZ",  # right length for md5, not hex
+                    "ab" * 20,  # 40 hex chars: a valid sha1
+                ]
+            )
+            + "\n"
+        )
         s = suppression.load_hash_set(p)
         # The 40-hex-char line is a legitimate sha1 and is kept; the two garbage
         # lines are counted.
         assert set(s.algorithms) == {"sha1", "sha256"}
         assert s.lines_skipped == 2
-        assert any("unrecognised length" in r or "unparseable" in r
-                   for r in s.skip_reasons)
+        assert any("unrecognised length" in r or "unparseable" in r for r in s.skip_reasons)
 
     def test_algorithms_can_be_restricted(self, tmp_path):
         data = b"z"
         p = tmp_path / "known.txt"
-        p.write_text(hashlib.md5(data).hexdigest() + "\n"
-                     + hashlib.sha256(data).hexdigest() + "\n")
+        p.write_text(hashlib.md5(data).hexdigest() + "\n" + hashlib.sha256(data).hexdigest() + "\n")
         s = suppression.load_hash_set(p, algorithms=["sha256"])
         assert s.algorithms == ["sha256"]
 
@@ -173,6 +182,7 @@ class TestDirectoryHashing:
     def test_files_are_streamed_not_read_whole(self, tmp_path, monkeypatch):
         """A multi-gigabyte reference must not be pulled into memory at once."""
         import builtins
+
         d = tmp_path / "reference"
         d.mkdir()
         payload = b"x" * (3 * 1024 * 1024 + 7)
@@ -189,6 +199,7 @@ class TestDirectoryHashing:
                     got = real_read(size)
                     biggest[0] = max(biggest[0], len(got))
                     return got
+
                 fh.read = read
             return fh
 
@@ -213,6 +224,7 @@ class TestDirectoryHashing:
 # --------------------------------------------------------------------------- #
 # Bodyfiles
 # --------------------------------------------------------------------------- #
+
 
 class TestBodyfile:
     def test_write_and_read_round_trip(self, tmp_path):
@@ -285,10 +297,12 @@ class TestBodyfile:
 # End to end through the carver
 # --------------------------------------------------------------------------- #
 
+
 def _png(w=64, h=64):
     import io
 
     from PIL import Image
+
     buf = io.BytesIO()
     Image.new("RGB", (w, h), (10, 120, 200)).save(buf, format="PNG")
     return buf.getvalue()
@@ -297,17 +311,18 @@ def _png(w=64, h=64):
 class TestCarverIntegration:
     def test_a_known_file_is_withheld_and_counted(self, tmp_path):
         from s0.carve import carve_image
+
         known_payload = _png(64, 64)
         wanted = _png(48, 48)
         img = tmp_path / "img.raw"
-        img.write_bytes(b"\x5a" * 4096 + known_payload + b"\x5a" * 4096
-                        + wanted + b"\x5a" * 4096)
+        img.write_bytes(b"\x5a" * 4096 + known_payload + b"\x5a" * 4096 + wanted + b"\x5a" * 4096)
         hashes = tmp_path / "known.txt"
         hashes.write_text(hashlib.sha256(known_payload).hexdigest() + "\n")
 
         out = tmp_path / "out"
-        summary = carve_image(img, out, generate_certificate=False,
-                              known_hashes=suppression.load_hash_set(hashes))
+        summary = carve_image(
+            img, out, generate_certificate=False, known_hashes=suppression.load_hash_set(hashes)
+        )
         assert summary.suppressed_known == 1
         assert "sha256" in summary.suppression_note
         assert str(hashes) in summary.suppression_note
@@ -319,14 +334,14 @@ class TestCarverIntegration:
         import json
 
         from s0.carve import carve_image
+
         payload = _png(32, 32)
         img = tmp_path / "img.raw"
         img.write_bytes(b"\x5a" * 4096 + payload + b"\x5a" * 4096)
         hashes = tmp_path / "known.txt"
         hashes.write_text(hashlib.sha256(payload).hexdigest() + "\n")
         out = tmp_path / "out"
-        carve_image(img, out, generate_certificate=False,
-                    known_hashes=suppression.load_hash_set(hashes))
+        carve_image(img, out, generate_certificate=False, known_hashes=suppression.load_hash_set(hashes))
         rec = json.loads((out / "recovery_index.json").read_text())
         assert rec["suppressed_known_files"] == 1
         assert rec["suppressed_known_bytes"] == len(payload)
@@ -334,6 +349,7 @@ class TestCarverIntegration:
 
     def test_without_a_hash_set_nothing_is_suppressed(self, tmp_path):
         from s0.carve import carve_image
+
         payload = _png(32, 32)
         img = tmp_path / "img.raw"
         img.write_bytes(b"\x5a" * 4096 + payload + b"\x5a" * 4096)
@@ -360,48 +376,75 @@ class TestCarverIntegration:
         policy.use_free_space_only = False
 
         # Control: the deleted file is recoverable at all.
-        baseline = carve_image(str(img), tmp_path / "base", extensions=[".jpg"],
-                               policy=policy, generate_certificate=False)
-        assert any(f.size_bytes == len(deleted) for f in baseline.carved_files), \
+        baseline = carve_image(
+            str(img), tmp_path / "base", extensions=[".jpg"], policy=policy, generate_certificate=False
+        )
+        assert any(f.size_bytes == len(deleted) for f in baseline.carved_files), (
             "fixture did not recover the deleted file; the test proves nothing"
+        )
 
         hashes = tmp_path / "known.txt"
         hashes.write_text(hashlib.sha256(deleted).hexdigest() + "\n")
         out = tmp_path / "out"
-        summary = carve_image(str(img), out, extensions=[".jpg"], policy=policy,
-                              generate_certificate=False,
-                              known_hashes=suppression.load_hash_set(hashes))
+        summary = carve_image(
+            str(img),
+            out,
+            extensions=[".jpg"],
+            policy=policy,
+            generate_certificate=False,
+            known_hashes=suppression.load_hash_set(hashes),
+        )
         assert summary.suppressed_known == 1
-        written = {f.read_bytes() for f in out.rglob("*") if f.is_file()
-                   and f.suffix.lower() in (".jpg", ".jpeg")}
+        written = {
+            f.read_bytes() for f in out.rglob("*") if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg")
+        }
         assert deleted not in written, "a suppressed file was still written"
         rec = json.loads((out / "recovery_index.json").read_text())
-        assert any("known sha256 digest" in r["reason"]
-                   for r in rec["rejection_summary"]), rec["rejection_summary"]
+        assert any("known sha256 digest" in r["reason"] for r in rec["rejection_summary"]), rec[
+            "rejection_summary"
+        ]
 
     def test_extents_and_gaps_agree(self, tmp_path):
         from s0.carve import carve_image
+
         payload = _png(40, 40)
         img = tmp_path / "img.raw"
         img.write_bytes(b"\x5a" * 4096 + payload + b"\x5a" * 4096)
         out = tmp_path / "out"
         summary = carve_image(img, out, generate_certificate=False)
         assert summary.recovered_extents, "a recovered file must contribute an extent"
-        gaps = bf.complement(summary.recovered_extents, 0,
-                             summary.total_bytes_scanned - 1)
+        gaps = bf.complement(summary.recovered_extents, 0, summary.total_bytes_scanned - 1)
         assert gaps
-        assert bf.total_length(summary.recovered_extents) + bf.total_length(gaps) \
-            == summary.total_bytes_scanned
+        assert (
+            bf.total_length(summary.recovered_extents) + bf.total_length(gaps) == summary.total_bytes_scanned
+        )
 
     @pytest.mark.skipif(FFMPEG is None, reason="ffmpeg not available")
     def test_cli_writes_both_bodyfiles(self, tmp_path):
         import json
         import sys
+
         src = tmp_path / "a.avi"
         proc = subprocess.run(
-            [FFMPEG, "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
-             "-i", "testsrc=size=160x120:rate=15:duration=1", "-c:v", "mpeg4",
-             "-f", "avi", str(src)], capture_output=True, text=True)
+            [
+                FFMPEG,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=160x120:rate=15:duration=1",
+                "-c:v",
+                "mpeg4",
+                "-f",
+                "avi",
+                str(src),
+            ],
+            capture_output=True,
+            text=True,
+        )
         if proc.returncode != 0:
             pytest.skip(proc.stderr[:200])
         original = src.read_bytes()
@@ -411,11 +454,26 @@ class TestCarverIntegration:
         gaps = tmp_path / "gaps.body"
         out = tmp_path / "out"
         rc = subprocess.run(
-            [sys.executable, "-m", "s0.cli.main", "carve",
-             "--target", str(img), "--out-dir", str(out),
-             "--bodyfile", str(found), "--gaps-bodyfile", str(gaps),
-             "--format", "json", "--quiet"],
-            capture_output=True, text=True)
+            [
+                sys.executable,
+                "-m",
+                "s0.cli.main",
+                "carve",
+                "--target",
+                str(img),
+                "--out-dir",
+                str(out),
+                "--bodyfile",
+                str(found),
+                "--gaps-bodyfile",
+                str(gaps),
+                "--format",
+                "json",
+                "--quiet",
+            ],
+            capture_output=True,
+            text=True,
+        )
         assert rc.returncode == 0, (rc.stdout[-300:], rc.stderr[-500:])
         assert found.is_file(), f"no bodyfile written; stdout={rc.stdout[-300:]}"
         assert gaps.is_file()
@@ -426,6 +484,7 @@ class TestCarverIntegration:
         rec = json.loads((out / "recovery_index.json").read_text())
         offsets = {f["offset"] for f in rec["recovered_files"]}
         for off in offsets:
-            assert any(s <= off <= e for s, e in found_extents), \
+            assert any(s <= off <= e for s, e in found_extents), (
                 f"offset {off} is not inside any bodyfile range"
-        assert data[found_extents[0][0]:found_extents[0][0] + 4] == b"RIFF"
+            )
+        assert data[found_extents[0][0] : found_extents[0][0] + 4] == b"RIFF"
