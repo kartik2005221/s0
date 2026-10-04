@@ -120,6 +120,8 @@ def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
 
 # openapi_url is disabled as well: /docs and /redoc were already off, but leaving
 # the schema live handed an unauthenticated caller the full route and field list.
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 app = FastAPI(
     title="s0 Forensic & Sanitization Dashboard",
     docs_url=None,
@@ -127,15 +129,38 @@ app = FastAPI(
     openapi_url=None,
 )
 
-from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 
 # `*.local` matches any mDNS name, so `http://attacker.local` was an accepted Host
 # header -- a DNS-rebinding foothold. Only literal loopback names are needed;
 # `testserver` remains for TestClient.
+# NOTE: middleware added last runs first (Starlette prepends), so this has to be
+# registered *after* TrustedHostMiddleware below in order to wrap it. Registered
+# the other way round it would be inner, and TrustedHost would already have
+# rejected `Host: LOCALHOST` before this ever saw the request.
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
 )
+
+
+@app.middleware("http")
+async def normalize_host_header(request: Request, call_next):
+    """Lowercase the Host header before TrustedHostMiddleware sees it.
+
+    Host names are case-insensitive (RFC 9110 §4.2.3), but Starlette compares the
+    raw header value against the allowlist, so `Host: LOCALHOST` was refused with
+    a 400 while `Host: localhost` was accepted. That fails closed, so it was never
+    a security hole -- it was a robustness bug that turned a valid request into an
+    error only visible on a differently-cased client.
+    """
+    headers = request.scope.get("headers")
+    if headers is not None:
+        for i, (name, value) in enumerate(headers):
+            if name == b"host":
+                headers[i] = (name, value.lower())
+                break
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -209,17 +234,72 @@ def _record_job(job_id: str, record: dict) -> None:
             _jobs.popitem(last=False)
 _lock = threading.Lock()
 
-_SESSION_AUTH_TOKEN = os.environ.get("S0_WEB_AUTH_TOKEN") or secrets.token_hex(32)
+def _load_or_create_session_token() -> str:
+    """Return the session token, writing it to disk only when it is created.
+
+    Two problems with generating a token here and writing it unconditionally.
+
+    The mode passed to ``os.open`` applies only when the file is *created*. A
+    ``~/.s0/web_auth_token`` left at 0644 by an earlier version, or widened by a
+    user, stayed 0644 while holding the live credential -- the mode argument
+    looked like it was protecting the file and was not.
+
+    And doing this at import time meant merely importing the module rotated the
+    token on disk. A second server process -- a reload, a test, a second worker --
+    silently invalidated the token a running dashboard was already using, so the
+    operator's cookie stopped working with nothing changed on their side.
+
+    So: adopt a usable token from disk if one is there, generate only if not, and
+    enforce the mode on every path.
+    """
+    override = os.environ.get("S0_WEB_AUTH_TOKEN")
+    if override:
+        return override
+
+    token_path = Path.home() / ".s0" / "web_auth_token"
+    try:
+        existing = token_path.read_text(encoding="utf-8").strip()
+        # 64 hex chars is what token_hex(32) produces. Reuse only that shape, so a
+        # truncated or corrupted file is replaced rather than adopted.
+        if len(existing) == 64 and all(c in "0123456789abcdef" for c in existing):
+            os.chmod(token_path, 0o600)
+            return existing
+    except (OSError, ValueError):
+        pass
+
+    token = secrets.token_hex(32)
+    try:
+        token_path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(token)
+        # The mode above is ignored for a file that already existed, so narrow it
+        # explicitly rather than trusting the argument.
+        os.chmod(token_path, 0o600)
+    except OSError:
+        pass
+    return token
+
+
+_SESSION_AUTH_TOKEN = _load_or_create_session_token()
 
 
 def _init_session_auth_token() -> None:
+    """Publish the decided token where the operator and kiosk can read it.
+
+    The token itself is chosen by _load_or_create_session_token, which adopts an
+    existing one rather than rotating it. This only mirrors that decision to disk
+    and to the kiosk group.
+    """
     try:
         token_path = Path.home() / ".s0" / "web_auth_token"
         token_path.parent.mkdir(parents=True, exist_ok=True)
-        # Write atomically with 0600 permissions
         fd = os.open(str(token_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with open(fd, "w", encoding="utf-8") as f:
             f.write(_SESSION_AUTH_TOKEN)
+        # os.open's mode applies only on creation; enforce it on every write so a
+        # pre-existing world-readable token file cannot survive.
+        os.chmod(token_path, 0o600)
 
         # When running as root (e.g. s0-web daemon on live ISO), make token available to kiosk user via s0-kiosk group
         if hasattr(os, "geteuid") and os.geteuid() == 0:
@@ -230,6 +310,7 @@ def _init_session_auth_token() -> None:
                 rfd = os.open(str(run_token), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                 with open(rfd, "w", encoding="utf-8") as f:
                     f.write(_SESSION_AUTH_TOKEN)
+                os.chmod(run_token, 0o600)
                 # Restrict permissions: 0640 (owner root rw, group s0-kiosk r, others none)
                 try:
                     import grp
@@ -246,7 +327,60 @@ def _init_session_auth_token() -> None:
 
 
 
-_init_session_auth_token()
+# No longer rotates anything: _load_or_create_session_token already decided the
+# token, and this only mirrors it to the kiosk-visible location. Kept at import
+# because the kiosk reads the file at session start, and wrapped so a failure here
+# cannot stop the app from importing.
+try:
+    _init_session_auth_token()
+except Exception:  # pragma: no cover - best effort
+    pass
+
+
+#: Routes where ``?token=`` is accepted. The kiosk opens the dashboard by
+#: navigating to a URL that carries the token, because it has nowhere to put a
+#: header. Everywhere else the header or cookie is required.
+_BOOTSTRAP_PATHS = ("/",)
+
+#: Methods that change state. A cookie is attached to these automatically by the
+#: browser, so they are the ones where a cross-site request needs checking.
+_UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def _require_same_origin(request: Request) -> None:
+    """Reject a state-changing request that did not come from this origin.
+
+    SameSite=Strict already stops a browser sending the cookie cross-site, and no
+    CORS middleware means a cross-origin *read* is blocked too. This is defence in
+    depth for the case those do not cover: a client that echoes cookies regardless
+    of SameSite, or a browser that does not enforce it.
+
+    A missing Origin is allowed, because a non-browser client (curl, the kiosk
+    script, the test suite) legitimately sends none, and such a client is not
+    subject to ambient-credential attachment in the first place. Sec-Fetch-Site is
+    checked too when present, since it is set by the browser even when Origin is
+    suppressed.
+    """
+    if request.method.upper() not in _UNSAFE_METHODS:
+        return
+
+    fetch_site = request.headers.get("sec-fetch-site")
+    if fetch_site and fetch_site.lower() not in ("same-origin", "none"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Forbidden: cross-site request refused (Sec-Fetch-Site: {fetch_site})",
+        )
+
+    origin = request.headers.get("origin")
+    if not origin:
+        return
+    host = request.headers.get("host", "")
+    expected = {f"{scheme}://{host}" for scheme in ("http", "https")}
+    if origin.rstrip("/") not in {e.rstrip("/") for e in expected}:
+        raise HTTPException(
+            status_code=403,
+            detail="Forbidden: cross-origin request refused",
+        )
 
 
 def _token_matches(candidate: str | None) -> bool:
@@ -281,7 +415,26 @@ def verify_auth_token(
     history, ``Referer`` and proxy logs -- so ``GET /`` converts it to a cookie and
     redirects to a clean URL.
     """
-    tok = x_s0_auth_token or request.cookies.get(AUTH_COOKIE) or token
+    tok = x_s0_auth_token
+    cookie = request.cookies.get(AUTH_COOKIE)
+    if not tok and cookie:
+        _require_same_origin(request)
+        tok = cookie
+    if not tok and token:
+        # The query form is a bootstrap, so it is accepted on the bootstrap route
+        # and nowhere else. Everywhere else it kept working, which defeated the
+        # reason for restricting it: a token in a URL leaks into browser history,
+        # Referer headers and proxy logs, and a caller who pasted it once had it
+        # silently honoured on every later request.
+        if request.url.path not in _BOOTSTRAP_PATHS:
+            raise HTTPException(
+                status_code=401,
+                detail=("Unauthorized: the ?token= bootstrap form is only accepted "
+                        f"on {'/'.join(_BOOTSTRAP_PATHS)}. Use the X-S0-Auth-Token "
+                        "header or the session cookie."),
+            )
+        tok = token
+
     if not tok:
         raise HTTPException(
             status_code=401,
@@ -298,6 +451,10 @@ def verify_auth_token(
             status_code=401,
             detail="Unauthorized: invalid session authentication token encoding",
         ) from None
+
+    # The Origin check already ran when the credential came from the cookie. A
+    # request authenticated by header or by the bootstrap query form is not
+    # carrying an ambient credential, so it has nothing to check.
 
 
 def _validate_metadata_str(field_name: str, v: str, max_len: int = 128) -> str:
@@ -551,7 +708,11 @@ class FileEraseRequest(BaseModel):
 class CarveRequest(BaseModel):
     target: str
     extensions: list[str] | None = None
-    min_confidence: int = 50
+    # The CLI documents 0-100 and its own parser rejects out-of-range values, so the
+    # web tier did too. It accepted min_confidence=999, which is a confidence
+    # nobody can express: the request succeeded and carved nothing, and the only
+    # way to tell that from "nothing was recoverable" was to read the report.
+    min_confidence: int = Field(default=50, ge=0, le=100)
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
     out_dir: str | None = None
@@ -612,6 +773,7 @@ class ImageRequest(BaseModel):
     block_size: int = 1024 * 1024
     no_recovery: bool = False
     is_clone: bool = False
+    force: bool = False
     confirm_text: str = ""
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(default_factory=lambda: CONFIG.get("default_organization", "Digital Forensics & Data Sanitization Lab"))
@@ -1363,6 +1525,16 @@ def start_image(req: ImageRequest) -> JSONResponse:
         raise HTTPException(404, f"source does not exist: {req.source}")
 
     dst_p = Path(req.destination)
+    # Refuse an existing destination here, with an actionable message, rather than
+    # letting the imager fail and surface as `operation_failed` with a correlation
+    # id. The operator can act on "destination exists, pass force to overwrite";
+    # they cannot act on a correlation id they have no way to look up.
+    if dst_p.exists() and not req.force:
+        raise HTTPException(
+            409,
+            f"destination already exists: {req.destination}. "
+            f"Set force=true to overwrite it.")
+
     is_blk = False
     try:
         is_blk = platform.is_block_device(dst_p)
@@ -1414,6 +1586,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
                 key_path=key if key and key.exists() else None,
                 no_certificate=False,
                 out_dir=str(out_dir),
+                force=req.force,
             )
             img_result = acquire_image(options, progress_callback=_progress)
 
@@ -1530,6 +1703,11 @@ def download(job_id: str, filename: str) -> FileResponse:
         job = _jobs.get(job_id)
     if not job:
         raise HTTPException(404, "unknown job")
+    # A NUL byte makes Path.resolve() raise ValueError, which nothing above caught,
+    # so `?filename=%00` returned an unhandled 500 from the deepest layer of the
+    # request. Reject it as the bad input it is, before touching the filesystem.
+    if "\x00" in filename or any(ord(c) < 32 for c in filename):
+        raise HTTPException(400, "invalid artifact name")
     out_dir_path = Path(job["out_dir"]).resolve()
     path = (out_dir_path / filename).resolve()
     try:

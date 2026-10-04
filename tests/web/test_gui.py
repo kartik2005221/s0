@@ -620,8 +620,16 @@ def test_download_via_query_token(tmp_path):
     # Without token -> 401
     r_unauth = raw_client.get(f"/api/download/{fake_job_id}/sample.json")
     assert r_unauth.status_code == 401
-    # With query parameter token -> 200
-    r_auth = raw_client.get(f"/api/download/{fake_job_id}/sample.json?token={gui_app._SESSION_AUTH_TOKEN}")
+    # `?token=` is a bootstrap form, honoured on "/" only. It used to be accepted
+    # on every route, which defeated the reason for restricting it: a token in a
+    # URL leaks into browser history, Referer headers and proxy logs.
+    r_query = raw_client.get(f"/api/download/{fake_job_id}/sample.json?token={gui_app._SESSION_AUTH_TOKEN}")
+    assert r_query.status_code == 401, (
+        "?token= was accepted on an API route; it must be bootstrap-only")
+    # The header form is the supported one for API routes.
+    r_auth = raw_client.get(
+        f"/api/download/{fake_job_id}/sample.json",
+        headers={"X-S0-Auth-Token": gui_app._SESSION_AUTH_TOKEN})
     assert r_auth.status_code == 200
     assert r_auth.json() == {"test": True}
 
