@@ -725,6 +725,42 @@ def cmd_wipe(args) -> int:
                 is_file_mode = True
                 args.targets = [target_arg]
 
+    if getattr(args, "dry_run", False) and is_file_mode:
+        # The dry-run gate used to sit *below* this dispatch, so a file or folder
+        # target was handed to cmd_erase_files -- which never reads dry_run --
+        # before the flag was ever consulted. `s0 wipe --targets FILE --dry-run`
+        # therefore deleted the file and printed "Successful: 1".
+        #
+        # The path guard still has to run: a dry run that resolves a destructive
+        # target is exactly when an operator learns the target is refused.
+        refused: list[str] = []
+        try:
+            from s0.safety import ProtectedPathError, check_path_is_destructive
+            for t in args.targets:
+                try:
+                    # Returns warnings when --force overrode a refusal; those
+                    # must still be shown, not discarded.
+                    refused.extend(check_path_is_destructive(
+                        t, force=getattr(args, "force", False)))
+                except ProtectedPathError as exc:
+                    refused.append(str(exc))
+        except ImportError:
+            pass
+        ui.line("[s0 wipe]  Dry run: nothing will be written.")
+        ui.note(f"mode:    file/folder erase ({len(args.targets)} target"
+                f"{'s' if len(args.targets) != 1 else ''})")
+        for t in args.targets:
+            ui.note(f"target:  {t}")
+        ui.note(f"passes:  {getattr(args, 'passes', 1)}")
+        ui.note(f"pattern: {getattr(args, 'pattern', 'zero')}")
+        if refused:
+            ui.warn("This target would be REFUSED without --force:")
+            for reason in refused:
+                ui.warn(f"  {reason}")
+        else:
+            ui.note("Re-run without --dry-run to erase these files.")
+        return 0
+
     if is_file_mode:
         return cmd_erase_files(args)
 
@@ -2905,6 +2941,48 @@ def _hoist_audit_action(argv):
     return argv
 
 
+# Commands that create output. `--dry-run` is attached to every subcommand by the
+# shared parent parser with the help text "plan only; never write to the target",
+# but only `wipe` (on its block-device path) and `live flash` ever read it. So
+# `s0 image --dry-run` wrote a full image, `s0 clone --dry-run` cloned, and
+# `s0 carve --dry-run` wrote carved files and appended to the audit ledger --
+# each while claiming to have written nothing.
+#
+# Enforced at the single point where a handler is invoked rather than inside each
+# handler. A per-handler check is a convention that the next command added will
+# forget; this is a property of the program.
+_DRY_RUN_WRITES = ("image", "clone", "carve")
+
+
+def _dry_run_guard(args) -> int | None:
+    """Stop a writing command under --dry-run. Returns None to proceed."""
+    if not getattr(args, "dry_run", False):
+        return None
+    command = getattr(args, "command", "")
+    if command not in _DRY_RUN_WRITES:
+        # Read-only commands (list, plan, audit, verify) and the ones that already
+        # implement a dry run (wipe, live) are left to their own handlers.
+        return None
+
+    ui = getattr(args, "ui", None) or UI(policy_from_args(args), command=command)
+    ui.line(f"[s0 {command}]  Dry run: nothing will be written.")
+    source = getattr(args, "source", None) or getattr(args, "target", None)
+    if source:
+        ui.note(f"source:      {source}")
+    destination = getattr(args, "destination", None)
+    if destination:
+        ui.note(f"destination: {destination}")
+    out_dir = getattr(args, "out_dir", None)
+    if out_dir:
+        ui.note(f"out-dir:     {out_dir}")
+    for flag, label in (("extensions", "extensions"), ("min_confidence", "min-confidence")):
+        value = getattr(args, flag, None)
+        if value:
+            ui.note(f"{label}: {value}")
+    ui.note(f"Re-run without --dry-run to perform the {command}.")
+    return EX_OK
+
+
 def main(argv=None) -> int:
     """Entry point.
 
@@ -2929,6 +3007,10 @@ def main(argv=None) -> int:
 
         if not raw_args or raw_args in (["--help"], ["-h"]):
             _print_banner(policy)
+
+        guard = _dry_run_guard(args)
+        if guard is not None:
+            return guard
 
         code = args.func(args)
         return int(code) if code is not None else EX_OK
