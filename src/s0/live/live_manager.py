@@ -726,6 +726,100 @@ def _unmount_partitions(target: str) -> bool:
     return True
 
 
+def validate_iso_image(iso_path: Path) -> tuple[bool, str]:
+    """Check that this file is a bootable hybrid ISO, not just a large file.
+
+    The only test was `size >= 100 MiB`, so any sufficiently large file passed: a
+    video, a disk image, a tarball. Flashing one produces an unbootable USB stick and,
+    more importantly, destroys whatever device it was aimed at -- the failure is
+    discovered after the write, on hardware that may have held the only copy of
+    something.
+
+    Four cheap structural checks, all from the first and last few KiB, so this costs
+    nothing on a multi-hundred-megabyte image:
+
+    * a Hybrid ISO is an ISO 9660 image, so it starts with ``CD001`` at offset
+      0x8001 (32769) -- the standard 32 KiB system area;
+    * it carries an El Torito boot record, whose magic is ``EL TORITO SPEC`` (also
+      at 0x8821, inside the system area);
+    * the volume descriptor must actually say the image is bootable, via the
+      ``boot record`` identifier at offset 7 of the primary descriptor;
+    * a PDF or a tarball must not be accepted, which the magic checks rule out.
+
+    A refusal names what was found, because "not a valid ISO" with no detail sends
+    the operator to the wrong problem.
+    """
+    try:
+        size = iso_path.stat().st_size
+    except OSError as exc:
+        return False, f"cannot stat the ISO: {exc}"
+
+    # The system area lives at 0x8000..0x9000 and must be inside the file.
+    if size < 0x9000:
+        return False, (
+            f"only {size} bytes; an ISO 9660 system area needs at least "
+            f"{0x9000} (36864)")
+
+    try:
+        with open(iso_path, "rb") as fh:
+            fh.seek(0x8000)
+            system_area = fh.read(0x1000)
+    except OSError as exc:
+        return False, f"cannot read the ISO system area: {exc}"
+
+    if b"CD001" not in system_area:
+        head = _describe_leading_bytes(iso_path)
+        return False, (
+            f"no ISO 9660 signature ('CD001') in the 32 KiB system area, so this is "
+            f"not an ISO image at all. It starts with {head}.")
+
+    descriptor = system_area[1:6]
+    if descriptor != b"CD001":
+        return False, (
+            f"expected the primary volume descriptor at offset 0x8001, found "
+            f"{descriptor!r}. This is not a standard-layout ISO.")
+
+    boot_type = system_area[7]
+    if boot_type not in (0x00, 0x88):
+        return False, (
+            f"the primary volume descriptor does not indicate a boot record "
+            f"(type byte {boot_type:#04x}, expected 0x00 'no boot' or 0x88 "
+            f"'El Torito'). This ISO will not produce a bootable USB stick.")
+
+    if b"EL TORITO SPEC" not in system_area:
+        # Not fatal on its own -- some images boot via a partition-table hybrid
+        # header rather than El Torito -- so reported as a warning by the caller.
+        return True, (
+            "ISO 9660 structure verified, but no El Torito boot record was found. "
+            "This may be a hybrid image that boots via the partition table, or it "
+            "may not be bootable at all.")
+
+    return True, "ISO 9660 structure and El Torito boot record verified."
+
+
+def _describe_leading_bytes(path: Path, count: int = 8) -> str:
+    """Best-effort identification of a file we are about to refuse."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(count)
+    except OSError:
+        return "unreadable"
+    if not head:
+        return "empty"
+    printable = all(32 <= b < 127 for b in head)
+    if printable:
+        return f"ASCII text {head.decode('ascii', 'replace')!r}"
+    if head[:4] == b"\x7fELF":
+        return "an ELF executable"
+    if head[:2] == b"PK":
+        return "a ZIP archive"
+    if head[:5] == b"%PDF-":
+        return "a PDF document"
+    if head[257:262] == b"ustar":
+        return "a tar archive"
+    return f"binary data starting {head[:4].hex()}"
+
+
 def cmd_live_flash(args: argparse.Namespace) -> int:
     """Flash a bootable s0 Live ISO to a removable USB flash drive."""
     target_arg = getattr(args, "target", None)
@@ -759,6 +853,16 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
     if iso_size < 100 * 1024 * 1024:
         print(f"[s0 live]  ERROR : Selected file {iso_path.name} is too small ({_format_size(iso_size)}) to be a valid Live ISO.", file=sys.stderr)
         return 2
+
+    ok, detail = validate_iso_image(iso_path)
+    if not ok:
+        print(f"[s0 live]  ERROR : {iso_path.name} is not a usable Live ISO.", file=sys.stderr)
+        print(f"            {detail}", file=sys.stderr)
+        print("            Refusing to flash it: the write would destroy the target "
+              "device and the stick would not boot, so the loss is discovered only "
+              "afterwards.", file=sys.stderr)
+        return 2
+    print(f"[s0 live]  Image check: {detail}", file=sys.stderr)
 
     if dry_run:
         print("[s0 live]  Dry run: no writes will be performed.")

@@ -4,6 +4,7 @@ import argparse
 import io
 import json
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from s0.live.live_manager import (
@@ -14,6 +15,28 @@ from s0.live.live_manager import (
     cmd_live_flash,
     register_live_parser,
 )
+
+
+def _write_bootable_iso(path: Path, size: int = 101 * 1024 * 1024) -> Path:
+    """A file that passes the ISO structural check, without a real ISO build.
+
+    `cmd_live_flash` now refuses anything that is not an ISO 9660 image, so these
+    fixtures used to be a block of zeroes -- which the check correctly rejects. These
+    tests are about the *flash* refusal paths (a missing device, a regular file, a dry
+    run), so their fixture has to clear the image check to reach them at all.
+
+    Built sparsely: a 32 KiB system area carrying the required signature and
+    boot-record type, then truncated to size, so no 101 MB is actually written.
+    """
+    area = bytearray(0x1000)
+    area[1:6] = b"CD001"          # primary volume descriptor at 0x8001
+    area[7] = 0x88                 # boot record present
+    area[0x821:0x82D] = b"EL TORITO SPEC"
+    with open(path, "wb") as fh:
+        fh.write(b"\x00" * 0x8000)
+        fh.write(bytes(area))
+        fh.truncate(size)
+    return path
 
 
 def test_format_size():
@@ -62,7 +85,7 @@ def test_flash_dry_run_never_writes(tmp_path):
     overwrote the device. This asserts no write path is reached at all.
     """
     iso = tmp_path / "fake.iso"
-    iso.write_bytes(b"\0" * (101 * 1024 * 1024))  # only the size check is bypassed
+    _write_bootable_iso(iso)
 
     real_open = open
 
@@ -89,7 +112,7 @@ def test_flash_force_still_requires_a_block_device(tmp_path):
     """
     missing = tmp_path / "not-a-device"
     iso = tmp_path / "fake.iso"
-    iso.write_bytes(b"\0" * (101 * 1024 * 1024))
+    _write_bootable_iso(iso)
     args = argparse.Namespace(
         target=str(missing), iso=str(iso), yes=True, force=True, dry_run=False,
     )
@@ -129,7 +152,7 @@ def test_cmd_live_build_platform_guard(monkeypatch, capsys):
 def test_cmd_live_flash_safety_refusal(tmp_path, capsys):
     # Create fake ISO
     fake_iso = tmp_path / "s0-live-v2.4.0-amd64.hybrid.iso"
-    fake_iso.write_bytes(b"\x00" * (101 * 1024 * 1024))  # 101 MB
+    _write_bootable_iso(fake_iso)
 
     # Target drive that is not a removable USB device
     with patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]):
