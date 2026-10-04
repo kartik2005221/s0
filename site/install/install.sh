@@ -3,8 +3,17 @@
 # Usage: curl -fsSL https://sector-zero.pages.dev/sh | bash
 set -euo pipefail
 
-REPO="https://github.com/kartik2005221/s0.git"
+REPO="${S0_INSTALL_REPO:-https://github.com/kartik2005221/s0.git}"
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
+
+# Which ref to install. Previously the clone followed the remote's default branch,
+# silently. That branch is not guaranteed to be installable -- it may predate the
+# src/ package layout and carry no pyproject.toml at all -- and following a moving
+# branch means "the installer" is not a fixed artefact you can reason about.
+#
+# Override with S0_INSTALL_REF. Pin a release tag for a reproducible install:
+#   S0_INSTALL_REF=v2.4.4 sh
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-agent/harness}}"
 TOTAL_STEPS=6
 STEP=0
 
@@ -153,17 +162,34 @@ ok; info "python3 ${PYTHON_VER}, git ${GIT_VER}"
 # ── step 2: clone / update ─────────────────────────────────────────────────
 step "Deploying S0 to ${INSTALL_DIR}"
 if [ -d "$INSTALL_DIR/.git" ]; then
-    cd "$INSTALL_DIR" && git pull --ff-only -q 2>/dev/null || true
-    ok; info "existing install updated"
+    cd "$INSTALL_DIR" || die "could not enter ${INSTALL_DIR}"
+    if git fetch --depth 1 origin "$S0_REF" -q 2>/dev/null \
+       && git checkout -q FETCH_HEAD 2>/dev/null; then
+        ok; info "existing install updated to ${S0_REF}"
+    else
+        die "could not update the existing install to '${S0_REF}'.
+    Remove ${INSTALL_DIR} and re-run, or set S0_INSTALL_REF to a ref that exists."
+    fi
 else
     # Try shallow clone first, fallback to standard clone if depth fails
-    if ! git clone --depth 1 -q "$REPO" "$INSTALL_DIR" 2>/dev/null; then
-        info "shallow clone failed, falling back to full clone..."
-        git clone -q "$REPO" "$INSTALL_DIR"
+    if ! git clone --depth 1 -q --branch "$S0_REF" "$REPO" "$INSTALL_DIR" 2>/dev/null; then
+        info "shallow clone of ${S0_REF} failed, falling back to full clone..."
+        git clone -q --branch "$S0_REF" "$REPO" "$INSTALL_DIR" \
+            || die "could not check out '${S0_REF}'. Set S0_INSTALL_REF to a tag or branch that exists."
     fi
-    ok; info "cloned from ${REPO}"
+    ok; info "cloned ${REPO} @ ${S0_REF}"
 fi
-cd "$INSTALL_DIR"
+cd "$INSTALL_DIR" || die "could not enter ${INSTALL_DIR}"
+
+# The checkout must actually be installable. This used to be discovered several
+# steps later as "does not appear to be a Python project", because the clone
+# followed the remote's default branch and that branch may not carry a
+# pyproject.toml at all. Saying so here names the cause and the remedy.
+if [ ! -f "pyproject.toml" ] && [ ! -f "setup.py" ]; then
+    die "'${S0_REF}' has no pyproject.toml or setup.py, so it cannot be pip-installed.
+    This checkout predates the src/ package layout. Set S0_INSTALL_REF to a
+    release tag, e.g. S0_INSTALL_REF=v2.4.4 sh"
+fi
 
 # ── step 3: virtual environment ────────────────────────────────────────────
 step "Configuring Python virtual environment"
@@ -194,6 +220,16 @@ pip_retry() {
     fi
 }
 pip_retry --upgrade pip
+
+# Say plainly what this installer does and does not verify, rather than letting a
+# reader assume more than it does. It does verify that the ref you asked for was
+# checked out and that the result imports. It does not verify a signature: the
+# repository's Ed25519 tooling exists for certificates, not for this, and a
+# checksum fetched from the same host as the artefact proves only that the host was
+# consistent with itself.
+if [ "${S0_INSTALL_REF+x}" = "x" ]; then
+    info "note: no signature verification is performed; the ref you pin is trusted as-is."
+fi
 ok
 
 # ── step 5: install s0 packages ────────────────────────────────────────────
@@ -214,7 +250,9 @@ ok; info "symlink: ${BIN_DIR}/s0 → ${INSTALL_DIR}/.venv/bin/s0"
 
 # ── summary ────────────────────────────────────────────────────────────────
 echo ""
-printf "${_bold}${_green}✅ S0 installed successfully!${_reset}\n"
+INSTALLED_VERSION=$(./.venv/bin/s0 --version 2>/dev/null | awk '{print $NF}')
+[ -n "$INSTALLED_VERSION" ] || INSTALLED_VERSION="unknown"
+printf "${_bold}${_green}✅ S0 ${INSTALLED_VERSION} installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
 printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.4")"
 printf "   Web Console: sudo s0 web\n"

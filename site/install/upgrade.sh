@@ -3,6 +3,10 @@
 # Usage: curl -fsSL https://sector-zero.pages.dev/upgrade-sh | bash
 set -euo pipefail
 
+# Must match install.sh. If the two resolve different refs, an upgrade can move an
+# install to a ref the installer would never have chosen -- or onto a branch with no
+# package metadata at all.
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-agent/harness}}"
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 BIN_DIR="${HOME}/.local/bin"
 TOTAL_STEPS=5
@@ -57,23 +61,23 @@ ok; info "found S0 at ${INSTALL_DIR} (current commit: ${CURRENT_HASH})"
 
 # ── step 2: pull latest source with backup fallback ────────────────────────
 step "Pulling latest updates from GitHub"
-git fetch origin master -q 2>/dev/null || {
+git fetch origin "$S0_REF" -q 2>/dev/null || {
     info "fetch failed, checking remote connection..."
-    git fetch origin master
+    git fetch origin "$S0_REF"
 }
-LATEST_HASH=$(git rev-parse --short origin/master 2>/dev/null || echo "unknown")
+LATEST_HASH=$(git rev-parse --short FETCH_HEAD 2>/dev/null || echo "unknown")
 
 if [ "$CURRENT_HASH" = "$LATEST_HASH" ]; then
     info "already up-to-date at commit ${CURRENT_HASH}"
 else
-    if ! git pull --ff-only origin master -q 2>/dev/null; then
+    if ! git checkout -q FETCH_HEAD 2>/dev/null; then
         # Fast-forward failed (e.g. local modifications). Create a safe backup before reset.
         BACKUP_DIR="${INSTALL_DIR}/backups"
         mkdir -p "$BACKUP_DIR"
         BACKUP_FILE="${BACKUP_DIR}/s0_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
         info "local modifications detected, creating safety backup at ${BACKUP_FILE}..."
         tar -czf "$BACKUP_FILE" --exclude=".git" --exclude=".venv" -C "$INSTALL_DIR" . 2>/dev/null || true
-        git reset --hard origin/master -q
+        git reset --hard FETCH_HEAD -q
         info "reset cleanly to latest release ${LATEST_HASH}"
     else
         info "updated: ${CURRENT_HASH} → ${LATEST_HASH}"

@@ -1,4 +1,6 @@
 @echo off
+REM Must match install.sh. Override with S0_INSTALL_REF.
+if "%S0_INSTALL_REF%"=="" (set "S0_REF=agent/harness") else (set "S0_REF=%S0_INSTALL_REF%")
 REM S0 (Sector Zero) — Resilient Upgrader for Windows (CMD)
 REM Usage: curl -fsSL https://sector-zero.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 setlocal EnableDelayedExpansion
@@ -42,11 +44,11 @@ echo   [OK] Git found
 REM ── Step 3: Pull latest updates ────────────────────────────────────
 set /a STEP=STEP+1
 echo [%STEP%/%TOTAL%] Pulling latest updates from GitHub...
-git fetch origin master -q 2>nul
-git pull --ff-only origin master -q 2>nul
+git fetch origin %S0_REF% -q 2>nul
+git checkout -q FETCH_HEAD 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo   [!] Fast-forward pull failed, resetting cleanly to origin/master...
-    git reset --hard origin/master -q
+    echo   [!] Fast-forward pull failed, resetting cleanly to FETCH_HEAD...
+    git reset --hard FETCH_HEAD -q
 )
 echo   [OK] Repository updated
 

@@ -48,17 +48,17 @@ Write-Ok
 # Step 3: Pull latest source
 Write-Step "Pulling latest updates from GitHub"
 try {
-    git fetch origin master -q 2>$null
-    $latestCommit = (git rev-parse --short origin/master 2>$null)
+    git fetch origin $S0Ref -q 2>$null
+    $latestCommit = (git rev-parse --short FETCH_HEAD 2>$null)
     if ($currentCommit -eq $latestCommit) {
         Write-Ok; Write-Info "already up-to-date at commit $currentCommit"
     } else {
         try {
-            git pull --ff-only origin master -q
+            git checkout -q FETCH_HEAD
             Write-Ok; Write-Info "updated: $currentCommit -> $latestCommit"
         } catch {
-            Write-Info "local modifications detected; resetting cleanly to origin/master..."
-            git reset --hard origin/master -q
+            Write-Info "local modifications detected; resetting cleanly to FETCH_HEAD..."
+            git reset --hard FETCH_HEAD -q
             Write-Ok; Write-Info "reset to commit $latestCommit"
         }
     }
