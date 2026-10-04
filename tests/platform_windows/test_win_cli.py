@@ -15,15 +15,14 @@ assert REPO_ROOT is not None, "platform launcher tests require a source checkout
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from windows.cli import (
+from s0 import certificate as cert_mod
+from s0 import crypto as core_crypto
+from s0.platform.windows import (
     erase_batch_windows,
     erase_folder_windows,
     erase_single_file_windows,
 )
-from windows.cli.s0_eraser import main as win_main
-
-from s0 import certificate as cert_mod
-from s0 import crypto as core_crypto
+from s0.platform.windows.s0_eraser import main as win_main
 
 
 def test_win_cli_single_file_erase(tmp_path: Path):
@@ -99,7 +98,7 @@ def test_win_cli_main_entrypoint(monkeypatch, tmp_path: Path):
 
 
 def test_win_cli_wipe_safety_refusal():
-    from windows.cli import check_windows_wipe_safety
+    from s0.platform.windows import check_windows_wipe_safety
 
     # C: must be refused
     with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
@@ -122,7 +121,7 @@ def test_win_cli_wipe_safety_refusal():
 
 
 def test_win_cli_wipe_partition_success(tmp_path: Path):
-    from windows.cli import wipe_drive_or_partition_windows
+    from s0.platform.windows import wipe_drive_or_partition_windows
 
     # Create mock secondary partition / USB drive (1 MiB)
     drive_img = tmp_path / "usb_pendrive.raw"

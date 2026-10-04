@@ -96,7 +96,7 @@ def _resolve_source_target(path: str) -> tuple[str, int, str]:
     if sys.platform == "win32":
         sz = 0
         try:
-            from windows.cli.s0_eraser import get_windows_target_size
+            from s0.platform.windows.s0_eraser import get_windows_target_size
             sz = get_windows_target_size(path)
         except Exception:
             pass

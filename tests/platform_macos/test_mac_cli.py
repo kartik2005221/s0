@@ -15,16 +15,15 @@ assert REPO_ROOT is not None, "platform launcher tests require a source checkout
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from macos.cli import (
+from s0 import certificate as cert_mod
+from s0 import crypto as core_crypto
+from s0.platform.macos import (
     erase_batch_macos,
     erase_folder_macos,
     erase_single_file_macos,
     macos_full_fsync,
 )
-from macos.cli.s0_eraser import main as mac_main
-
-from s0 import certificate as cert_mod
-from s0 import crypto as core_crypto
+from s0.platform.macos.s0_eraser import main as mac_main
 
 
 def test_mac_cli_single_file_erase(tmp_path: Path):
@@ -108,7 +107,7 @@ def test_mac_cli_fullfsync_fallback():
 
 
 def test_mac_cli_wipe_safety_refusal():
-    from macos.cli import check_macos_wipe_safety
+    from s0.platform.macos import check_macos_wipe_safety
 
     # disk0 / rdisk0 without force must be refused
     with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
@@ -127,7 +126,7 @@ def test_mac_cli_wipe_safety_refusal():
 
 
 def test_mac_cli_wipe_partition_success(tmp_path: Path):
-    from macos.cli import wipe_drive_or_partition_macos
+    from s0.platform.macos import wipe_drive_or_partition_macos
 
     # Create mock secondary partition / USB drive (1 MiB)
     drive_img = tmp_path / "mac_usb_drive.raw"
@@ -289,7 +288,7 @@ def test_mac_boot_disk_detection(monkeypatch):
     import shutil
     import subprocess
 
-    from macos.cli.s0_eraser import _get_macos_boot_disk
+    from s0.platform.macos.s0_eraser import _get_macos_boot_disk
 
     monkeypatch.setattr(shutil, "which", lambda cmd: "/usr/sbin/diskutil" if cmd == "diskutil" else None)
 
@@ -313,7 +312,7 @@ def test_mac_boot_disk_detection(monkeypatch):
 
 
 def test_is_macos_dev_or_subpartition():
-    from macos.cli.s0_eraser import _is_macos_dev_or_subpartition
+    from s0.platform.macos.s0_eraser import _is_macos_dev_or_subpartition
 
     # Whole disk to partition/slice
     assert _is_macos_dev_or_subpartition("/dev/disk3", "/dev/disk3s1s1") is True
@@ -332,8 +331,8 @@ def test_is_macos_dev_or_subpartition():
 
 
 def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
-    import macos.cli.s0_eraser as mod
-    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import s0.platform.macos.s0_eraser as mod
+    from s0.platform.macos.s0_eraser import check_macos_wipe_safety
 
     # Mock dynamic detection returning disk3 (not default disk0)
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
@@ -357,8 +356,8 @@ def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
 def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
     import subprocess
 
-    import macos.cli.s0_eraser as mod
-    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import s0.platform.macos.s0_eraser as mod
+    from s0.platform.macos.s0_eraser import check_macos_wipe_safety
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: None)
 
@@ -384,8 +383,8 @@ def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
 
 
 def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
-    import macos.cli.s0_eraser as mod
-    from macos.cli.s0_eraser import wipe_drive_or_partition_macos
+    import s0.platform.macos.s0_eraser as mod
+    from s0.platform.macos.s0_eraser import wipe_drive_or_partition_macos
 
     # Mock unmount returning False on a device path
     monkeypatch.setattr(mod, "unmount_macos_target", lambda target: False)
@@ -400,8 +399,8 @@ def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
 def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
     """On Apple Silicon, boot disk reports APFS container 'disk3', but physical SSD is 'disk0'.
     Both disk0 (physical store) and disk3 (container) must be refused."""
-    import macos.cli.s0_eraser as mod
-    from macos.cli.s0_eraser import check_macos_wipe_safety
+    import s0.platform.macos.s0_eraser as mod
+    from s0.platform.macos.s0_eraser import check_macos_wipe_safety
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
     monkeypatch.setattr(mod, "_resolve_apfs_physical_store", lambda c: "disk0" if c == "disk3" else None)

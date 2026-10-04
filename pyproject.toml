@@ -121,6 +121,12 @@ testpaths = [
     "tests/iso",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    # Builds a wheel or a filesystem image: slow, and skipped when the build
+    # backend cannot run. Asserted on the artefact rather than the config,
+    # because the config being right is not the same as the wheel containing it.
+    "slow: builds an artefact (wheel, image) to assert on the result",
+]
 
 [tool.ruff]
 line-length = 110

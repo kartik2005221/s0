@@ -291,7 +291,7 @@ def resolve_target(path: str) -> DevTarget:
         ):
             sz = 0
             try:
-                from windows.cli.s0_eraser import get_windows_target_size
+                from s0.platform.windows.s0_eraser import get_windows_target_size
                 sz = get_windows_target_size(path)
             except Exception:
                 pass
@@ -310,7 +310,7 @@ def resolve_target(path: str) -> DevTarget:
     if sys.platform == "darwin" and (path.startswith("/dev/rdisk") or path.startswith("/dev/disk")):
         sz = 0
         try:
-            from macos.cli.s0_eraser import get_macos_target_size
+            from s0.platform.macos.s0_eraser import get_macos_target_size
             sz = get_macos_target_size(path)
         except Exception:
             pass
@@ -788,9 +788,12 @@ def cmd_wipe(args) -> int:
 
     if sys.platform == "win32" and target.kind == "block":
         try:
-            from windows.cli.s0_eraser import check_windows_wipe_safety, wipe_drive_or_partition_windows
+            from s0.platform.windows.s0_eraser import (
+                check_windows_wipe_safety,
+                wipe_drive_or_partition_windows,
+            )
         except ImportError:
-            print("error: Windows drive wipe requires the s0 Windows engine (windows.cli.s0_eraser).\n"
+            print("error: Windows drive wipe requires the s0 Windows engine (s0.platform.windows.s0_eraser).\n"
                   "  Ensure the S0 installation includes Windows components or repo root is on sys.path.", file=sys.stderr)
             return 2
         try:
@@ -862,9 +865,9 @@ def cmd_wipe(args) -> int:
 
     if sys.platform == "darwin" and target.kind == "block":
         try:
-            from macos.cli.s0_eraser import check_macos_wipe_safety, wipe_drive_or_partition_macos
+            from s0.platform.macos.s0_eraser import check_macos_wipe_safety, wipe_drive_or_partition_macos
         except ImportError:
-            print("error: macOS drive wipe requires the s0 macOS engine (macos.cli.s0_eraser).\n"
+            print("error: macOS drive wipe requires the s0 macOS engine (s0.platform.macos.s0_eraser).\n"
                   "  Ensure the S0 installation includes macOS components or repo root is on sys.path.", file=sys.stderr)
             return 2
         try:

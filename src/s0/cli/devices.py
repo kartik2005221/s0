@@ -171,7 +171,7 @@ def _windows_disk_targets() -> list[Target]:
             if Path(f"{letter}:\\").exists():
                 sz = 0
                 try:
-                    from windows.cli.s0_eraser import get_windows_target_size
+                    from s0.platform.windows.s0_eraser import get_windows_target_size
                     sz = get_windows_target_size(drive_path)
                 except Exception as exc:
                     logger.warning("Could not determine size of Windows volume %s: %s; falling back to 0 bytes", drive_path, exc)
@@ -202,7 +202,7 @@ def _macos_disk_targets() -> list[Target]:
                     rdev = dev.replace("/dev/disk", "/dev/rdisk")
                     sz = 0
                     try:
-                        from macos.cli.s0_eraser import get_macos_target_size
+                        from s0.platform.macos.s0_eraser import get_macos_target_size
                         sz = get_macos_target_size(dev)
                     except Exception as exc:
                         logger.warning("Could not determine size of macOS disk %s: %s; falling back to 0 bytes", dev, exc)

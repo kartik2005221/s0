@@ -110,3 +110,20 @@ def darwin_raw_device_path(value: str) -> str | None:
     if not v.startswith("/dev/rdisk"):
         return None
     return "/dev/disk" + v[len("/dev/rdisk"):]
+
+
+# --------------------------------------------------------------------------- #
+# Platform wipe engines
+# --------------------------------------------------------------------------- #
+# ``s0.platform.windows`` and ``s0.platform.macos`` hold the native drive-wipe
+# engines. They used to be top-level ``windows`` and ``macos`` packages at the
+# repository root, imported as ``windows.cli.s0_eraser``. The wheel only ever
+# contained ``s0*``, so for anyone who installed s0 rather than running it from a
+# checkout, both engines were simply absent -- the imports are lazy, so the
+# failure did not surface as an ImportError but as drive wipes reporting a zero or
+# unreadable capacity. Shipping a top-level package named ``windows`` or ``macos``
+# in site-packages would also collide with any other distribution using those
+# names.
+#
+# They live under this package so ``pip install s0`` carries them, and the import
+# is ``s0.platform.windows.s0_eraser``.

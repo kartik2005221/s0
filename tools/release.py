@@ -43,8 +43,8 @@ FILES SYNCHRONIZED BY THIS SCRIPT
 8.  src/s0/cli/file_eraser.py         (tool_version fallback)
 9.  src/s0/carve/engine.py       (tool_version fallback)
 10. src/s0/live_manager.py        (User-Agent header & tag_synth versions)
-11. macos/cli/s0_eraser.py                  (macOS CLI version string & tool_version)
-12. windows/cli/s0_eraser.py                (Windows CLI version string & tool_version)
+11. src/s0/platform/macos/s0_eraser.py       (macOS CLI version string & tool_version)
+12. src/s0/platform/windows/s0_eraser.py     (Windows CLI version string & tool_version)
 13. tools/benchmark_perf.py               (Benchmark tool_version)
 14. site/install/install.sh               (Web/sh installer fallback echo)
 15. README.md                               (Release badge link)
@@ -156,8 +156,8 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
         "src/s0/cli/file_eraser.py",
         "src/s0/carve/engine.py",
         "src/s0/live/live_manager.py",
-        "macos/cli/s0_eraser.py",
-        "windows/cli/s0_eraser.py",
+        "src/s0/platform/macos/s0_eraser.py",
+        "src/s0/platform/windows/s0_eraser.py",
         "tools/benchmark_perf.py",
     ):
         p = REPO_ROOT / rel

@@ -805,7 +805,7 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
 
     try:
         if sys.platform == "win32":
-            from windows.cli.s0_eraser import win32_flush_buffers, win32_open_drive_or_partition
+            from s0.platform.windows.s0_eraser import win32_flush_buffers, win32_open_drive_or_partition
             f_out = win32_open_drive_or_partition(write_target, write=True)
             with open(iso_path, "rb") as f_in:
                 while True:

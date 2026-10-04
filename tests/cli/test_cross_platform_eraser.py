@@ -13,19 +13,6 @@ assert REPO_ROOT is not None, "platform launcher tests require a source checkout
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from macos.s0_eraser import (
-    erase_batch_macos,
-    erase_folder_macos,
-    erase_single_file_macos,
-)
-from windows.s0_eraser import (
-    WIN32_FIND_STREAM_DATA,
-    enumerate_ntfs_streams_win32,
-    erase_batch_windows,
-    erase_folder_windows,
-    erase_single_file_windows,
-)
-
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 from s0.cli.file_eraser import (
@@ -34,6 +21,18 @@ from s0.cli.file_eraser import (
     erase_single_file,
     platform_cleanse_attributes,
     platform_sync,
+)
+from s0.platform.macos.s0_eraser import (
+    erase_batch_macos,
+    erase_folder_macos,
+    erase_single_file_macos,
+)
+from s0.platform.windows.s0_eraser import (
+    WIN32_FIND_STREAM_DATA,
+    enumerate_ntfs_streams_win32,
+    erase_batch_windows,
+    erase_folder_windows,
+    erase_single_file_windows,
 )
 
 
@@ -266,8 +265,8 @@ def test_windows_dynamic_ads_enumeration_mock(monkeypatch, tmp_path: Path):
 
 
 def test_windows_cli_main(monkeypatch, tmp_path: Path):
-    """Test windows/s0_eraser.py main CLI invocation."""
-    from windows.s0_eraser import main as win_main
+    """Test the packaged Windows engine's main CLI invocation."""
+    from s0.platform.windows.s0_eraser import main as win_main
 
     f = tmp_path / "cli_target_win.txt"
     f.write_bytes(b"DATA FOR WIN MAIN TEST")
@@ -301,7 +300,7 @@ def test_windows_cli_main(monkeypatch, tmp_path: Path):
 
 def test_macos_cli_main(monkeypatch, tmp_path: Path):
     """Test macos/s0_eraser.py main CLI invocation."""
-    from macos.s0_eraser import main as mac_main
+    from s0.platform.macos.s0_eraser import main as mac_main
 
     f = tmp_path / "cli_target_mac.txt"
     f.write_bytes(b"DATA FOR MAC MAIN TEST")
@@ -348,8 +347,8 @@ def test_cmd_wipe_cross_platform_import_failure_graceful_exit(monkeypatch, capsy
     real_import = builtins.__import__
 
     def fake_import(name, *args, **kwargs):
-        if "windows" in name:
-            raise ImportError("No module named 'windows'")
+        if name.startswith("s0.platform.windows"):
+            raise ImportError("simulated: the Windows engine is unavailable")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
