@@ -719,7 +719,10 @@ def _skip_entropy(src: ByteSource, pos: int, limit: int) -> int:
                 i = j + 1                          # stuffed byte or restart marker
                 continue
             return pos + i
-        pos += n - 1                              # keep one byte for a straddling marker
+        # Keep one byte for a marker that straddles the window edge. With a
+        # single-byte window there is nothing left to straddle, so advancing by
+        # 0 would re-read the same byte forever on a truncated scan.
+        pos += max(n - 1, 1)
     return -1
 
 

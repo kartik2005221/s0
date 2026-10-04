@@ -542,7 +542,7 @@ def cmd_plan(args) -> int:
             "warnings": list(warnings) + list(selected_plan.warnings if selected_plan else []),
             "alternatives": [
                 {
-                    "method": alt.method.method_id if alt.method else None,
+                    "method": alt.method.id if alt.method else None,
                     "tier": alt.method.nist_category if alt.method else None,
                     "available": alt.available,
                     "reason": alt.reason,

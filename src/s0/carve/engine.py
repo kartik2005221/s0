@@ -436,7 +436,7 @@ def _recover_from_filesystem(
             if not allowed:
                 counters["rejected"] += 1
                 warnings.append(f"Stopped writing filesystem recoveries: {reason}")
-                return recovered
+                return recovered, timeline
             budget.commit(category, ext, len(data))
 
             file_id = f"carved_{len(recovered) + 1:05d}"
