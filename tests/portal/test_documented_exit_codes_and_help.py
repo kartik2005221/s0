@@ -127,6 +127,98 @@ class TestHelpScreensAreGenerated:
                 f"{block.splitlines()[0] if block else '(empty)'}"
             )
 
+    def test_each_help_block_documents_the_command_of_its_own_section(self):
+        """The bug this guards: blocks were filled in document order.
+
+        The generator kept a list of ten commands and handed them to the ten
+        `Help Screen` tabs in the order the tabs appeared. The tabs are not in that
+        order, so five blocks landed in the wrong section -- `## s0 carve` showed
+        `s0 clone`, `## s0 verify` showed `s0 audit` -- and `## s0 upgrade`, which
+        does have a section, was given no help at all. `--check` could not catch it,
+        because it compares each block to what the generator produced and the
+        generator is what misplaced them.
+
+        Now the command is derived from the heading above each tab, so the invariant
+        worth asserting is simply that a block's `usage:` line names its own section.
+        """
+        text = REFERENCE.read_text()
+        offsets: list[tuple[int, str]] = []
+        offset = 0
+        heading = ""
+        for line in text.splitlines(keepends=True):
+            if line.startswith("#"):
+                heading = line.strip()
+            offsets.append((offset, heading))
+            offset += len(line)
+
+        tab_re = re.compile(r'\{% tab title="Help Screen" %\}\n\n```\n(.*?)```', re.S)
+        checked = 0
+        for m in tab_re.finditer(text):
+            before = [h for o, h in offsets if o <= m.start()]
+            section = before[-1] if before else ""
+            section_cmd = re.sub(r"^#+\s*s0\s+", "", section).strip()
+            section_cmd = re.sub(r"\s*\(.*?\)\s*$", "", section_cmd).strip()
+            block = m.group(1)
+            usage = block.splitlines()[0] if block.splitlines() else ""
+            # `s0 audit list --help` prints `usage: s0 audit ...`, because audit's
+            # two verbs are a positional choice rather than real subparsers.
+            root = section_cmd.split()[0]
+            expected = f"usage: s0 {root if root == 'audit' else section_cmd}"
+            assert usage.startswith(expected), (
+                f"section {section!r} shows help for a different command:\n"
+                f"  expected {expected!r}\n  block starts {usage!r}"
+            )
+            checked += 1
+        assert checked >= 10, f"only {checked} help blocks checked"
+
+    def test_the_help_check_ignores_interpreter_layout_differences(self):
+        """`--check` must not depend on which Python version runs it.
+
+        argparse changed how it renders an option with both a long and a short form:
+        3.11 prints `--passes PASSES, -p PASSES`, 3.13+ prints `--passes, -p PASSES`.
+        The longer spelling also pushes the description column right, sometimes onto
+        its own line. CI ran `--check` on 3.10 through 3.13 while the committed blocks
+        came from one interpreter, so the gate failed on every version but that one --
+        over a comma and some padding.
+
+        The check compares a content skeleton instead. This simulates the old layout
+        over the real committed document and asserts the skeleton is unaffected while
+        the raw text is not.
+        """
+        sys.path.insert(0, str(REPO_ROOT / "tools"))
+        import gen_help_reference as gen
+
+        text = REFERENCE.read_text()
+
+        def to_old_style(line: str) -> list[str]:
+            m = gen.HELP_LINE.match(line)
+            if not m or not m.group("invocation").startswith("--"):
+                return [line]
+            mm = re.match(r"^(--[A-Za-z0-9-]+), (-[A-Za-z]) (.+)$", m.group("invocation"))
+            if not mm:
+                return [line]
+            old = f"{mm.group(1)} {mm.group(3)}, {mm.group(2)} {mm.group(3)}"
+            tail = m.group("help")
+            if len(old) + 2 > 24:  # argparse wraps the description onto its own line
+                return [m.group("indent") + old, " " * 26 + (tail or "")]
+            return [m.group("indent") + old + ("   " + tail if tail else "")]
+
+        simulated: list[str] = []
+        for line in text.replace("\r\n", "\n").split("\n"):
+            simulated.extend(to_old_style(line))
+        simulated_text = "\n".join(simulated)
+
+        assert simulated_text != text, (
+            "the simulation changed nothing, so this test is not exercising the "
+            "version difference it claims to"
+        )
+        disk = gen._skeleton(gen.TAB.search(text).group("body"))
+        old_style = gen._skeleton(gen.TAB.search(simulated_text).group("body"))
+        assert disk == old_style, (
+            "the help skeleton changed under the pre-3.13 layout, so --check would "
+            "still fail on Python 3.10-3.12"
+        )
+
     def test_the_generator_is_wired_into_ci(self):
         ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
         assert "gen_help_reference.py --check" in ci, (

@@ -901,34 +901,64 @@ s0 carve --target PATH \
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 clone [-h] --source SOURCE --destination DESTINATION [--block-size BLOCK_SIZE]
-                [--no-recovery] [--out-dir OUT_DIR] [--operator OPERATOR]
-                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf] [--yes]
-                [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
-                [--color {auto,always,never}] [--no-color] [--dry-run]
+usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR [--extensions EXTENSIONS]
+                [--custom-sig CUSTOM_SIG] [--min-confidence 0-100] [--session SESSION]
+                [--write-session WRITE_SESSION] [--hash-set HASH_SET]
+                [--hash-algorithms HASH_ALGORITHMS] [--bodyfile BODYFILE]
+                [--gaps-bodyfile GAPS_BODYFILE] [--operator OPERATOR]
+                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf]
+                [--all-space] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
 
-Clone a block device to another device (destructive on the destination; the source is not
-modified). Both commands share the same options; only the destination kind differs.
+Carve files from a raw image or block device. Recovery is signature-anchored: a file is recovered
+from a header to a validated footer or an in-band end marker. Where no end marker survives, s0
+stops at the last validated boundary and says so rather than padding to a guess, because a wrong
+length yields a file that looks intact and is wrong. Container formats (MP4/HEIF, Matroska/WebM,
+ZIP, RAR, GZIP, and the decompression containers) are parsed rather than scanned, and fragmented
+files are reassembled by their in-band sequence numbers. Run `s0 carve --target IMG --out-dir OUT`
+with no --extensions to carve everything in the registry; the supported-format table is in
+skills/s0-forensics/references/carving-signatures.md.
 
 options:
   -h, --help            show this help message and exit
-  --source SOURCE       path to source block device or raw image file
-  --destination, --dest DESTINATION
-                        destination BLOCK DEVICE (cloning overwrites it)
-  --block-size BLOCK_SIZE
-                        buffer block size in bytes (default: 1048576 / 1MB)
-  --no-recovery         abort on I/O read error instead of zero-filling bad sectors
-  --out-dir OUT_DIR     directory to store acquisition manifest and certificate
+  --target TARGET       raw disk image or block device to scan
+  --out-dir OUT_DIR     directory to store carved files
+  --extensions EXTENSIONS
+                        comma-separated extensions to carve (e.g. jpg,png,pdf,zip,mp4,mkv). Omit
+                        to carve everything in the registry
+  --custom-sig CUSTOM_SIG
+                        path to JSON file (or inline JSON) defining custom file signature(s) with
+                        header/footer hex magic bytes
+  --min-confidence 0-100
+                        minimum confidence score (0-100); a value outside this range is rejected
+                        rather than silently carving nothing
+  --session SESSION     resume from a session file written by an earlier run: extents it already
+                        recovered are not carved again (refused if the image has changed since)
+  --write-session WRITE_SESSION
+                        write a session file recording this run's recovered extents, so an
+                        interrupted carve can be resumed
+  --hash-set HASH_SET   suppress files already known: a hash list (md5/sha1/sha256/sha512, bare or
+                        NSRL-style) or a directory to hash in place
+  --hash-algorithms HASH_ALGORITHMS
+                        comma-separated algorithms to keep from --hash-set (default: all found)
+  --bodyfile BODYFILE   write a bodyfile of the recovered byte ranges, for a second tool to read
+                        the same bytes instead of the whole volume again
+  --gaps-bodyfile GAPS_BODYFILE
+                        write a bodyfile of the ranges that were searched but produced no file.
+                        For fragmented recovery the holes are the finding.
   --operator, --operator-id OPERATOR
-                        operator ID
+                        operator identifier for manifest
   --organization ORGANIZATION
-                        organization name
+                        organization name for manifest
   --key, --signing-key KEY
-                        path to Ed25519 issuer private key PEM
-  --no-certificate      skip generating signed Ed25519 acquisition certificate
+                        signing key path (default: demo issuer key)
+  --no-certificate      explicitly run without generating an Ed25519 forensic manifest certificate
   --no-pdf              skip generating printable PDF certificate
-  --yes, -y             skip interactive confirmation when cloning to a physical disk
-  --force               overwrite destination image file if it already exists
+  --all-space           search the whole volume instead of only unallocated space. By default the
+                        filesystem's own allocation map is read (ext4/FAT32/exFAT/NTFS) and
+                        carving is restricted to free space, so files that are still allocated are
+                        not reported as recoveries. Use this only when the allocation map cannot
+                        be trusted.
 
 output:
   --format {text,json,csv}
@@ -943,6 +973,7 @@ output:
   --no-color            disable colour output (same as --color never)
 
 execution:
+  --yes, -y             assume yes for destructive confirmations
   --dry-run             plan only; never write to the target
 ```
 {% endtab %}
@@ -1046,64 +1077,20 @@ s0 audit list [--limit N]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR [--extensions EXTENSIONS]
-                [--custom-sig CUSTOM_SIG] [--min-confidence 0-100] [--session SESSION]
-                [--write-session WRITE_SESSION] [--hash-set HASH_SET]
-                [--hash-algorithms HASH_ALGORITHMS] [--bodyfile BODYFILE]
-                [--gaps-bodyfile GAPS_BODYFILE] [--operator OPERATOR]
-                [--organization ORGANIZATION] [--key KEY] [--no-certificate] [--no-pdf]
-                [--all-space] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
-                [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+usage: s0 audit [-h] [--limit LIMIT] [--key KEY [KEY ...]] [--format {text,json,csv}] [--json]
+                [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+                [--dry-run]
+                {list,verify}
 
-Carve files from a raw image or block device. Recovery is signature-anchored: a file is recovered
-from a header to a validated footer or an in-band end marker. Where no end marker survives, s0
-stops at the last validated boundary and says so rather than padding to a guess, because a wrong
-length yields a file that looks intact and is wrong. Container formats (MP4/HEIF, Matroska/WebM,
-ZIP, RAR, GZIP, and the decompression containers) are parsed rather than scanned, and fragmented
-files are reassembled by their in-band sequence numbers. Run `s0 carve --target IMG --out-dir OUT`
-with no --extensions to carve everything in the registry; the supported-format table is in
-skills/s0-forensics/references/carving-signatures.md.
+positional arguments:
+  {list,verify}         list audit blocks or verify hash chain
 
 options:
   -h, --help            show this help message and exit
-  --target TARGET       raw disk image or block device to scan
-  --out-dir OUT_DIR     directory to store carved files
-  --extensions EXTENSIONS
-                        comma-separated extensions to carve (e.g. jpg,png,pdf,zip,mp4,mkv). Omit
-                        to carve everything in the registry
-  --custom-sig CUSTOM_SIG
-                        path to JSON file (or inline JSON) defining custom file signature(s) with
-                        header/footer hex magic bytes
-  --min-confidence 0-100
-                        minimum confidence score (0-100); a value outside this range is rejected
-                        rather than silently carving nothing
-  --session SESSION     resume from a session file written by an earlier run: extents it already
-                        recovered are not carved again (refused if the image has changed since)
-  --write-session WRITE_SESSION
-                        write a session file recording this run's recovered extents, so an
-                        interrupted carve can be resumed
-  --hash-set HASH_SET   suppress files already known: a hash list (md5/sha1/sha256/sha512, bare or
-                        NSRL-style) or a directory to hash in place
-  --hash-algorithms HASH_ALGORITHMS
-                        comma-separated algorithms to keep from --hash-set (default: all found)
-  --bodyfile BODYFILE   write a bodyfile of the recovered byte ranges, for a second tool to read
-                        the same bytes instead of the whole volume again
-  --gaps-bodyfile GAPS_BODYFILE
-                        write a bodyfile of the ranges that were searched but produced no file.
-                        For fragmented recovery the holes are the finding.
-  --operator, --operator-id OPERATOR
-                        operator identifier for manifest
-  --organization ORGANIZATION
-                        organization name for manifest
-  --key, --signing-key KEY
-                        signing key path (default: demo issuer key)
-  --no-certificate      explicitly run without generating an Ed25519 forensic manifest certificate
-  --no-pdf              skip generating printable PDF certificate
-  --all-space           search the whole volume instead of only unallocated space. By default the
-                        filesystem's own allocation map is read (ext4/FAT32/exFAT/NTFS) and
-                        carving is restricted to free space, so files that are still allocated are
-                        not reported as recoveries. Use this only when the allocation map cannot
-                        be trusted.
+  --limit LIMIT         limit number of records displayed
+  --key KEY [KEY ...]   trusted issuer public key(s): one or more PEM files, and/or a directory of
+                        *.pem. Repeatable. A ledger signed by more than one key needs every signer
+                        supplied, or verification stops at the first block it cannot attribute.
 
 output:
   --format {text,json,csv}
@@ -1171,16 +1158,20 @@ s0 audit verify [--key PEM]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 verify [-h] [--key KEY] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
-                 [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
-                 certificate
+usage: s0 audit [-h] [--limit LIMIT] [--key KEY [KEY ...]] [--format {text,json,csv}] [--json]
+                [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+                [--dry-run]
+                {list,verify}
 
 positional arguments:
-  certificate           path to certificate JSON
+  {list,verify}         list audit blocks or verify hash chain
 
 options:
   -h, --help            show this help message and exit
-  --key KEY             path to trusted public key PEM
+  --limit LIMIT         limit number of records displayed
+  --key KEY [KEY ...]   trusted issuer public key(s): one or more PEM files, and/or a directory of
+                        *.pem. Repeatable. A ledger signed by more than one key needs every signer
+                        supplied, or verification stops at the first block it cannot attribute.
 
 output:
   --format {text,json,csv}
@@ -1287,20 +1278,16 @@ s0 verify CERTIFICATE [--key PEM]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 audit [-h] [--limit LIMIT] [--key KEY [KEY ...]] [--format {text,json,csv}] [--json]
-                [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
-                [--dry-run]
-                {list,verify}
+usage: s0 verify [-h] [--key KEY] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+                 [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+                 certificate
 
 positional arguments:
-  {list,verify}         list audit blocks or verify hash chain
+  certificate           path to certificate JSON
 
 options:
   -h, --help            show this help message and exit
-  --limit LIMIT         limit number of records displayed
-  --key KEY [KEY ...]   trusted issuer public key(s): one or more PEM files, and/or a directory of
-                        *.pem. Repeatable. A ledger signed by more than one key needs every signer
-                        supplied, or verification stops at the first block it cannot attribute.
+  --key KEY             path to trusted public key PEM
 
 output:
   --format {text,json,csv}
@@ -1476,19 +1463,13 @@ s0 upgrade [--force] [--branch BRANCH]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 live [-h] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
-               [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
-               {download,devices,flash,build} ...
-
-positional arguments:
-  {download,devices,flash,build}
-    download            download official s0 Live ISO with SHA-256 validation
-    devices             safely list connected removable USB flash drives
-    flash               write s0 Live ISO to removable USB drive
-    build               build s0 Live ISO from source (Linux native or Docker/WSL2)
+usage: s0 upgrade [-h] [--force] [--branch BRANCH] [--format {text,json,csv}] [--json] [--quiet]
+                  [--verbose] [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
+  --force               force re-installation of dependencies even if up to date
+  --branch BRANCH       upstream branch to track (default: this checkout's own branch)
 
 output:
   --format {text,json,csv}
