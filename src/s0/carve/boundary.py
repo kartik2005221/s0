@@ -830,6 +830,56 @@ def _pdf_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     return Boundary(end, FOOTER_ANCHORED, [note])
 
 
+#: How many EOCD records to consider when several archives share a window. A
+#: comment is capped at 65535 bytes and the record is 22, so the legal span from an
+#: archive's end to its own EOCD is at most 65557 -- which bounds how far back a
+#: *correct* EOCD can be. Examining more than a handful of candidates past that is
+#: not useful, so this is generous rather than tuned.
+_ZIP_EOCD_CANDIDATES = 32
+
+
+def _select_zip_eocd(src: ByteSource, start: int, first: int, limit: int):
+    """Walk EOCD candidates backwards, preferring one consistent with `start`.
+
+    Returns ``(offset, cd_size, cd_off, comment_len, consistent)``. ``comment_len``
+    is None when every candidate record was truncated.
+
+    An EOCD describes the archive that *starts* at `start`: its ``cd_off`` is the
+    central directory's offset from the beginning of that archive. So the record
+    that belongs here is the one whose ``cd_off + cd_size`` equals its own distance
+    from `start`. When several archives are packed together, only one record per
+    candidate satisfies that, which is what separates them.
+    """
+    offset = first
+    fallback = None
+
+    for _ in range(_ZIP_EOCD_CANDIDATES):
+        if offset == -1:
+            break
+        rec = src.read(offset, 22)
+        if len(rec) < 22:
+            offset = src.rfind_near(b"PK\x05\x06", offset, 1 << 20)
+            continue
+        comment_len = _le16(rec, 20)
+        cd_size = _le32(rec, 12)
+        cd_off = _le32(rec, 16)
+        if fallback is None:
+            fallback = (offset, cd_size, cd_off, comment_len, False)
+
+        sentinel = 0xFFFFFFFF
+        if sentinel not in (cd_size, cd_off) and cd_off and cd_off + cd_size == offset - start:
+            return offset, cd_size, cd_off, comment_len, True
+
+        nxt = src.rfind_near(b"PK\x05\x06", offset, 1 << 20)
+        if nxt == offset:            # no progress; rfind_near is inclusive of `end`
+            nxt = src.rfind_near(b"PK\x05\x06", offset - 1, 1 << 20)
+        offset = nxt
+
+    if fallback is not None:
+        return fallback
+    return first, 0, 0, None, False
+
+
 def _zip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     """ZIP: EOCD is authoritative; must sit within 65557 bytes of the archive end."""
     limit = min(src.size, start + max_size)
@@ -838,16 +888,30 @@ def _zip_end(src: ByteSource, start: int, max_size: int) -> Boundary:
         eocd = src.read_until(b"PK\x05\x06", start, max_size)
         if eocd == -1:
             return Boundary(None, UNDETERMINED, ["no end-of-central-directory record in range"])
-    rec = src.read(eocd, 22)
-    if len(rec) < 22:
+
+    # Several archives in one image all resolved to the *last* EOCD before the
+    # window limit, because that is simply the nearest one backwards. Every
+    # candidate then produced the same end offset, so the ranges overlapped
+    # exactly, containment-suppression kept one, and the other archives were
+    # dropped as duplicates -- three ZIPs in, one ZIP out, with no warning.
+    #
+    # The EOCD carries its own central-directory offset, which is relative to the
+    # start of *its* archive. So an EOCD belongs to this candidate exactly when
+    # cd_off + cd_size lands where the record actually is. That is the same
+    # arithmetic the code already computed as a note; it is now the selector.
+    eocd, cd_size, cd_off, comment_len, consistent = _select_zip_eocd(
+        src, start, eocd, limit)
+    if comment_len is None:
         return Boundary(None, UNDETERMINED, ["EOCD record truncated"])
-    comment_len = _le16(rec, 20)
+
     end = eocd + 22 + comment_len
-    cd_size = _le32(rec, 12)
-    cd_off = _le32(rec, 16)
     notes = [f"ZIP EOCD: {cd_size} bytes of central directory at +{cd_off}"]
-    if 0xFFFFFFFF not in (cd_size, cd_off) and cd_off and cd_off + cd_size == eocd - start:
-        notes.append("central directory offsets are self-consistent")
+    if consistent:
+        notes.append("central directory offsets are self-consistent with this "
+                     "archive's start")
+    else:
+        notes.append("no EOCD had offsets consistent with this start; using the "
+                     "nearest, so the end offset may belong to a later archive")
     if end - start > 0xFFFFFFFF:
         notes.append("ZIP64 archive (32-bit fields saturated)")
     return Boundary(end, FOOTER_ANCHORED, notes)
