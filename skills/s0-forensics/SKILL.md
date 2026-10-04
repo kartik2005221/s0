@@ -64,7 +64,7 @@ This skill guides an AI agent through safely, accurately, and patiently executin
 | `s0 verify` | Offline verification of Ed25519-signed certificate JSON | **Safe (Read-Only)** | Zero-trust verification of compliance reports |
 | `s0 keygen` | Generate Ed25519 keypair for an authority or operator | **Safe (Creates Files)** | Establishing laboratory cryptographic authority |
 | `s0 upgrade` | Pull latest release from GitHub and rebuild packages | **Maintenance** | Upgrading local toolchain and dependencies |
-| `s0 web` | Launch the forensic web dashboard (FastAPI, loopback only) | **Safe to start; the API it serves is destructive** | Interactive dashboard. Runs as the invoking user — do **not** run it under `sudo`: the dashboard serves `/api/erase-files` and writes its session token to `~/.s0`, so root here is root over the evidence on the machine. |
+| `s0 web` | Launch the forensic web dashboard (FastAPI, loopback only) | **Safe to start; the API it serves is destructive** | **Never launch this with `sudo` yourself** — ask the operator to start it and give you the token. Reasoning and the documented operator command: §1.2. |
 | `s0 uninstall` | Remove an s0 installation | **HIGH-RISK DESTRUCTIVE** | Only with `--purge-all`. See §1.1 — never pass this flag on an agent's own initiative. |
 | `s0 wipe` | Physical whole-drive sanitization & surgical file/folder erasure | **HIGH-RISK DESTRUCTIVE** | Decommissioning, repurposing, or sanitized file/folder disposal (auto-detects target type) |
 
@@ -87,47 +87,25 @@ workflow to avoid it.
 
 ## 1.2 Driving the dashboard over HTTP
 
-`s0 web` serves the same operations as a loopback JSON API. An agent may use it, but
-the dashboard is the most destructive surface s0 has: it can erase files on the host
-without a prompt once authenticated.
+`s0 web` serves a FastAPI app on loopback. Two rules before anything else:
 
-**Authentication.** One token per run, written to `~/.s0/web_auth_token` (mode 0600).
+- **Never launch it with `sudo` yourself.** The documented operator command is
+  `sudo s0 web`, because raw device access needs it and drive wiping is disabled
+  without it — but that decision belongs to the operator. Root on a loopback
+  dashboard is root over the machine and the evidence on it, and the session token
+  is written under root's `~/.s0`. Ask them to start it and give you the token,
+  then drive it over HTTP. For file and folder work, use the CLI: no escalation.
+- **Authenticate with the `X-S0-Auth-Token` header**, not the session cookie. The
+  cookie is what a browser attaches on its own.
 
-```bash
-s0 web --no-browser &            # or open the printed URL in a browser
-TOKEN=$(cat ~/.s0/web_auth_token)
-```
+The full route table, the job-polling protocol, the token bootstrap, the
+per-route preconditions and the cross-origin rules are in
+[Driving the s0 Web Dashboard over HTTP](references/web-dashboard.md).
 
-The token is accepted two ways, and only two:
+Read it before your first request: two of these routes are destructive, one
+requires an exact path echoed back, and the cross-origin check does not apply to
+the auth method you are told to use.
 
-* `X-S0-Auth-Token: $TOKEN` — **use this for anything scripted.**
-* `?token=...` — bootstrap only, accepted on `/` alone. It exists because the kiosk
-  cannot set a header. It is then moved into an HttpOnly cookie and the URL
-  redirected, because a token in a URL leaks into history, `Referer` and proxy logs.
-
-Passing `?token=` to an `/api/*` route returns 401. Do not work around this.
-
-**Routes.** Read-only: `GET /healthz`, `GET /api/list`, `/api/devices`, `/api/config`,
-`/api/capabilities`, `/api/browse`, `/api/audit/blocks`, `/api/audit/verify`,
-`GET /api/download/{job}/{artifact}`.
-
-State-changing, all `POST`, all returning a job id to poll:
-`/api/plan` (read-only despite the verb), `/api/wipe`, `/api/erase-files`,
-`/api/image`, `/api/clone`, `/api/carve`.
-
-**Rules when driving it:**
-
-* `/api/wipe` requires the **exact destination path** in `confirm_text`. It is not a
-  boolean and not an acknowledgement.
-* `/api/erase-files` runs **in-process**, not through the CLI. It applies the same
-  shared path guard, so `/etc` and s0's own state directory are refused — but the
-  guard is the only thing standing between a request and the filesystem. Confirm the
-  target list with the operator before sending it.
-* State-changing requests are rejected (403) when they carry a foreign `Origin` or
-  `Sec-Fetch-Site`, so a cross-site request cannot drive them.
-* `/api/download` refuses any filename that resolves outside the job's output
-  directory. Do not attempt traversal; it is refused, and trying is the wrong signal
-  to send.
 
 ---
 
@@ -451,8 +429,9 @@ either turns a successful refusal into an apparent failure:
 - The shared path guard prints `error: Refusing to target system path: <path>`
   and exits **77** — for both `--target` and `--targets`. 77 means "s0
   declined"; it is not specifically "insufficient privilege".
-- `s0 plan` prints the same refusal but exits **0**, because it is a dry run.
-  The refusal is in the `Warnings` block, not the exit status.
+- `s0 plan` prints the same refusal and exits **77**, like `s0 wipe`. A refused
+  plan is not a successful dry run: nothing was planned. The refusal also appears
+  in the plan's `Warnings` block under `--format json`.
 
 
 ## 7. Detailed Reference Documentation & Where This Skill Lives
@@ -471,6 +450,7 @@ files. All paths are relative to this `SKILL.md`:
 | [Decision Guidance](references/decision-guidance.md) | Why each default is what it is: overwrite pattern and pass count, firmware commands, carve confidence, buffer size, fault-tolerant recovery |
 | [Reading a Certificate Attestation](references/certificate-attestation.md) | The parsing snippet, and why a missing residual bound is not a zero bound |
 | [Error Handling & Edge Cases](references/error-handling.md) | Every refusal string, its exit code, and the mandatory remediation for each |
+| [Driving the s0 Web Dashboard over HTTP](references/web-dashboard.md) | The route table, the token bootstrap, job polling, and the cross-origin rules — read before your first dashboard request |
 
 `references/carving-signatures.md` is **generated** from
 `src/s0/carve/signatures.py` by `tools/gen_carving_reference.py`. Do not hand-edit

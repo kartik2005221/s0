@@ -162,6 +162,8 @@ Launch the air-gapped 5-tab browser console directly on loopback (`127.0.0.1:866
 sudo s0 web
 ```
 > **Note on Root Privileges:** Direct block device sanitization and raw disk acquisition require root (`sudo`) privileges to access raw storage controllers. Without sudo, unprivileged file/folder wiping remains available, while direct drive wiping is disabled for safety.
+>
+> This is a trade-off, not a free recommendation. The dashboard serves a destructive API (`/api/wipe`, `/api/erase-files`) and writes its session token under the invoking user's `~/.s0`, so running it as root means any caller holding that token has root over the machine and over the evidence on it. The bundled agent skill therefore tells an agent never to launch it with `sudo` itself, and to ask you to start it and hand over the token. If you do not need raw device access, `s0 web` without `sudo` is the safer choice.
 
 The Web Dashboard runs the identical cryptographic and carving engines as the CLI and shares the local SQLite audit ledger.
 

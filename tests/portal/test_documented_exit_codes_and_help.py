@@ -19,6 +19,7 @@ so a code that is neither documented nor real cannot survive.
 
 from __future__ import annotations
 
+import inspect
 import re
 import subprocess
 import sys
@@ -288,9 +289,27 @@ class TestTheSkillQuotesRealOutput:
         )
 
     def test_the_skill_does_not_recommend_sudo_for_the_web_dashboard(self):
-        assert "sudo s0 web" not in SKILL.read_text(), (
-            "the skill recommends running a destructive dashboard API as root"
+        """Naming the operator command is fine; telling the agent to run it is not.
+
+        This was a bare substring check, which cannot tell "run `sudo s0 web`" from
+        "the documented operator command is `sudo s0 web`, which you must not run".
+        The skill has to name it, or the agent cannot explain to the operator why the
+        dashboard reports limited mode. So the guard is now that every mention sits in
+        a sentence prohibiting it.
+        """
+        text = SKILL.read_text()
+        prohibited = ("must not", "never", "do not", "not run it")
+        mentions = [m.start() for m in re.finditer(r"sudo s0 web", text)]
+        assert mentions, (
+            "the skill never mentions `sudo s0 web`, so an agent cannot tell the "
+            "operator why the dashboard is in limited mode"
         )
+        for pos in mentions:
+            window = text[max(0, pos - 200) : pos + 200].lower()
+            assert any(word in window for word in prohibited), (
+                "`sudo s0 web` appears with no instruction not to run it, so an agent "
+                f"reads it as the command to use: ...{text[max(0, pos - 100) : pos + 60]}..."
+            )
 
     def test_the_skill_names_the_flags_a_safety_skill_must_name(self):
         text = SKILL.read_text()
@@ -537,4 +556,84 @@ class TestReadmeSaysWhereOutputGoes:
         assert "stderr" in section and "--json" in section, (
             "the quick start must say that human output goes to stderr and stdout "
             "is only used by --json/--format"
+        )
+
+
+class TestTheSkillAgreesWithTheCode:
+    """The skill is what an agent trusts. Every claim in it must be checkable.
+
+    Two of its claims were not, and both were the kind an agent cannot detect on its
+    own: it listed two API routes that return 404, and it gave an exit code of 0 for
+    a case that exits 75. An agent following either would report a successful
+    verification of a certificate signed with a publicly known key.
+    """
+
+    @staticmethod
+    def _skill_text() -> str:
+        return (
+            SKILL.read_text()
+            + "\n"
+            + "\n".join(p.read_text() for p in sorted((SKILL.parent / "references").glob("*.md")))
+        )
+
+    def test_every_route_the_skill_names_actually_exists(self):
+        """`/api/list` and `/api/clone` were both documented and both 404."""
+        import re as _re
+
+        sys.path.insert(0, str(REPO_ROOT / "src"))
+        from s0.web.app import app
+
+        real = {
+            _re.sub(r"\{[^}]+\}", "{}", r.path)
+            for r in app.routes
+            if getattr(r, "path", "").startswith(("/api", "/healthz"))
+        }
+        # Scan with positions so each mention can be read in context. The skill is
+        # *supposed* to say "there is no /api/list", and a bare set-membership check
+        # cannot tell that correction apart from the mistake it replaces.
+        text = self._skill_text()
+        negation = ("no ", "not ", "404", "does not exist")
+        named: set[str] = set()
+        for m in _re.finditer(r"(/api/[A-Za-z0-9_./{}-]+|/healthz)", text):
+            window = text[max(0, m.start() - 60) : m.end() + 60].lower()
+            if any(word in window for word in negation):
+                continue
+            named.add(_re.sub(r"\{[^}]+\}", "{}", m.group(1)).rstrip("/"))
+        unknown = sorted(n for n in named if n not in real)
+        assert not unknown, (
+            f"the skill documents routes that do not exist and would 404: {unknown}. "
+            f"Real routes: {sorted(real)}"
+        )
+
+    def test_the_skill_names_the_route_an_agent_has_to_poll(self):
+        """Every state-changing route returns a job id, so the poll route is not optional."""
+        text = self._skill_text()
+        assert "/api/job/{job_id}" in text or "/api/job/" in text, (
+            "the skill says state-changing calls return a job id to poll but never "
+            "names the route to poll, so an agent has no way to collect a result"
+        )
+
+    def test_the_skill_does_not_claim_a_refused_plan_succeeds(self):
+        """`s0 plan` on a mounted target exits 77. The skill said 0 in two places."""
+        text = self._skill_text()
+        for bad in ("exits 0 — it is a dry run", "exits **0**, because it is a dry run"):
+            assert bad not in text, f"the skill still claims a refused plan succeeds: {bad!r}"
+
+    def test_the_cross_origin_rule_matches_the_cookie_only_check(self):
+        """Header auth skips the origin check; the skill said it did not."""
+        from s0.web.app import verify_auth_token
+
+        src = inspect.getsource(verify_auth_token)
+        assert "_require_same_origin(request)" in src
+        # The call must be inside the cookie branch, not at the top of the function.
+        cookie_branch = src.index("cookie = request.cookies.get")
+        origin_call = src.index("_require_same_origin(request)")
+        assert cookie_branch < origin_call, (
+            "if the origin check is no longer cookie-only, this test's premise is "
+            "wrong and the skill's wording needs revisiting"
+        )
+        text = self._skill_text()
+        assert "X-S0-Auth-Token` header** they are *not*" in text or ("header" in text and "not*" in text), (
+            "the skill states the cross-origin rule unconditionally, but the check "
+            "only covers cookie auth -- which is the one path agents do not use"
         )
