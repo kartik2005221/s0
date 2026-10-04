@@ -740,11 +740,14 @@ usage: s0 image [-h] --source SOURCE --destination DESTINATION [--block-size BLO
                 [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
                 [--color {auto,always,never}] [--no-color] [--dry-run]
 
+Acquire a bit-stream image to a file (preserves evidence; the source is not modified). Both
+commands share the same options; only the destination kind differs.
+
 options:
   -h, --help            show this help message and exit
   --source SOURCE       path to source block device or raw image file
   --destination, --dest DESTINATION
-                        path to destination image file or block device
+                        destination image FILE
   --block-size BLOCK_SIZE
                         buffer block size in bytes (default: 1048576 / 1MB)
   --no-recovery         abort on I/O read error instead of zero-filling bad sectors
@@ -907,11 +910,14 @@ usage: s0 clone [-h] --source SOURCE --destination DESTINATION [--block-size BLO
                 [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
                 [--color {auto,always,never}] [--no-color] [--dry-run]
 
+Clone a block device to another device (destructive on the destination; the source is not
+modified). Both commands share the same options; only the destination kind differs.
+
 options:
   -h, --help            show this help message and exit
   --source SOURCE       path to source block device or raw image file
   --destination, --dest DESTINATION
-                        path to destination image file or block device
+                        destination BLOCK DEVICE (cloning overwrites it)
   --block-size BLOCK_SIZE
                         buffer block size in bytes (default: 1048576 / 1MB)
   --no-recovery         abort on I/O read error instead of zero-filling bad sectors

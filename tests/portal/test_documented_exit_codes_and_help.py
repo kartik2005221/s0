@@ -330,3 +330,62 @@ class TestDetectionWarningsReachTheEnvelope:
             assert drain_detection_warnings() == [], "warnings repeated on the next command"
         finally:
             _DETECTION_WARNINGS.clear()
+
+
+class TestImageAndCloneAreDistinguishable:
+    """They shared help text verbatim, so `--help` could not say which is which."""
+
+    def test_their_help_differs_and_says_what_each_does(self):
+        import shutil
+        import subprocess as sp
+
+        entry = shutil.which("s0") or str(Path(sys.executable).parent / "s0")
+        if not Path(entry).is_file():
+            pytest.skip("s0 entry point not available")
+
+        def help_for(command: str) -> str:
+            proc = sp.run([entry, command, "--help"], capture_output=True, text=True, timeout=60)
+            return proc.stdout
+
+        image_help, clone_help = help_for("image"), help_for("clone")
+        assert image_help != clone_help, (
+            "s0 image and s0 clone produce identical help; a reader cannot tell that "
+            "one writes a file and the other overwrites a device"
+        )
+
+        assert "FILE" in image_help.upper()
+        assert "device" in clone_help.lower(), (
+            "clone's help must say it writes a device, since that is the destructive part"
+        )
+
+    def test_both_still_work_the_same_way(self):
+        """Distinguishing the help must not change the accepted options."""
+        from s0.cli.main import build_parser
+
+        parser = build_parser()
+        skip = {"func", "command"}
+
+        def keys(argv):
+            namespace = parser.parse_args(argv)
+            return {k for k in vars(namespace) if k not in skip}
+
+        # Keys, not (key, value) pairs: `command` is "image" for one and "clone" for
+        # the other, so comparing values would fail for a difference that is the
+        # point rather than a regression.
+        assert keys(["image", "--source", "a", "--destination", "b"]) == keys(
+            ["clone", "--source", "a", "--destination", "b"]
+        ), "the two commands no longer accept the same options"
+
+
+class TestReadmeSaysWhereOutputGoes:
+    def test_the_quick_start_warns_about_redirecting(self):
+        """ "`s0 list > devices.txt` writes an empty file, and the README is where
+        a new user meets that."""
+        text = README.read_text()
+        quick_start = text.split("## Quick Start", 1)
+        assert len(quick_start) == 2, "no Quick Start section"
+        section = quick_start[1].split("\n## ", 1)[0]
+        assert "stderr" in section and "--json" in section, (
+            "the quick start must say that human output goes to stderr and stdout "
+            "is only used by --json/--format"
+        )

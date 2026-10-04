@@ -104,6 +104,14 @@ s0 list
 s0 plan --target /dev/sdb
 ```
 
+> **Redirecting output? Use `--json` or `--format csv`.** Human-readable output goes
+> to **stderr** and stdout is left empty, by design: stdout carries only
+> machine-readable output, so a script can pipe it somewhere without scraping
+> formatted text. `s0 list > devices.txt` therefore writes an **empty file** —
+> `s0 list --format csv > devices.csv` is what you want. Note that `--json` (or
+> `--format json`) is what you want for scripting even when you are only looking:
+> `s0 list --json | jq -r '.result[] | .path'`.
+
 ### 2. NIST SP 800-88 Drive Sanitization
 ```bash
 sudo s0 wipe --target /dev/sdb --yes --operator "analyst-01" --organization "Forensic Lab"

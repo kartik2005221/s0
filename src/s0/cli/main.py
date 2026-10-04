@@ -3401,14 +3401,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
     uinst.set_defaults(func=cmd_uninstall)
 
-    # 8. Forensic Imaging & Cloning Subcommands (image & clone alias)
+    # 8. Forensic Imaging & Cloning Subcommands.
+    #
+    # `image` and `clone` share an implementation and therefore share flags, but
+    # they are not the same operation and the help should say which is which: an
+    # image is written to a *file*, a clone is written to a *device*. Both were
+    # described identically, so a reader could not tell from `--help` that one of
+    # them overwrites a disk.
+    _ACQUISITION_HELP = {
+        "image": "acquire a bit-stream image to a FILE (preserves evidence; the source is not modified)",
+        "clone": "clone a block device to ANOTHER DEVICE (destructive on the destination; "
+        "the source is not modified)",
+    }
     for img_cmd in ("image", "clone"):
-        img = sub.add_parser(
-            img_cmd, help="forensic bit-stream drive imaging, cloning, and fault-tolerant acquisition"
+        img = sub.add_parser(img_cmd, help=_ACQUISITION_HELP[img_cmd])
+        img.description = (
+            _ACQUISITION_HELP[img_cmd].capitalize()
+            + ". Both commands share the same options; only the destination kind differs."
         )
         img.add_argument("--source", required=True, help="path to source block device or raw image file")
         img.add_argument(
-            "--destination", "--dest", required=True, help="path to destination image file or block device"
+            "--destination",
+            "--dest",
+            required=True,
+            help=(
+                "destination image FILE"
+                if img_cmd == "image"
+                else "destination BLOCK DEVICE (cloning overwrites it)"
+            ),
         )
         img.add_argument(
             "--block-size",
