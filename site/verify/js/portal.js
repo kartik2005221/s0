@@ -308,7 +308,19 @@ async function handlePdfFile(file) {
     var loadingTask = pdfjsLib.getDocument({
       data: arrayBuffer,
       cMapUrl: "vendor/",
-      cMapPacked: true
+      cMapPacked: true,
+      // The vendored pdf.js is 3.11.174, which is inside the range affected by
+      // CVE-2024-4367: a crafted font can achieve arbitrary JavaScript execution
+      // through the font evaluator, which reaches eval. Upgrading is the real fix
+      // and is blocked on re-vendoring; this flag removes the eval path the
+      // advisory depends on, so a malicious font cannot execute even on this
+      // version. A font that needs the evaluator now fails to render instead of
+      // running, which is the correct trade for a certificate viewer.
+      //
+      // This matters more than usual here: /portal is served from the same origin
+      // as the dashboard's destructive API, so script execution in the PDF viewer
+      // is script execution with access to /api/erase-files.
+      isEvalSupported: false
     });
     doc = await loadingTask.promise;
   } catch (err) {

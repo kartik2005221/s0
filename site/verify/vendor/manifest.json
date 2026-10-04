@@ -12,7 +12,16 @@
       "source_url": "https://github.com/mozilla/pdf.js",
       "license": "Apache-2.0",
       "modified": false,
-      "note": "Used to render the s0 PDF certificate so the embedded QR can be decoded offline."
+      "note": "Used to render the s0 PDF certificate so the embedded QR can be decoded offline.",
+      "known_advisories": [
+        {
+          "id": "CVE-2024-4367",
+          "affects": "<= 4.2.66 (fixed in 4.2.67)",
+          "impact": "Arbitrary JavaScript execution via a crafted font, through the font evaluator, which reaches eval.",
+          "mitigation": "The only call site passes isEvalSupported: false, which removes the eval path the advisory depends on. Not upgraded: re-vendoring is a separate, hash-pinned step and this version is pinned in this manifest.",
+          "risk_if_mitigation_removed": "High. /portal is served from the same origin as the dashboard's destructive API, so script execution in the PDF viewer reaches /api/erase-files."
+        }
+      ]
     },
     {
       "path": "vendor/pdf.worker.min.js",

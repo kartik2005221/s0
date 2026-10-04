@@ -138,8 +138,36 @@ jobs:
       # this size would mean hundreds of annotations written to satisfy a
       # checker rather than to say something, and the finding count would then
       # be a number people learn to ignore.
+      # Advisory, not a gate -- but no longer silent.
+      #
+      # Two of the defects fixed on this branch were found by mypy and then
+      # ignored because the job could not fail: a `return` of the wrong arity that
+      # crashed the carver once a recovery budget was reached, and an attribute
+      # typo (`method_id` for `id`) that raised on every SSD/NVMe/ATA plan. Both
+      # were `[return-value]` and `[attr-defined]`. A checker that finds real bugs
+      # and is then forbidden from reporting them as failures is decoration.
+      #
+      # So: still non-blocking, but the report is published and summarised by error
+      # code, which makes "did the count of the classes that matter go up?"
+      # answerable from the CI log. Those two codes are the ones worth ratcheting to
+      # blocking first -- deliberately not done blind here, because doing so
+      # without being able to run mypy locally risks turning the gate red on an
+      # unknown number of pre-existing findings.
       - name: Mypy
-        run: mypy src/s0 --ignore-missing-imports --no-error-summary || true
+        run: |
+          mypy src/s0 --ignore-missing-imports --no-error-summary             | tee mypy-report.txt || true
+          echo "--- errors by code ---"
+          grep -oE '\[[a-z-]+\]' mypy-report.txt | sort | uniq -c | sort -rn || true
+          echo "--- attr-defined / return-value (the classes that found real bugs) ---"
+          grep -cE '\[(attr-defined|return-value)\]' mypy-report.txt || true
+
+      - name: Publish mypy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mypy-report
+          path: mypy-report.txt
+          retention-days: 30
 
   security:
     name: Security
