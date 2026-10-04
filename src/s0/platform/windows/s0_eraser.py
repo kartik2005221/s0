@@ -589,7 +589,7 @@ def erase_batch_windows(
 
     total_est = sum(Path(t).stat().st_size for t in targets if Path(t).is_file()) * passes
     bar = (
-        ProgressBar(max(total_est, 1024), operation="s0-win erase") if ProgressBar and total_est > 0 else None
+        ProgressBar(max(total_est, 1024), operation="s0-win erase") if ProgressBar and total_est > 0 else None  # type: ignore[truthy-function]  # ProgressBar may be None (optional import); the guard is load-bearing
     )
 
     for t in targets:
@@ -855,7 +855,7 @@ def wipe_drive_or_partition_windows(
     verification_passed = True
     samples_checked = 0
 
-    bar = ProgressBar(capacity * passes, operation="s0-win wipe") if ProgressBar else None
+    bar = ProgressBar(capacity * passes, operation="s0-win wipe") if ProgressBar else None  # type: ignore[truthy-function]  # ProgressBar may be None (optional import); the guard is load-bearing
     _last_temp_time = [0.0]
     _last_temp_val = [None]
 
