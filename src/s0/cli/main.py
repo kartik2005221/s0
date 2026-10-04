@@ -1155,6 +1155,12 @@ def cmd_erase_files(args) -> int:
         )
         if bar:
             bar.finish()
+    except SafetyError as exc:
+        # The shared path guard refused. This used to surface as an uncaught
+        # traceback ending in `raise SafetyError(str(exc)) from exc`, because
+        # nothing on the file/folder route caught it.
+        print(f"error: {exc}", file=sys.stderr)
+        return EX_NOPERM
     except KeyboardInterrupt:
         if bar:
             bar.finish(extra="CANCELLED")

@@ -52,6 +52,7 @@ from s0.cli.devices import (
 from s0.cli.file_eraser import erase_batch
 from s0.config import CONFIG
 from s0.image.imager import ImagingOptions, acquire_image
+from s0.safety import ProtectedPathError, check_path_is_destructive
 from s0.temperature import read_temperature
 from s0.validation import validate_metadata_str
 from s0.wipe.methods.ata import hpa_dco_report
@@ -99,16 +100,20 @@ _SYSTEM_PATHS = (
 
 
 def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
-    """Ensure target path does not target protected system files/directories."""
+    """Refuse protected paths, using the same rules as the CLI.
+
+    This used to keep its own `_SYSTEM_PATHS` copy, which is how the two
+    interfaces came to disagree: the web tier refused `/etc/passwd` while the CLI
+    refused nothing, and `~/.s0` was not on either list. One module owns the rules
+    now (`s0.safety`), so a change applies to both.
+    """
     try:
-        p = Path(target_path).resolve()
-        if p.is_block_device():
+        if Path(target_path).resolve().is_block_device():
             return True, ""
-        target_str = str(p)
-        for sp in _SYSTEM_PATHS:
-            if target_str == sp or target_str.startswith(sp + "/"):
-                return False, f"Refusing to target system path: {target_str}"
+        check_path_is_destructive(target_path, force=False)
         return True, ""
+    except ProtectedPathError as exc:
+        return False, str(exc)
     except Exception:
         return False, f"Invalid target path: {target_path}"
 

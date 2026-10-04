@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from s0.safety import ProtectedPathError, check_path_is_destructive
 from s0.wipe.methods.base import Target
 
 logger = logging.getLogger("s0.devices")
@@ -312,6 +313,21 @@ def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
 def check_safety(target: Target, force: bool = False) -> list[str]:
     """Refuse system-critical targets unless --force. Returns warnings."""
     warnings: list[str] = []
+
+    # Path guard first, and for every target kind. It used to `return` early for
+    # images and never run at all for files and folders, so the CLI had no
+    # system-path protection at all outside the block-device tier -- while the web
+    # tier refused the same paths. `s0 wipe --targets ~/.s0/s0_audit.db --yes`
+    # destroyed the audit ledger; `s0 wipe --targets /etc/hostname --yes` deleted
+    # a system file. Block devices return from the guard so the richer checks
+    # below (mounts, root filesystem, HPA) keep ownership of them.
+    try:
+        warnings.extend(
+            check_path_is_destructive(target.path, force=force)
+        )
+    except ProtectedPathError as exc:
+        raise SafetyError(str(exc)) from exc
+
     if target.kind == "image":
         return warnings
 

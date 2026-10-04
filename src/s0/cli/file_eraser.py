@@ -25,7 +25,9 @@ from pathlib import Path
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
 from s0 import resources
+from s0.cli.devices import SafetyError
 from s0.config import CONFIG
+from s0.safety import ProtectedPathError, check_path_is_destructive
 
 
 @dataclass
@@ -628,6 +630,19 @@ def erase_batch(
     """Execute batch file & folder erasure and generate an Ed25519-signed certificate."""
     if pattern not in ("zero", "random"):
         raise ValueError(f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'")
+
+    # Path guard. This function never called check_safety() -- the safety checks
+    # lived only on the block-device/image route -- so the file and folder path had
+    # no protection at all. Confirmed: `s0 wipe --targets ~/.s0/s0_audit.db --yes`
+    # destroyed the audit ledger, and `--targets /etc/hostname` reached a system
+    # file. Checked before any target is touched, and the whole batch is refused if
+    # any one target is protected: partially erasing a set the operator named is not
+    # a useful outcome, and a half-erased batch is a worse one.
+    for t in targets:
+        try:
+            check_path_is_destructive(t, force=force)
+        except ProtectedPathError as exc:
+            raise SafetyError(str(exc)) from exc
     start_time = cert_mod.now_utc()
     all_results: list[FileEraseResult] = []
 
