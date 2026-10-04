@@ -104,7 +104,7 @@ Image-file targets work too (no root needed): use --target /path/to/file.img
 
 For JSON output suitable for automated tools:
 ```bash
-s0 list --output-format json
+s0 list --format json
 ```
 
 ### 3.2 Dry-Run Planning (`s0 plan`)

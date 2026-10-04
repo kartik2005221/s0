@@ -25,7 +25,7 @@ Every autonomous AI agent operating `s0` must adhere strictly to these four mand
 
 ```mermaid
 flowchart TD
-    A([Agent Receives Forensic Request]) --> B[Step 1: Read-Only Target Discovery<br>s0 list --output-format json]
+    A([Agent Receives Forensic Request]) --> B[Step 1: Read-Only Target Discovery<br>s0 list --format json]
     B --> C[Step 2: Mandatory Dry-Run Simulation<br>s0 plan --target PATH]
     C --> D{Destructive Operation?}
     

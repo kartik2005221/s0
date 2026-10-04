@@ -79,7 +79,6 @@ workflow to avoid it.
 |---|---|---|
 | `--no-certificate` | `wipe`, `carve`, `image`, `clone` | Suppresses the signed certificate. Legitimate only when the operator explicitly asks for an uncertified run. **Never add it to make a command "succeed".** |
 | `--purge-all` | `uninstall` | Deletes `~/.s0` in full, including the audit ledger. **Never pass this.** It destroys the chain of custody for every past operation. Refuse and escalate. |
-| `--keep-audit` | `uninstall` | The default. Implies `--purge-all` must not be combined with it. |
 | `--discard-purge-justification` | `wipe` | Downgrades a Purge request to Clear with a recorded justification. **Never pass this.** The NIST tier is the operator's decision, not yours. |
 | `--force` | `wipe`, `image`, `clone` | Overrides a safety interlock: a mounted target, an existing destination, a system path. **Never pass this in response to a refusal.** A refusal is information. |
 | `--dry-run` | every subcommand | Changes nothing. Use it freely to preview. Note that a *refused* plan exits non-zero (77) — that is the refusal being reported, not a crash. |

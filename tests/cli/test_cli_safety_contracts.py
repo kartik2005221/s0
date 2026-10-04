@@ -485,20 +485,48 @@ def test_json_still_wins_and_is_unaffected():
 # --------------------------------------------------------------------------- #
 
 
-def test_list_output_format_alias_works():
-    """Regression: `--output-format` was declared on `s0 list` and never read.
+def test_list_json_is_requested_with_one_spelling():
+    """`s0 list --format json`, not the removed second spelling.
 
-    Three places in the manual document it, including
-    `s0 list --output-format json | jq -r '.[] | select(.mounted == false) | .path'`.
-    The pipeline received nothing and exited 0.
+    `--output-format` was a second way to ask for the same thing as `--format
+    json`, declared on two subcommands and honoured in two more places than it was
+    documented. s0 has no prior userbase, so there was nobody to migrate: it was
+    simply removed rather than deprecated. This asserts the surviving spelling
+    works and is what the documentation uses.
     """
-    result = _s0("list", "--output-format", "json")
+    result = _s0("list", "--format", "json")
     assert result.returncode == 0, result.stderr[-400:]
     # cmd_list has its own envelope shape (a "targets" key), so the assertion is
     # "emits JSON with records in it", not "matches the generic envelope".
     payload = json.loads(result.stdout)
     rows = payload["result"].get("targets") or payload["result"]
-    assert isinstance(rows, list) and rows, f"--output-format json produced no records: {sorted(payload)}"
+    assert isinstance(rows, list) and rows, f"--format json produced no records: {sorted(payload)}"
+
+
+def test_output_format_is_gone_rather_than_deprecated():
+    """s0 has no userbase to migrate, so a deprecated flag is just a second flag."""
+    result = _s0("list", "--output-format", "json")
+    assert result.returncode != 0, (
+        "--output-format is still accepted. With no prior userbase there is nobody "
+        "to deprecate it for -- remove it so there is one way to ask for JSON."
+    )
+    assert "unrecognized" in (result.stderr or "").lower(), (
+        f"expected argparse to reject it, got: {result.stderr[-300:]}"
+    )
+
+
+def test_conflicting_json_requests_resolve_to_one_format():
+    """`--json --format csv` must not silently pick one.
+
+    Whichever way it resolves, it is deterministic and the JSON flag loses,
+    because `--format` is the authoritative spelling.
+    """
+    as_json = _s0("list", "--json", "--format", "csv")
+    as_csv = _s0("list", "--format", "csv")
+    assert as_json.returncode == as_csv.returncode == 0
+    assert as_json.stdout == as_csv.stdout, (
+        "--format must be authoritative: adding --json changed the output format"
+    )
 
 
 def test_removed_flags_are_gone_from_the_parser():

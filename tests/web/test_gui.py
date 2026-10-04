@@ -219,7 +219,9 @@ def test_full_wipe_job_produces_verifiable_certificate(client, small_image, tmp_
 
     from s0 import certificate, crypto
 
-    cert = json.loads(Path(result["certificate"]).read_text())
+    # `certificate_path`, not the `certificate` alias the response used to also
+    # carry. Two keys for one value is the ambiguity this cleanup removed.
+    cert = json.loads(Path(result["certificate_path"]).read_text())
     key = crypto.load_public_pem(REPO / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem")
     ok, reason = certificate.verify_certificate(cert, [key])
     assert ok, reason

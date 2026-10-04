@@ -2655,8 +2655,10 @@ def cmd_uninstall(args) -> int:
             bak_dest = Path.home() / f"s0_audit.db.bak.{timestamp}"
             try:
                 shutil.copy2(audit_db, bak_dest)
-                legacy_dest = Path.home() / "s0_audit.db.bak"
-                shutil.copy2(audit_db, legacy_dest)
+                # One backup, timestamped. This also wrote an un-timestamped
+                # `~/s0_audit.db.bak` beside it -- a second, silently-overwritten copy
+                # of the chain of custody in the user's home directory, whose
+                # existence depended on how many times they had run uninstall.
                 ui.key("Audit ledger", f"preserved at {bak_dest}")
                 ui.note("    (use --purge-all only to destroy the audit log deliberately)")
             except Exception as exc:
@@ -3106,12 +3108,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     # 1. Drive Eraser Subcommands
     lst = sub.add_parser("list", help="list block-device wipe targets")
-    lst.add_argument(
-        "--output-format",
-        choices=["text", "json"],
-        default="text",
-        help="output format (default: text)",
-    )
     lst.set_defaults(func=cmd_list)
 
     common = argparse.ArgumentParser(add_help=False)
@@ -3160,7 +3156,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="shortcut for --require-tier Purge: only firmware-mediated Purge methods satisfy this request",
     )
     pln.add_argument("--json", action="store_true", help="shorthand for --format json")
-    pln.add_argument("--output-format", choices=("text", "json"), default=None, help=argparse.SUPPRESS)
     pln.set_defaults(func=cmd_plan)
 
     wp = sub.add_parser(
@@ -3395,9 +3390,6 @@ def build_parser() -> argparse.ArgumentParser:
     uinst.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
     uinst.add_argument(
         "--purge-all", "--purge", action="store_true", help="permanently delete audit ledger without backup"
-    )
-    uinst.add_argument(
-        "--keep-audit", action="store_true", help="legacy flag: audit ledger is now backed up by default"
     )
     uinst.set_defaults(func=cmd_uninstall)
 

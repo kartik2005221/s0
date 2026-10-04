@@ -199,11 +199,65 @@ class TestTheSkillQuotesRealOutput:
 
     def test_the_skill_names_the_flags_a_safety_skill_must_name(self):
         text = SKILL.read_text()
-        for flag in ("--no-certificate", "--purge-all", "--keep-audit", "--force"):
+        for flag in ("--no-certificate", "--purge-all", "--force"):
             assert flag in text, (
                 f"the skill never mentions {flag}. An agent that does not know a flag "
                 f"exists will invent a workflow to avoid it."
             )
+
+    def test_the_skill_names_no_flag_that_the_parser_does_not_accept(self):
+        """The inverse guard, and the more useful one.
+
+        The previous version of this test asserted the skill mentioned
+        `--keep-audit`, which existed only to be a no-op for a userbase s0 never
+        had. That flag is gone, so the assertion was demanding documentation of
+        something an agent can no longer type.
+
+        "Mention it or drop it" is only half a contract. The half that actually
+        bit was the other direction: the skill naming flags the parser rejects.
+        An agent reading this file would build a command line, get `unrecognized
+        arguments`, and either retry forever or conclude s0 is broken. So walk
+        every flag-shaped token in the skill and require the parser to accept it.
+        """
+        unknown = sorted(f for f in _skill_flags_for_the_cli() - _all_parser_flags())
+        assert not unknown, (
+            "the skill documents flags the CLI does not accept, so an agent "
+            f"following it builds a command line that fails: {unknown}"
+        )
+
+
+def _skill_flags_for_the_cli() -> set[str]:
+    """Flags the skill presents as belonging to the `s0` CLI.
+
+    Scanned line by line so that flags belonging to some *other* program are not
+    charged to s0. The skill legitimately mentions
+    `python tools/gen_carving_reference.py --check`, and that `--check` is a real
+    option of a real script -- just not of the CLI an agent is being taught to
+    drive. A line that names a script or a `tools/` path is therefore skipped.
+    """
+    flags: set[str] = set()
+    for line in SKILL.read_text().splitlines():
+        if re.search(r"\b[\w./-]+\.py\b|\btools/", line):
+            continue
+        flags.update(re.findall(r"(?<!\w)--[a-z][a-z0-9-]*", line))
+    return flags
+
+
+def _all_parser_flags() -> set[str]:
+    """Every option string accepted by any subcommand, plus the global ones."""
+    sys.path.insert(0, str(REPO_ROOT / "src"))
+    from s0.cli.main import build_parser
+
+    flags: set[str] = set()
+    stack = [build_parser()]
+    while stack:
+        current = stack.pop()
+        for action in current._actions:
+            flags.update(a for a in action.option_strings if a.startswith("--"))
+            choices = getattr(action, "choices", None)
+            if isinstance(choices, dict):
+                stack.extend(choices.values())
+    return flags
 
     def test_the_skill_documents_the_web_api(self):
         text = SKILL.read_text()

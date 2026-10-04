@@ -1276,14 +1276,17 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                     )
                     pdf_p = by_kind.get("pdf_certificate") or body.get("pdf") or body.get("pdf_path")
                     qr_p = by_kind.get("qr_code")
+                    # One name per value. Each of these used to be emitted twice
+                    # under a second key (`certificate`/`certificate_path`,
+                    # `pdf`/`pdf_path`), so a consumer had to guess which spelling
+                    # was current and neither was documented as canonical. Kept the
+                    # explicit `_path` form and dropped the alias.
                     if cert_p:
                         result["cert_filename"] = Path(cert_p).name
                         result["certificate_path"] = str(cert_p)
-                        result["certificate"] = str(cert_p)  # legacy alias
                     if pdf_p:
                         result["pdf_filename"] = Path(pdf_p).name
                         result["pdf_path"] = str(pdf_p)
-                        result["pdf"] = str(pdf_p)  # legacy alias
                     if qr_p:
                         result["qr_filename"] = Path(qr_p).name
                     if isinstance(parsed, dict) and parsed.get("status") == "failure":

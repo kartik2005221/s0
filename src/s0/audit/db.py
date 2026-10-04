@@ -77,23 +77,6 @@ def compute_block_hash(
     return hashlib.sha256(payload_for_hash).hexdigest()
 
 
-def compute_legacy_block_hash(
-    block_index: int,
-    timestamp: str,
-    operation_type: str,
-    target_id: str,
-    operator_id: str,
-    organization: str,
-    cert_uuid: str,
-    payload_hash: str,
-    signature: str,
-    prev_hash: str,
-) -> str:
-    """Legacy pipe-delimited block hash for backward compatibility with older ledgers."""
-    content = f"{block_index}|{timestamp}|{operation_type}|{target_id}|{operator_id}|{organization}|{cert_uuid}|{payload_hash}|{signature}|{prev_hash}"
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
-
-
 #: How long to wait for another writer's lock. SQLite's default is 5s and it
 #: reports "database is locked" the moment a writer holds the lock; a forensic run
 #: may be appending from a UI, a CLI and a scheduled export at once.

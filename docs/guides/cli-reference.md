@@ -121,14 +121,14 @@ List all block-device targets visible to the system, with metadata useful for se
 {% tab title="Synopsis" %}
 
 ```bash
-s0 list [--output-format {text,json}]
+s0 list [--format {text,json}]
 ```
 {% endtab %}
 {% tab title="Flags" %}
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--output-format` | `text` \| `json` | `text` | Render output as a human-readable table or machine-readable JSON array. |
+| `--format` | `text` \| `json` | `text` | Render output as a human-readable table or machine-readable JSON array. |
 
 **Output columns (text mode)**
 
@@ -146,13 +146,11 @@ s0 list [--output-format {text,json}]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 list [-h] [--output-format {text,json}] [--format {text,json,csv}] [--json] [--quiet]
-               [--verbose] [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
+usage: s0 list [-h] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+               [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
-  --output-format {text,json}
-                        output format (default: text)
 
 output:
   --format {text,json,csv}
@@ -173,7 +171,7 @@ execution:
 {% endtab %}
 {% tab title="Recommendations" %}
 
-- **Output Format (`--output-format`)**:
+- **Output Format (`--format`)**:
     - **`text` (Default / Recommended for Operators)**: Clean ASCII tabular view with explicit headers. Recommended for field technicians confirming physical drive labels against serial numbers before initiating sanitization.
     - **`json` (Recommended for Automation & Agents)**: Returns a typed JSON array. Recommended when piping to `jq`, feeding downstream bash loops, or running autonomous forensic triage agents.
 {% endtab %}
@@ -192,7 +190,7 @@ PATH           TYPE    STORAGE        CAPACITY  MODEL                    SERIAL 
 
 **JSON output for scripting**
 ```bash
-s0 list --output-format json | jq '.[] | select(.mounted == false)'
+s0 list --format json | jq '.[] | select(.mounted == false)'
 ```
 ```json
 [
@@ -211,7 +209,7 @@ s0 list --output-format json | jq '.[] | select(.mounted == false)'
 
 **Filter unmounted drives and feed into a wipe loop**
 ```bash
-TARGETS=$(s0 list --output-format json | jq -r '.[] | select(.mounted == false) | .path')
+TARGETS=$(s0 list --format json | jq -r '.[] | select(.mounted == false) | .path')
 for DEV in $TARGETS; do
     s0 wipe --target "$DEV" --yes --operator "batch-job-01"
 done
@@ -1575,22 +1573,20 @@ s0 uninstall --yes --purge-all
 |---|---|---|
 | `--yes` | `-y` | Skip interactive confirmation prompt |
 | `--purge-all` | `--purge` | Permanently delete the audit ledger without a backup |
-| `--keep-audit` | | Legacy flag: the audit ledger is now backed up by default |
 
 ```text
-usage: s0 uninstall [-h] [--yes] [--purge-all] [--keep-audit]
+usage: s0 uninstall [-h] [--yes] [--purge-all]
 
 options:
   -h, --help         show this help message and exit
   --yes, -y          skip interactive confirmation prompt
   --purge-all, --purge
                     permanently delete audit ledger without backup
-  --keep-audit       legacy flag: audit ledger is now backed up by default
 ```
 
 {% hint style="info" %}
 **The ledger backup is the default, and the filename is timestamped**
-`--keep-audit` is a legacy no-op: preserving the ledger no longer requires a flag. Unless you pass `--purge-all`, `s0 uninstall` copies `~/.s0/s0_audit.db` to `~/s0_audit.db.bak.<YYYYmmdd_HHMMSS>` (and, for older tooling, also to the un-suffixed `~/s0_audit.db.bak`). Each uninstall therefore produces a distinct backup rather than silently overwriting the previous one. Only `--purge-all` destroys the ledger with no copy — irreversibly, and only if that is what you want.
+Unless you pass `--purge-all`, `s0 uninstall` copies `~/.s0/s0_audit.db` to `~/s0_audit.db.bak.<YYYYmmdd_HHMMSS>`, so each uninstall produces a distinct backup rather than silently overwriting the previous one. Only `--purge-all` destroys the ledger with no copy — irreversibly, and only if that is what you want.
 {% endhint %}
 {% endtab %}
 {% endtabs %}
@@ -1728,7 +1724,7 @@ The keys in `src/s0/data/keys/` are committed to the open-source repository and 
 `s0 wipe` and `s0 list` emit structured output for pipeline consumption.
 
 ```bash
-s0 list --output-format json \
+s0 list --format json \
   | jq -r '.[] | select(.mounted == false) | .path' \
   | while read -r DEV; do
       echo "[*] Wiping $DEV ..."
@@ -1833,7 +1829,7 @@ cell, and booleans are `true`/`false`.
 
 ```bash
 s0 audit list --format csv > ledger.csv
-s0 list --output-format json | jq -r '.result[] | select(.mounted == false) | .path'
+s0 list --format json | jq -r '.result[] | select(.mounted == false) | .path'
 ```
 
 ---

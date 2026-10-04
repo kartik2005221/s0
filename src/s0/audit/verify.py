@@ -19,7 +19,6 @@ from .db import (
     DEFAULT_AUDIT_DB,
     GENESIS_PREV_HASH,
     compute_block_hash,
-    compute_legacy_block_hash,
     get_db_connection,
     get_default_audit_db,
     init_audit_db,
@@ -35,7 +34,6 @@ __all__ = [
     "GENESIS_PREV_HASH",
     "ChainAuditReport",
     "compute_block_hash",
-    "compute_legacy_block_hash",
     "get_db_connection",
     "get_default_audit_db",
     "get_default_trusted_keys",
@@ -212,28 +210,20 @@ def verify_audit_ledger(
         )
 
         if computed_hash != b["block_hash"]:
-            legacy_hash = compute_legacy_block_hash(
-                b["block_index"],
-                b["timestamp"],
-                b["operation_type"],
-                b["target_id"],
-                b["operator_id"],
-                b["organization"],
-                b["cert_uuid"],
-                b["payload_hash"],
-                b["signature"],
-                b["prev_hash"],
+            # This used to retry with a second, older hash scheme and accept a block
+            # whose stored hash matched *that* one. Every ledger s0 has ever written
+            # uses the canonical scheme, so the fallback could never fire on genuine
+            # data -- but it could fire on forged data, giving anyone who knew the
+            # old algorithm a way to write a block that verifies as intact. That is
+            # a second oracle for forgery, kept to accommodate a userbase that never
+            # existed. Removed: one scheme, one verdict.
+            return ChainAuditReport(
+                is_valid=False,
+                total_blocks_verified=idx,
+                broken_block_index=block_idx,
+                reason=f"Data tampering detected in block #{block_idx}: recomputed hash {computed_hash} != stored hash {b['block_hash']}.",
+                details=details,
             )
-            if b["block_hash"] == legacy_hash:
-                computed_hash = legacy_hash
-            else:
-                return ChainAuditReport(
-                    is_valid=False,
-                    total_blocks_verified=idx,
-                    broken_block_index=block_idx,
-                    reason=f"Data tampering detected in block #{block_idx}: recomputed hash {computed_hash} != stored hash {b['block_hash']}.",
-                    details=details,
-                )
 
         # Verify Ed25519 block signature if present or required
         keys_in_row = b.keys() if hasattr(b, "keys") else []

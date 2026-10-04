@@ -131,8 +131,14 @@ def test_uninstall_cli_subcommand(tmp_path, monkeypatch):
     monkeypatch.setenv("S0_INSTALL_DIR", str(dummy_install))
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-    # Test uninstall with --yes and --keep-audit
-    rc = cli_main.main(["uninstall", "--yes", "--keep-audit"])
+    # Test uninstall with --yes (the ledger is backed up by default)
+    rc = cli_main.main(["uninstall", "--yes"])
     assert rc == 0
     assert not dummy_install.exists()
-    assert (tmp_path / "s0_audit.db.bak").exists()
+    # The ledger backup is timestamped, so repeated uninstalls accumulate rather
+    # than overwrite each other. This used to also write an un-suffixed
+    # `s0_audit.db.bak`, which was a second copy of the chain of custody sitting
+    # in $HOME whose contents depended on run order.
+    backups = list(tmp_path.glob("s0_audit.db.bak.*"))
+    assert len(backups) == 1, f"expected exactly one timestamped backup, got {backups}"
+    assert not (tmp_path / "s0_audit.db.bak").exists(), "the un-timestamped duplicate backup is back in $HOME"

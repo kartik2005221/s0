@@ -143,16 +143,14 @@ def policy_from_args(args, *, stdout=None, stderr=None) -> OutputPolicy:
         colour = False
     elif getattr(args, "color", None) == "always":
         colour = True
-    if getattr(args, "json", False):
-        fmt = "json"
-    elif getattr(args, "format", None):
+    # `--format` is authoritative and `--json` is the shorthand that defers to it.
+    # The order matters: `--json` used to win, so `s0 list --json --format csv`
+    # silently produced JSON while the operator had last asked for csv on the same
+    # command line. A shorthand that overrides the long form is not a shorthand.
+    if getattr(args, "format", None):
         fmt = args.format
-    elif getattr(args, "output_format", None):
-        # `s0 list --output-format json` is documented in three places in the
-        # manual, including a `| jq` pipeline. The flag was declared and never
-        # read, so the pipeline received nothing and exited 0. Honour it as a
-        # per-command alias for the global --format.
-        fmt = args.output_format
+    elif getattr(args, "json", False):
+        fmt = "json"
     return OutputPolicy(
         color=colour,
         quiet=bool(getattr(args, "quiet", False)),
