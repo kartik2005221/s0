@@ -41,7 +41,7 @@ MATRIX = [
     (["--json"], ["list"], "{"),
     (["--format", "json"], ["list"], "{"),
     (["--format", "csv"], ["list"], "path"),
-        (["--json"], ["audit", "list"], "{"),
+    (["--json"], ["audit", "list"], "{"),
     (["--json"], ["carve", "--help"], "usage:"),
     (["--format", "json"], ["verify", "--help"], "usage:"),
 ]
