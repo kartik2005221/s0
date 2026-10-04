@@ -44,10 +44,10 @@ jobs:
             python-version: "3.12"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -87,8 +87,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -115,7 +115,7 @@ jobs:
         run: ruff check --output-format=github .
 
       - name: EditorConfig and hygiene
-        uses: pre-commit/action@v3.0.1
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd  # v3.0.1
         continue-on-error: true
         with:
           # Advisory for the same reason: whole-tree hygiene hooks fire on files
@@ -126,8 +126,8 @@ jobs:
     name: Type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -198,7 +198,7 @@ jobs:
 
       - name: Publish mypy report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: mypy-report
           path: mypy-report.txt
@@ -208,8 +208,8 @@ jobs:
     name: Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -234,14 +234,14 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
       - name: Initialize
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52  # v3
         with:
           languages: python
           queries: security-extended
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52  # v3
         with:
           category: "/language:python"
 
@@ -249,14 +249,17 @@ jobs:
     name: Lint workflows and scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # NOTE: `docker://rhysd/actionlint:latest` is still a mutable ref. Pinning it
-      # needs a commit SHA or an exact release tag, and inventing one offline would
-      # either fail the build on a tag that does not exist or, worse, be changed to
-      # something that does. Recorded here rather than guessed at.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      # Was `docker://rhysd/actionlint:latest` -- a mutable ref, and the only one
+      # left in these workflows. Every action is now pinned to a commit SHA with the
+      # version recorded in a trailing comment, because a tag is mutable: whoever
+      # controls the repository can move `v4` to new code, and this workflow runs on
+      # every push. Each SHA below was resolved from the GitHub API and verified to
+      # be a real commit before being written down, not guessed from a tag name.
       - name: actionlint
-        uses: docker://rhysd/actionlint:latest
-        args: -color
+        uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106  # v1.7.7
+        with:
+          args: -color
       # Was `ludeeus/action-shellcheck@master` -- a third-party action tracking a
       # moving branch, which means a maintainer of that repository (or anyone who
       # takes it over) could change the code this workflow executes. Removed rather
@@ -279,7 +282,7 @@ jobs:
             -not -path './build/*' \
             -print0 | xargs -0 --no-run-if-empty shellcheck -x -S warning
       - name: hadolint
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf  # v3.1.0
         with:
           dockerfile: iso/**/Dockerfile
 
@@ -288,8 +291,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: "3.12"
       - run: |
@@ -299,7 +302,7 @@ jobs:
           # auditable without running it.
           cyclonedx-py environment --output-format JSON --outfile s0-sbom.json
           cyclonedx-py requirements --output-format JSON --outfile s0-requirements-sbom.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: sbom
           path: s0-*-sbom.json
