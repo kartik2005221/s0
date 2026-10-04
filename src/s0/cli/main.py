@@ -1248,7 +1248,7 @@ def cmd_wipe(args) -> int:
         bar.finish(extra=temp_str)
         ui.note("Sanitization pass complete; buffers flushed to disk.")
     except KeyboardInterrupt:
-        bar.finish(extra="CANCELLED")
+        bar.abort("TARGET PARTIALLY OVERWRITTEN")
         ui.error(
             "WIPE INTERRUPTED (Ctrl+C). The target may be partially overwritten "
             "and must not be released. Re-run s0 wipe to completion, or escalate "
@@ -1443,12 +1443,16 @@ def cmd_erase_files(args) -> int:
     targets = [Path(t) for t in args.targets]
     print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
 
-    total_est = sum(p.stat().st_size for p in targets if p.is_file()) * getattr(args, "passes", 1)
-    bar = ProgressBar(max(total_est, 1024), operation="s0 wipe") if total_est > 0 else None
+    # One bar per file, sized from the total the eraser reports for that file.
+    # This used to build a single bar from the summed size of every target, so
+    # every file's own byte count was measured against a total that belonged to
+    # the whole batch -- a small file in a mixed batch could render "0 B / 293 KiB",
+    # a denominator belonging to no file the operator was looking at.
+    ui_obj = getattr(args, "ui", None) or UI(_ui_policy(args) or OutputPolicy(), "wipe")
+    bar = ui_obj.file_progress("s0 wipe")
 
     def erase_progress_cb(path_str: str, written: int, total_f: int) -> None:
-        if bar:
-            bar.update(written, extra=Path(path_str).name[:20])
+        bar.update(path_str, written, total_f)
 
     try:
         summary = erase_batch(
@@ -1462,8 +1466,7 @@ def cmd_erase_files(args) -> int:
             generate_certificate=not getattr(args, "no_certificate", False),
             force=getattr(args, "force", False),
         )
-        if bar:
-            bar.finish()
+        bar.close()
     except SafetyError as exc:
         # The shared path guard refused. This used to surface as an uncaught
         # traceback ending in `raise SafetyError(str(exc)) from exc`, because
@@ -1471,8 +1474,7 @@ def cmd_erase_files(args) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return EX_NOPERM
     except KeyboardInterrupt:
-        if bar:
-            bar.finish(extra="CANCELLED")
+        bar.close(extra="CANCELLED")
         print(
             "\n⚠  Erasure interrupted by user (Ctrl+C). Some files may be partially erased.", file=sys.stderr
         )
@@ -1737,7 +1739,7 @@ def cmd_carve(args) -> int:
             return EX_DATAERR
     except KeyboardInterrupt:
         if bar:
-            bar.finish(extra="CANCELLED")
+            bar.abort("CANCELLED")
         ui.warn(
             "File carving interrupted by the operator (Ctrl+C); "
             "the recovery index written so far is still valid."
@@ -1756,17 +1758,17 @@ def cmd_carve(args) -> int:
         raise
     except FileNotFoundError as exc:
         if bar:
-            bar.finish(extra="FAILED")
+            bar.abort("FAILED")
         ui.error(str(exc))
         return EX_NOINPUT
     except PermissionError as exc:
         if bar:
-            bar.finish(extra="DENIED")
+            bar.abort("DENIED")
         ui.error(f"permission denied: {exc}")
         return EX_NOPERM
     except OSError as exc:
         if bar:
-            bar.finish(extra="FAILED")
+            bar.abort("FAILED")
         ui.error(f"I/O error: {exc}")
         return EX_IOERR
 
@@ -2747,15 +2749,29 @@ def cmd_image(args) -> int:
             ui.note("Aborted by the operator.")
             return EX_OK
 
-    bar = ui.progress(1, operation="Forensic Acquisition")
+    # Created on the first real progress report, sized from what the imager
+    # measured. It used to be created up front with a placeholder total of 1 byte
+    # and patched later, which meant every refusal before the first byte was
+    # copied drew "1 B / 1 B | 100.0%" -- a completed-looking bar for an
+    # acquisition that never began. Nothing is drawn until there is progress to
+    # report, so a refused run shows its refusal and no bar.
+    _bar: list[ProgressBar] = []
 
     def _progress(bytes_copied, total_bytes, speed, bad_sectors):
-        if bar.total <= 1 and total_bytes > 0:
-            bar.total = total_bytes
         extra = f"{speed:.1f} MB/s"
         if bad_sectors > 0:
             extra += f" | bad sectors: {bad_sectors}"
-        bar.update(bytes_copied, extra=extra)
+        if not _bar:
+            _bar.append(ui.progress(max(int(total_bytes), 1), operation="Forensic Acquisition"))
+        _bar[0].update(bytes_copied, extra=extra)
+
+    def _end_acquisition(outcome: str = "") -> None:
+        if not _bar:
+            return
+        if outcome:
+            _bar[0].abort(outcome)
+        else:
+            _bar[0].finish()
 
     key_path = default_issuer_key(getattr(args, "key", None))
     _warn_if_demo_key(key_path, _ui_policy(args))
@@ -2793,33 +2809,33 @@ def cmd_image(args) -> int:
 
     try:
         result = acquire_image(options, progress_callback=_progress)
-        bar.finish()
+        _end_acquisition()
     except SafetyError as exc:
-        bar.finish(extra="REFUSED")
+        _end_acquisition("REFUSED")
         ui.error(f"refused: {exc}")
         return EX_NOPERM
     except KeyboardInterrupt:
-        bar.finish(extra="CANCELLED")
+        _end_acquisition("CANCELLED")
         ui.error(
             "acquisition cancelled by the operator (Ctrl+C). The destination "
             "image is INCOMPLETE and must not be used as evidence."
         )
         return EX_INTERRUPTED
     except FileNotFoundError as exc:
-        bar.finish(extra="FAILED")
+        _end_acquisition("FAILED")
         ui.error(str(exc))
         return EX_NOINPUT
     except PermissionError as exc:
-        bar.finish(extra="DENIED")
+        _end_acquisition("DENIED")
         ui.error(f"permission denied: {exc}")
         return EX_NOPERM
     except OSError as exc:
-        bar.finish(extra="FAILED")
+        _end_acquisition("FAILED")
         ui.error(f"I/O error: {exc}")
         return EX_IOERR
 
     if result.error:
-        bar.finish(extra="FAILED")
+        _end_acquisition("FAILED")
         ui.error(f"acquisition failed: {result.error}")
         return EX_IOERR
 

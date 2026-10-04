@@ -75,6 +75,11 @@ class ProgressBar:
         self._current = 0
         self._extra = ""
         self._finished = False
+        # Whether the last frame already drawn was the final one. Producers
+        # routinely report the last chunk via `update(written == total)` and then
+        # call `finish()`. Without this, `finish()` drew the identical 100% frame
+        # a second time, so every completed wipe printed its final bar twice.
+        self._drew_final = False
 
     def update(self, current_bytes: int, extra: str = "") -> None:
         if self.disabled:
@@ -88,13 +93,40 @@ class ProgressBar:
         self._draw()
 
     def finish(self, extra: str = "") -> None:
+        """Close the bar, reporting only the progress that actually happened.
+
+        This used to set ``_current = self.total`` before drawing, which made
+        every bar end at 100% no matter how little was written. For a refused or
+        failed operation that is the worst possible output: a full, green-looking
+        bar for work that never occurred. A producer that reports every byte
+        already reaches ``total`` on its own, so nothing is lost by not forcing
+        it, and a short final frame is the truth.
+        """
         if self.disabled or self._finished:
             return
-        self._current = self.total
         if extra:
             self._extra = extra
         self._finished = True
+        if not self._drew_final or extra:
+            self._draw()
+        self._newline()
+
+    def abort(self, reason: str = "") -> None:
+        """Close the bar without claiming the work completed.
+
+        Distinct from ``finish(extra=...)``: this states an outcome, so the frame
+        says so in words rather than relying on a percentage the operator has to
+        interpret.
+        """
+        if self.disabled or self._finished:
+            return
+        label = f"STOPPED: {reason}" if reason else "STOPPED"
+        self._extra = f"{self._extra} | {label}" if self._extra else label
+        self._finished = True
         self._draw()
+        self._newline()
+
+    def _newline(self) -> None:
         if self.is_tty:
             self.stream.write("\n")
             self.stream.flush()
@@ -103,6 +135,7 @@ class ProgressBar:
         self.finish()
 
     def _draw(self) -> None:
+        self._drew_final = self._finished or self._current >= self.total
         elapsed = max(time.monotonic() - self._start_time, 0.001)
         pct = (self._current / self.total) * 100.0
         speed = self._current / elapsed
@@ -110,7 +143,7 @@ class ProgressBar:
         filled = int(self.bar_width * min(pct, 100.0) / 100.0)
         bar = self.block_full * filled + self.block_empty * (self.bar_width - filled)
 
-        if self._finished or pct >= 100.0:
+        if pct >= 100.0:
             eta_str = f"Done in {_fmt_time(elapsed)}"
         elif speed > 0:
             remaining = (self.total - self._current) / speed
@@ -118,27 +151,54 @@ class ProgressBar:
         else:
             eta_str = "ETA: --"
 
-        parts = [
+        # The leading segments and the trailing label are load-bearing: the first
+        # tell you which operation this is, the last tells you how it ended. The
+        # middle ones are decoration. This used to build one string and slice it to
+        # the terminal width, which silently cut the trailing label -- so on a
+        # narrow terminal a REFUSED or CANCELLED bar rendered as an unfinished-looking
+        # bar that named no outcome at all. Drop the optional segments instead.
+        head = [
             f"[{self.operation}]",
             f"[{bar}]",
             f"{pct:5.1f}%",
             f"{_human(self._current)} / {_human(self.total)}",
+        ]
+        middle = [
             f"{_human(speed)}/s",
             f"Elapsed: {_fmt_time(elapsed)}",
             eta_str,
         ]
-        if self._extra:
-            parts.append(self._extra)
+        tail = [self._extra] if self._extra else []
 
-        line = " | ".join(p for p in parts if p)
+        def join(parts: list[str]) -> str:
+            return " | ".join(p for p in parts if p)
+
+        try:
+            cols = shutil.get_terminal_size().columns
+        except Exception:
+            cols = 120
+
+        line = join(head + middle + tail)
+        # Give up the decoration in order of how little it matters: the rate, then
+        # elapsed time, then the ETA (which on a finished bar is the least useful
+        # thing on the line). Each pass drops one more, so a very narrow terminal
+        # still keeps the operation, the bar, the byte counts and the outcome.
+        for drop in range(len(middle) + 1):
+            if len(line) <= cols - 1:
+                break
+            line = join(head + middle[drop:] + tail)
+
+        if len(line) > cols - 1:
+            # Even with every decorative segment gone the operation name, the byte
+            # counts and the outcome can exceed a very narrow terminal. Squeeze the
+            # head rather than slicing the assembled line, so the outcome is never
+            # the thing that gets cut. Overflowing instead would wrap the line and
+            # leave a trail of stale bars on a real terminal.
+            tail_text = f" | {join(tail)}" if tail else ""
+            budget = max(cols - 1 - len(tail_text), 16)
+            line = join(head)[:budget].rstrip(" |") + tail_text
 
         if self.is_tty:
-            try:
-                cols = shutil.get_terminal_size().columns
-            except Exception:
-                cols = 120
-            if len(line) >= cols:
-                line = line[: cols - 1]
             self.stream.write(f"\r{line}\033[K")
             self.stream.flush()
         else:

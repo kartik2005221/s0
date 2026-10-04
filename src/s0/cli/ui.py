@@ -21,7 +21,8 @@ import sys
 import time
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from s0.terminal import (  # re-exported so callers need one import
     EX_CANTCREAT,
@@ -199,6 +200,10 @@ def _redact_argv(argv: list[str]) -> dict[str, Any]:
     return recorded
 
 
+if TYPE_CHECKING:
+    from s0.progress import ProgressBar
+
+
 class UI:
     """A command-scoped printer bound to one :class:`OutputPolicy`."""
 
@@ -259,15 +264,19 @@ class UI:
     def table(self, columns: Sequence[Column], rows: Sequence[Sequence[Any]], max_rows: int = 0) -> None:
         render_table(self.policy, columns, rows, max_rows=max_rows)
 
-    def progress(self, *args, **kwargs):
+    def progress(self, *args, **kwargs) -> ProgressBar:
         """A progress bar that is silent off-TTY and under --quiet/--format json."""
-        from s0.progress import ProgressBar
+        from s0.progress import ProgressBar  # local: keeps ui importable without a TTY
 
         disabled = self.policy.quiet or self.policy.fmt != "text"
         kwargs.setdefault("stream", self.policy.err_stream)
         kwargs.setdefault("unicode", self.policy.use_unicode)
         kwargs.setdefault("color", self.policy.use_color)
         return ProgressBar(*args, disable=disabled, **kwargs)
+
+    def file_progress(self, operation: str) -> PerFileProgress:
+        """A progress tracker that draws one bar per file, sized for that file."""
+        return PerFileProgress(self, operation)
 
     @property
     def warnings(self) -> list[str]:
@@ -404,3 +413,47 @@ def fail(ui: UI, code: int, message: str, *, hint: str = "") -> int:
         if hint:
             sys.stderr.write(f"  {hint}\n")
     return code
+
+
+class PerFileProgress:
+    """One bar per file, each sized from the total reported for *that* file.
+
+    The batch file eraser reports progress as ``(path, written, file_total)``,
+    one file at a time. The obvious wiring is a single bar created from the sum of
+    all target sizes, and that is what this replaced -- which meant file 3 of 9
+    could render ``12.0 KiB / 293.0 KiB``, a denominator belonging to no file the
+    operator was looking at, and a small file in a mixed batch looked barely
+    started. The per-file total is already in the callback; it just has to be used
+    as the bar's total instead of discarded.
+
+    The bar is closed and a fresh one opened when the path changes, so each file
+    gets its own final line instead of overwriting the last.
+    """
+
+    def __init__(self, ui: UI, operation: str):
+        self._ui = ui
+        self._operation = operation
+        self._path: str | None = None
+        self._bar: ProgressBar | None = None
+
+    def update(self, path_str: str, written: int, total_for_file: int) -> None:
+        if self._bar is None or path_str != self._path:
+            self.close()
+            self._path = path_str
+            if total_for_file > 0:
+                self._bar = self._ui.progress(
+                    total_for_file,
+                    operation=self._operation,
+                    min_interval=0.05,
+                )
+        if self._bar is not None:
+            self._bar.update(written, extra=Path(path_str).name[:20])
+
+    def close(self, extra: str = "") -> None:
+        if self._bar is not None:
+            if extra:
+                self._bar.abort(extra)
+            else:
+                self._bar.finish()
+            self._bar = None
+        self._path = None
