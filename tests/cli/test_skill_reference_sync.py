@@ -11,6 +11,7 @@ back.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -245,3 +246,66 @@ def test_user_guide_format_table_is_generated_not_handwritten():
         f"the guide lists only {len(rows)} formats; the registry has far more. "
         "Re-run tools/gen_carving_reference.py."
     )
+
+
+# --------------------------------------------------------------------------- #
+# The skill was 607 lines in one file, which meant an agent paid for the whole
+# thing before it could act. It is now a core file plus seven references, so two
+# new ways to break it appeared: a pointer to a reference that does not exist or
+# was renamed, and the core file quietly growing back.
+# --------------------------------------------------------------------------- #
+
+SKILL_MD = REPO / "skills" / "s0-forensics" / "SKILL.md"
+SKILL_REFS = SKILL_MD.parent / "references"
+
+
+def test_every_reference_the_core_links_to_exists():
+    """A renamed or moved reference must not leave a dangling pointer."""
+    text = SKILL_MD.read_text(encoding="utf-8")
+    linked = sorted(set(re.findall(r"\]\((references/[^)]+)\)", text)))
+    assert linked, "the core file no longer links to any reference"
+    missing = [ref for ref in linked if not (SKILL_MD.parent / ref).is_file()]
+    assert not missing, f"SKILL.md links to references that do not exist: {missing}"
+
+
+def test_every_bundled_reference_is_reachable_from_the_core():
+    """The reverse: a reference nothing points at is dead weight an agent never loads."""
+    text = SKILL_MD.read_text(encoding="utf-8")
+    on_disk = sorted(f"references/{p.name}" for p in SKILL_REFS.glob("*.md"))
+    unlinked = [ref for ref in on_disk if f"]({ref})" not in text]
+    assert not unlinked, f"these references are never linked from SKILL.md: {unlinked}"
+
+
+def test_the_core_skill_stays_a_core_skill():
+    """Splitting is only worth it if the split holds.
+
+    607 lines in one file was the problem. The cap is deliberately loose rather
+    than tight, so normal editing does not trip it, but it is well under the
+    original so a re-merge cannot pass unnoticed.
+    """
+    lines = SKILL_MD.read_text(encoding="utf-8").splitlines()
+    assert len(lines) <= 520, (
+        f"SKILL.md is {len(lines)} lines, back near the 607-line size the "
+        f"reference split was meant to fix. Move deep-dive material into "
+        f"references/ instead of growing the core file."
+    )
+
+
+def test_the_split_references_are_declared_as_package_data():
+    """A reference not listed in `[tool.setuptools.package-data]` silently vanishes.
+
+    The skill ships inside the distribution, so `references/*.md` is a glob that
+    has to keep matching as files are added. Splitting the skill added three new
+    references; if the pattern were ever narrowed to specific filenames, the core
+    file would link to files that exist in a checkout and not in an installed copy
+    -- and an agent would get a dangling path with no error.
+    """
+    pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    assert "references/*.md" in pyproject, (
+        "the packaging config no longer includes references/*.md, so the skill's "
+        "reference files are dropped from the wheel"
+    )
+    for path in SKILL_REFS.glob("*.md"):
+        assert path.name not in pyproject, (
+            f"{path.name} appears to be enumerated by name in package-data; use a glob"
+        )

@@ -177,7 +177,10 @@ class TestReadmeClaimsMatchTheRepo:
 class TestTheSkillQuotesRealOutput:
     def test_the_system_path_refusal_row_is_accurate(self):
         """It claimed exit 2 and a `REFUSED:` prefix; the CLI gives 77 and `error:`."""
-        text = SKILL.read_text()
+        # The row lives in references/error-handling.md, which the agent may not
+        # open. Reading only SKILL.md made this test pass for the wrong reason, so
+        # the search follows the whole skill. SKILL.md separately states 77 inline.
+        text = SKILL.read_text() + "\n" + (SKILL.parent / "references" / "error-handling.md").read_text()
         row = next(
             (
                 line

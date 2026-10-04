@@ -133,54 +133,29 @@ State-changing, all `POST`, all returning a job id to poll:
 
 ## 2. Core Decision Recommendations
 
-When configuring parameters for `s0`, follow these engineering rules:
+When configuring `s0`, follow these. The rationale for each is in
+[Decision Guidance](references/decision-guidance.md).
 
-### A. Overwrite Pattern (`--pattern zero` vs `random`)
-- **Recommendation**: Use `zero` (the default) for speed, but **do not describe the
-  result as "fully sanitized"**.
-- **Rationale**: A single zero pass is the fastest option — sequential bus
-  throughput rather than CSPRNG generation — and it is what SP 800-88 Rev. 2
-  Clear is normally understood to mean. It is **not** a statement about the
-  medium's spare area, wear-levelled remapping or on-device caches, none of
-  which a host-level overwrite reaches. Say "a single zero pass was performed and
-  readback sampled", and let the certificate's tier field carry the claim. Use
-  `random` when a contract mandates it.
-
-### B. Overwrite Pass Count (`--passes 1`)
-- **Recommendation**: Use `1` pass (the default) unless a contract says otherwise.
-- **Rationale**: Multi-pass wiping (DoD 5220.22-M 3-pass or 7-pass) was designed
-  for 1980s stepper drives prone to track drift. One pass is the norm now, and
-  extra passes cost real flash write-endurance on SSDs and hours on a
-  multi-terabyte drive. State this as the rationale, never as a claim that extra
-  passes would add nothing.
-
-### C. Firmware Commands vs Overwrite (`--no-firmware`)
-- **Recommendation**: Allow s0 to auto-select firmware commands (do not pass `--no-firmware` unless troubleshooting).
-- **Rationale**: Firmware commands (NVMe Sanitize, ATA Secure Erase) operate at the internal controller level, purging flash cells, over-provisioned blocks, and reallocated bad blocks that host LBA overwriting cannot reach. This achieves NIST **Purge** tier in seconds to minutes. Use `--no-firmware` only if connected through an unstable USB-to-SATA bridge that drops connections during SCSI/ATA pass-through.
-
-### D. Carver Confidence Threshold (`--min-confidence 50`)
-- **Recommendation**: Use `50` (the CLI default) for standard triage and
-  `75`–`90` for court-admissible automated pipelines. **Lowering it does not
-  recover anything the structural gates rejected** — see the warning below.
-- **Rationale**: A score of 50 requires a magic header, an independently
-  resolved end of file, and a plausible size; above that, entropy and boundary
-  method separate a good recovery from a merely possible one.
+| Parameter | Use | Because |
+|---|---|---|
+| `--pattern zero` | default | Sequential bus throughput rather than CSPRNG. Say "a single zero pass was performed and readback sampled" — never "fully sanitized". Use `random` only if a contract mandates it. |
+| `--passes 1` | default | Multi-pass schemes were designed for 1980s stepper drives. Extra passes cost real flash write-endurance and hours on a multi-terabyte drive. |
+| firmware commands | allow | NVMe Sanitize / ATA Secure Erase reach flash cells, over-provisioned space and reallocated bad blocks that host-level overwriting cannot. This is what earns **Purge**. Pass `--no-firmware` only on an unstable USB-to-SATA bridge. |
+| `--min-confidence 50` | default | `75`–`90` for court-admissible automated pipelines. **It is a rank, not an override** — see the warning below. |
+| `--block-size 1048576` | default | `4194304` for PCIe Gen4/Gen5 NVMe targets. Balances kernel buffer efficiency against memory pressure. |
+| omit `--no-recovery` | default | Suspect media has bad sectors; `s0 image` zero-fills them ddrescue-style and logs offsets into the manifest, capturing everything surviving. |
 
 > **WARNING — `--min-confidence` is a rank, not an override.**
 >
 > Two gates run *before* any candidate is scored, and neither is a score
-> component:
+> component: **boundary resolution** (a candidate whose end cannot be derived is
+> dropped unread) and **structural validation** (`s0.carve.boundary.validate_structure`,)
+> which drops anything that does not parse as its claimed format.
 >
-> 1. **Boundary resolution.** A candidate whose end cannot be derived is dropped
->    before it is ever read.
-> 2. **Structural validation** (`s0.carve.boundary.validate_structure`). A
->    candidate that does not parse as its claimed format is dropped.
->
-> `--min-confidence 0` changes neither. A truncated or corrupted file is refused
-> with a reason in `recovery_index.json`, not admitted at zero confidence. So
-> there is **no confidence value that recovers a structurally damaged file**:
-> lower the number only to admit *well-formed but lower-scoring* files — a small
-> text document, a truncated-but-valid container, a repetitive image.
+> So `--min-confidence 0` changes neither. A truncated or corrupted file is
+> refused with a reason in `recovery_index.json`, not admitted at zero confidence.
+> **No confidence value recovers a structurally damaged file.** Lower the number
+> only to admit *well-formed but lower-scoring* files.
 >
 > **What actually helps on corrupted media:**
 >
@@ -193,15 +168,6 @@ When configuring parameters for `s0`, follow these engineering rules:
 >   the image does not contain.
 > - Report the refusal. Do not tune a threshold until something appears.
 
-### E. Acquisition Buffer Size (`--block-size 1048576`)
-- **Recommendation**: Use `1048576` (1MB, default) for general acquisition; use `4194304` (4MB) when capturing PCIe Gen4/Gen5 NVMe targets.
-- **Rationale**: Optimizes kernel buffer efficiency and hardware queue depth without thrashing memory.
-
-### F. Fault-Tolerant Sector Recovery (`--no-recovery`)
-- **Recommendation**: Omit `--no-recovery` when imaging suspect media.
-- **Rationale**: Faulty drives frequently have bad sectors. `s0 image` replaces unreadable sectors with zeros (ddrescue-style) and logs the bad sector offsets into the manifest, capturing all surviving sectors. Only use `--no-recovery` when evaluating pristine master drives.
-
----
 
 ## 3. Standard Operational Workflows
 
@@ -457,112 +423,44 @@ genuinely needs doing, say so to the user — do not bypass it.
 
 ## 5. Reading a Certificate Attestation
 
-The certificate is the evidence; the exit code is not. For any wipe:
+The certificate is the evidence; the exit code is not. Full procedure, the
+parsing snippet, and the three non-interchangeable verification cases:
+[Reading a Certificate Attestation](references/certificate-attestation.md).
 
-```bash
-# Device wipes emit certificate_<uuid8>.json; file/folder erases emit
-# file_wipe_certificate_<uuid8>.json. The leading * is required: a glob of
-# `certificate_*.json` alone matches nothing for a file erase, and the shell
-# then passes the literal pattern to python.
-python3 - /evidence/certs/*certificate_*.json <<'PY'
-import json, sys
+Two things to carry into any summary:
 
-for path in sys.argv[1:]:
-    with open(path, encoding="utf-8") as fh:
-        cert = json.load(fh)
-    result = cert.get("result") or {}
-    v = result.get("verification") or {}
-    print(f"== {path}")
-    print(f"  result.status    : {result.get('status')}")
-    print(f"  method           : {cert.get('wipe', {}).get('method')}"
-          f" (NIST {cert.get('wipe', {}).get('nist_category')})")
-    checked = v.get("samples_checked")
-    population = v.get("population_blocks")
-    print(f"  readbacks checked: {checked}"
-          + (f" of {population}" if population is not None else ""))
-    print(f"  sample strategy  : {v.get('sample_strategy') or '(not recorded)'}")
-    if "residual_fraction_upper_bound_ppm" in v:
-        ppm = v["residual_fraction_upper_bound_ppm"]
-        print(f"  residual bound   : {ppm / 10000:.4f}% of the medium at"
-              f" {v.get('confidence_percent')}% confidence")
-    else:
-        print("  residual bound   : NONE RECORDED -- this was not a statistical"
-              " sample, so there is no bound. Read the attestation below.")
-    print(f"  attestation      : {v.get('attestation') or '(not recorded)'}")
-PY
-```
+- **A missing residual bound is not a zero bound.**
+  `residual_fraction_upper_bound_ppm` is optional and genuinely absent on an
+  exhaustive file/folder erase. Never report `0` for an absent field.
+- **A file list is not a sample.** On a file erase, `sample_strategy` reads
+  `exhaustive_over_supplied_paths`.
 
-Two things that snippet deliberately does not do, because doing them is how a
-reader ends up reporting a number the certificate never produced:
-
-- **It never prints `0` for an absent bound.** `residual_fraction_upper_bound_ppm`
-  is optional in the schema and is genuinely *absent* on a file/folder erase,
-  where the operation was exhaustive rather than sampled. A missing bound means
-  "no bound applies", which is not the same claim as "the residue is zero", and
-  an exhaustive re-stat of a file list is not a measurement of a medium.
-- **It never calls a file list a "sample".** `samples_checked` on a file erase
-  counts the paths that were re-stat()ed; `sample_strategy` says
-  `exhaustive_over_supplied_paths` so you can tell.
-
-Three cases, and they are not interchangeable:
-
-- **Sampled readback** (device wipe, `method: sampled_readback`). Carries a
-  statistical bound in `residual_fraction_upper_bound_ppm`. The default 64
-  samples bound the residue at ~4.5% at 95% confidence — weak. Raise
-  `--verify-samples` when the bound is load-bearing.
-- **Exhaustive over supplied paths** (file/folder erase, `method:
-  post_erase_absence_and_overwrite_readback`). Not a sample, so no
-  residual bound applies. It attests absence *for the paths you supplied* — s0
-  cannot verify that your list was complete.
-- **NVMe sanitize** (`s0.wipe.attest`). The strongest available: the
-  controller's own Global Data Erased bit, plus the action it reports having run.
-  Note that the bit means nothing has been written *since the last successful
-  sanitize*; it does not mean this operation was that sanitize. Always read it
-  together with the status code, which is `result.status` in the sanitize log.
-
----
 
 ## 6. Error Handling & Edge Cases
 
-Every string in the "as printed" column below was checked against
-`src/s0/cli/main.py`, `src/s0/cli/devices.py`, `src/s0/safety.py` and
-`src/s0/audit/verify.py`. Quote them back to the user as they appear; do not
-paraphrase them into a different failure.
+Failure strings, their exit codes, and what the agent is required to do about
+each. Full table: [Error Handling & Edge Cases](references/error-handling.md).
 
-| As printed | Exit | Root cause | Mandatory agent remediation |
-|---|---|---|---|
-| `REFUSED: <path> has mounted filesystems (<hits>). Unmount them first, or pass --force if you truly mean it.` | 2 | A partition on the target is in active use | Refuse to wipe. Ask the user to unmount (`umount /dev/sdX*`) or boot the s0 Live ISO. **Never** supply `--force` on a system mount. `s0 plan` prints the same refusal and exits 0 — it is a dry run, so the refusal is in the `Warnings` block. |
-| `REFUSED: <path> hosts the running ROOT filesystem. The tool refuses this without --force; if you mean it, boot the s0 ISO instead.` | 2 | The target hosts `/` | Refuse. The only correct path is the Live ISO. Do not pass `--force`. |
-| `error: Refusing to target system path: <path>` | 77, for both `--target` and `--targets` | The shared path guard protects `/etc`, `/usr`, the filesystem root, `$HOME` itself and s0's own state directory | Refuse. Report which guard fired; do not retry with `--force`. |
+The one rule that matters more than the table: **a refusal is correct
+behaviour.** Never work around it, and never supply `--force` on a mounted or
+root filesystem.
 
-> Quote these strings back as they appear. Both `--target` and `--targets` exit **77**
-> on a protected path, the message is prefixed `error:` (not `REFUSED:`), and a
-> `==> Target items (N): [...]` banner is printed first — so an agent expecting a
-> different exit code or prefix will misread a successful refusal as something else.
-> The code 77 means "s0 declined", not specifically "insufficient privilege": the
-> same code covers `image`/`clone` onto an existing destination without `--force`.
-| `Cannot verify whether <path> hosts the running ROOT filesystem (findmnt unavailable and /proc/mounts could not be verified). Refusing to proceed without --force.` | 2 | `findmnt` and `/proc/mounts` both unreadable, so the root-filesystem check cannot be made | Refuse. Report that the guard could not evaluate, not that the target is safe. |
-| `<path> reports no firmware-mediated Purge method (no ATA Sanitize, no NVMe Sanitize, no SCSI SANITIZE, no FDE key destruction). … s0 will not issue a Purge claim it cannot substantiate …` | 75 | `--require-tier Purge` on a device that cannot reach Purge (`s0 wipe` and `s0 plan` both refuse) | Report the downgrade. Only proceed with `--allow-downgrade`, which records the decision on the certificate — and then report the **achieved** tier, not the requested one. |
-| `drive security state is FROZEN — BIOS froze it to block hot-attach attacks; warm-sleep/resume (suspend the machine, resume) then retry` | 1 | BIOS/UEFI issued an ATA Security Freeze Lock during POST | Ask the user to suspend and resume the machine, or power-cycle the drive on the SATA power header. Do not keep retrying in a loop. In `s0 plan` this appears as the alternative `ATA Security Erase unavailable: drive security state is FROZEN`. |
-| `controller lacks sanitize capability` / `nvme-cli not installed` / `crypto erase capability unconfirmed` (listed under `Alternatives` in `s0 plan`) | 0 | NVMe firmware does not advertise Sanitize, or `nvme-cli` is absent, or the probe was inconclusive | s0 falls back to NVMe Format, then to a single-pass overwrite. Report the **fallback that was chosen** and its tier. Do not describe the result as a Purge sanitize. |
-| `CHAIN INTEGRITY FAILURE` (`s0 audit verify`) | 1 | Hash-chain continuity or a block signature failed | Alert the operator immediately and stop issuing certificates from this station. Preserve the ledger; do not delete or rebuild it. |
-| `UNVERIFIABLE - SIGNING KEY NOT IN THE TRUST SET` (`s0 audit verify`) | 1 | The ledger hashes verify, but the signing key is not among the keys `--key` / `~/.s0/keys` supplied | **This is the first state most users hit, and it is a refusal, not a pass.** The chain is continuous; continuity is not authenticity, because anyone can recompute a SHA-256 block hash. Re-run with `--key <issuer_public.pem>` (repeatable; a directory of `*.pem` also works) and report the result. Never write "audit chain verified" on this state alone. |
-| `VALID & CONTINUOUS - SIGNED WITH UNACCREDITED DEMO KEY` (`s0 audit verify`) | 0 | The chain is intact but was signed with the bundled `demo_issuer_private.pem` | Report it as cryptographically continuous **and** unusable for legal chain of custody. |
-| `VERIFICATION FAILED` (`s0 verify`) | 1 | Signature does not match the payload, or the issuer fingerprint is not pinned | Treat the certificate as suspect. `Reason` distinguishes `signature does NOT match payload — the certificate content has been modified after signing` from `unknown issuer key fingerprint … — certificate was not issued by any pinned authority`. The second is an unknown *authority*, not tampering; say which one it is. |
-| `AUTHENTIC - but signed with an unaccredited demonstration key` (`s0 verify`) | 0 | Valid signature, demonstration key | Report it as authentic but not accredited. |
-| `no trusted public key available; pass --key <issuer_public.pem>` | 78 | No key at all, so nothing could be checked | Report that verification did not happen. Do not report it as a pass or a fail. |
-| `Verification  <n> read-back sample(s) - MISMATCH` followed by `sanitization did not complete cleanly: the certificate records the failure and must not be presented as a completed wipe.` | 1 | Post-wipe readback did not match the pattern | The wipe failed. Report the failure and the certificate's `result.status`. Do not re-run `s0 plan` and describe the retry as success until its own readback matches. |
-| `Planted markers  <n> hit(s) after sanitization` | 0 or 1 — the line is printed unconditionally, so read `result.status` and the `Verification` line above it for the verdict | A known pre-wipe needle is still readable. This is recorded on demo/test targets, where the pre-wipe content was known | Report it regardless of the exit code. It is the strongest single indication that data survived, and a wipe can still exit 0 with it present. |
-| `WIPE INTERRUPTED (Ctrl+C). The target may be partially overwritten and must not be released. Re-run s0 wipe to completion, or escalate to a physical destruction method.` | 130 | The operator interrupted the run | Report the target as **partially** sanitized. Never describe it as sanitized, and never release the media. |
+Two facts worth carrying without opening the reference, because misreading
+either turns a successful refusal into an apparent failure:
 
----
+- The shared path guard prints `error: Refusing to target system path: <path>`
+  and exits **77** — for both `--target` and `--targets`. 77 means "s0
+  declined"; it is not specifically "insufficient privilege".
+- `s0 plan` prints the same refusal but exits **0**, because it is a dry run.
+  The refusal is in the `Warnings` block, not the exit status.
+
 
 ## 7. Detailed Reference Documentation & Where This Skill Lives
 
 ### 7.1 Bundled references
 
 When deep technical domain context is needed, consult the bundled reference
-files. All four paths are relative to this `SKILL.md`:
+files. All paths are relative to this `SKILL.md`:
 
 | Reference | Use it for |
 |---|---|
@@ -570,6 +468,9 @@ files. All four paths are relative to this `SKILL.md`:
 | [Device Safety, Mount Guards & OS Path Architecture](references/device-safety-rules.md) | OS device paths, the four safety interlocks, ATA frozen state, HPA/DCO |
 | [Carving Signatures, File Formats & Entropy Heuristics](references/carving-signatures.md) | The live per-extension table: magic bytes, and whether an extension is **structural** (length derived from the format) or **sized from a declared field / footer** |
 | [Canonical JSON v1, Ed25519 Signatures & Audit Ledger](references/audit-and-crypto.md) | The serialization contract and the block-hash formula |
+| [Decision Guidance](references/decision-guidance.md) | Why each default is what it is: overwrite pattern and pass count, firmware commands, carve confidence, buffer size, fault-tolerant recovery |
+| [Reading a Certificate Attestation](references/certificate-attestation.md) | The parsing snippet, and why a missing residual bound is not a zero bound |
+| [Error Handling & Edge Cases](references/error-handling.md) | Every refusal string, its exit code, and the mandatory remediation for each |
 
 `references/carving-signatures.md` is **generated** from
 `src/s0/carve/signatures.py` by `tools/gen_carving_reference.py`. Do not hand-edit
