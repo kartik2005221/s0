@@ -2410,20 +2410,23 @@ def cmd_web(args) -> int:
             print(f"[s0 web]  ERROR : Aborted. Install manually: pip install {' '.join(deps_missing)}", file=sys.stderr)
             return 1
 
-    # Locate web dashboard app directory
-    possible_roots = [
-        r for r in (resources.repo_root(), Path.home() / ".s0", Path("/opt/s0"))
-        if r is not None
-    ]
-    web_dir = None
-    for root in possible_roots:
-        cand_web = root / "web"
-        if cand_web.is_dir() and (cand_web / "app.py").is_file():
-            web_dir = cand_web
-            break
+    # Locate the dashboard by module, not by path.
+    #
+    # This searched `<repo>/web/app.py`, `~/.s0/web/app.py` and `/opt/s0/web`.
+    # Refactor 0dd50d9 ("one s0 distribution under src/") moved the app to
+    # `s0/web/app.py`, so none of those candidates exists any more and every
+    # `s0 web` died with "Could not locate s0 Web Dashboard files (app.py)" --
+    # while `python -m uvicorn s0.web.app:app` worked. The ISO's own
+    # `s0-web.service` already used the module form, which is the hint.
+    #
+    # Depending on a source-tree layout is the real defect: a pip-installed user
+    # has no `<repo>/web` at all, only site-packages.
+    import importlib.util
 
-    if not web_dir:
-        print("[s0 web]  ERROR : Could not locate s0 Web Dashboard files (app.py).", file=sys.stderr)
+    if importlib.util.find_spec("s0.web.app") is None:
+        print("[s0 web]  ERROR : The s0 web dashboard is not installed.", file=sys.stderr)
+        print("    The dashboard needs the web extra:", file=sys.stderr)
+        print("      pip install 's0[web]'", file=sys.stderr)
         return 1
 
     import secrets
@@ -2455,7 +2458,7 @@ def cmd_web(args) -> int:
         sys.executable,
         "-m",
         "uvicorn",
-        "app:app",
+        "s0.web.app:app",
         "--host",
         host,
         "--port",
@@ -2465,7 +2468,11 @@ def cmd_web(args) -> int:
     env = dict(os.environ)
     env["S0_WEB_AUTH_TOKEN"] = session_token
 
-    proc = subprocess.Popen(cmd, cwd=str(web_dir), env=env)
+    # cwd is deliberately not the source tree: the app resolves its own
+    # package data through importlib, so it does not need to run from a
+    # checkout, and pinning cwd there would re-create the layout coupling
+    # this change just removed.
+    proc = subprocess.Popen(cmd, env=env)
 
     if not getattr(args, "no_browser", False):
         def _open():

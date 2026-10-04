@@ -211,3 +211,56 @@ def test_relative_paths_resolve_absolutely(tmp_path):
             check_path_is_destructive("../../../../../etc/hostname")
     finally:
         os.chdir(here)
+
+
+# --------------------------------------------------------------------------- #
+# H1: `s0 web` must start from an installed package, not a source-tree path.
+# --------------------------------------------------------------------------- #
+
+def test_web_launcher_does_not_depend_on_a_source_tree_layout():
+    """Regression: the launcher searched `<repo>/web/app.py`.
+
+    Refactor 0dd50d9 moved the app to `s0/web/app.py`, so every candidate was gone
+    and `s0 web` died with "Could not locate s0 Web Dashboard files (app.py)" while
+    `uvicorn s0.web.app:app` worked. A pip-installed user has no `<repo>/web` at
+    all, only site-packages, so path discovery could never have worked for them.
+    """
+    main = (REPO / "src" / "s0" / "cli" / "main.py").read_text(encoding="utf-8")
+    body = main[main.index("def cmd_web("):]
+    body = body[: body.index("\ndef ", 5)]
+
+    # Check code, not prose: the old error string survives in the explanatory
+    # comment describing the bug.
+    code = "\n".join(line for line in body.splitlines() if not line.strip().startswith("#"))
+    assert "Could not locate s0 Web Dashboard files" not in code, (
+        "the filesystem search for <root>/web/app.py is back; resolve the module "
+        "instead"
+    )
+    assert "/ \"web\"" not in code and "root / \"web\"" not in code, (
+        "the launcher must not probe <root>/web on disk"
+    )
+    assert '"s0.web.app:app"' in body, "uvicorn must be pointed at the module path"
+    assert 'find_spec("s0.web.app")' in body, (
+        "the launcher must check the module is importable and, if not, say to "
+        "install the web extra"
+    )
+    assert "cwd=str(web_dir)" not in body, (
+        "uvicorn must not be pinned to a source directory; the app resolves its own "
+        "package data"
+    )
+
+
+def test_web_app_module_is_importable():
+    """The thing the launcher now depends on."""
+    import importlib.util
+
+    assert importlib.util.find_spec("s0.web.app") is not None
+
+
+def test_web_app_resolves_its_own_package_data():
+    """No dependence on cwd: the static dir must resolve from the package."""
+    from s0.web import app
+
+    assert app.STATIC_DIR.is_dir(), f"STATIC_DIR missing: {app.STATIC_DIR}"
+    assert (app.STATIC_DIR / "index.html").is_file()
+    assert app.PORTAL_DIR.is_dir(), f"PORTAL_DIR missing: {app.PORTAL_DIR}"
