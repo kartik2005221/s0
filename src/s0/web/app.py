@@ -1038,7 +1038,9 @@ def get_capabilities() -> JSONResponse:
     elif _sys.platform == "win32":
         try:
             import ctypes
-            is_root = bool(ctypes.windll.shell32.IsUserAnAdmin())
+            # ctypes.windll exists only on Windows; this branch is guarded by
+            # sys.platform, and mypy analyses the module against Linux stdlib.
+            is_root = bool(ctypes.windll.shell32.IsUserAnAdmin())  # type: ignore[attr-defined]
         except Exception:
             is_root = False
 

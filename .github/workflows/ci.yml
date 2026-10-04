@@ -158,8 +158,43 @@ jobs:
           mypy src/s0 --ignore-missing-imports --no-error-summary             | tee mypy-report.txt || true
           echo "--- errors by code ---"
           grep -oE '\[[a-z-]+\]' mypy-report.txt | sort | uniq -c | sort -rn || true
-          echo "--- attr-defined / return-value (the classes that found real bugs) ---"
-          grep -cE '\[(attr-defined|return-value)\]' mypy-report.txt || true
+
+
+      # The two classes that have actually caught defects on this branch, now
+      # blocking. Both found real bugs that were then ignored:
+      #
+      #   [return-value]  tiff_end returned `end`, which mypy saw as a str -- and
+      #                    it was: `end` was the TIFF byte-order character for the
+      #                    first 120 lines and the absolute end offset for the last.
+      #                    It worked only because the int was assigned last. Any use
+      #                    of the byte order after that point would hand an int to
+      #                    struct.unpack_from.
+      #   [attr-defined]  `s0 plan --json` read `alt.method.method_id`; WipeMethod
+      #                    publishes `id`. Image targets leave method=None so the
+      #                    conditional short-circuited and the typo survived, firing
+      #                    on every SSD/NVMe/ATA target.
+      #
+      # The rest stays advisory. Turning all ~125 into failures would mean writing
+      # annotations to satisfy a checker rather than to say something, and the count
+      # would become a number people learn to ignore.
+      - name: Mypy gate (attr-defined, return-value)
+        run: |
+          mypy src/s0 --ignore-missing-imports --no-error-summary \
+            --enable-error-code=attr-defined \
+            --enable-error-code=return-value \
+            --disable-error-code=assignment \
+            --disable-error-code=arg-type \
+            --disable-error-code=misc \
+            --disable-error-code=union-attr \
+            --disable-error-code=operator \
+            --disable-error-code=list-item \
+            --disable-error-code=index \
+            --disable-error-code=no-redef \
+            --disable-error-code=truthy-function \
+            --disable-error-code=var-annotated \
+            --disable-error-code=call-overload \
+            --disable-error-code=dict-item \
+            --disable-error-code=typeddict-item
 
       - name: Publish mypy report
         if: always()
@@ -215,11 +250,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # NOTE: `docker://rhysd/actionlint:latest` is still a mutable ref. Pinning it
+      # needs a commit SHA or an exact release tag, and inventing one offline would
+      # either fail the build on a tag that does not exist or, worse, be changed to
+      # something that does. Recorded here rather than guessed at.
       - name: actionlint
         uses: docker://rhysd/actionlint:latest
         args: -color
+      # Was `ludeeus/action-shellcheck@master` -- a third-party action tracking a
+      # moving branch, which means a maintainer of that repository (or anyone who
+      # takes it over) could change the code this workflow executes. Removed rather
+      # than pinned: shellcheck is pre-installed on GitHub-hosted runners, so the
+      # action was buying nothing but a supply-chain dependency. `apt-get install`
+      # covers the case where a future runner image drops it, and the explicit
+      # `--version` makes an unexpectedly absent or ancient shellcheck visible
+      # instead of silently skipping the scan.
       - name: shellcheck
-        uses: ludeeus/action-shellcheck@master
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq shellcheck
+          fi
+          shellcheck --version
+          # -x follows `source`, which the installers use for their helper library.
+          find . -type f -name '*.sh' \
+            -not -path './.git/*' \
+            -not -path './.venv/*' \
+            -not -path './build/*' \
+            -print0 | xargs -0 --no-run-if-empty shellcheck -x -S warning
       - name: hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:

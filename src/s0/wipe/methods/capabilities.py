@@ -30,6 +30,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypedDict
 
 __all__ = [
     "DeviceCapabilities",
@@ -492,7 +493,31 @@ def sys_block_exists(dev: str) -> bool:
     return (Path("/sys/block") / Path(dev).name).is_dir()
 
 
-def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> dict[str, object]:
+class LadderStep(TypedDict):
+    """One rung: a method, the tier it reaches, and how it achieves it."""
+    method: str
+    tier: str
+    mechanism: str
+
+
+class LadderPlan(TypedDict):
+    """The shape plan_ladder returns.
+
+    This was `dict[str, object]`, which made every consumer untyped -- iterating
+    `plan["ladder"]` was a runtime question, not a checked one, and the JSON plan
+    serialiser indexed into it blind. A structured result deserves a structured
+    type; that is what lets mypy catch a renamed key at the point of use.
+    """
+    requested_tier: str
+    satisfiable: bool
+    best_available_tier: str
+    selected: str | None
+    ladder: list[LadderStep]
+    #: None when the request is satisfiable; a sentence explaining why not otherwise.
+    refusal_reason: str | None
+
+
+def plan_ladder(caps: DeviceCapabilities, requested_tier: str = "Purge") -> LadderPlan:
     """The ordered method ladder, plus whether the request can be satisfied.
 
     Returned shape is what the operator sees before anything is written, and what

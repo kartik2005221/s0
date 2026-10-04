@@ -250,23 +250,29 @@ def tiff_end(buf: bytes, start: int, limit: int) -> int | None:
     """
     head = _need(buf, start, 8, "TIFF header")
     order = head[:2]
+    # Named `byte_order`, not `end`. This used to be `end`, and so was the
+    # absolute end offset computed 120 lines below -- one name, two types, in one
+    # function. It happened to work only because the int was assigned last; adding
+    # any use of the byte order after that point would hand an int to
+    # struct.unpack_from and raise a StructError from inside a boundary walk.
+    # mypy flagged it as a return-type mismatch, which is what prompted the look.
     if order == b"II":
-        end = "<"
+        byte_order = "<"
     elif order == b"MM":
-        end = ">"
+        byte_order = ">"
     else:
         raise ResolveError(f"bad TIFF byte order {order!r}")
-    magic = struct.unpack_from(end + "H", head, 2)[0]
+    magic = struct.unpack_from(byte_order + "H", head, 2)[0]
     if magic == 43:
         raise ResolveError("BigTIFF uses 8-byte offsets and is not handled")
     if magic != 42:
         raise ResolveError(f"bad TIFF magic {magic}")
 
     def u16(o: int) -> int:
-        return struct.unpack_from(end + "H", _need(buf, o, 2, "u16"), 0)[0]
+        return struct.unpack_from(byte_order + "H", _need(buf, o, 2, "u16"), 0)[0]
 
     def u32(o: int) -> int:
-        return struct.unpack_from(end + "I", _need(buf, o, 4, "u32"), 0)[0]
+        return struct.unpack_from(byte_order + "I", _need(buf, o, 4, "u32"), 0)[0]
 
     def values(eo: int, type_id: int, count: int) -> list[int]:
         """The value(s) of an IFD entry, inline or via its offset.

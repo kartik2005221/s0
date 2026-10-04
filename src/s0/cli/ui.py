@@ -76,8 +76,9 @@ def add_global_arguments(parser) -> None:
 
     add(group, "--format", choices=("text", "json", "csv"), default=None,
         metavar="{text,json,csv}",
-        help="output format; 'text' degrades to one record per line "
-             "when stdout is not a terminal")
+        help="output format. 'text' is for humans and is written to stderr, "
+             "tables and all; stdout stays empty. Use 'json' or 'csv' to get "
+             "anything on stdout that a script can read")
     add(group, "--json", action="store_true",
         help="shorthand for --format json")
     add(group, "--quiet", "-q", action="store_true",

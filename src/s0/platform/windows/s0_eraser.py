@@ -276,7 +276,11 @@ def win32_flush_buffers(file_obj) -> None:
     try:
         if hasattr(ctypes, "windll") and hasattr(ctypes.windll, "kernel32"):
             import msvcrt
-            handle = msvcrt.get_osfhandle(file_obj.fileno())
+            # msvcrt.get_osfhandle exists only in the Windows build of msvcrt, and
+            # mypy analyses against the Linux one. The guard above has already
+            # established that this is the Windows ctypes, so the attribute is
+            # present at runtime.
+            handle = msvcrt.get_osfhandle(file_obj.fileno())  # type: ignore[attr-defined]
             ctypes.windll.kernel32.FlushFileBuffers(handle)
         else:
             os.fsync(file_obj.fileno())

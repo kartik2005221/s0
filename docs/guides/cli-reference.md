@@ -56,7 +56,7 @@ script can pass them anywhere without knowing which command it landed on:
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--format` | | Output format: `text`, `json`, or `csv`. `text` degrades to one record per line when stdout is not a terminal. |
+| `--format` | | Output format: `text`, `json`, or `csv`. `text` is the human format and is written to **stderr** — stdout stays empty. |
 | `--json` | | Shorthand for `--format json`. |
 | `--quiet` | `-q` | Suppress progress bars and banners; results are unaffected. |
 | `--verbose` | `-v` | Increase diagnostic detail on stderr (`-v` info, `-vv` debug). |
@@ -64,6 +64,35 @@ script can pass them anywhere without knowing which command it landed on:
 | `--no-color` | | Disable colour output (same as `--color never`). |
 | `--yes` | `-y` | Assume yes for destructive confirmations. |
 | `--dry-run` | | Plan only; never write to the target. |
+
+### stdout is for machines, stderr is for humans
+
+This is worth stating once, because getting it wrong is the most common way a
+script ends up with an empty file and no error.
+
+| Format | stdout | stderr |
+|---|---|---|
+| `text` (default) | **empty** | tables, headings, warnings, progress |
+| `json` | one JSON envelope | diagnostics only |
+| `csv` | header row + data rows | diagnostics only |
+
+So `s0 list > devices.txt` writes an empty file, by design: the human table went to
+the terminal, not into your file. `s0 list --format csv > devices.csv` is what you
+want, and `s0 list --json` if you would rather parse it.
+
+The alternative — making `text` degrade to one record per line when stdout is not a
+terminal — was specified here once and never implemented. It is also the worse
+design: the *same* flag would produce two different formats depending on whether a
+terminal happened to be attached, so a script would work interactively and silently
+produce something else in a pipeline. If you want records, ask for `csv` or `json`
+and they will be the same everywhere.
+
+Two consequences worth knowing:
+
+* `s0 <cmd> --json` always emits a parseable envelope, even when the command fails.
+  Check the `status` field; do not rely on the exit code alone.
+* Only `json` and `csv` write to stdout, so `s0 <cmd> --format text | grep ...`
+  finds nothing. Redirect stderr (`2>&1`) if you want to search the human output.
 
 ### Long-form aliases
 

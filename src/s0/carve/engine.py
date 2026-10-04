@@ -43,6 +43,7 @@ import struct
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from s0 import certificate as cert_mod
 from s0 import crypto as core_crypto
@@ -291,7 +292,7 @@ def _recover_from_filesystem(
     extensions: list[str] | None,
     budget: CarveBudget,
     warnings: list[str],
-    counters: dict[str, int],
+    counters: dict[str, Any],
     recovered_hashes: set,
     known_hashes: suppression.SuppressionSet | None = None,
 ) -> tuple[list[CarvedFile], list[dict]]:
@@ -625,7 +626,7 @@ def _scan_signatures(
     extensions: list[str] | None,
     min_confidence: int,
     budget: CarveBudget,
-    counters: dict[str, int],
+    counters: dict[str, Any],
     recovered_hashes: set,
     warnings: list[str],
     already_recovered: list[CarvedFile],
@@ -1012,7 +1013,7 @@ def _carve_one(
     extensions: list[str] | None,
     min_confidence: int,
     budget: CarvePolicy | CarveBudget,
-    counters: dict[str, int],
+    counters: dict[str, Any],
     recovered_hashes: set,
     warnings: list[str],
     allow_guess: bool = False,
@@ -1179,7 +1180,11 @@ def carve_image(
         policy.scan_chunk_bytes = max(256 * 1024, int(chunk_size))
 
     budget = CarveBudget(policy=policy)
-    counters: dict[str, int] = {
+    # Mixed values: mostly ints, plus `rejected_samples`, a list of
+    # RejectedCandidate. It was annotated dict[str, int], which is simply
+    # wrong -- hence eight `int has no attribute append` errors that were
+    # pointing at a real annotation defect rather than at dead code.
+    counters: dict[str, Any] = {
         "candidates": 0, "accepted": 0, "rejected": 0, "rejected_bytes": 0,
         "duplicate": 0, "filtered": 0, "bytes_recovered": 0,
         "structure_candidates": 0, "structure_accepted": 0, "structure_filtered": 0,
