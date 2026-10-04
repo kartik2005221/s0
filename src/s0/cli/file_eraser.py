@@ -291,6 +291,39 @@ def erase_single_file(
             error=f"Invalid overwrite pattern '{pattern}'. Supported patterns: 'zero', 'random'",
         )
 
+    # Validate the write geometry before opening the file. chunk_size <= 0 made
+    # `to_write = min(remaining, chunk_size)` zero or negative, so the write loop
+    # never advanced `remaining` and span forever -- an uninterruptible hang
+    # inside a sanitiser. passes=0 skipped the overwrite entirely and still
+    # truncated the file, reporting success with bytes_overwritten=0, which is the
+    # worst possible outcome: the original data destroyed by an operation that
+    # claimed to write nothing.
+    #
+    # The CLI validates both already; these are the library entry points, which
+    # had no guard of their own.
+    if not isinstance(chunk_size, int) or isinstance(chunk_size, bool) or chunk_size <= 0:
+        return FileEraseResult(
+            path=str(file_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=f"Invalid chunk_size {chunk_size!r}: must be a positive integer",
+        )
+    if not isinstance(passes, int) or isinstance(passes, bool) or passes < 1:
+        return FileEraseResult(
+            path=str(file_path),
+            original_size=0,
+            bytes_overwritten=0,
+            passes=passes,
+            pattern=pattern,
+            status="failure",
+            error=(f"Invalid pass count {passes!r}: at least one pass is required. "
+                   f"Zero passes would truncate the file without overwriting it, "
+                   f"destroying the original data while claiming to write nothing."),
+        )
+
     raw_path = Path(file_path)
     if raw_path.is_symlink() or os.path.islink(file_path):
         return FileEraseResult(

@@ -1402,6 +1402,25 @@ def _iso(ts) -> str:
         return "—"
 
 
+def _confidence_0_100(raw: str) -> int:
+    """argparse type for a percentage the tool can actually express.
+
+    Accepting 999 produced a successful run that carved nothing, and the only way
+    to tell that apart from "nothing was recoverable" was to read the report. The
+    web tier already bounds this to 0-100; the CLI did not, so the same value was
+    accepted in one interface and refused in the other.
+    """
+    try:
+        value = int(raw)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"invalid confidence value {raw!r}: expected an integer 0-100") from None
+    if not 0 <= value <= 100:
+        raise argparse.ArgumentTypeError(
+            f"confidence {value} is out of range: expected 0-100")
+    return value
+
+
 def cmd_carve(args) -> int:
     """Recover deleted and unallocated files from an image, image file or device."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "carve")
@@ -1425,6 +1444,14 @@ def cmd_carve(args) -> int:
     ui.key("Output directory", str(args.out_dir))
 
     target_path = Path(args.target)
+    # Refuse a target that is not there, with a clean exit, before any work starts.
+    # Without this the size probe below quietly yields 0, the engine later opens a
+    # path that does not exist, and the operator saw a two-page Python traceback
+    # for the ordinary mistake of a typo in a filename.
+    if not target_path.exists() and not str(args.target).startswith("/dev/"):
+        ui.error(f"target not found: {args.target}")
+        return EX_NOINPUT
+
     target_size = 0
     if target_path.is_block_device():
         if is_os_device(str(target_path)):
@@ -1520,6 +1547,19 @@ def cmd_carve(args) -> int:
         )
         if bar:
             bar.finish(extra=f"Found: {summary.files_recovered:,}")
+
+        # An explicit extension filter that matches nothing is almost always a
+        # typo, and it used to exit 0 having produced nothing -- indistinguishable,
+        # to a script, from an image with no recoverable files. Only the explicit
+        # filter triggers this: an unfiltered carve that finds nothing is a
+        # legitimate result and still exits 0.
+        if exts and not summary.carved_files:
+            ui.error(
+                f"no files of the requested type were recovered "
+                f"({', '.join(sorted(exts))})")
+            ui.note("Nothing was written. Check the extensions against the image, "
+                    "or drop --extensions to carve every supported type.")
+            return EX_DATAERR
     except KeyboardInterrupt:
         if bar:
             bar.finish(extra="CANCELLED")
@@ -1570,9 +1610,12 @@ def cmd_carve(args) -> int:
                 Path(args.write_session))
             ui.key("Session written", f"{written} ({len(summary.carved_files)} extent(s))")
         except (OSError, _session.SessionError, ValueError) as exc:
-            # A session that cannot be written is worth saying out loud: it
-            # means the next run of a long carve starts from nothing.
-            ui.warn(f"could not write the session file: {exc}")
+            # A session that cannot be written means the next run of a long carve
+            # starts from nothing, so the operator has to know. This used to be a
+            # warning and still exited 0, so a script driving an overnight carve
+            # believed it was resumable when it was not.
+            ui.error(f"could not write the session file: {exc}")
+            return EX_CANTCREAT
 
     # Bodyfiles, written before any format branch so that --format json produces
     # the same artifacts as the text output. An artifact that only appears in one
@@ -2758,7 +2801,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--custom-sig",
         help="path to JSON file (or inline JSON) defining custom file signature(s) with header/footer hex magic bytes",
     )
-    crv.add_argument("--min-confidence", type=int, default=50, help="minimum confidence score (0-100)")
+    crv.add_argument(
+        "--min-confidence", type=_confidence_0_100, default=50,
+        metavar="0-100",
+        help="minimum confidence score (0-100); a value outside this range is "
+             "rejected rather than silently carving nothing")
     crv.add_argument(
         "--session",
         help="resume from a session file written by an earlier run: extents it "
@@ -3026,6 +3073,31 @@ def main(argv=None) -> int:
             return EX_USAGE if code == 2 else code
         sys.stderr.write(f"{code}\n")
         return EX_USAGE
+    except BrokenPipeError:
+        # `s0 list | head` closes the pipe early. That is ordinary shell usage, not
+        # a failure, and the interpreter's shutdown message about flushing stdout
+        # is noise on top of it.
+        try:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        except OSError:
+            pass
+        return EX_OK
+    except Exception as exc:
+        # Last resort. Previously there was no catch-all here at all, so any
+        # unexpected exception surfaced as a raw Python traceback -- which tells an
+        # examiner nothing about what to do next, and buries the actual message
+        # under a page of frames. `--target /nonexistent` on carve printed one.
+        if os.environ.get("S0_TRACEBACK"):
+            raise
+        ui = getattr(locals().get("args"), "ui", None)
+        message = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+        if ui is not None:
+            ui.error(f"error: {message}")
+            ui.note("This is a bug in s0. Re-run with S0_TRACEBACK=1 for the full traceback.")
+        else:
+            sys.stderr.write(f"error: {message}\n")
+            sys.stderr.write("This is a bug in s0. Re-run with S0_TRACEBACK=1 for the full traceback.\n")
+        return EX_SOFTWARE
 
 
 if __name__ == "__main__":
