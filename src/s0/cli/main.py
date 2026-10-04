@@ -2010,10 +2010,32 @@ def cmd_verify(args) -> int:
             == "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06")
 
     if ui.policy.fmt in ("json", "csv"):
+        # A demo-key signature is cryptographically valid and evidentially
+        # worthless: the private key is published in the repository, so anyone can
+        # mint a certificate that verifies. The text output already says
+        # "AUTHENTIC - but signed with an unaccredited demonstration key"; the
+        # machine-readable form reported top-level status "success" with the
+        # caveat buried in a nested field, so a pipeline reading `status` or `ok`
+        # treated an unaccredited document as a passing one.
+        #
+        # The signature still verified, and that is reported truthfully -- as
+        # "unverified_issuer" rather than "success", plus the reason.
+        if ok and demo:
+            machine_status = "unverified_issuer"
+            machine_ok = False
+            machine_reason = (
+                f"{reason}; signed with the published demonstration key, which "
+                f"verifies but carries no evidentiary weight")
+        else:
+            machine_status = "success" if ok else "failure"
+            machine_ok = ok
+            machine_reason = reason
+
         ui.finish(
             result={
-                "ok": ok,
-                "reason": reason,
+                "ok": machine_ok,
+                "status": machine_status,
+                "reason": machine_reason,
                 "cert_uuid": cert_data.get("cert_uuid"),
                 "result_status": cert_data.get("result", {}).get("status"),
                 "nist_category": cert_data.get("wipe", {}).get("nist_category"),
@@ -2022,10 +2044,16 @@ def cmd_verify(args) -> int:
                 "organization": cert_data.get("issuer", {}).get("organization"),
                 "operator_id": cert_data.get("issuer", {}).get("operator_id"),
                 "public_key_fingerprint": cert_data.get("signature", {}).get("public_key_fingerprint"),
+                "signature_verified": ok,
                 "unaccredited_demo_key": demo,
             },
-            status="success" if ok else "failure",
+            status=machine_status,
         )
+        if ok and demo:
+            # Non-zero: a script driving this must not read an unaccredited
+            # certificate as a pass. It still needs the document to be reported, so
+            # this is EX_TEMPFAIL rather than an error.
+            return EX_TEMPFAIL
         return EX_OK if ok else EX_FAILURE
 
     if ok:

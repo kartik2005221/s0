@@ -113,6 +113,12 @@ testpaths = [
     "tests/portal",
     "tests/platform_windows",
     "tests/platform_macos",
+    # Was missing, so a bare `pytest` collected none of its 22 tests. They only
+    # ran when named explicitly, which means CI was not running them either --
+    # CI invokes `pytest tests/...` per directory in some jobs and bare `pytest`
+    # in others, so a suite that only runs when someone remembers to ask for it
+    # is a suite that silently stops running.
+    "tests/iso",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 

@@ -52,7 +52,7 @@ from s0.cli.devices import (
 from s0.cli.file_eraser import erase_batch
 from s0.config import CONFIG
 from s0.image.imager import ImagingOptions, acquire_image
-from s0.safety import ProtectedPathError, check_path_is_destructive
+from s0.safety import SYSTEM_PREFIXES, ProtectedPathError, check_path_is_destructive
 from s0.temperature import read_temperature
 from s0.validation import validate_metadata_str
 from s0.wipe.methods.ata import hpa_dco_report
@@ -93,10 +93,12 @@ _LOG = logging.getLogger("s0.web")
 #: a Secure cookie would be dropped there, breaking the only real deployment.
 AUTH_COOKIE = "s0_session"
 
-_SYSTEM_PATHS = (
-    "/etc", "/usr", "/bin", "/sbin", "/lib", "/lib64",
-    "/boot", "/proc", "/sys", "/run", "/var", "/root", "/opt",
-)
+# Derived from s0.safety, which owns the rules. This used to be a hand-typed
+# copy of the same list, and it had already drifted: /dev and /srv were missing
+# here while s0.safety protected both. A second copy of a safety list is a second
+# list that will drift again, and the direction it drifts is toward permitting
+# something the CLI refuses.
+_SYSTEM_PATHS = SYSTEM_PREFIXES
 
 
 def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:

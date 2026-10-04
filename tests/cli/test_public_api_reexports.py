@@ -108,9 +108,22 @@ def test_string_referenced_name_is_declared_in_dunder_all(
     Otherwise a lint autofix is free to delete it, and the breakage only shows up
     at runtime in code that static analysis never reads.
     """
+    if not (module_name == "s0" or module_name.startswith("s0.")):
+        # The string reference resolved to something outside the package, e.g.
+        # `builtins` or `sys.stdin`. There is no __all__ to check and none is
+        # expected.
+        pytest.skip(f"{module_name} is not an s0 module")
+
     declared = _declared_all(module_name)
     if declared is None:
-        pytest.skip(f"{module_name} is not an importable s0 module")
+        # Importable, but declares no __all__. The old message said "not an
+        # importable s0 module" for this case too, which is simply false: s0.cli.main
+        # imports fine. It hid the fact that these modules have no explicit export
+        # list at all -- which is the exact condition this file exists to
+        # establish, since an implicit export is what a lint autofix deletes.
+        pytest.skip(
+            f"{module_name} declares no __all__, so its exports cannot be checked. "
+            f"Add an explicit __all__ to make them live.")
     assert attr in declared, (
         f"{module_name}.{attr} is referenced as a string path in the repo but is "
         f"not in __all__. Add it to __all__ so linters treat it as a live export."
