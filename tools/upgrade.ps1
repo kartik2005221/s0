@@ -1,1 +1,1 @@
-../portals/install/upgrade.ps1
+../site/install/upgrade.ps1

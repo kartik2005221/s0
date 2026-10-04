@@ -67,6 +67,18 @@ The dashboard is explicitly engineered for **local, single-operator forensic wor
 
 ## 3. The Forensic Operating Modules
 
+The dashboard has **five tabs**, matching the `nav-tab` buttons in `src/s0/web/static/index.html`:
+
+| # | Tab | Panel |
+|---|-----|-------|
+| 1 | Drive Sanitizer | `tab-drive` |
+| 2 | File & Folder Sanitizer | `tab-file` |
+| 3 | Forensic File Carver | `tab-carve` |
+| 4 | Forensic Imager & Cloner | `tab-image` |
+| 5 | Audit Chain Ledger | `tab-audit` |
+
+There is **no Certificate Portal tab in the dashboard.** Offline certificate verification — dropping a `.json` or `.pdf` certificate, optical QR decoding, custom SPKI PEM / 64-character Ed25519 key entry — is the separate Verification Portal at `https://sector-zero.pages.dev/verify/`, not a tab of `s0 web`.
+
 ### Tab 1: Secure Drive Eraser
 
 The Drive Eraser tab automates whole-media sanitization:
@@ -224,15 +236,6 @@ The Audit Ledger tab provides visual verification of the forensic chain of custo
 - **One-Click Hash Chain Verification:** Computes the mathematical SHA-256 continuity and Ed25519 block signature verification from the genesis block to the tip in under 20 milliseconds.
 - **Tamper Simulation & Detection:** If any actor manually edits or removes an entry in the SQLite database file, clicking `Verify Chain Continuity` immediately flags the exact block index where hash continuity or cryptographic signatures broke.
 - **Inspect Block Payloads:** Click on any block to expand the raw signed canonical JSON payload, certificate UUID, and operator attribution.
-
----
-
-### Tab 6: Forensic Certificate Portal
-
-The Certificate Portal allows instant, offline, zero-trust verification of signed certificates issued by s0:
-- **Air-Gapped Operation:** Pure client-side Web Crypto verification with zero network dependencies.
-- **Multi-Format Ingestion:** Drop any `.json` certificate issued by s0, upload an official `.pdf` sanitization certificate for optical QR decoding, or paste/drop raw QR code images to instantly inspect cryptographic proofs.
-- **Custom Key Verification:** Verify certificates issued by independent authorities by providing raw SPKI PEM or 64-character Ed25519 public keys.
 
 ---
 

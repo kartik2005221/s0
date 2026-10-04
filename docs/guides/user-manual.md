@@ -217,7 +217,7 @@ s0 includes 19 built-in binary signature definitions across 16 primary formats:
 - **Documents & Archives:** PDF (`%PDF-`), ZIP / Office OpenXML (`PK 03 04` covering `.docx`, `.xlsx`, `.pptx`), 7-Zip (`7z`), GZIP (`1F 8B 08`), SQLite3 (`SQLite format 3\0`)
 - **Audio:** MP3 (`ID3` and MPEG sync frames), WAV (`RIFF`), FLAC (`fLaC`), OGG (`OggS`)
 - **Binaries & Captures:** ELF (`7F ELF`), PCAP (`D4 C3 B2 A1`), PCAPng (`0A 0D 0D 0A`)
-- **Custom Signatures:** Pass `--custom-signatures <path.json>` to define domain-specific file headers and footers.
+- **Custom Signatures:** Pass `--custom-sig <path.json>` to define domain-specific file headers and footers.
 
 ### 5.3 Filesystem Structure Acceleration
 When carving from raw media, s0 automatically detects filesystem signatures:

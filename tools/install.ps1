@@ -1,1 +1,1 @@
-../portals/install/install.ps1
+../site/install/install.ps1

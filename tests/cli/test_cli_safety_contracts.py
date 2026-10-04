@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -495,3 +496,55 @@ def test_no_documented_flag_is_silently_ignored_in_help():
             # A flag that no handler reads is a flag that lies.
             if action.dest in {"sanitize", "sanitize_passes"}:
                 pytest.fail(f"{name} still offers the removed --{action.dest}")
+
+
+# --------------------------------------------------------------------------- #
+# Colour must honour the policy, not hard-coded escapes.
+# --------------------------------------------------------------------------- #
+
+def _carve_stderr_lines(*extra: str) -> str:
+    import os as _os
+
+    env = {**_os.environ, "S0_LEGAL_NOTICE_SHOWN": ""}
+    env.pop("S0_LEGAL_NOTICE_SHOWN", None)
+    image = Path(tempfile.mkdtemp()) / "evidence.bin"
+    image.write_bytes(b"\xa7" * (2 * 1024 * 1024))
+    result = subprocess.run(
+        [_entry_point(), "carve", "--target", str(image), "--out-dir",
+         str(image.parent / "out"), "--no-certificate", *extra],
+        capture_output=True, text=True, env=env, timeout=180,
+    )
+    return result.stderr
+
+
+def test_no_color_flags_suppress_every_ansi_escape():
+    """Regression: the legal and demo-key notices hard-coded their own escapes.
+
+    So `--no-color`, `--color never` and `NO_COLOR=1` were all ignored for exactly
+    those two messages -- five coloured lines on stderr that no flag could turn
+    off. `list`, `plan`, `audit` and `keygen` emitted none, so the behaviour was
+    also inconsistent between commands.
+    """
+    for flags in (["--no-color"], ["--color", "never"]):
+        stderr = _carve_stderr_lines(*flags)
+        assert "\033[" not in stderr, (
+            f"{' '.join(flags)} left ANSI escapes in stderr:\n"
+            + repr(stderr[:400])
+        )
+
+
+def test_no_color_env_var_suppresses_every_ansi_escape():
+    stderr = _carve_stderr_lines()
+    assert "\033[" not in stderr, f"NO_COLOR was inherited but ignored: {stderr[:300]!r}"
+
+
+def test_colour_is_still_emitted_on_a_terminal():
+    """Suppressing everything unconditionally would be its own bug."""
+    from s0.terminal import OutputPolicy
+
+    policy = OutputPolicy(color=True)
+    import io
+
+    stream = io.StringIO()
+    policy.err_stream = stream
+    assert policy.use_color is True

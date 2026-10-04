@@ -273,7 +273,7 @@ The final manifest for every s0 operation is signed with an **Ed25519 private ke
 - **Mathematical tamper-evidence** — modifying even a single byte of the manifest (timestamp, hash, method, operator) invalidates the signature, detectable by anyone with the public key
 
 ```bash
-s0 verify-cert --cert ./sanitization_cert.json --pubkey operator_public.pem
+s0 verify ./sanitization_cert.json --key operator_public.pem
 ```
 
 {% hint style="info" %}
@@ -422,7 +422,7 @@ Skipping pre-flight checks (especially HPA/DCO) can result in a certificate that
 
 - [ ] **Confirm post-wipe verification passed** — s0 reads back sample LBAs and confirms expected pattern
 - [ ] **Retrieve the signed certificate** — Locate the `.json` certificate file produced by s0
-- [ ] **Verify the certificate signature** — Run `s0 verify-cert` to confirm the Ed25519 signature is valid
+- [ ] **Verify the certificate signature** — Run `s0 verify CERT.json --key operator_public.pem` to confirm the Ed25519 signature is valid
 - [ ] **Confirm `nist_tier: Purge`** — Check the certificate's `sanitization.nist_tier` field
 - [ ] **Check `hpa_dco_check`** — Both fields must show `false` or record must document Enhanced Erase was used
 

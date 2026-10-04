@@ -286,7 +286,7 @@ A **local, single-authority hash chain** stored in SQLite:
 
 - Each audit record includes the SHA-256 hash of the previous record.
 - Any modification to any SQLite row breaks the hash chain continuity from that point forward.
-- Chain integrity is verifiable with a single deterministic pass: `s0 verify-chain`.
+- Chain integrity is verifiable with a single deterministic pass: `s0 audit verify`.
 
 ### What s0 Does Not Have
 
@@ -302,7 +302,7 @@ A **local, single-authority hash chain** stored in SQLite:
 Forensic workstations operate on air-gapped networks by design. Distributed consensus requires network connectivity and introduces latency, third-party dependencies, and transaction fees — none of which add security value when the threat is local record tampering by a single actor.
 {% endhint %}
 
-The tamper-evidence guarantee of a hash chain is **mathematically equivalent** to a blockchain for single-authority forensic use: if anyone modifies a historical record, the chain breaks and `s0 verify-chain` reports `BROKEN` at the exact record where tampering occurred.
+The tamper-evidence guarantee of a hash chain is **mathematically equivalent** to a blockchain for single-authority forensic use: if anyone modifies a historical record, the chain breaks and `s0 audit verify` reports `CHAIN INTEGRITY FAILURE` at the exact record where tampering occurred.
 
 Distributed consensus solves the **Byzantine generals problem** — coordinating agreement among mutually distrusting parties across a network. That problem does not exist on an air-gapped forensic workstation. The simpler, faster, auditable local hash chain is the correct tool.
 

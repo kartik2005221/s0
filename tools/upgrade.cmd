@@ -1,1 +1,1 @@
-../portals/install/upgrade.cmd
+../site/install/upgrade.cmd

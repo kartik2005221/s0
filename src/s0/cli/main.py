@@ -136,12 +136,38 @@ def _validate_portal_url(url: str | None) -> str | None:
 
 
 
-def _warn_if_demo_key(key_path: Path | None) -> None:
-    if key_path is not None and is_demo_key(key_path):
-        sys.stderr.write(
-            "\n\033[33m[!] NOTICE: Operation signed with unaccredited demonstration key (demo_issuer_private.pem).\n"
-            "    DO NOT use this certificate for legal chain-of-custody or regulatory compliance.\033[0m\n\n"
-        )
+
+def _ui_policy(args):
+    """The OutputPolicy for this invocation, or None if not built yet.
+
+    The legal notice and the demo-key warning are emitted from deep inside command
+    handlers, long after `main()` has built the policy. They were reading their own
+    hard-coded escapes instead, which is why `--no-color`, `--color never` and
+    `NO_COLOR=1` were all ignored for exactly those two messages.
+    """
+    ui = getattr(args, "ui", None)
+    return getattr(ui, "policy", None) if ui is not None else None
+
+
+def _warn_if_demo_key(key_path: Path | None, policy=None) -> None:
+    """Warn when signing with the unaccredited demo key.
+
+    The escapes used to be literal, so the notice stayed yellow under
+    `--no-color`, `--color never` and `NO_COLOR=1`. It goes through the policy now,
+    like every other coloured string.
+    """
+    if key_path is None or not is_demo_key(key_path):
+        return
+    out = policy.err_stream if policy is not None else sys.stderr
+    use = policy.use_color if policy is not None else True
+    yellow = "\033[33m" if use else ""
+    reset = "\033[0m" if use else ""
+    out.write(
+        f"\n{yellow}[!] NOTICE: Operation signed with unaccredited demonstration "
+        "key (demo_issuer_private.pem).\n"
+        "    DO NOT use this certificate for legal chain-of-custody or regulatory "
+        f"compliance.{reset}\n\n"
+    )
 
 
 def _validate_cli_metadata(args) -> bool:
@@ -183,11 +209,12 @@ def _print_banner(policy=None) -> None:
     elif not sys.stderr.isatty():
         return
     out = policy.err_stream if policy is not None else sys.stderr
-    cyan = "\033[1;36m" if (policy is None or policy.use_color) else ""
-    bold = "\033[1m"
-    dim = "\033[2m"
-    link = "\033[4;36m"
-    reset = "\033[0m"
+    use = policy.use_color if policy is not None else True
+    cyan = "\033[1;36m" if use else ""
+    bold = "\033[1m" if use else ""
+    dim = "\033[2m" if use else ""
+    link = "\033[4;36m" if use else ""
+    reset = "\033[0m" if use else ""
     for line in _S0_ASCII.strip("\n").split("\n"):
         out.write(f"{cyan}{line}{reset}\n")
     ver = CONFIG.get("version", __version__)
@@ -197,20 +224,55 @@ def _print_banner(policy=None) -> None:
 
 
 _LEGAL_NOTICE = (
-    "\n\033[1;33m⚖  LEGAL & RESPONSIBLE USE NOTICE:\033[0m\n"
-    "\033[33m   Only operate on storage media you own or have explicit written authorization\n"
+    "\n⚖  LEGAL & RESPONSIBLE USE NOTICE:\n"
+    "   Only operate on storage media you own or have explicit written authorization\n"
     "   to process. Unauthorized wiping, erasure, or forensic recovery may violate\n"
     "   computer crime legislation (e.g., CFAA 18 U.S.C. § 1030, Computer Misuse Act,\n"
-    "   IT Act 2000 §§ 43/66). s0 is a digital forensic sanitization and recovery tool.\033[0m\n\n"
+    "   IT Act 2000 §§ 43/66). s0 is a digital forensic sanitization and recovery tool.\n\n"
 )
 
 
-def _print_legal_notice() -> None:
+def _color_allowed(policy=None) -> bool:
+    """Whether escapes may be emitted.
+
+    Prefers the caller's OutputPolicy. With no policy in scope, falls back to the
+    environment, which is what the report exercised: `NO_COLOR=1` was ignored by
+    every hard-coded string in this module.
+    """
+    if policy is not None:
+        return bool(policy.use_color)
+    import os as _os
+
+    if _os.environ.get("NO_COLOR"):
+        return False
+    if _os.environ.get("S0_NO_COLOR") or _os.environ.get("TERM") == "dumb":
+        return False
+    return True
+
+
+def _c(text: str, code: str, policy=None) -> str:
+    """Wrap `text` in an ANSI `code` only when the policy allows colour.
+
+    Every literal escape in this module went through hard-coded strings, so
+    `--no-color`, `--color never` and `NO_COLOR=1` were all ignored by the legal
+    notice, the demo-key notice, the root-filesystem advisory and the `s0 web`
+    root warning. `--quiet` was ignored too, since none of these consulted the
+    quiet flag.
+    """
+    return f"\033[{code}m{text}\033[0m" if _color_allowed(policy) else text
+
+
+def _print_legal_notice(policy=None) -> None:
     """Print the legal notice once per process, to stderr, never into piped data."""
     if os.environ.get("S0_LEGAL_NOTICE_SHOWN"):
         return
     os.environ["S0_LEGAL_NOTICE_SHOWN"] = "1"
-    sys.stderr.write(_LEGAL_NOTICE)
+    use = policy.use_color if policy is not None else True
+    notice = _LEGAL_NOTICE
+    if use:
+        notice = notice.replace("⚖  LEGAL & RESPONSIBLE USE NOTICE:",
+                                "\033[1;33m⚖  LEGAL & RESPONSIBLE USE NOTICE:\033[0m")
+    sys.stderr.write(notice)
     sys.stderr.flush()
 
 
@@ -586,7 +648,7 @@ def cmd_wipe(args) -> int:
     signed, recorded decision -- never a silent one.
     """
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "wipe")
-    _print_legal_notice()
+    _print_legal_notice(getattr(args, 'policy', None) or policy_from_args(args))
     if not _validate_cli_metadata(args):
         return EX_USAGE
 
@@ -714,7 +776,7 @@ def cmd_wipe(args) -> int:
             sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
-        _warn_if_demo_key(key_path)
+        _warn_if_demo_key(key_path, _ui_policy(args))
         res_win, cert = wipe_drive_or_partition_windows(
             target=target.path,
             passes=args.passes,
@@ -789,7 +851,7 @@ def cmd_wipe(args) -> int:
             sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
-        _warn_if_demo_key(key_path)
+        _warn_if_demo_key(key_path, _ui_policy(args))
         res_mac, cert = wipe_drive_or_partition_macos(
             target=target.path,
             passes=args.passes,
@@ -1055,7 +1117,7 @@ def cmd_wipe(args) -> int:
         )
 
     key_path = default_issuer_key(args.key)
-    _warn_if_demo_key(key_path)
+    _warn_if_demo_key(key_path, _ui_policy(args))
     if key_path is None:
         ui.error("no issuer signing key found")
         return EX_CONFIG
@@ -1172,7 +1234,7 @@ def cmd_wipe(args) -> int:
 
 
 def cmd_erase_files(args) -> int:
-    _print_legal_notice()
+    _print_legal_notice(getattr(args, 'policy', None) or policy_from_args(args))
     if not _validate_cli_metadata(args):
         return 2
 
@@ -1189,7 +1251,7 @@ def cmd_erase_files(args) -> int:
     print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
 
     key_path = default_issuer_key(getattr(args, "key", None))
-    _warn_if_demo_key(key_path)
+    _warn_if_demo_key(key_path, _ui_policy(args))
     if key_path is None and not getattr(args, "no_certificate", False):
         print(
             "error: no issuer signing key found.\n"
@@ -1307,13 +1369,13 @@ def _iso(ts) -> str:
 def cmd_carve(args) -> int:
     """Recover deleted and unallocated files from an image, image file or device."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "carve")
-    _print_legal_notice()
+    _print_legal_notice(_ui_policy(args))
     if not _validate_cli_metadata(args):
         return EX_USAGE
     ui.note("S0 - Forensic File Carving & Recovery")
 
     key_path = default_issuer_key(args.key)
-    _warn_if_demo_key(key_path)
+    _warn_if_demo_key(key_path, _ui_policy(args))
     if key_path is None and not getattr(args, "no_certificate", False):
         ui.error("no issuer signing key found. s0 requires a valid Ed25519 signing key to "
                 "issue forensic manifest certificates. Specify --key <path>, or pass "
@@ -1331,10 +1393,10 @@ def cmd_carve(args) -> int:
     if target_path.is_block_device():
         if is_os_device(str(target_path)):
             sys.stderr.write(
-                "\n\033[33m[!] ADVISORY: Target hosts the active running operating system / root filesystem.\n"
+                f"\n{_c('[!] ADVISORY: Target hosts the active running operating system / root filesystem.', '33')}\n"
                 "    Live OS background writes, swap/pagefile activity, and SSD TRIM will overwrite deleted\n"
                 "    clusters in real time, degrading recovery yield. For forensically sound recovery,\n"
-                "    boot the s0 Live ISO or acquire an offline bit-stream image (s0 image).\033[0m\n\n"
+                f"    boot the s0 Live ISO or acquire an offline bit-stream image (s0 image).\n\n"
             )
         try:
             target_size = get_block_device_size(target_path)
@@ -2186,7 +2248,7 @@ def cmd_image(args) -> int:
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "image")
     from s0.image.imager import ImagingOptions, acquire_image
 
-    _print_legal_notice()
+    _print_legal_notice(_ui_policy(args))
     if not _validate_cli_metadata(args):
         return EX_USAGE
 
@@ -2216,7 +2278,7 @@ def cmd_image(args) -> int:
         bar.update(bytes_copied, extra=extra)
 
     key_path = default_issuer_key(getattr(args, "key", None))
-    _warn_if_demo_key(key_path)
+    _warn_if_demo_key(key_path, _ui_policy(args))
     if key_path is None and not getattr(args, "no_certificate", False):
         ui.error("no issuer signing key found. s0 requires a valid Ed25519 signing key "
                  "to issue forensic acquisition certificates. Specify --key <path>, or "
@@ -2377,8 +2439,9 @@ def cmd_web(args) -> int:
             is_root = False
 
     if not is_root:
-        print("\033[1;33m[s0 web]  WARN : s0 web is running without root (sudo) privileges.\033[0m")
-        print("\033[33m[s0 web]         Drive wiping and raw disk acquisition will not be available.\033[0m")
+        policy_ = getattr(args, "policy", None)
+        print(_c("[s0 web]  WARN : s0 web is running without root (sudo) privileges.", "1;33", policy_), file=sys.stderr)
+        print(_c("[s0 web]         Drive wiping and raw disk acquisition will not be available.", "33", policy_), file=sys.stderr)
         print("\033[33m[s0 web]         For full forensic drive operations, launch with: sudo s0 web\033[0m\n")
 
     # Verify dependencies: fastapi and uvicorn
@@ -2807,6 +2870,41 @@ def _attach_global_arguments(root: argparse.ArgumentParser) -> None:
     walk(root)
 
 
+
+#: Sub-subcommands that take their own options and can therefore be swallowed by a
+#: preceding `nargs="+"` option.
+_AUDIT_ACTIONS = ("list", "verify")
+
+
+def _hoist_audit_action(argv):
+    """Make `s0 audit --key K verify` work as well as `s0 audit verify --key K`.
+
+    `--key` is `nargs="+"` so several keys can be supplied at once, which means
+    argparse hands it ["K", "verify"] and then fails with "the following arguments
+    are required: audit_action" -- an error naming an internal field, for a command
+    whose documented form works fine. Fixing it inside the handler is impossible
+    because argparse raises before any handler runs.
+
+    argparse cannot express "greedy, but stop at this token", so argv is fixed
+    before parsing. Only that exact shape is touched: an `audit` invocation whose
+    action appears after a `--key`, and nothing else.
+    """
+    if not argv or "audit" not in argv:
+        return argv
+    audit_at = list(argv).index("audit")
+    if audit_at + 1 < len(argv) and argv[audit_at + 1] in _AUDIT_ACTIONS:
+        return argv                      # already in the documented order
+    if "--key" not in argv[audit_at:]:
+        return argv                      # no --key involved
+    key_at = argv.index("--key", audit_at)
+    tail = argv[key_at + 1:]
+    for action in _AUDIT_ACTIONS:
+        if action in tail:
+            rest = [a for a in tail if a != action]
+            return argv[: audit_at + 1] + [action] + argv[audit_at + 1: key_at] + ["--key"] + rest
+    return argv
+
+
 def main(argv=None) -> int:
     """Entry point.
 
@@ -2823,7 +2921,7 @@ def main(argv=None) -> int:
     raw_args = sys.argv[1:] if argv is None else list(argv)
     try:
         parser = build_parser()
-        args = parser.parse_args(argv)
+        args = parser.parse_args(_hoist_audit_action(raw_args))
 
         policy = policy_from_args(args)
         args.ui = UI(policy, command=getattr(args, "command", "s0"))

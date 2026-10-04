@@ -58,7 +58,7 @@ sequenceDiagram
     Lab->>Ver: Publish keys.json (pinned public keys)
 
     Note over Op,WS: Evidence collection session
-    Op->>WS: s0 carve image.dd
+    Op->>WS: s0 carve --target image.dd --out-dir OUT
     WS->>WS: Sign carving_manifest_UUID.json with private key
     WS-->>Op: Signed manifest + recovery_index.json
 
@@ -147,15 +147,19 @@ When s0 (or any software) writes zeros over an LBA range, the FTL may:
 - Write the zeros to **new physical cells** and retire the old cells to the spare pool — leaving the original data physically present in overprovisioned NAND
 - Keep "retired" bad blocks containing original data accessible to FTL firmware but not to the host OS
 
-**What to do instead:** Use the drive's own secure erase command, which instructs the FTL controller to erase all cells including overprovisioned and spare blocks:
+**What to do instead:** Use the drive's own secure erase command, which instructs the FTL controller to erase all cells including overprovisioned and spare blocks. These are **`nvme-cli` and `hdparm` commands, not s0 commands** — s0 issues them itself when it selects a firmware method, and prints them in the `commands` field of `s0 plan`:
 
 ```bash
-nvme format /dev/nvme0n1 --ses=1        # Cryptographic erase (if supported)
-nvme sanitize /dev/nvme0n1 --sanact=4   # Block erase sanitize
+# nvme-cli (these option spellings are nvme-cli's, not s0's)
+nvme sanitize /dev/nvme0n1 --crypto-erase --no-dealloc=no   # Crypto erase (SANACT=4)
+nvme sanitize /dev/nvme0n1 --block-erase --no-dealloc=no   # Block erase (SANACT=2)
 
+# hdparm, for ATA drives
 hdparm --security-set-pass NULL /dev/sda
 hdparm --security-erase NULL /dev/sda
 ```
+
+Run these by hand only if you are deliberately bypassing s0. From s0, ask for the firmware path with `--require-tier Purge` (or `--firmware`), and read the exact commands it would run in `s0 plan` first.
 
 s0 emits an explicit warning when wiping a device identified as SSD/NVMe.
 {% endhint %}

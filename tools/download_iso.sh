@@ -1,1 +1,1 @@
-../portals/install/download_iso.sh
+../site/install/download_iso.sh

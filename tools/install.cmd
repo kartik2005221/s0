@@ -1,1 +1,1 @@
-../portals/install/install.cmd
+../site/install/install.cmd

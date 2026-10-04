@@ -1,1 +1,1 @@
-../portals/install/install.sh
+../site/install/install.sh

@@ -15,6 +15,7 @@
 * [Forensic File Carving](guides/forensic-carving.md)
 * [Bare-Metal Live ISO](guides/live-iso.md)
 * [Web Dashboard](guides/web-dashboard.md)
+* [Web Dashboard HTTP API](guides/web-api.md)
 * [CLI Reference](guides/cli-reference.md)
 
 ## Architecture & Security

@@ -1,1 +1,1 @@
-../portals/install/uninstall.sh
+../site/install/uninstall.sh

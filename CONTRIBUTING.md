@@ -133,7 +133,7 @@ When contributing to documentation:
 - Add or edit markdown files inside `docs/` under their logical section (`getting-started/`, `guides/`, `architecture/`, `compliance/`, or `project/`).
 - Every new page must be registered in [`docs/SUMMARY.md`](docs/SUMMARY.md) to appear in sidebar navigation.
 - Use `{% hint style="info|success|warning|danger" %}` for callouts and `{% tabs %}` for multi-platform command examples.
-- Use relative markdown links between pages (e.g. `[Manual](../guides/user-manual.md)`).
+- Use relative markdown links between pages (e.g. `[Manual](docs/guides/user-manual.md)`).
 
 ---
 

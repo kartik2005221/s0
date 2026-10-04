@@ -1,1 +1,1 @@
-../portals/install/uninstall.cmd
+../site/install/uninstall.cmd

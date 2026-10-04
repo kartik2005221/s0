@@ -49,6 +49,39 @@ flowchart TD
 |------|-------------|
 | `--version` | Print the `s0` version string and exit. |
 
+### Accepted on every subcommand
+
+These are attached to every subcommand by a post-pass over the parser tree, so a
+script can pass them anywhere without knowing which command it landed on:
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--format` | | Output format: `text`, `json`, or `csv`. `text` degrades to one record per line when stdout is not a terminal. |
+| `--json` | | Shorthand for `--format json`. |
+| `--quiet` | `-q` | Suppress progress bars and banners; results are unaffected. |
+| `--verbose` | `-v` | Increase diagnostic detail on stderr (`-v` info, `-vv` debug). |
+| `--color` | | Colour output: `auto`, `always`, `never`. `auto` honours `NO_COLOR` and TTY detection. |
+| `--no-color` | | Disable colour output (same as `--color never`). |
+| `--yes` | `-y` | Assume yes for destructive confirmations. |
+| `--dry-run` | | Plan only; never write to the target. |
+
+### Long-form aliases
+
+These are **aliases, not global flags** — each is a second spelling of a flag that
+exists on one or more specific subcommands. Both spellings are accepted
+interchangeably wherever they appear:
+
+| Alias | Canonical flag | Accepted by |
+|-------|----------------|-------------|
+| `--operator-id` | `--operator` | `wipe`, `carve`, `image` / `clone` |
+| `--signing-key` | `--key` | `wipe`, `carve`, `image` / `clone` |
+
+```bash
+s0 wipe --target /dev/sdb --operator-id "analyst-42" --signing-key ~/.s0/lab_private.pem --yes
+
+s0 carve --target evidence.raw --out-dir ./recovered --operator-id "analyst-42" --signing-key ~/.s0/lab_private.pem
+```
+
 ---
 
 ## s0 list
@@ -160,6 +193,8 @@ s0 plan --target PATH \
         [--pattern zero|random] \
         [--no-firmware] \
         [--discard-purge-justification TEXT] \
+        [--require-tier Clear|Purge|Destroy] \
+        [--firmware] \
         [--force]
 ```
 {% endtab %}
@@ -172,6 +207,8 @@ s0 plan --target PATH \
 | `--pattern` | `zero` \| `random` | `zero` | no | Overwrite byte pattern for software passes. |
 | `--no-firmware` | flag | off | no | Skip NVMe Sanitize / ATA Secure Erase; plan software overwrite only. |
 | `--discard-purge-justification` | string | — | no | Free-text evidence that allows `BLKDISCARD` to be classed as NIST *Purge* rather than *Clear*. |
+| `--require-tier` | `Clear` \| `Purge` \| `Destroy` | — | no | Assert the minimum sanitization tier the medium must support; s0 refuses when the device cannot achieve it. |
+| `--firmware` | flag | off | no | Shortcut for `--require-tier Purge`: only firmware-mediated Purge methods satisfy this request. |
 | `--force` | flag | off | no | Override refusals for mounted or root devices. |
 
 **Reported output fields**
@@ -189,24 +226,41 @@ s0 plan --target PATH \
 {% tab title="Help Screen" %}
 
 ```text
-usage: s0 plan [-h] [--version] --target TARGET [--passes PASSES]
+usage: s0 plan [-h] [--version] [--target TARGET] [--passes PASSES]
                [--pattern {zero,random}] [--no-firmware]
                [--discard-purge-justification TEXT] [--force]
+               [--require-tier {Clear,Purge,Destroy}] [--firmware] [--json]
 
 options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
-  --target TARGET       block device path OR image file path
-  --passes PASSES       overwrite passes (default 1 — one pass IS Clear per
-                        NIST 800-88)
+  --target TARGET       target drive, image, file, or directory
+  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the
+                        Clear-tier technique in NIST SP 800-88 Rev. 2).
+                        Verification is by sampling, so this is a bound on
+                        residual data, not a guarantee the medium is blank --
+                        see --verify-samples
   --pattern {zero,random}
+                        overwrite pattern: 'zero' (single/multi-pass zeros) or
+                        'random' (CSPRNG bytes)
   --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
                         overwrite only
   --discard-purge-justification TEXT
                         record drive-spec deterministic-TRIM evidence to let
                         BLKDISCARD claim Purge
   --force               override mounted/root safety refusals
+  --require-tier {Clear,Purge,Destroy}
+                        assert the minimum sanitization tier the medium must
+                        support; s0 refuses when the device cannot achieve it
+  --firmware            shortcut for --require-tier Purge: only firmware-
+                        mediated Purge methods satisfy this request
+  --json                shorthand for --format json
 ```
+
+{% hint style="warning" %}
+**`--verify-samples` is a `wipe` flag, not a `plan` flag**
+The real `s0 plan --help` points at `--verify-samples` in the `--passes` description, but `plan` does not accept it — running `s0 plan --verify-samples 128` is a usage error. `--verify-samples` exists on `wipe` only. To raise the tier bar on a plan, use `--require-tier Purge` (or its shorthand `--firmware`), which is the lever `plan` actually exposes; the sampling bound itself is a property of the wipe that follows.
+{% endhint %}
 {% endtab %}
 {% tab title="Recommendations" %}
 
@@ -234,16 +288,28 @@ s0 plan --target /dev/nvme0n1
 │  Model        : Samsung SSD 980 PRO 512GB               │
 │  Serial       : S5GXNX0T123456                          │
 │  Capacity     : 512.1 GB                                │
-│  Method       : nvme_sanitize (Crypto Erase)            │
-│  NIST Category: PURGE                                   │
-│  Summary      : NVMe Sanitize (Crypto Erase) will be    │
-│                 issued via nvme-cli. Estimated time: 3s │
-│  Commands     : nvme sanitize /dev/nvme0n1 --sanact=4   │
-│  Warnings     : None                                    │
-│  Alternatives : NVMe Format FW, BLKDISCARD, overwrite   │
+│  Method       : NVME_SANITIZE_CRYPTO_ERASE              │
+│  NIST Category: Purge                                   │
+│  Summary      : NVMe sanitize crypto executed by        │
+│                 controller firmware                      │
+│  Commands     : nvme sanitize /dev/nvme0n1              │
+│                   --crypto-erase --no-dealloc=no        │
+│                 nvme sanitize-log /dev/nvme0n1           │
+│                   # poll until finished                  │
+│  Warnings     : Crypto-erase variants require a SED-    │
+│                 capable drive; the controller must      │
+│                 report support or the command fails     │
+│                 (we check first).                       │
+│  Alternatives : NVMe Sanitize Block Erase, NVMe Format  │
+│                 User Data Erase, BLKDISCARD, overwrite   │
 │  HPA/DCO      : Not applicable (NVMe)                   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+{% hint style="info" %}
+**Those `Commands` lines are `nvme-cli`, not s0**
+The plan prints the exact `nvme-cli` invocations it would run, so they read like flags. `--crypto-erase`, `--block-erase`, `--no-dealloc=no`, `-s 1`, `-s 2`, and `sanitize-log` are **nvme-cli's** options. s0 has no `--sanact`, `--crypto-erase`, or `--block-erase` flag of its own — those appear only as the *contents* of the plan's `commands` field. To make s0 choose a different NVMe method, change the tier request (`--require-tier`, `--firmware`) or suppress firmware methods (`--no-firmware`), not the emitted command.
+{% endhint %}
 
 **Force software-only plan with 3 random passes**
 ```bash
@@ -294,6 +360,7 @@ s0 wipe --target PATH \
         [--passes N] \
         [--pattern zero|random] \
         [--no-firmware] \
+        [--require-tier Clear|Purge|Destroy] \
         [--force] \
         [--json] \
         [--portal-url URL] \
@@ -317,6 +384,7 @@ s0 wipe --target PATH \
 | `--passes` | integer | `1` | no | Number of overwrite passes (relevant for software overwrite method). |
 | `--pattern` | `zero` \| `random` | `zero` | no | Byte pattern written during software overwrite passes. |
 | `--no-firmware` | flag | off | no | Skip NVMe/ATA firmware erase; use software overwrite only. |
+| `--require-tier` | `Clear` \| `Purge` \| `Destroy` | — | no | Refuse to run unless the device can achieve this tier. s0 will not silently downgrade: without this flag the selected method is always reported, whatever it is. |
 | `--force` | flag | off | no | Override safety refusals for mounted or root devices. |
 | `--json` | flag | off | no | Emit structured JSON to stdout throughout execution (for CI/CD pipelines). |
 | `--portal-url` | URL | `https://sector-zero.pages.dev/verify/` | no | Base URL embedded in the certificate QR code for online verification. |
@@ -335,40 +403,72 @@ s0 wipe --target PATH \
 {% tab title="Help Screen" %}
 
 ```text
-usage: s0 wipe [-h] [--version] --target TARGET [--passes PASSES]
+usage: s0 wipe [-h] [--version] [--target TARGET] [--passes PASSES]
                [--pattern {zero,random}] [--no-firmware]
-               [--discard-purge-justification TEXT] [--force] [--yes]
-               [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
-               [--organization ORGANIZATION] [--no-pdf]
+               [--discard-purge-justification TEXT] [--force]
+               [--targets TARGETS [TARGETS ...]]
+               [--require-tier {Clear,Purge,Destroy}] [--allow-downgrade]
+               [--yes] [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
+               [--organization ORGANIZATION] [--no-certificate] [--no-pdf]
                [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--json]
                [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
 
 options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
-  --target TARGET       block device path OR image file path
-  --passes PASSES       overwrite passes (default 1 — one pass IS Clear per
-                        NIST 800-88)
+  --target TARGET       target drive, image, file, or directory
+  --passes, -p PASSES   overwrite passes (default 1: one zero pass is the
+                        Clear-tier technique in NIST SP 800-88 Rev. 2).
+                        Verification is by sampling, so this is a bound on
+                        residual data, not a guarantee the medium is blank --
+                        see --verify-samples
   --pattern {zero,random}
+                        overwrite pattern: 'zero' (single/multi-pass zeros) or
+                        'random' (CSPRNG bytes)
   --no-firmware         skip firmware methods (ATA SE/NVMe sanitize);
                         overwrite only
   --discard-purge-justification TEXT
                         record drive-spec deterministic-TRIM evidence to let
                         BLKDISCARD claim Purge
   --force               override mounted/root safety refusals
-  --yes                 skip interactive WIPE prompt
-  --key KEY             issuer private key PEM
-  --out-dir OUT_DIR
-  --operator OPERATOR
+  --targets, -t TARGETS [TARGETS ...]
+                        multiple target files or directories to sanitize
+  --require-tier {Clear,Purge,Destroy}
+                        refuse to run unless the device can achieve this tier.
+                        s0 will not silently downgrade: without this flag the
+                        selected method is always reported, whatever it is
+  --allow-downgrade     if --require-tier cannot be met, proceed with the best
+                        available method and record the downgrade on the
+                        certificate
+  --yes, -y             skip interactive confirmation prompt
+  --key, --signing-key KEY
+                        issuer private key PEM (default: demo issuer key)
+  --out-dir OUT_DIR     directory to store certificate, PDF, and QR assets
+                        (default: .)
+  --operator, --operator-id OPERATOR
+                        operator identifier for certificate
   --organization ORGANIZATION
-  --no-pdf
+                        organization name for certificate
+  --no-certificate      explicitly run without generating an Ed25519
+                        compliance certificate
+  --no-pdf              skip generating human-readable PDF compliance
+                        certificate
   --verify-samples VERIFY_SAMPLES
+                        blocks sampled for readback verification (default:
+                        64). Sampling bounds residual data rather than
+                        eliminating it: 64 clean blocks mean under ~45,730 ppm
+                        (4.573%) residual at 95% confidence. Raise it for a
+                        tighter bound, or use --require-tier Purge to prefer a
+                        hardware erase. The bound is recorded in the
+                        certificate.
   --plant-markers       plant recoverable markers first, then require 0 grep
                         hits afterwards
   --json                machine-readable stdout
   --portal-url PORTAL_URL
-                        verification portal base URL
+                        verification portal base URL (default: https://sector-
+                        zero.pages.dev/verify/)
   --qr-url-template QR_URL_TEMPLATE
+                        URL template for encoded verification QR code
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
@@ -660,6 +760,13 @@ s0 carve --target PATH \
          [--extensions EXT,...] \
          [--custom-sig PATH_OR_JSON] \
          [--min-confidence N] \
+         [--session PATH] \
+         [--write-session PATH] \
+         [--hash-set PATH] \
+         [--hash-algorithms LIST] \
+         [--bodyfile PATH] \
+         [--gaps-bodyfile PATH] \
+         [--all-space] \
          [--operator ID] \
          [--organization NAME] \
          [--key PEM] \
@@ -675,6 +782,13 @@ s0 carve --target PATH \
 | `--extensions` | comma-separated | all | no | Restrict carving to specific types (e.g. `jpg,png,pdf,zip`). |
 | `--custom-sig` | path or JSON | — | no | Path to JSON file (or inline JSON) defining custom file signature(s) with hex magic bytes. |
 | `--min-confidence` | 0–100 | `50` | no | Discard recovered files scoring below this threshold. |
+| `--session` | path | — | no | Resume from a session file written by an earlier run: extents it already recovered are not carved again (refused if the image has changed since). |
+| `--write-session` | path | — | no | Write a session file recording this run's recovered extents, so an interrupted carve can be resumed. |
+| `--hash-set` | path | — | no | Suppress files already known: a hash list (`md5`/`sha1`/`sha256`/`sha512`, bare or NSRL-style) or a directory to hash in place. |
+| `--hash-algorithms` | comma-separated | all found | no | Comma-separated algorithms to keep from `--hash-set` (default: all found). |
+| `--bodyfile` | path | — | no | Write a bodyfile of the recovered byte ranges, for a second tool to read the same bytes instead of the whole volume again. |
+| `--gaps-bodyfile` | path | — | no | Write a bodyfile of the ranges that were searched but produced no file. For fragmented recovery the holes are the finding. |
+| `--all-space` | flag | off | no | Search the whole volume instead of only unallocated space. By default the filesystem's own allocation map is read (ext4/FAT32/exFAT/NTFS) and carving is restricted to free space, so files that are still allocated are not reported as recoveries. Use this only when the allocation map cannot be trusted. |
 | `--operator` | string | `s0_config.json` | no, but recommended | Forensic operator identity for the manifest certificate (default: `op-forensic`). |
 | `--organization` | string | `s0_config.json` | no, but recommended | Issuing organization name (default from central configuration). |
 | `--key` | path | auto (`s0_config.json`) | no, but recommended | Signing key PEM for the manifest certificate. |
@@ -713,25 +827,67 @@ s0 carve --target PATH \
 
 ```text
 usage: s0 carve [-h] --target TARGET --out-dir OUT_DIR
-                [--extensions EXTENSIONS] [--min-confidence MIN_CONFIDENCE]
-                [--operator OPERATOR] [--organization ORGANIZATION]
-                [--key KEY] [--no-certificate]
+                [--extensions EXTENSIONS] [--custom-sig CUSTOM_SIG]
+                [--min-confidence MIN_CONFIDENCE] [--session SESSION]
+                [--write-session WRITE_SESSION] [--hash-set HASH_SET]
+                [--hash-algorithms HASH_ALGORITHMS] [--bodyfile BODYFILE]
+                [--gaps-bodyfile GAPS_BODYFILE] [--operator OPERATOR]
+                [--organization ORGANIZATION] [--key KEY] [--no-certificate]
+                [--no-pdf] [--all-space]
 
 options:
   -h, --help            show this help message and exit
   --target TARGET       raw disk image or block device to scan
   --out-dir OUT_DIR     directory to store carved files
   --extensions EXTENSIONS
-                        comma-separated file extensions to carve (e.g.
-                        jpg,png,pdf,zip)
+                        comma-separated extensions to carve (e.g.
+                        jpg,png,pdf,zip,mp4,mkv). Omit to carve everything in the
+                        registry
+  --custom-sig CUSTOM_SIG
+                        path to JSON file (or inline JSON) defining custom
+                        file signature(s) with header/footer hex magic bytes
   --min-confidence MIN_CONFIDENCE
                         minimum confidence score (0-100)
-  --operator OPERATOR
+  --session SESSION     resume from a session file written by an earlier run:
+                        extents it already recovered are not carved again
+                        (refused if the image has changed since)
+  --write-session WRITE_SESSION
+                        write a session file recording this run's recovered
+                        extents, so an interrupted carve can be resumed
+  --hash-set HASH_SET   suppress files already known: a hash list
+                        (md5/sha1/sha256/sha512, bare or NSRL-style) or a
+                        directory to hash in place
+  --hash-algorithms HASH_ALGORITHMS
+                        comma-separated algorithms to keep from --hash-set
+                        (default: all found)
+  --bodyfile BODYFILE   write a bodyfile of the recovered byte ranges, for a
+                        second tool to read the same bytes instead of the
+                        whole volume again
+  --gaps-bodyfile GAPS_BODYFILE
+                        write a bodyfile of the ranges that were searched but
+                        produced no file. For fragmented recovery the holes
+                        are the finding.
+  --operator, --operator-id OPERATOR
+                        operator identifier for manifest
   --organization ORGANIZATION
-  --key KEY             signing key path
+                        organization name for manifest
+  --key, --signing-key KEY
+                        signing key path (default: demo issuer key)
   --no-certificate      explicitly run without generating an Ed25519 forensic
                         manifest certificate
+  --no-pdf              skip generating printable PDF certificate
+  --all-space           search the whole volume instead of only unallocated
+                        space. By default the filesystem's own allocation map
+                        is read (ext4/FAT32/exFAT/NTFS) and carving is
+                        restricted to free space, so files that are still
+                        allocated are not reported as recoveries. Use this
+                        only when the allocation map cannot be trusted.
 ```
+
+{% hint style="warning" %}
+**`s0 carve --help` points at a repository path you may not have**
+The `carve` help text says the supported-format table is in `skills/s0-forensics/references/carving-signatures.md`. That file lives in the git checkout and is **not** packaged into the wheel, so on a `pip install s0` machine the path does not exist. Use the [Forensic Carving Guide](forensic-carving.md) — its format table is generated from the same signature registry — or clone the repo for the per-format magic-byte matrix.
+{% endhint %}
 {% endtab %}
 {% tab title="Recommendations" %}
 
@@ -1111,7 +1267,7 @@ Updates the local `s0` installation from GitHub (`kartik2005221/s0`), verifies s
 {% tab title="Synopsis" %}
 
 ```bash
-s0 upgrade [--force]
+s0 upgrade [--force] [--branch BRANCH]
 ```
 {% endtab %}
 {% tab title="Flags" %}
@@ -1119,23 +1275,28 @@ s0 upgrade [--force]
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--force` | flag | off | Force re-installation of dependencies and packages even if local repository is already on the latest upstream commit. |
+| `--branch` | string | this checkout's own branch | Upstream branch to track. |
 {% endtab %}
 {% tab title="Help Screen" %}
 
 ```text
-usage: s0 upgrade [-h] [--force]
+usage: s0 upgrade [-h] [--force] [--branch BRANCH]
 
 options:
-  -h, --help  show this help message and exit
-  --force     force re-installation of dependencies even if up to date
+  -h, --help        show this help message and exit
+  --force           force re-installation of dependencies even if up to date
+  --branch BRANCH   upstream branch to track (default: this checkout's own
+                    branch)
 ```
 {% endtab %}
 {% tab title="Recommendations" %}
 
 - **Standard Upgrade (`s0 upgrade`)**:
-    - **Recommended**: Queries `git rev-parse HEAD` against `origin/master`. If new commits exist, pulls via `--ff-only`, updates dependencies, and prints the updated version and commit hash. Exits quickly if already up to date.
+    - **Recommended**: Queries `git rev-parse HEAD` against `origin/master`. If new commits exist, pulls with `git pull --ff-only` (`--ff-only` is git's flag, not an s0 flag), updates dependencies, and prints the updated version and commit hash. Exits quickly if already up to date.
 - **Force Rebuild (`s0 upgrade --force`)**:
     - **Recommended for Troubleshooting**: Use `--force` if virtual environment packages or dependencies become corrupted, or when testing freshly modified local source branches.
+- **Tracking a Different Branch (`--branch`)**:
+    - Only needed when you want to track something other than the branch this checkout is on — a release tag line, for example. Leave it unset otherwise.
 {% endtab %}
 {% tab title="Examples" %}
 
@@ -1177,9 +1338,14 @@ Safely removes the s0 suite, its dedicated virtual environment, and registered P
 s0 uninstall
 ```
 
-**Non-interactive removal with audit ledger preservation**
+**Non-interactive removal (audit ledger still backed up — this is the default)**
 ```bash
-s0 uninstall --yes --keep-audit
+s0 uninstall --yes
+```
+
+**Destroy the audit ledger instead of backing it up**
+```bash
+s0 uninstall --yes --purge-all
 ```
 {% endtab %}
 {% tab title="Options" %}
@@ -1187,7 +1353,24 @@ s0 uninstall --yes --keep-audit
 | Option | Short | Description |
 |---|---|---|
 | `--yes` | `-y` | Skip interactive confirmation prompt |
-| `--keep-audit` | | Back up hash-chained audit ledger to `~/s0_audit.db.bak` before removal |
+| `--purge-all` | `--purge` | Permanently delete the audit ledger without a backup |
+| `--keep-audit` | | Legacy flag: the audit ledger is now backed up by default |
+
+```text
+usage: s0 uninstall [-h] [--yes] [--purge-all] [--keep-audit]
+
+options:
+  -h, --help         show this help message and exit
+  --yes, -y          skip interactive confirmation prompt
+  --purge-all, --purge
+                    permanently delete audit ledger without backup
+  --keep-audit       legacy flag: audit ledger is now backed up by default
+```
+
+{% hint style="info" %}
+**The ledger backup is the default, and the filename is timestamped**
+`--keep-audit` is a legacy no-op: preserving the ledger no longer requires a flag. Unless you pass `--purge-all`, `s0 uninstall` copies `~/.s0/s0_audit.db` to `~/s0_audit.db.bak.<YYYYmmdd_HHMMSS>` (and, for older tooling, also to the un-suffixed `~/s0_audit.db.bak`). Each uninstall therefore produces a distinct backup rather than silently overwriting the previous one. Only `--purge-all` destroys the ledger with no copy — irreversibly, and only if that is what you want.
+{% endhint %}
 {% endtab %}
 {% endtabs %}
 
@@ -1457,7 +1640,7 @@ Acquire, inspect, and deploy bare-metal s0 Live bootable media. Automatically di
 ```bash
 s0 live devices [--json]
 
-s0 live download [--version TAG] [--out-dir DIR]
+s0 live download [--version TAG] [--out-dir DIR] [--allow-older]
 
 s0 live flash --target DEVICE [--iso PATH] [-y|--yes] [--force]
 
@@ -1480,6 +1663,7 @@ Fetch official release assets directly from GitHub with automatic SHA-256 integr
 |---|---|---|---|
 | `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.4`) |
 | `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
+| `--allow-older` | Flag | `false` | Allow downloading the Live ISO from an older release if the target release has no ISO attached |
 
 #### 3. `s0 live flash`
 Burn the Live ISO to a target USB flash drive with automatic partition unmounting and block-stream progress reporting.

@@ -322,7 +322,7 @@ s0 carve \
 - **Archives & Binaries:** `7z` (7-Zip), `gz` (Gzip), `elf` (Linux ELF binaries)
 - **Network Captures:** `pcap` (Wireshark/tcpdump capture), `pcapng` (Next-Gen capture)
 
-Custom signature definitions can also be supplied via JSON with `--custom-signatures`.
+Custom signature definitions can also be supplied via JSON with `--custom-sig`.
 
 **Filesystem structure parsing:** ext4 (extent trees), NTFS (`$MFT` runlists), FAT32, exFAT — plus raw sliding-window carving with 4-factor Shannon entropy scoring.
 

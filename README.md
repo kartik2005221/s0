@@ -149,7 +149,7 @@ sudo s0 live flash --target /dev/sdb -y
 ## Interfaces: CLI, Web Console & Bare-Metal ISO
 
 ### 1. Local Forensic Web Dashboard (`sudo s0 web`)
-Launch the air-gapped 4-tab browser console directly on loopback (`127.0.0.1:8669`):
+Launch the air-gapped 5-tab browser console directly on loopback (`127.0.0.1:8669`):
 ```bash
 sudo s0 web
 ```
@@ -221,7 +221,7 @@ Full compliance details: [docs/compliance/nist-compliance.md](https://sector-zer
 Execute the complete automated test suite locally:
 
 ```bash
-.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
+.venv/bin/pytest tests/core tests/cli tests/web tests/platform_windows tests/platform_macos tests/portal -v
 
 bash tools/build_all.sh
 ```

@@ -2,7 +2,7 @@
 
 File carving is the process of recovering files from raw storage media — disk images, block devices, memory dumps — **without relying on the filesystem's own metadata**. When a file is deleted, the filesystem typically marks its directory entry as free and releases its cluster chain, but the underlying bytes are rarely zeroed immediately. Those bytes remain on disk until new writes overwrite them. Carving finds those remnant byte patterns and reconstructs the original files.
 
-`s0` implements five independent carving engines, each tuned for a different scenario. Whether you're recovering JPEGs from a formatted USB drive, salvaging Office documents from a BitLocker-decrypted partition, or extracting ELF binaries from a corrupted Linux volume, the right engine choice dramatically affects both speed and recovery depth.
+`s0` runs filesystem-native recovery where the medium's own metadata survives, then follows it with a signature-anchored sweep of the free space — so a deleted JPEG on a formatted USB drive is found through its FAT32 directory entry, and one whose directory entry was never written is still found by its magic bytes. Whether you're recovering JPEGs from a formatted USB drive, salvaging Office documents from a BitLocker-decrypted partition, or extracting ELF binaries from a corrupted Linux volume, how wide you let the search run affects both speed and recovery depth.
 
 ---
 
@@ -75,6 +75,12 @@ s0 recognizes the following file types by their binary signatures:
 > looks for a footer, and otherwise stops at the signature's `max_size` and says
 > so in the report. The full matrix, with magic bytes and per-format notes, is in
 > `skills/s0-forensics/references/carving-signatures.md`.
+
+{% hint style="warning" %}
+**`skills/s0-forensics/…` is a repository path, not an installed file**
+
+`s0 carve --help` points you at `skills/s0-forensics/references/carving-signatures.md`. That file ships in the git checkout, **not** in the wheel: if you installed s0 with `pip install s0`, the path does not exist on your machine and `s0 carve --help` cannot be taken literally. Use the table above — it is generated from the same registry — or clone the repository to read the per-format matrix.
+{% endhint %}
 
 {% hint style="info" %}
 **ZIP covers more than ZIP**
@@ -192,19 +198,21 @@ Offset 3                            → OEM ID "EXFAT   "        → exFAT
 No match                            → Signature engine (fallback)
 ```
 
-You can bypass auto-detection and force the Signature engine with `--engine signature`.
+This is not a choice you make on the command line. There is no engine flag: filesystem-native recovery runs first wherever a filesystem was detected, and the signature sweep then runs over free space regardless, so one invocation always covers both. The two levers you do have are `--all-space`, which stops s0 from consulting the filesystem's allocation map, and `--extensions`, which narrows what either pass reports.
 
 ### Choosing the Right Engine
+
+You do not choose: the same run performs the structure pass and the signature pass, in that order. What you choose is how wide the search is.
 
 ```mermaid
 flowchart TD
     A[Start: What is the source?] --> B{Known filesystem?}
-    B -- No / Corrupted / Unknown --> SIG["Signature Engine\nSlowest — most universal"]
+    B -- No / Corrupted / Unknown --> SIG["Signature pass\nSlowest — most universal"]
     B -- Yes --> C{Which filesystem?}
-    C -- Linux ext4 --> EXT4["ext4 Structure Engine\n1.5–2.2 GB/s"]
-    C -- Windows NTFS --> NTFS["NTFS Structure Engine\n1.8–2.5 GB/s"]
-    C -- "FAT32\nUSB · SD Card" --> FAT["FAT32 Structure Engine\nDeleted directory entries"]
-    C -- "exFAT\nLarge USB · SDXC" --> EXFAT["exFAT Structure Engine\nDirectory entry sets"]
+    C -- Linux ext4 --> EXT4["ext4 structure pass\n1.5–2.2 GB/s"]
+    C -- Windows NTFS --> NTFS["NTFS structure pass\n1.8–2.5 GB/s"]
+    C -- "FAT32\nUSB · SD Card" --> FAT["FAT32 structure pass\nDeleted directory entries"]
+    C -- "exFAT\nLarge USB · SDXC" --> EXFAT["exFAT structure pass\nDirectory entry sets"]
     EXT4 --> D{Recovery depth good?}
     NTFS --> D
     FAT --> D
@@ -214,8 +222,8 @@ flowchart TD
 ```
 
 {% hint style="success" %}
-**Always follow up with the Signature engine**
-Structure engines skip allocated (live) files and focus on deleted entries. If a structure carve misses expected files, run a Signature scan on the same image as a second pass — it operates entirely independently and may recover fragments the structure engine cannot locate.
+**Widen the second pass instead of running it by hand**
+Structure passes skip allocated (live) files and focus on deleted entries. If a structure pass misses expected files, the signature sweep has already run in the same invocation — re-run with `--all-space` to push it past the allocation map, or raise the scope with `--min-confidence 30` to keep marginal candidates. You do not need a separate engine invocation.
 {% endhint %}
 
 ---
@@ -345,7 +353,7 @@ sudo dd if=/dev/sdb of=evidence.dd bs=4M status=progress conv=noerror,sync
 
 sha256sum evidence.dd > evidence.dd.sha256
 
-s0 carve evidence.dd --out-dir ./recovered/
+s0 carve --target evidence.dd --out-dir ./recovered/
 ```
 
 This preserves the original device state and gives you a permanent artifact.
@@ -471,24 +479,34 @@ Look for `word/document.xml` (Word), `xl/workbook.xml` (Excel), or `ppt/presenta
 FAT32 format operations typically zero only the FAT tables and directory entries — raw data clusters are untouched. The FAT32 Structure engine reads deleted directory entries to find the original cluster chain, while the Signature engine catches anything the directory scan misses.
 
 ```bash
-s0 carve /dev/sdc --engine fat32 --out-dir ./usb_photos/ --min-confidence 60
-
-s0 carve /dev/sdc --engine signature --out-dir ./usb_photos_sig/ --min-confidence 50
+s0 carve --target /dev/sdc --out-dir ./usb_photos/ --extensions jpg --min-confidence 60
 ```
 
-Compare the two output directories — the signature pass often recovers additional partial JPEGs.
+There is no engine selector: filesystem-native recovery runs first and the signature sweep runs after it in the same invocation, so a single pass already does both. If the FAT32 allocation map cannot be trusted and you want the signature sweep over the whole volume rather than free space only, add `--all-space`:
+
+```bash
+s0 carve --target /dev/sdc --out-dir ./usb_photos_all/ --extensions jpg --all-space
+```
+
+Compare the two output directories — the wider sweep often recovers additional partial JPEGs, at the cost of also reporting files that are still allocated.
 
 ### Extracting Evidence from an NTFS Partition
 
-For a specific partition within a multi-partition drive:
+`s0 carve` reads the partition table itself, so an MBR or GPT disk image is walked partition by partition without you computing offsets. Point `--target` at the whole-disk image:
 
 ```bash
-mmls suspect_drive.dd
-
-s0 carve suspect_drive.dd --offset $((2048 * 512)) --out-dir ./ntfs_evidence/
+s0 carve --target suspect_drive.dd --out-dir ./ntfs_evidence/
 ```
 
-The NTFS engine parses the `$MFT` and handles multi-fragment runlists — files spread across non-contiguous clusters are reassembled correctly, something raw signature carving cannot do.
+To narrow the work to one partition first, extract it with `dd` and carve the resulting partition image instead:
+
+```bash
+dd if=suspect_drive.dd of=ntfs_partition.dd bs=512 skip=2048 count=1048576 status=progress
+
+s0 carve --target ntfs_partition.dd --out-dir ./ntfs_evidence/
+```
+
+The NTFS path parses the `$MFT` and handles multi-fragment runlists — files spread across non-contiguous clusters are reassembled correctly, something raw signature carving cannot do.
 
 ---
 

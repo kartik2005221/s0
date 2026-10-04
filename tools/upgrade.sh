@@ -1,1 +1,1 @@
-../portals/install/upgrade.sh
+../site/install/upgrade.sh

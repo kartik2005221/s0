@@ -1,1 +1,1 @@
-../portals/install/uninstall.ps1
+../site/install/uninstall.ps1
