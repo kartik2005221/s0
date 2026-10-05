@@ -40,8 +40,15 @@ Physical destruction of media (incineration, shredding, disintegration, degaussi
 | `SHRED_RANDOM_NPASS` | Any Block / Image | **Clear** | Clear | N-pass pseudorandom byte overwrite | Media-bound |
 | `WINDOWS_CLEAN_ALL` | Windows Win32 | **Clear** | Clear | Win32 physical disk sequential zero fill | Media-bound |
 | `WINDOWS_SED_KEY_DESTROY` | Windows SED | **Purge** | Purge | Self-Encrypting Drive (SED) key destruction | < 5s |
-| `ANDROID_FACTORY_RESET_FBE` | Android UFS/eMMC | **Purge** | Purge | File-Based Encryption (FBE) master key purge | < 10s |
+| `ANDROID_FACTORY_RESET_FBE` | Android UFS/eMMC | **Purge** | Purge | File-Based Encryption (FBE) master key purge — **reserved enum value; no Android implementation exists in this repository** | < 10s |
 | `FORENSIC_CARVING` | Raw Disk Image | *N/A* | *N/A* | Read-only deleted artifact recovery | N/A |
+
+**`ANDROID_FACTORY_RESET_FBE` and `ANDROID_USER_SPACE_OVERWRITE` are reserved enum
+values only.** There is no Android application in this repository and no way to run
+either method from s0. They exist in `src/s0/certificate.py` so a certificate minted
+by a *different* implementation can be parsed and verified here rather than rejected as
+malformed. Do not plan Android work against this table; if you are asked to sanitize an
+Android device, this toolchain cannot do it and saying so is the correct answer.
 
 ---
 

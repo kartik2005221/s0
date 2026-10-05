@@ -2,7 +2,7 @@
 .SYNOPSIS
     s0 Windows Secure File & Folder Eraser PowerShell Runner
 .DESCRIPTION
-    Executes forensic-grade sanitization compliant with NIST SP 800-88 Rev. 1 on Microsoft Windows.
+    Executes forensic-grade sanitization aligned with NIST SP 800-88 Rev. 2 on Microsoft Windows.
 .PARAMETER Targets
     One or more files or directories to sanitize.
 .PARAMETER Passes

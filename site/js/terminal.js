@@ -74,7 +74,7 @@
       command: "sudo s0 wipe --target /dev/sdb --yes --operator \"analyst-01\"",
       postCommandDelay: 550,
       outputs: [
-        { text: "==> S0 Module 1: NIST SP 800-88 Rev. 1 Media Sanitization", delay: 400, cls: "term-orange" },
+        { text: "==> S0 Module 1: NIST SP 800-88 Rev. 2 Media Sanitization", delay: 400, cls: "term-orange" },
         { text: "Target Media   : /dev/sdb [SanDisk Ultra, 32.0 GiB]", delay: 320 },
         { text: "Sanitize Action: Purge (Block Erase + CSPRNG Overwrite & Verification)", delay: 350 },
         { text: "[*] Erasing drive sectors & overwriting cryptographic pattern...", delay: 450, cls: "term-dim" },

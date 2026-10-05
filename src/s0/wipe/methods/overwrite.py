@@ -30,7 +30,7 @@ def _human(n: float) -> str:
 class OverwriteMethod(WipeMethod):
     """Single- or multi-pass overwrite with zeros or CSPRNG bytes.
 
-    Default is ONE pass of zeros: per NIST SP 800-88 Rev.1 that satisfies Clear
+    Default is ONE pass of zeros: per NIST SP 800-88 Rev. 2 that satisfies Clear
     on modern media. Extra passes exist for organizational policy compliance,
     not added security — the CLI says this out loud instead of implying that
     more passes buy safety (see docs/compliance/nist-800-88-mapping.md §4).

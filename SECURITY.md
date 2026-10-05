@@ -32,9 +32,13 @@ target are security boundaries, not conveniences.
 
 Report privately. Do not open a public issue for anything exploitable.
 
-    security@your-domain.example
+Use **GitHub's private vulnerability reporting** on this repository: go to
+*Security* -> *Report a vulnerability* on the repository page. That opens a private
+advisory only the maintainer can see, and it is the channel this project uses.
 
-If you prefer, use GitHub's private vulnerability reporting on this repository.
+There is deliberately no email address here. A placeholder that nobody replaced is
+worse than no address at all: it looks like a working contact route, and a reporter
+who mails it has disclosed a vulnerability to a black hole.
 
 Please include: the version or commit, the exact command, what you expected, what
 happened, and the output. A minimal reproducer is worth more than a

@@ -1,5 +1,5 @@
 ---
-description: "Forensic-grade digital sanitization, deleted-file recovery, and cryptographic audit ledger suite. NIST SP 800-88 compliant with Ed25519 signed certificates."
+description: "Forensic-grade digital sanitization, deleted-file recovery, and cryptographic audit ledger suite. Aligned with NIST SP 800-88 Rev. 2, with Ed25519-signed certificates."
 layout:
   width: wide
   tableOfContents:
@@ -49,7 +49,7 @@ s0 is a digital forensic sanitization and recovery tool. You must **only** opera
     </tr>
     <tr>
       <td><strong>Drive Imager &amp; Cloner</strong></td>
-      <td>Forensic bit-stream disk acquisition engine compliant with NIST SP 800-86 and ISO/IEC 27037. Creates forensically sound raw images (.raw, .img, .dd) or 1:1 hardware disk clones with real-time simultaneous SHA-256/MD5 hashing, write-blocking safety refusals, and fault-tolerant zero-filling for failing storage media.</td>
+      <td>Forensic bit-stream disk acquisition engine aligned with NIST SP 800-86 and ISO/IEC 27037. Creates forensically sound raw images (.raw, .img, .dd) or 1:1 hardware disk clones with real-time simultaneous SHA-256/MD5 hashing, write-blocking safety refusals, and fault-tolerant zero-filling for failing storage media.</td>
       <td><a href="guides/user-manual.md#6-module-3-forensic-drive-imager-bit-stream-copy">Drive Imager Manual</a></td>
     </tr>
   </tbody>
@@ -69,8 +69,31 @@ Most sanitization tools tell you a drive was wiped. s0 **proves it mathematicall
 | **SHA-256 Hash-Chained Audit Ledger** | Yes (Tamper-evident SQLite) | No (Plain text / mutable logs) |
 | **Offline Air-Gapped Verification** | Yes (100% client-side WebCrypto) | No (Requires central cloud server) |
 | **Offensive Forensics in Same Binary** | Yes (ext4, NTFS, FAT32 carvers) | No (Separate, costly software needed) |
-| **Zero External Network Exfiltration** | Yes (Strict SCIF/air-gap compliant) | No (Telemetry beacons) |
+| **No Telemetry** | Yes (nothing is phoned home; see the network note below) | No (Telemetry beacons) |
+| **Works Fully Offline** | Yes, for every command except `s0 live download` | Varies |
 | **Permissive Open Source License** | Yes (MIT License) | No (Expensive per-wipe paywalls) |
+
+#### What "No Telemetry" Does and Does Not Mean
+
+s0 contains no telemetry, no analytics, no crash reporting and no beacon. Running a
+sanitization does not contact anyone, and an offline workstation never touches the
+network.
+
+It is not, however, air-gap-clean in every code path, and claiming otherwise would be
+the kind of overclaim this project elsewhere refuses to make. These are the only
+outbound connections, and all of them are explicit operator actions:
+
+| What | Contacts | When |
+|---|---|---|
+| `s0 live download` | `api.github.com`, then `github.com` for the release asset | Only when you run it, to fetch the Live ISO. The download is SHA-256 verified against the release checksum, and a missing or mismatched checksum fails closed. |
+| `site/install/install.sh` and the PowerShell/cmd installers | `github.com` (clone or fetch), PyPI (`pip install`), Debian mirrors and `deb.debian.org` (the Live ISO build, inside the buildroot only) | Only during installation or `s0 upgrade`. |
+| `s0 upgrade` | `github.com`, PyPI | Only when you run it. |
+
+`s0 list`, `s0 plan`, `s0 wipe`, `s0 image`, `s0 clone`, `s0 carve`, `s0 verify`,
+`s0 audit`, `s0 keygen` and `s0 web` make **no** outbound connections. `s0 web` binds
+to loopback only. The verification portal is a static site: a certificate is checked
+in the browser or with `s0 verify`, and no certificate, key, target path or operator
+identity is ever sent anywhere.
 
 ### Core Architectural Mechanisms
 

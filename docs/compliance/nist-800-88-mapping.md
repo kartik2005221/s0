@@ -54,8 +54,8 @@ encryption strength is adequate (modern AES-XTS class). This matters twice:
 | `WINDOWS_CLEAN_ALL` | `diskpart clean all` (zero-fill whole disk) | Clear | Windows app | ❌ source only |
 | `WINDOWS_CIPHER_W` | `cipher /w` free-space overwrite | Clear⁴ | Windows app | ❌ source only |
 | `WINDOWS_SED_KEY_DESTROY` / BitLocker key destruction | cryptographic erase | Purge³ | Windows app | ❌ source only |
-| `ANDROID_FACTORY_RESET_FBE` | `DevicePolicyManager.wipeData()` on FBE device | Purge³ | Android app | 📋 planned — not yet implemented |
-| `ANDROID_USER_SPACE_OVERWRITE` | best-effort file overwrite pre-reset | Clear-at-best | Android app | 📋 planned — not yet implemented |
+| `ANDROID_FACTORY_RESET_FBE` | `DevicePolicyManager.wipeData()` on FBE device | Purge³ | **none — not in this repository** | ⚠️ reserved enum value only; no Android implementation exists here |
+| `ANDROID_USER_SPACE_OVERWRITE` | best-effort file overwrite pre-reset | Clear-at-best | **none — not in this repository** | ⚠️ reserved enum value only; no Android implementation exists here |
 | `ATA_SANITIZE_BLOCK_ERASE` | ATA-4/ACS-4 **Device Configuration / Sanitize** feature set, command `0xB4`, FEATURE `0x0012` ("BkEr") | Purge | Linux boot media | 📋 registered; driver not yet implemented |
 | `ATA_SANITIZE_CRYPTO_SCRAMBLE` | `0xB4` FEATURE `0x0011` ("Cryp") | Purge³ | Linux boot media | 📋 registered; driver not yet implemented |
 | `ATA_SANITIZE_OVERWRITE` | `0xB4` FEATURE `0x0014`; `LBA[47:32]="OW"`, NSECT = pass count (**0 means 16 passes**) | Purge | Linux boot media | 📋 registered; driver not yet implemented |
@@ -140,6 +140,19 @@ post-wipe state (zeros/random pattern). For demo targets with planted known patt
 grep for the planted bytes across the whole target must return zero hits. Sampling is
 statistically strong but not exhaustive — certificates record exactly what was checked
 (`result.verification`), never more.
+
+### About the two Android rows
+
+There is **no Android application in this repository**, and nothing here can execute
+either method. `ANDROID_FACTORY_RESET_FBE` and `ANDROID_USER_SPACE_OVERWRITE` are
+present only as members of the certificate schema's `method` enum
+(`src/s0/certificate.py`), so a certificate minted by some *other* implementation can
+be parsed, validated and verified here rather than rejected as malformed. They are a
+reserved vocabulary, not a roadmap item.
+
+They were previously marked "planned", which reads as a commitment this project has not
+made. If an Android implementation is ever wanted it belongs in its own repository, and
+these rows should be revisited then.
 
 ## 7. What s0 does not claim
 

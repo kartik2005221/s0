@@ -13,7 +13,7 @@
 
 s0 unifies five core operational requirements in digital forensics, intelligence, incident response, and media decommissioning:
 
-1. **Defensive Anti-Forensics & Data Sanitization (Module 1):** Securely and irreversibly sanitizing storage media, physical drives, partitions, or individual sensitive files per **NIST SP 800-88 Rev. 1** and **IEEE 2883-2022**, anchored by RFC 8032 **Ed25519 digital signatures** and RFC 8785 Canonical JSON v1.
+1. **Defensive Anti-Forensics & Data Sanitization (Module 1):** Securely and irreversibly sanitizing storage media, physical drives, partitions, or individual sensitive files per **NIST SP 800-88 Rev. 2** and **IEEE 2883-2022**, anchored by RFC 8032 **Ed25519 digital signatures** and RFC 8785 Canonical JSON v1.
 2. **Offensive Digital Forensics & Evidence Recovery (Module 2):** Extracting, carving, and reconstructing deleted or concealed files from formatted, corrupted, or raw storage media (ext4, NTFS, FAT32, exFAT) with strict chain of custody and 4-factor Shannon entropy scoring.
 3. **Forensic Bit-Stream Acquisition & Physical Cloning (Module 3):** Sector-by-sector fault-tolerant raw image acquisition (`s0 image`) and target cloning (`s0 clone`) with simultaneous dual SHA-256 and MD5 hashing, ddrescue-style bad-sector zero filling, and signed acquisition manifest emission.
 4. **Cryptographic Chain of Custody & Audit Trail:** Providing an immutable, append-only **RFC 8785 Canonical JSON block hash-chained SQLite ledger** (`~/.s0/s0_audit.db`) for all wipe, erase, carve, and acquisition operations, verifiable offline without network connectivity.

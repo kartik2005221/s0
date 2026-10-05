@@ -924,3 +924,169 @@ class TestTheChangelogHasOneSource:
         )
         for topic in ("s0-core", "s0-cli", "default_key_path", "64", "--dry-run", "S0_INSTALL_REF"):
             assert topic in text, f"the migration section does not mention {topic!r}"
+
+
+class TestTheRepositoryDoesNotOverclaim:
+    """Three claims that were broader than the code supports.
+
+    A forensic tool's credibility rests on its documentation being exactly as careful
+    as its certificates. "NIST SP 800-88 compliant" is a certification claim NIST does
+    not make and cannot make -- 800-88 is a decision framework an organisation applies
+    -- and the project's own compliance document says so in its "What s0 does not
+    claim" section, which made the site and README contradict it.
+    """
+
+    #: 800-88 Rev. 2 superseded Rev. 1 in September 2025. csrc.nist.gov,
+    #: "SP 800-88 Rev. 2, Guidelines for Media Sanitization", Date Published September
+    #: 2025, "Supersedes: SP 800-88 Rev. 1 (12/17/2014)".
+    SUPERSEDED = "Rev. 1"
+
+    def _scanned(self) -> list[Path]:
+        out = [REFERENCE, README, REPO_ROOT / "docs" / "README.md", REPO_ROOT / "PLAN.md"]
+        out += sorted((REPO_ROOT / "site").rglob("*.html"))
+        out += sorted((REPO_ROOT / "site").rglob("*.js"))
+        out += sorted((REPO_ROOT / "skills").rglob("*.md"))
+        out += sorted((REPO_ROOT / "src").rglob("*.py"))
+        out += sorted((REPO_ROOT / "src").rglob("*.ps1"))
+        return [p for p in out if p.is_file() and "__pycache__" not in p.parts]
+
+    def test_no_file_cites_the_superseded_revision(self):
+        offenders: list[str] = []
+        for path in self._scanned():
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "800-88" not in line:
+                    continue
+                if re.search(r"800-88\s+Rev\.?\s*1\b", line) or "800-88r1" in line:
+                    # A sentence that is *about* Rev. 1 may name it legitimately.
+                    if re.search(r"\b(superseded|replaced|withdrew|no longer)\b", line, re.I):
+                        continue
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:100]}")
+        assert not offenders, "these cite NIST SP 800-88 Rev. 1, superseded in September 2025:\n" + "\n".join(
+            offenders
+        )
+
+    def test_no_page_claims_the_tool_is_nist_compliant(self):
+        offenders: list[str] = []
+        for path in self._scanned():
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if re.search(r"800-88[^.\n]{0,40}compliant|compliant[^.\n]{0,30}800-88", line, re.I):
+                    offenders.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:110]}")
+        assert not offenders, (
+            '"NIST SP 800-88 compliant" is a certification claim; 800-88 is a decision '
+            "framework, and docs/compliance/nist-800-88-mapping.md says no tool can be "
+            '"NIST certified". Use "aligned with". Offenders:\n' + "\n".join(offenders)
+        )
+
+    def test_the_site_meta_description_is_not_a_certification_claim(self):
+        """OpenGraph text is what a link preview shows, and it is the least reviewed."""
+        html = (REPO_ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        for attr in ('name="description"', 'property="og:description"', "twitter:description"):
+            m = re.search(rf"{re.escape(attr)}[^>]*content=\"([^\"]*)\"", html)
+            if not m:
+                continue
+            content = m.group(1)
+            assert not re.search(r"\bcompliant\b|\bcertified\b", content, re.I), (
+                f"the {attr} meta tag makes a certification claim: {content!r}"
+            )
+
+    def test_the_network_claim_matches_what_the_code_does(self):
+        """The docs claimed zero network exfiltration with an air-gap claim attached.
+
+        s0 has no telemetry, which is the important part and is true. But `s0 live
+        download` fetches from GitHub and the installers contact GitHub, PyPI and
+        Debian mirrors, so "air-gap compliant" was not. The claim is narrowed to what
+        is checkable: no telemetry, and a named list of the commands that do reach the
+        network.
+        """
+        text = (REPO_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+        assert "Zero External Network Exfiltration" not in text, (
+            "docs/README.md still claims zero network exfiltration with an air-gap "
+            "claim; s0 live download and the installers do contact the network"
+        )
+        assert "No Telemetry" in text, "the replacement claim is not present"
+        # Every command that actually reaches the network must be named.
+        for command in ("s0 live download", "s0 upgrade"):
+            assert command in text, f"the network note does not mention {command}"
+        for host in ("api.github.com", "github.com", "PyPI"):
+            assert host in text, f"the network note does not name {host} as a host contacted"
+
+
+class TestSecurityContactIsReal:
+    def test_there_is_no_placeholder_address(self):
+        """A placeholder looks like a working route and silently swallows reports."""
+        text = (REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        assert "your-domain.example" not in text, (
+            "SECURITY.md still contains the placeholder security@your-domain.example"
+        )
+        for placeholder in ("example.com", "TODO", "FIXME", "<your", "[your"):
+            assert placeholder not in text, f"SECURITY.md still contains {placeholder!r}"
+
+    def test_the_reporting_channel_is_still_stated(self):
+        text = (REPO_ROOT / "SECURITY.md").read_text(encoding="utf-8")
+        assert "private vulnerability reporting" in text.lower(), (
+            "removing the placeholder removed the only usable reporting channel with it"
+        )
+
+    def test_no_other_file_carries_a_placeholder_contact(self):
+        for path in sorted(REPO_ROOT.rglob("*.md")):
+            if ".git" in path.parts or "__pycache__" in path.parts:
+                continue
+            text = path.read_text(encoding="utf-8", errors="ignore")
+            assert "your-domain.example" not in text, (
+                f"{path.relative_to(REPO_ROOT)} has a placeholder contact"
+            )
+
+
+class TestNoAndroidAppIsImplied:
+    """There is no Android application in this repository.
+
+    The two Android rows in the NIST mapping were marked "planned", which reads as a
+    commitment. They are members of the certificate schema's `method` enum so a
+    certificate from another implementation can be parsed here, and nothing more.
+    """
+
+    MAPPING = REPO_ROOT / "docs" / "compliance" / "nist-800-88-mapping.md"
+
+    def test_the_android_rows_are_labelled_as_reserved_enum_values(self):
+        text = self.MAPPING.read_text(encoding="utf-8")
+        for method in ("ANDROID_FACTORY_RESET_FBE", "ANDROID_USER_SPACE_OVERWRITE"):
+            row = next(
+                (line for line in text.splitlines() if line.startswith(f"| `{method}`")),
+                "",
+            )
+            assert row, f"the {method} row has disappeared; the schema still accepts it"
+            assert "planned" not in row.lower(), (
+                f"{method} is still marked 'planned'; this repository has no Android "
+                f"application and has made no such commitment: {row[:120]}"
+            )
+            assert "not in this repository" in row.lower() or "reserved" in row.lower(), (
+                f"{method} does not say it cannot be executed here: {row[:120]}"
+            )
+
+    def test_the_enum_values_exist_only_for_interoperability(self):
+        import s0.certificate as cert
+
+        for method in ("ANDROID_FACTORY_RESET_FBE", "ANDROID_USER_SPACE_OVERWRITE"):
+            assert method in cert.WIPE_METHODS, (
+                f"{method} is no longer in the certificate schema's method registry; "
+                f"if that was intentional, remove the mapping row and this test"
+            )
+
+    def test_nothing_else_claims_an_android_app(self):
+        for name in ("README.md", "site/index.html", "skills/s0-forensics/SKILL.md"):
+            path = REPO_ROOT / name
+            assert path.is_file(), f"{name} is missing"
+            text = path.read_text(encoding="utf-8")
+            for lineno, line in enumerate(text.splitlines(), 1):
+                if "android" not in line.lower():
+                    continue
+                # The OpenGraph spec *requires* an Android asset to be named
+                # `android-chrome-<size>.png`, so an og:image or twitter:image URL
+                # containing that filename is a spec-mandated path, not a claim that
+                # an Android application exists.
+                if re.search(r"(og:image|twitter:image).*android-chrome-\d+x\d+\.png", line, re.I):
+                    continue
+                assert re.search(r"no android|not in this repository|reserved", line, re.I), (
+                    f"{name}:{lineno} mentions Android in a way that could imply an app "
+                    f"exists: {line.strip()[:110]}"
+                )
