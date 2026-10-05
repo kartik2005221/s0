@@ -1090,3 +1090,111 @@ class TestNoAndroidAppIsImplied:
                     f"{name}:{lineno} mentions Android in a way that could imply an app "
                     f"exists: {line.strip()[:110]}"
                 )
+
+
+class TestEveryVersionStringAgrees:
+    """A version string on the landing page is a promise, not a label.
+
+    The site fetched the latest release from the GitHub API at runtime, but the HTML
+    also carried a static value and `home.js` a hard-coded fallback for when the API is
+    unreachable. Both said v2.4.3 while the project was at 2.4.4, and nothing owned them:
+    `tools/release.py` synchronized the README badge and `site/install/install.sh`, so a
+    bump moved one and left the site advertising an older release to anyone whose API
+    call failed.
+
+    Checked against `s0_config.json`, the single source of truth.
+    """
+
+    @staticmethod
+    def _version() -> str:
+        import json
+
+        return json.loads((REPO_ROOT / "s0_config.json").read_text(encoding="utf-8"))["version"]
+
+    def test_the_landing_page_version_pill(self):
+        html = (REPO_ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        m = re.search(r'<span class="s0-release-version">([^<]*)</span>', html)
+        assert m, "the landing page has no static version pill; the JS fallback has nothing to replace"
+        assert m.group(1).strip() == f"v{self._version()}", (
+            f"site/index.html advertises {m.group(1)!r} but the project is at "
+            f"{self._version()}. This is the value shown when the GitHub API call fails."
+        )
+
+    def test_the_javascript_fallback_version(self):
+        js = (REPO_ROOT / "site" / "js" / "home.js").read_text(encoding="utf-8")
+        found = re.findall(r'el\.textContent\s*=\s*"(v[^"]*)"', js)
+        assert found, "home.js has no version fallback to check"
+        for value in found:
+            assert value == f"v{self._version()}", (
+                f"site/js/home.js falls back to {value!r} but the project is at {self._version()}"
+            )
+
+    def test_the_release_script_owns_both_files(self):
+        """A version string nothing updates is a version string that will be wrong."""
+        script = (REPO_ROOT / "tools" / "release.py").read_text(encoding="utf-8")
+        for rel in ("site/index.html", "site/js/home.js"):
+            assert rel in script, (
+                f"{rel} carries a version string that tools/release.py does not update, "
+                f"so the next bump will leave it advertising the previous release"
+            )
+
+    def test_a_dry_run_bump_reports_the_site_files(self):
+        """End-to-end: the script's own regex has to match today's markup.
+
+        Asserted by reading the script rather than running it, because running a bump
+        would rewrite the repository mid-suite.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("release_tool", REPO_ROOT / "tools" / "release.py")
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        for rel, needle in (
+            ("site/index.html", r'<span class="s0-release-version">'),
+            ("site/js/home.js", r'el\.textContent = "'),
+        ):
+            path = REPO_ROOT / rel
+            text = path.read_text(encoding="utf-8")
+            assert re.search(needle, text), f"{rel} no longer matches the pattern release.py uses"
+
+        # And the pattern the script holds must find today's value, not miss it.
+        html = (REPO_ROOT / "site" / "index.html").read_text(encoding="utf-8")
+        pattern = r'(<span class="s0-release-version">v)[0-9]+\.[0-9]+\.[0-9]+[^<]*(</span>)'
+        assert re.search(pattern, html), (
+            "tools/release.py's pattern for the landing-page version pill does not match "
+            "the current markup, so a bump would silently skip it"
+        )
+
+
+class TestTheIndustryPlanIsMarkedAsASnapshot:
+    """`industry-plan.md` described the pre-`src/` layout in the present tense."""
+
+    PLAN_DOC = REPO_ROOT / "industry-plan.md"
+
+    def test_it_does_not_claim_to_be_active(self):
+        text = self.PLAN_DOC.read_text(encoding="utf-8")
+        assert "Status: **superseded**" in text, (
+            "industry-plan.md still reads 'Status: active' while describing a layout "
+            "(linux/cli/s0_cli, core/python/s0_core, verification-portal) that no longer "
+            "exists, and all four of its defects are fixed"
+        )
+
+    def test_it_says_the_paths_are_stale_and_points_at_the_current_ones(self):
+        text = self.PLAN_DOC.read_text(encoding="utf-8")
+        assert "dated snapshot" in text.lower(), (
+            "industry-plan.md does not tell a reader it is a historical record"
+        )
+        assert "repository-layout.md" in text, (
+            "industry-plan.md does not point at the current layout document"
+        )
+        # The old paths must still be there -- the record is not to be rewritten -- but
+        # only inside a block that flags them as stale.
+        for stale in ("linux/cli/s0_cli", "core/python/s0_core", "verification-portal"):
+            if stale not in text:
+                continue
+            idx = text.index(stale)
+            assert idx < len(text) and "stale" in text[:2000].lower(), (
+                f"{stale!r} appears before the snapshot warning"
+            )

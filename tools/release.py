@@ -206,6 +206,29 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
     ):
         modified_files.append(p)
 
+    # The landing page's version pill. It is normally filled in from the GitHub API at
+    # runtime, but there is a static value in the HTML and a hard-coded fallback in the
+    # JS for when the API is unreachable. Both were a release behind and nothing owned
+    # them, so a version bump moved the README badge and left the site advertising an
+    # older release -- the one place a version string is a promise.
+    for rel, pattern, repl in (
+        (
+            "site/index.html",
+            # Group 1 already ends in the literal `v`, so the replacement must not add
+            # another one -- doing so produced `vv2.4.4` on the landing page.
+            r'(<span class="s0-release-version">v)[0-9]+\.[0-9]+\.[0-9]+[^<]*(</span>)',
+            "\\g<1>" + target_version + "\\g<2>",
+        ),
+        (
+            "site/js/home.js",
+            r'(el\.textContent = ")v[0-9]+\.[0-9]+\.[0-9]+[^"]*(")',
+            "\\g<1>v" + target_version + "\\g<2>",
+        ),
+    ):
+        p = REPO_ROOT / rel
+        if update_file_regex(p, pattern, repl, dry_run):
+            modified_files.append(p)
+
     # 15. PLAN.md
     p = REPO_ROOT / "PLAN.md"
     if update_file_regex(
