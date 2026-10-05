@@ -164,7 +164,7 @@ class TestExt4OffsetsAreTrueOffsets:
 
         recovered = {f["extension"]: f["offset"] for f in index["recovered_files"]}
         assert recovered, "nothing was recovered at all; the fixture is not exercising the path"
-        for name, data in originals.items():
+        for name in originals:
             ext = Path(name).suffix.lstrip(".")
             if ext not in recovered:
                 continue  # covered separately by the completeness test below

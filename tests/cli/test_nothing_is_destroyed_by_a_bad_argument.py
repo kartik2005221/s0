@@ -158,7 +158,7 @@ class TestTheTargetSurvivesUnencodableMetadata:
         sys.path.insert(0, str(REPO_ROOT / "src"))
         from s0.validation import validate_metadata_str
 
-        for label, value in (
+        for _label, value in (
             ("ESC", "op\x1b[31mred"),
             ("newline", "op\nsecond-line"),
             ("tab", "op\tsecond"),
