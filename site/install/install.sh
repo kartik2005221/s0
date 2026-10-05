@@ -13,7 +13,7 @@ INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 #
 # Override with S0_INSTALL_REF. Pin a release tag for a reproducible install:
 #   S0_INSTALL_REF=v2.4.4 sh
-S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-agent/harness}}"
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-master}}"
 TOTAL_STEPS=6
 STEP=0
 
