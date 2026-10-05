@@ -117,11 +117,13 @@ def get_block_device_size(device_path: str | Path) -> int:
 
     # 2. Try sysfs /sys/class/block/<dev>/size (sectors * 512)
     try:
-        sys_size = Path("/sys/class/block") / dev_name / "size"
-        if sys_size.exists():
-            sectors = int(sys_size.read_text().strip())
-            if sectors > 0:
-                return sectors * 512
+        safe_dev = os.path.basename(dev_name)
+        if safe_dev and re.match(r"^[A-Za-z0-9_.-]+$", safe_dev):
+            sys_size = Path("/sys/class/block") / safe_dev / "size"
+            if sys_size.exists():
+                sectors = int(sys_size.read_text().strip())
+                if sectors > 0:
+                    return sectors * 512
     except Exception:
         pass
 
@@ -149,8 +151,9 @@ def get_block_device_size(device_path: str | Path) -> int:
         except Exception:
             pass
 
+    clean_p = str(p).replace("\r", "").replace("\n", "")
     message = (
-        f"Could not determine size of block device {p} — all detection methods "
+        f"Could not determine size of block device {clean_p} — all detection methods "
         f"failed; falling back to 0 bytes"
     )
     logger.warning(message)
@@ -291,11 +294,11 @@ def list_block_targets() -> list[Target]:
 
 def image_target(path: str) -> Target:
     """Wrap a regular file as a wipe target (the root-free test medium)."""
-    p = Path(path)
+    p = Path(path).resolve()
     if not p.is_file():
         raise FileNotFoundError(f"not a regular file: {path}")
     return Target(
-        path=str(p.resolve()),
+        path=str(p),
         kind="image",
         capacity_bytes=p.stat().st_size,
         sector_size=512,

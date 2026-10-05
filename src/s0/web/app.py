@@ -93,7 +93,13 @@ IMAGE_DIRS = [
 
 def _prepare_job_out_dir(req_out_dir: str | None, prefix: str, job_id: str) -> Path:
     if req_out_dir and req_out_dir.strip():
-        out_dir = Path(req_out_dir.strip()).resolve()
+        raw_str = req_out_dir.strip()
+        if "\x00" in raw_str or any(ord(c) < 32 for c in raw_str):
+            raise HTTPException(400, "invalid output directory path")
+        out_dir = Path(raw_str).resolve()
+        for sp in SYSTEM_PREFIXES:
+            if _under(out_dir, Path(sp)):
+                raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
     else:
         out_dir = platform.safe_home() / ".s0" / "out" / f"{prefix}-{job_id}"
     try:
@@ -345,7 +351,7 @@ def _init_session_auth_token() -> None:
 
                     kiosk_gid = grp.getgrnam("s0-kiosk").gr_gid
                     os.chown(run_token, 0, kiosk_gid)
-                    os.chmod(run_token, 0o640)
+                    os.chmod(run_token, 0o600)
                 except Exception:
                     # Fallback if s0-kiosk group does not exist
                     os.chmod(run_token, 0o600)
@@ -557,13 +563,8 @@ def _resolve_key(
 
     if key_path and key_path.strip():
         raw = key_path.strip()
-        # Resolve to ONE final candidate *before* any policy check. This used to
-        # check `_SYSTEM_PATHS` against the CWD-relative resolve and only then fall
-        # back to a REPO-relative resolve *without rechecking*. uvicorn runs with
-        # cwd=src/s0/web, so `../../../../etc/hostname` resolved to
-        # `<repo>/etc/hostname` (harmless, not a file) and the fallback then
-        # resolved it to `/etc/hostname` -- a real file, accepted, and passed to the
-        # CLI as `--key`. Checking after resolution makes the base irrelevant.
+        if "\x00" in raw or any(ord(c) < 32 for c in raw):
+            raise HTTPException(400, "invalid key path")
         kp = Path(raw)
         if not kp.is_absolute():
             kp = REPO / kp
@@ -1083,6 +1084,11 @@ def _is_safe_browse_path(target: Path) -> bool:
 
 @app.get("/api/browse", dependencies=[Depends(verify_auth_token)])
 def api_browse(path: str = ".") -> JSONResponse:
+    if "\x00" in path or any(ord(c) < 32 for c in path):
+        return JSONResponse(
+            {"error": "invalid path parameter", "path": path, "items": []},
+            status_code=400,
+        )
     requested = Path(path).expanduser().resolve()
 
     # A rejected path used to be silently replaced with REPO. That is a lie the
@@ -1668,18 +1674,18 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
 @app.post("/api/image", dependencies=[Depends(verify_auth_token)])
 def start_image(req: ImageRequest) -> JSONResponse:
-    if not req.source:
+    if not req.source or "\x00" in req.source:
         raise HTTPException(400, "source path required")
-    if not req.destination:
+    if not req.destination or "\x00" in req.destination:
         raise HTTPException(400, "destination path required")
     if req.source == req.destination:
         raise HTTPException(400, "source and destination cannot be the same path")
 
-    src_p = Path(req.source)
+    src_p = Path(req.source).resolve()
     if not src_p.exists():
         raise HTTPException(404, f"source does not exist: {req.source}")
 
-    dst_p = Path(req.destination)
+    dst_p = Path(req.destination).resolve()
     is_blk = False
     try:
         is_blk = platform.is_block_device(dst_p)
@@ -1878,8 +1884,11 @@ def download(job_id: str, filename: str) -> FileResponse:
     # request. Reject it as the bad input it is, before touching the filesystem.
     if "\x00" in filename or any(ord(c) < 32 for c in filename):
         raise HTTPException(400, "invalid artifact name")
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or safe_name in (".", ".."):
+        raise HTTPException(400, "invalid artifact name")
     out_dir_path = Path(job["out_dir"]).resolve()
-    path = (out_dir_path / filename).resolve()
+    path = (out_dir_path / safe_name).resolve()
     try:
         path.relative_to(out_dir_path)
     except ValueError:

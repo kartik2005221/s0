@@ -32,9 +32,9 @@ from __future__ import annotations
 
 import atexit
 import os
-from pathlib import Path
 import shutil
 import tempfile
+from pathlib import Path
 
 import pytest
 

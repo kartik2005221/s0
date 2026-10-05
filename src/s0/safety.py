@@ -79,7 +79,10 @@ ALLOWED_TEMP_PREFIXES: tuple[str, ...] = (
 
 def _resolve(path: str | os.PathLike[str]) -> Path | None:
     try:
-        return Path(path).expanduser().resolve()
+        s = os.fspath(path)
+        if "\x00" in s:
+            return None
+        return Path(s).expanduser().resolve()
     except (OSError, RuntimeError, ValueError):
         return None
 

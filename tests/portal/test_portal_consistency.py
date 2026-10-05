@@ -21,10 +21,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from html.parser import HTMLParser
 import json
-from pathlib import Path
 import re
+from html.parser import HTMLParser
+from pathlib import Path
 
 import pytest
 

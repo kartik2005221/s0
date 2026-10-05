@@ -73,19 +73,24 @@ def write_private_pem(key: Ed25519PrivateKey, path: str | Path) -> Path:
     issuing authority needs passphrase protection, do it with their key
     management system, not by editing this function.
     """
-    path = Path(path)
+    path = Path(path).resolve()
     pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     )
-    path.write_bytes(pem)
-    os.chmod(path, 0o600)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with open(fd, "wb") as f:
+        f.write(pem)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
     return path
 
 
 def write_public_pem(key: Ed25519PublicKey, path: str | Path) -> Path:
-    path = Path(path)
+    path = Path(path).resolve()
     path.write_bytes(
         key.public_bytes(
             encoding=serialization.Encoding.PEM,
@@ -96,7 +101,8 @@ def write_public_pem(key: Ed25519PublicKey, path: str | Path) -> Path:
 
 
 def load_private_pem(path: str | Path) -> Ed25519PrivateKey:
-    data = Path(path).read_bytes()
+    resolved = Path(path).resolve()
+    data = resolved.read_bytes()
     key = serialization.load_pem_private_key(data, password=None)
     if not isinstance(key, Ed25519PrivateKey):
         raise TypeError(f"{path} is not an Ed25519 private key")
@@ -104,7 +110,8 @@ def load_private_pem(path: str | Path) -> Ed25519PrivateKey:
 
 
 def load_public_pem(path: str | Path) -> Ed25519PublicKey:
-    data = Path(path).read_bytes()
+    resolved = Path(path).resolve()
+    data = resolved.read_bytes()
     key = serialization.load_pem_public_key(data)
     if not isinstance(key, Ed25519PublicKey):
         raise TypeError(f"{path} is not an Ed25519 public key")

@@ -197,7 +197,7 @@ def acquire_image(
                 flags |= os.O_EXCL
             else:
                 flags |= os.O_TRUNC
-            fd = os.open(str(dst_p), flags, 0o644)
+            fd = os.open(str(dst_p), flags, 0o600)
             dst_f = open(fd, "wb")
         else:
             dst_f = open(str(dst_p), "r+b")
