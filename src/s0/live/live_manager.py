@@ -804,6 +804,12 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
+# Read through a module attribute rather than a literal so tests can point this at a
+# fixture. Testing this against whatever the build machine has mounted meant issuing a
+# real `umount -f` against a real block device.
+MOUNTS_PATH = "/proc/mounts"
+
+
 def _still_mounted(target: str) -> list[str]:
     """Mount points still backed by *target* or one of its partitions.
 
@@ -816,7 +822,7 @@ def _still_mounted(target: str) -> list[str]:
         return []
     holders: list[str] = []
     try:
-        with open("/proc/mounts", encoding="utf-8", errors="replace") as fh:
+        with open(MOUNTS_PATH, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 parts = line.split()
                 if len(parts) < 2:
@@ -826,7 +832,7 @@ def _still_mounted(target: str) -> list[str]:
                 if dev == base or dev.startswith(base) and dev[len(base) : len(base) + 1].isdigit():
                     holders.append(f"{parts[1]} ({dev})")
     except OSError:
-        return []
+        return None
     return holders
 
 
@@ -852,7 +858,11 @@ def _unmount_partitions(target: str) -> bool:
         except Exception:
             return False
         # Ask the kernel, not umount.
-        return not _still_mounted(target)
+        still = _still_mounted(target)
+        if still is None:
+            # Could not confirm it is safe, so it is not safe.
+            return False
+        return not still
     elif sys.platform == "darwin":
         try:
             disk_target = target.replace("/dev/rdisk", "/dev/disk")
@@ -1125,13 +1135,20 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
     print("[s0 live]  Unmounting existing filesystems on target drive...")
     if not _unmount_partitions(matched_device["path"]):
         still = _still_mounted(matched_device["path"])
-        print(
-            "[s0 live]  ERROR : the target still has mounted filesystems, so writing to "
-            "it would corrupt the mounted data rather than replace the device.",
-            file=sys.stderr,
-        )
-        for entry in still:
-            print(f"[s0 live]          still mounted: {entry}", file=sys.stderr)
+        if still is None:
+            print(
+                "[s0 live]  ERROR : could not read the mount table, so this cannot "
+                "confirm the target is unmounted. Not writing.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "[s0 live]  ERROR : the target still has mounted filesystems, so writing "
+                "to it would corrupt the mounted data rather than replace the device.",
+                file=sys.stderr,
+            )
+            for entry in still:
+                print(f"[s0 live]          still mounted: {entry}", file=sys.stderr)
         print(
             "[s0 live]          unmount them and retry, or stop anything using them "
             "(a shell cwd, a file manager, a backup agent).",

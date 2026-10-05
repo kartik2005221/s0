@@ -51,71 +51,141 @@ def _entry() -> str:
     return which
 
 
-def _mounted_devices() -> list[str]:
-    """Block devices this machine actually has mounted, for a non-synthetic test."""
+def _synthetic_mounts(tmp_path: Path, lines: list[str]) -> Path:
+    """Write a fake /proc/mounts and point `_still_mounted` at it.
 
-    base = Path("/proc/mounts")
-    if not base.is_file():
-        pytest.skip("no /proc/mounts")
-    devices = []
-    for line in base.read_text(encoding="utf-8", errors="replace").splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and parts[0].startswith("/dev/"):
-            dev = parts[0].removeprefix("/dev/")
-            if dev not in devices:
-                devices.append(dev)
-    return devices
+    The unmount logic used to be tested against whatever block devices the machine
+    happened to have mounted. That is the thing the test suite is not allowed to do:
+    it issued a real `umount -f` against a real device, and relied on running
+    unprivileged to make that fail safely. A test that is only safe because of the
+    permissions it happens to run with is one CI root container away from being a test
+    that unmounts the build machine's disk.
+
+    Every case below is now a fixture: the device nodes are ordinary empty files in
+    tmp_path and the mount table is a string we control.
+    """
+    mounts = tmp_path / "proc-mounts"
+    mounts.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return mounts
 
 
 class TestLiveFlashRefusesAMountedTarget:
-    def test_it_can_see_a_real_mount(self):
+    """Every case here is a fixture -- no real block device is read or unmounted."""
+
+    @pytest.fixture(autouse=True)
+    def _no_real_devices(self, tmp_path, monkeypatch):
+        """Fail loudly if anything in this class reaches a real device node."""
+        from s0.live import live_manager
+
+        mounts = _synthetic_mounts(
+            tmp_path,
+            [
+                "/dev/fakesda1 / ext4 rw,relatime 0 0",
+                "/dev/fakesda2 /data xfs rw,relatime 0 0",
+                "tmpfs /run tmpfs rw,nosuid 0 0",
+            ],
+        )
+        monkeypatch.setattr(live_manager, "MOUNTS_PATH", str(mounts))
+
+        def _no_subprocess(*a, **k):
+            raise AssertionError(f"a test issued a real command: {a!r}")
+
+        monkeypatch.setattr(live_manager.subprocess, "run", _no_subprocess)
+
+    def test_it_finds_a_mounted_device(self):
         from s0.live.live_manager import _still_mounted
 
-        devices = _mounted_devices()
-        if not devices:
-            pytest.skip("no mounted block devices on this machine")
-        dev = devices[0]
-        holders = _still_mounted(f"/dev/{dev}")
-        assert holders, f"_still_mounted found nothing for /dev/{dev}, which is mounted"
-        assert all("/dev/" in h or "(" in h for h in holders)
+        holders = _still_mounted("/dev/fakesda1")
+        assert holders, "a device in the mount table must be reported as mounted"
+        assert all("/" in h or "(" in h for h in holders)
 
     def test_a_partition_of_a_mounted_device_counts_as_mounted(self):
-        """`/dev/vda1` is a partition of `/dev/vda`; asking about either must work.
+        """`/dev/sda1` is a partition of `/dev/sda`; asking about either must work.
 
         Getting this wrong in the permissive direction is how a whole-disk flash slips
         past a check that only looks at the device node itself.
         """
         from s0.live.live_manager import _still_mounted
 
-        devices = _mounted_devices()
-        whole = next((d for d in devices if not d[-1].isdigit()), None)
-        if whole is None:
-            pytest.skip("no whole-disk mount to derive a partition from")
-        assert _still_mounted(f"/dev/{whole}"), f"/dev/{whole} should be reported as mounted"
+        assert _still_mounted("/dev/fakesda"), "/dev/fakesda should be reported as mounted"
+        assert _still_mounted("/dev/fakesda1"), "/dev/fakesda1 is mounted directly"
+        assert _still_mounted("/dev/fakesda2"), "/dev/fakesda2 is mounted directly"
+
+    def test_the_whole_disk_lists_every_partition_mount_point(self):
+        from s0.live.live_manager import _still_mounted
+
+        holders = _still_mounted("/dev/fakesda")
+        assert any("/data" in h for h in holders), f"expected /data among {holders}"
+        assert any("ext4" in h or "/" in h for h in holders)
 
     def test_a_device_with_nothing_mounted_is_clean(self):
         from s0.live.live_manager import _still_mounted
 
         assert _still_mounted("/dev/definitely-not-a-real-device-xyz") == []
 
-    @pytest.mark.skipif(os.geteuid() == 0, reason="root can unmount anything, so this proves nothing")
-    def test_a_device_this_process_cannot_unmount_reports_failure(self):
+    def test_a_non_device_mount_is_not_attributed_to_it(self):
+        """tmpfs has no device node; it must not make an unrelated device look busy."""
+        from s0.live.live_manager import _still_mounted
+
+        assert _still_mounted("/dev/run") == []
+
+    def test_a_failed_unmount_reports_failure(self, tmp_path, monkeypatch):
         """The reported defect: unmount failed and the function said it had succeeded.
 
-        Running unprivileged, `umount` fails on a genuinely mounted device, which is the
-        exact condition the old code discarded.
+        `umount -f` on a busy filesystem can return zero in some configurations and
+        non-zero in others, so the old code that trusted its exit status -- and used
+        `check=False` so nobody was even looking -- was wrong in whichever direction the
+        kernel happened to pick. The answer now comes from re-reading the mount table.
         """
-        from s0.live.live_manager import _still_mounted, _unmount_partitions
+        from s0.live import live_manager
+        from s0.live.live_manager import _unmount_partitions
 
-        devices = _mounted_devices()
-        if not devices:
-            pytest.skip("no mounted block devices to test against")
-        dev = devices[0]
-        assert _still_mounted(f"/dev/{dev}"), "fixture: device should be mounted"
-        assert _unmount_partitions(f"/dev/{dev}") is False, (
+        calls: list[list[str]] = []
+
+        def _fake_run(cmd, *a, **k):
+            calls.append(list(cmd))
+            return subprocess.CompletedProcess(cmd, 1, b"", b"target is busy")
+
+        monkeypatch.setattr(live_manager.subprocess, "run", _fake_run)
+
+        assert _unmount_partitions("/dev/fakesda") is False, (
             "_unmount_partitions reported success while the device is still mounted; "
             "the caller would then write the ISO over live data"
         )
+        assert calls, "it never even attempted the unmount"
+
+    def test_a_successful_unmount_reports_success(self, tmp_path, monkeypatch):
+        """The other direction: a device genuinely absent from the table is clean."""
+        from s0.live import live_manager
+        from s0.live.live_manager import _unmount_partitions
+
+        monkeypatch.setattr(
+            live_manager,
+            "MOUNTS_PATH",
+            str(_synthetic_mounts(tmp_path, ["tmpfs /run tmpfs rw 0 0"])),
+        )
+        monkeypatch.setattr(
+            live_manager.subprocess,
+            "run",
+            lambda cmd, *a, **k: subprocess.CompletedProcess(cmd, 0, b"", b""),
+        )
+
+        assert _unmount_partitions("/dev/fakesda") is True
+
+    def test_a_missing_mount_table_is_not_read_as_success(self, tmp_path, monkeypatch):
+        """If we cannot tell whether it is mounted, we must not say "go ahead"."""
+        from s0.live import live_manager
+        from s0.live.live_manager import _unmount_partitions
+
+        monkeypatch.setattr(live_manager, "MOUNTS_PATH", str(tmp_path / "absent"))
+        monkeypatch.setattr(
+            live_manager.subprocess,
+            "run",
+            lambda cmd, *a, **k: subprocess.CompletedProcess(cmd, 0, b"", b""),
+        )
+
+        # With no mount table the safest reading is "cannot confirm it is safe".
+        assert _unmount_partitions("/dev/fakesda") is False
 
     def test_the_caller_refuses_rather_than_proceeding(self):
         """Reading the code: the return value must gate the write, not be ignored."""
