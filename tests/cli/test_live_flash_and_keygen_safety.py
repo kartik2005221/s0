@@ -346,7 +346,9 @@ class TestKeygenNameIsAFilename:
             env=env,
             timeout=300,
         )
-        assert victim.read_text() == "PRECIOUS", "keygen overwrote a private key outside --out-dir"
+        assert victim.read_text(encoding="utf-8") == "PRECIOUS", (
+            "keygen overwrote a private key outside --out-dir"
+        )
         assert sorted(p.name for p in tmp_path.glob("*.pem")) == ["escape_private.pem"]
 
     @pytest.mark.parametrize("name", ["operator_key", "lab-2024", "Lab_Key", "k"])

@@ -153,7 +153,7 @@ def test_surface_css_imports_the_shared_tokens(css):
 def test_no_surface_redeclares_a_token_value(css):
     """A surface that hard-codes a colour has forked the design system."""
     rel = css.relative_to(REPO)
-    offenders = [m.group(0).strip() for m in LEGACY_TOKEN_RE.finditer(css.read_text())]
+    offenders = [m.group(0).strip() for m in LEGACY_TOKEN_RE.finditer(css.read_text(encoding="utf-8"))]
     assert not offenders, (
         f"{rel} still declares literal token values, e.g. {offenders[:3]}. "
         f"Every colour must resolve through shared/tokens.css."

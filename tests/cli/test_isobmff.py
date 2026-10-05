@@ -698,7 +698,7 @@ class TestCarverIntegration:
         image.write_bytes(b"\x5a" * 4096 + src.read_bytes() + b"\x5a" * 4096)
         out = tmp_path / "out"
         _carve(image, out)
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["recovered_files"], "nothing recovered"
         r = rec["recovered_files"][0]
         assert r["confidence_score"] == 100, r["heuristics"]
@@ -964,7 +964,7 @@ class TestReassemblyThroughTheCarver:
 
         out = tmp_path / "out"
         _carve(img, out)
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["recovered_files"]
         joined = " ".join(rec["recovered_files"][0]["heuristics"])
         assert "reassembled from 2 physically separate fragments" in joined

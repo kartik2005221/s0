@@ -156,7 +156,10 @@ def test_ci_installs_the_lock_on_every_supported_version():
     assert job is not None, "there is no CI job that checks the lock file"
 
     versions = job["strategy"]["matrix"]["python-version"]
-    floor = re.search(r'requires-python\s*=\s*">=(\d+)\.(\d+)"', (REPO_ROOT / "pyproject.toml").read_text())
+    floor = re.search(
+        r'requires-python\s*=\s*">=(\d+)\.(\d+)"',
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"),
+    )
     assert floor, "pyproject.toml does not declare requires-python"
     assert versions[0] == f"{floor.group(1)}.{floor.group(2)}", (
         f"the lock job starts at {versions[0]} but the declared floor is "

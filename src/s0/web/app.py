@@ -569,7 +569,7 @@ def _resolve_key(
             kp = REPO / kp
         kp = kp.resolve()
         for sp in _SYSTEM_PATHS:
-            if str(kp) == sp or str(kp).startswith(sp + "/"):
+            if _under(kp, Path(sp)):
                 raise HTTPException(403, f"Access to system key path is forbidden: {raw}")
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {raw}")
@@ -614,7 +614,7 @@ def _reject_system_path(field: str, value: str | None) -> str | None:
                 continue
             if any(_under(p, Path(allowed)) for allowed in ALLOWED_TEMP_PREFIXES):
                 continue
-            if str(p) == sp or str(p).startswith(sp + "/"):
+            if _under(p, Path(sp)):
                 raise ValueError(f"{field} cannot be in system path: {sp}")
     return value
 

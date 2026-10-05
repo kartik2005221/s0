@@ -47,7 +47,7 @@ UNNAMED_BUT_REACHABLE = {2}
 
 
 def _documented_codes() -> set[int]:
-    return {int(m) for m in re.findall(r"^\| `(\d+)`", REFERENCE.read_text(), re.M)}
+    return {int(m) for m in re.findall(r"^\| `(\d+)`", REFERENCE.read_text(encoding="utf-8"), re.M)}
 
 
 def _all_known_codes() -> set[int]:
@@ -99,7 +99,7 @@ class TestTheExitCodeTableIsTrue:
 
     def test_the_three_value_claim_is_gone(self):
         """It claimed three codes and then listed thirteen."""
-        text = REFERENCE.read_text().lower()
+        text = REFERENCE.read_text(encoding="utf-8").lower()
         assert "three-value exit code contract" not in text, (
             "the reference still claims a three-value contract while listing thirteen codes"
         )
@@ -118,7 +118,11 @@ class TestTheExitCodeTableIsTrue:
         is 64, and conflating them is how a caller treats a refusal as a typo.
         """
         row = next(
-            (line for line in REFERENCE.read_text().splitlines() if line.startswith("| `2` |")),
+            (
+                line
+                for line in REFERENCE.read_text(encoding="utf-8").splitlines()
+                if line.startswith("| `2` |")
+            ),
             "",
         )
         assert row, "exit code 2 is reachable but undocumented"
@@ -209,7 +213,9 @@ class TestTheExitCodeTableIsTrue:
 
     def test_seventy_seven_says_it_can_mean_refused(self):
         """`image` onto an existing destination exits 77; that is not a privilege."""
-        row = next(line for line in REFERENCE.read_text().splitlines() if line.startswith("| `77` |"))
+        row = next(
+            line for line in REFERENCE.read_text(encoding="utf-8").splitlines() if line.startswith("| `77` |")
+        )
         assert "Refused" in row or "refused" in row, (
             f"77 is documented as insufficient privileges only, but it is also how "
             f"s0 says 'declined': {row.strip()}"
@@ -220,7 +226,7 @@ class TestTheBatchVerifyExampleWorks:
     def test_no_documented_example_greps_stdout_for_text_output(self):
         """Text output is on stderr; stdout is empty. Grepping it always fails."""
         for path in REFERENCE.rglob("*.md"):
-            for lineno, line in enumerate(path.read_text().splitlines(), 1):
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                 stripped = line.strip()
                 if not stripped.startswith(("|", "`", "s0 ", "for ", "if ")):
                     continue
@@ -234,7 +240,7 @@ class TestTheBatchVerifyExampleWorks:
                 )
 
     def test_the_replacement_example_gates_on_the_exit_code(self):
-        text = REFERENCE.read_text()
+        text = REFERENCE.read_text(encoding="utf-8")
         assert "s0 verify" in text
         assert "--quiet" in text and ">/dev/null" in text, (
             "the batch-verify example should gate on the exit code with output "
@@ -256,7 +262,7 @@ class TestHelpScreensAreGenerated:
         )
 
     def test_every_block_carries_the_global_output_flags(self):
-        text = REFERENCE.read_text()
+        text = REFERENCE.read_text(encoding="utf-8")
         blocks = re.findall(r'\{% tab title="Help Screen" %\}\n\n```\n(.*?)```', text, re.S)
         assert len(blocks) >= 10, f"only {len(blocks)} help blocks found"
         for block in blocks:
@@ -279,7 +285,7 @@ class TestHelpScreensAreGenerated:
         Now the command is derived from the heading above each tab, so the invariant
         worth asserting is simply that a block's `usage:` line names its own section.
         """
-        text = REFERENCE.read_text()
+        text = REFERENCE.read_text(encoding="utf-8")
         offsets: list[tuple[int, str]] = []
         offset = 0
         heading = ""
@@ -326,7 +332,7 @@ class TestHelpScreensAreGenerated:
         sys.path.insert(0, str(REPO_ROOT / "tools"))
         import gen_help_reference as gen
 
-        text = REFERENCE.read_text()
+        text = REFERENCE.read_text(encoding="utf-8")
 
         def to_old_style(line: str) -> list[str]:
             m = gen.HELP_LINE.match(line)
@@ -358,7 +364,7 @@ class TestHelpScreensAreGenerated:
         )
 
     def test_the_generator_is_wired_into_ci(self):
-        ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text()
+        ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
         assert "gen_help_reference.py --check" in ci, (
             "the generator exists but nothing runs it, so the blocks will drift again"
         )
@@ -366,7 +372,7 @@ class TestHelpScreensAreGenerated:
 
 class TestReadmeClaimsMatchTheRepo:
     def test_no_claim_of_a_file_that_is_not_committed(self):
-        text = README.read_text()
+        text = README.read_text(encoding="utf-8")
         # Markdown links only. A prose mention explaining that the path is *not*
         # committed is the opposite of a broken claim, and matching backticks would
         # flag this test's own documentation of the fix.
@@ -377,7 +383,7 @@ class TestReadmeClaimsMatchTheRepo:
 
     def test_the_nist_revision_is_consistent(self):
         """The badge said Rev.1 while the text and compliance docs say Rev.2."""
-        text = README.read_text()
+        text = README.read_text(encoding="utf-8")
         # Separator-agnostic: shields.io badges encode spaces as _ or -.
         badge = re.search(r"800[-_]{2}88[-_]Rev\.?(\d)", text)
         assert badge, "could not find the revision in the compliance badge"
@@ -393,7 +399,7 @@ class TestReadmeClaimsMatchTheRepo:
         them. "three core modules" further down is a *module* count and is accurate --
         the module list follows it -- so it is not what this asserts.
         """
-        text = README.read_text()
+        text = README.read_text(encoding="utf-8")
         assert "Five forensic capabilities" not in text, (
             "the tagline promises a count the body does not use; name the "
             "capabilities instead of counting them differently elsewhere"
@@ -410,7 +416,11 @@ class TestTheSkillQuotesRealOutput:
         # The row lives in references/error-handling.md, which the agent may not
         # open. Reading only SKILL.md made this test pass for the wrong reason, so
         # the search follows the whole skill. SKILL.md separately states 77 inline.
-        text = SKILL.read_text() + "\n" + (SKILL.parent / "references" / "error-handling.md").read_text()
+        text = (
+            SKILL.read_text(encoding="utf-8")
+            + "\n"
+            + (SKILL.parent / "references" / "error-handling.md").read_text(encoding="utf-8")
+        )
         row = next(
             (
                 line
@@ -434,7 +444,7 @@ class TestTheSkillQuotesRealOutput:
         dashboard reports limited mode. So the guard is now that every mention sits in
         a sentence prohibiting it.
         """
-        text = SKILL.read_text()
+        text = SKILL.read_text(encoding="utf-8")
         prohibited = ("must not", "never", "do not", "not run it")
         mentions = [m.start() for m in re.finditer(r"sudo s0 web", text)]
         assert mentions, (
@@ -449,7 +459,7 @@ class TestTheSkillQuotesRealOutput:
             )
 
     def test_the_skill_names_the_flags_a_safety_skill_must_name(self):
-        text = SKILL.read_text()
+        text = SKILL.read_text(encoding="utf-8")
         for flag in ("--no-certificate", "--purge-all", "--force"):
             assert flag in text, (
                 f"the skill never mentions {flag}. An agent that does not know a flag "
@@ -487,7 +497,7 @@ def _skill_flags_for_the_cli() -> set[str]:
     drive. A line that names a script or a `tools/` path is therefore skipped.
     """
     flags: set[str] = set()
-    for line in SKILL.read_text().splitlines():
+    for line in SKILL.read_text(encoding="utf-8").splitlines():
         if re.search(r"\b[\w./-]+\.py\b|\btools/", line):
             continue
         flags.update(re.findall(r"(?<!\w)--[a-z][a-z0-9-]*", line))
@@ -511,7 +521,7 @@ def _all_parser_flags() -> set[str]:
     return flags
 
     def test_the_skill_documents_the_web_api(self):
-        text = SKILL.read_text()
+        text = SKILL.read_text(encoding="utf-8")
         assert "/api/erase-files" in text, (
             "the skill mentions `s0 web` but gives an agent nothing to use: no token flow, no route list"
         )
@@ -520,7 +530,7 @@ def _all_parser_flags() -> set[str]:
     def test_evals_cover_refusal_dry_run_and_web(self):
         import json
 
-        data = json.loads((REPO_ROOT / "skills/s0-forensics/evals/evals.json").read_text())
+        data = json.loads((REPO_ROOT / "skills/s0-forensics/evals/evals.json").read_text(encoding="utf-8"))
         evals = data if isinstance(data, list) else data["evals"]
         prompts = " ".join(e["prompt"] + e["expected_output"] for e in evals)
         assert len(evals) >= 8, f"only {len(evals)} evals"
@@ -691,7 +701,7 @@ class TestReadmeSaysWhereOutputGoes:
     def test_the_quick_start_warns_about_redirecting(self):
         """ "`s0 list > devices.txt` writes an empty file, and the README is where
         a new user meets that."""
-        text = README.read_text()
+        text = README.read_text(encoding="utf-8")
         quick_start = text.split("## Quick Start", 1)
         assert len(quick_start) == 2, "no Quick Start section"
         section = quick_start[1].split("\n## ", 1)[0]
@@ -713,9 +723,11 @@ class TestTheSkillAgreesWithTheCode:
     @staticmethod
     def _skill_text() -> str:
         return (
-            SKILL.read_text()
+            SKILL.read_text(encoding="utf-8")
             + "\n"
-            + "\n".join(p.read_text() for p in sorted((SKILL.parent / "references").glob("*.md")))
+            + "\n".join(
+                p.read_text(encoding="utf-8") for p in sorted((SKILL.parent / "references").glob("*.md"))
+            )
         )
 
     def test_every_route_the_skill_names_actually_exists(self):
@@ -862,7 +874,10 @@ class TestReleaseNotesFailLoudly:
         spec.loader.exec_module(module)
 
         changelog = tmp_path / "CHANGELOG.md"
-        changelog.write_text("## [4.0.0] - 2026-02-01\n\n---\n\n## [3.0.0]\n\n### Added\n\n- Real.\n")
+        changelog.write_text(
+            "## [4.0.0] - 2026-02-01\n\n---\n\n## [3.0.0]\n\n### Added\n\n- Real.\n",
+            encoding="utf-8",
+        )
         with pytest.raises(module.MissingSection) as excinfo:
             module.extract("4.0.0", (changelog,))
         assert "empty" in str(excinfo.value)

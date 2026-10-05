@@ -289,7 +289,7 @@ class TestCarverIntegration:
         image.write_bytes(b"\x5a" * 4096 + src.read_bytes() + b"\x5a" * 4096)
         out = tmp_path / "out"
         carve_image(image, out, generate_certificate=False)
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["recovered_files"]
         joined = " ".join(rec["recovered_files"][0]["heuristics"])
         assert "AVI index resolved" in joined

@@ -40,7 +40,7 @@ SHA = re.compile(r"^[0-9a-f]{40}$")
 def _references() -> list[tuple[Path, int, str, str]]:
     out = []
     for path in WORKFLOWS:
-        for lineno, line in enumerate(path.read_text().splitlines(), 1):
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             match = USES.match(line)
             if match:
                 out.append((path, lineno, match.group(1), match.group(2) or ""))
@@ -144,7 +144,7 @@ class TestDependabotKeepsThemCurrent:
             "Pinning without an updater trades a mutable-ref risk for a stale-action "
             "risk."
         )
-        text = config.read_text()
+        text = config.read_text(encoding="utf-8")
         # For the github-actions ecosystem the directory is the repository root, not
         # /.github/workflows -- dependabot reads the workflow files itself. The value
         # may be quoted or bare in the YAML, so match either.

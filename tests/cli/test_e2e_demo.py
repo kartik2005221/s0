@@ -73,7 +73,7 @@ def e2e(tmp_path_factory):
 
     return {
         "image": img,
-        "cert": json.loads(cert_files[0].read_text()),
+        "cert": json.loads(cert_files[0].read_text(encoding="utf-8")),
         "cert_file": cert_files[0],
         "pdf": pdf_files[0],
         "pub_key": pub,

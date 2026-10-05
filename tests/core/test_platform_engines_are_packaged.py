@@ -101,7 +101,7 @@ class TestEnginesLiveInsideThePackage:
 
 class TestThePackagingConfigurationShipsThem:
     def test_the_package_filter_covers_the_engines(self):
-        text = (REPO_ROOT / "pyproject.toml").read_text()
+        text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         assert '"s0*"' in text, "the package filter no longer includes s0*, so nothing would ship"
         assert "s0.platform" in text or '"s0*"' in text, (
             "the engines live under s0.platform, which 's0*' covers -- assert this "
@@ -109,7 +109,7 @@ class TestThePackagingConfigurationShipsThem:
         )
 
     def test_the_filter_does_not_admit_top_level_platform_packages(self):
-        text = (REPO_ROOT / "pyproject.toml").read_text()
+        text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         for bad in ('"windows"', '"macos"'):
             assert bad not in text, (
                 f"{bad} appears in the packaging configuration; shipping a "

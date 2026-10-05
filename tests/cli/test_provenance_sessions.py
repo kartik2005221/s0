@@ -155,7 +155,7 @@ class TestSessionFile:
     def test_the_format_is_marked_and_versioned(self, tmp_path):
         img = _image(tmp_path, [b"x" * 2000])
         s = sess.CarveSession(str(img), img.stat().st_size, sess.CarveSession.compute_fingerprint(img))
-        doc = json.loads(s.write(tmp_path / "s.json").read_text())
+        doc = json.loads(s.write(tmp_path / "s.json").read_text(encoding="utf-8"))
         assert doc["format"] == sess.SESSION_FORMAT
         assert doc["version"] == sess.SESSION_VERSION
 
@@ -320,7 +320,7 @@ class TestResumeEndToEnd:
 
         second = carve_image(img, tmp_path / "out2", generate_certificate=False, resume=s)
         assert second.files_recovered == 0, "the known extent was carved again"
-        rec = json.loads((tmp_path / "out2" / "recovery_index.json").read_text())
+        rec = json.loads((tmp_path / "out2" / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["resumed_from_session"] == 1
         assert rec["duplicates_suppressed"] >= 1, "the skip was not counted anywhere"
         assert not [p for p in (tmp_path / "out2").iterdir() if p.suffix == ".png"]
@@ -383,7 +383,7 @@ class TestSessionCLI:
         )
         assert first.returncode == 0, first.stderr[-400:]
         assert session_file.is_file()
-        doc = json.loads(session_file.read_text())
+        doc = json.loads(session_file.read_text(encoding="utf-8"))
         assert len(doc["entries"]) == 1
 
         second = self._run(

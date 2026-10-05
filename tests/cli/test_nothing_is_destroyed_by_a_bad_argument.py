@@ -90,7 +90,9 @@ class TestTheTargetSurvivesABadOutDir:
         proc = _wipe("--targets", "evidence.txt", "--out-dir", str(notadir), cwd=sandbox)
         assert (sandbox / "evidence.txt").is_file(), "the target was erased"
         assert proc.returncode == 73, f"expected 73, got {proc.returncode}: {proc.stderr[-300:]}"
-        assert notadir.read_text() == "occupied", "s0 wrote into a path that was a regular file"
+        assert notadir.read_text(encoding="utf-8") == "occupied", (
+            "s0 wrote into a path that was a regular file"
+        )
 
     def test_out_dir_under_a_file_cannot_be_created(self, sandbox):
         """`/file/sub` cannot exist; `mkdir(parents=True)` raises NotADirectoryError."""

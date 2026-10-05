@@ -55,7 +55,7 @@ def _declared() -> dict[str, str]:
 
 
 def _locked() -> dict[str, str]:
-    text = LOCK.read_text()
+    text = LOCK.read_text(encoding="utf-8")
     out = {}
     for match in re.finditer(r"^([A-Za-z0-9._-]+)==(\S+)", text, re.M):
         out[match.group(1).lower()] = match.group(2)
@@ -64,7 +64,7 @@ def _locked() -> dict[str, str]:
 
 def _lock_input() -> dict[str, str]:
     out = {}
-    for line in LOCK_IN.read_text().splitlines():
+    for line in LOCK_IN.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
@@ -102,7 +102,7 @@ class TestTheLockfileExistsAndIsComplete:
         )
 
     def test_the_lock_pins_every_package_with_a_hash(self):
-        text = LOCK.read_text()
+        text = LOCK.read_text(encoding="utf-8")
         pinned = re.findall(r"^([A-Za-z0-9._-]+)==", text, re.M)
         assert pinned, "no pinned packages found; the lock is not a lock"
         for name in pinned:
@@ -179,7 +179,7 @@ class TestTheLockIsUsable:
         assert proc.returncode == 0, proc.stderr
 
     def test_the_regeneration_script_references_both_files(self):
-        text = (REPO_ROOT / "tools" / "lock_dependencies.sh").read_text()
+        text = (REPO_ROOT / "tools" / "lock_dependencies.sh").read_text(encoding="utf-8")
         assert "requirements.in" in text and "requirements.lock" in text
         assert "--generate-hashes" in text, (
             "the regeneration script must produce hashes, or the lock it writes is "

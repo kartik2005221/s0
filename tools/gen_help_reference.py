@@ -249,7 +249,7 @@ def main() -> int:
         print(f"{DOC} not found", file=sys.stderr)
         return 2
 
-    original = DOC.read_text()
+    original = DOC.read_text(encoding="utf-8")
     cache: dict[str, str] = {}
 
     def help_of(command: str) -> str:
@@ -276,7 +276,7 @@ def main() -> int:
     if _first_difference(original, updated) is None:
         print("already current; no change")
         return 0
-    DOC.write_text(updated)
+    DOC.write_text(updated, encoding="utf-8")
     print(
         f"rewrote {len(blocks)} Help Screen blocks in {DOC.relative_to(REPO_ROOT)} "
         f"(commands: {', '.join(blocks)})"

@@ -46,7 +46,7 @@ CMD_VAR = re.compile(r"%[A-Za-z_][A-Za-z0-9_]*%")
 
 def _command_payloads(path: Path) -> list[tuple[int, str]]:
     out = []
-    for lineno, line in enumerate(path.read_text(errors="ignore").splitlines(), 1):
+    for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
         for match in POWERSHELL_LINE.finditer(line):
             out.append((lineno, match.group(1)))
     return out
@@ -96,7 +96,7 @@ class TestNoPathIsInterpolatedIntoPowerShell:
     @pytest.mark.parametrize("path", CMD_FILES, ids=lambda p: p.name)
     def test_every_env_var_read_is_one_we_set(self, path):
         """A typo in the variable name would leave the path empty, silently."""
-        text = path.read_text(errors="ignore")
+        text = path.read_text(encoding="utf-8", errors="ignore")
         # `set "NAME=value"` -- the value follows the `=`, so match up to it.
         declared = set(re.findall(r'set "(S0_[A-Za-z0-9_]*)=', text))
         used = set()
@@ -117,8 +117,8 @@ class TestNoPathIsInterpolatedIntoPowerShell:
 class TestTheWindowsInstallersStillAgree:
     def test_install_and_uninstall_use_the_same_variable_names(self):
         """Mismatched names would make uninstall a no-op rather than an error."""
-        install = (INSTALL_DIR / "install.cmd").read_text(errors="ignore")
-        uninstall = (INSTALL_DIR / "uninstall.cmd").read_text(errors="ignore")
+        install = (INSTALL_DIR / "install.cmd").read_text(encoding="utf-8", errors="ignore")
+        uninstall = (INSTALL_DIR / "uninstall.cmd").read_text(encoding="utf-8", errors="ignore")
         # Only the path variables, not S0_REF: that one names a git ref and is used
         # as ordinary cmd expansion in both.
         skip = {"S0_REF"}
@@ -147,7 +147,7 @@ class TestThePs1Installers:
         property -- that PATH handling reads $env: -- rather than policing every %,
         which would have to understand here-string quoting to avoid false positives.
         """
-        text = path.read_text(errors="ignore")
+        text = path.read_text(encoding="utf-8", errors="ignore")
         if "Environment]::SetEnvironmentVariable" not in text:
             pytest.skip(f"{path.name} does not edit PATH")
         assert "$env:" in text, f"{path.name} edits PATH without reading the path from $env:"

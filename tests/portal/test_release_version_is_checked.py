@@ -122,7 +122,7 @@ class TestTheReleaseWorkflowRunsItBeforeAnythingIsPublished:
     def test_the_gate_is_wired_into_release_yml(self):
         import yaml
 
-        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "release.yml").read_text())
+        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8"))
         steps = yaml.safe_dump(wf["jobs"]["publish"]["steps"])
         assert "check_release_version.py" in steps, (
             "the checker exists but the release workflow never runs it"
@@ -132,7 +132,7 @@ class TestTheReleaseWorkflowRunsItBeforeAnythingIsPublished:
         """Fail before anything is built, hashed, uploaded or signed."""
         import yaml
 
-        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "release.yml").read_text())
+        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8"))
         steps = wf["jobs"]["publish"]["steps"]
         names = [s.get("name", "") for s in steps]
         version_at = next((i for i, n in enumerate(names) if "matches the version" in n), None)
@@ -147,7 +147,7 @@ class TestTheReleaseWorkflowRunsItBeforeAnythingIsPublished:
         """Most of what CI checks rots without a commit happening."""
         import yaml
 
-        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text())
+        wf = yaml.safe_load((REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
         schedules = wf[True].get("schedule") or []
         assert schedules, (
             "CI only runs on push and pull_request, so pip-audit reports on a dependency "

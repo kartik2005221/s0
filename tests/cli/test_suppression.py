@@ -285,7 +285,7 @@ class TestBodyfile:
         dest = tmp_path / "m.body"
         rows, nbytes = bf.merge((p for p in (a, b)), dest)
         assert rows == 2 and nbytes == 200
-        assert "merged from 2 bodyfile(s)" in dest.read_text()
+        assert "merged from 2 bodyfile(s)" in dest.read_text(encoding="utf-8")
 
     def test_write_creates_missing_parent_directories(self, tmp_path):
         p = tmp_path / "deep" / "er" / "b.body"
@@ -342,7 +342,7 @@ class TestCarverIntegration:
         hashes.write_text(hashlib.sha256(payload).hexdigest() + "\n")
         out = tmp_path / "out"
         carve_image(img, out, generate_certificate=False, known_hashes=suppression.load_hash_set(hashes))
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["suppressed_known_files"] == 1
         assert rec["suppressed_known_bytes"] == len(payload)
         assert any("known sha256 digest" in r["reason"] for r in rec["rejection_summary"])
@@ -399,7 +399,7 @@ class TestCarverIntegration:
             f.read_bytes() for f in out.rglob("*") if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg")
         }
         assert deleted not in written, "a suppressed file was still written"
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert any("known sha256 digest" in r["reason"] for r in rec["rejection_summary"]), rec[
             "rejection_summary"
         ]
@@ -481,7 +481,7 @@ class TestCarverIntegration:
         assert found_extents, "a recovered file must appear in the bodyfile"
         # Every extent must really contain the recovered file's bytes.
         data = img.read_bytes()
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         offsets = {f["offset"] for f in rec["recovered_files"]}
         for off in offsets:
             assert any(s <= off <= e for s, e in found_extents), (

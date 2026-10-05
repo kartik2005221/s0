@@ -7,7 +7,7 @@ import pytest
 
 from s0.canonical import CanonicalizationError, canonicalize, canonicalize_str
 
-VECTORS = json.loads((Path(__file__).parent / "data" / "canonical_vectors.json").read_text("utf-8"))[
+VECTORS = json.loads((Path(__file__).parent / "data" / "canonical_vectors.json").read_text(encoding="utf-8"))[
     "vectors"
 ]
 

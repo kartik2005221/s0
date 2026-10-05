@@ -76,7 +76,7 @@ class TestTheEvalPathIsClosed:
 
 class TestTheAffectedVersionIsRecorded:
     def test_the_manifest_names_the_advisory(self):
-        manifest = json.loads(MANIFEST.read_text())
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         entry = next(f for f in manifest["files"] if f["path"] == "vendor/pdf.min.js")
         advisories = entry.get("known_advisories")
         assert advisories, (
@@ -90,7 +90,7 @@ class TestTheAffectedVersionIsRecorded:
         )
 
     def test_the_advisory_states_its_mitigation_and_residual_risk(self):
-        manifest = json.loads(MANIFEST.read_text())
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         entry = next(f for f in manifest["files"] if f["path"] == "vendor/pdf.min.js")
         advisory = next(a for a in entry["known_advisories"] if a["id"] == "CVE-2024-4367")
         for field in ("affects", "impact", "mitigation", "risk_if_mitigation_removed"):
@@ -102,7 +102,7 @@ class TestTheAffectedVersionIsRecorded:
 
     def test_the_recorded_version_matches_the_vendored_file(self):
         """The manifest's version claim must be about the file that actually ships."""
-        manifest = json.loads(MANIFEST.read_text())
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         entry = next(f for f in manifest["files"] if f["path"] == "vendor/pdf.min.js")
         text = PDF_MIN.read_text(encoding="utf-8", errors="ignore")
         found = re.search(r'version["\':=\s]{1,4}([0-9]+\.[0-9]+\.[0-9]+)', text)
@@ -120,7 +120,7 @@ class TestTheVendorPinningStillHolds:
     def test_the_pdf_hash_still_matches_the_manifest(self):
         import hashlib
 
-        manifest = json.loads(MANIFEST.read_text())
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         entry = next(f for f in manifest["files"] if f["path"] == "vendor/pdf.min.js")
         digest = hashlib.sha256(PDF_MIN.read_bytes()).hexdigest()
         assert digest == entry["sha256"], (

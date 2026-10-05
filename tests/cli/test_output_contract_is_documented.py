@@ -193,7 +193,7 @@ class TestTheContractStillHolds:
                 timeout=180,
                 check=True,
             )
-        assert out_file.read_text() == "", (
+        assert out_file.read_text(encoding="utf-8") == "", (
             "text mode wrote to a redirected stdout. If this is intended, the "
             "documented contract is wrong and must be corrected; if not, the "
             "machine/human stream split has been broken."

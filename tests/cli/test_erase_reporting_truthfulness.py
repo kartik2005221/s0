@@ -192,7 +192,7 @@ class TestMethodLabelDescribesWhatWasWritten:
 
         method = None
         for cert_file in written:
-            cert = json.loads(cert_file.read_text())
+            cert = json.loads(cert_file.read_text(encoding="utf-8"))
             method = (cert.get("wipe") or {}).get("method")
             pattern = (cert.get("wipe") or {}).get("pattern")
             assert pattern == "zero"

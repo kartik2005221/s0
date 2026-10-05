@@ -238,7 +238,7 @@ class TestVerifyExitCodeDoesNotDependOnFormat:
             str(tmp_path / "c"),
             cwd=tmp_path,
         )
-        cert = json.loads(next((tmp_path / "c").glob("*.json")).read_text())
+        cert = json.loads(next((tmp_path / "c").glob("*.json")).read_text(encoding="utf-8"))
         cert["result"]["status"] = "tampered"
         path = tmp_path / "tampered.json"
         path.write_text(json.dumps(cert))
@@ -431,7 +431,7 @@ class TestMalformedSignatureIsRejectedNotCrashed:
     def test_a_non_object_signature_is_a_validation_error(self, real_cert, tmp_path, value):
         import json
 
-        doc = json.loads(real_cert.read_text())
+        doc = json.loads(real_cert.read_text(encoding="utf-8"))
         doc["signature"] = value
         bad = tmp_path / "bad.json"
         bad.write_text(json.dumps(doc))
@@ -449,7 +449,7 @@ class TestMalformedSignatureIsRejectedNotCrashed:
     def test_every_output_format_agrees_on_a_malformed_signature(self, real_cert, tmp_path):
         import json
 
-        doc = json.loads(real_cert.read_text())
+        doc = json.loads(real_cert.read_text(encoding="utf-8"))
         doc["signature"] = 7
         bad = tmp_path / "bad.json"
         bad.write_text(json.dumps(doc))

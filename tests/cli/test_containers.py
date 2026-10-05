@@ -607,7 +607,7 @@ class TestContainedFindings:
         img, _jp2 = self._image(tmp_path)
         out = tmp_path / "out"
         carve_image(img, out, generate_certificate=False)
-        rec = json.loads((out / "recovery_index.json").read_text())
+        rec = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
         assert rec["contained_candidates_dropped"] >= 1
 
     def test_the_result_does_not_depend_on_scan_order(self, tmp_path):

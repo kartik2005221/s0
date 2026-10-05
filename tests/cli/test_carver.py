@@ -733,7 +733,7 @@ def test_recovery_index_is_written_and_machine_readable(tmp_path):
     path, _ = _write_image_with_payloads(tmp_path, payloads, total=8 * 1024 * 1024)
     out = tmp_path / "out"
     carve_image(path, out, generate_certificate=False)
-    idx = json.loads((out / "recovery_index.json").read_text())
+    idx = json.loads((out / "recovery_index.json").read_text(encoding="utf-8"))
     assert idx["schema"] == "s0.recovery-index/1"
     assert idx["files_recovered"] == 2
     assert idx["candidates_rejected"] >= 0

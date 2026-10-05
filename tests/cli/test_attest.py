@@ -398,7 +398,9 @@ class TestBoundReachesTheCertificate:
         import json
         from pathlib import Path
 
-        schema = json.loads((Path(A.__file__).parent.parent / "data" / "cert_schema.json").read_text())
+        schema = json.loads(
+            (Path(A.__file__).parent.parent / "data" / "cert_schema.json").read_text(encoding="utf-8")
+        )
         allowed = set(schema["properties"]["result"]["properties"]["verification"]["properties"])
         verif = self._verify(tmp_path, samples=64)
         for key, value in verif.items():

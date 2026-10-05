@@ -843,8 +843,8 @@ jobs:
           pip install -e . --quiet
           # A tool that is handed a device needs its dependency list to be
           # auditable without running it.
-          cyclonedx-py environment --output-format JSON --outfile s0-sbom.json
-          cyclonedx-py requirements --output-format JSON --outfile s0-requirements-sbom.json
+          cyclonedx-py environment --output-format JSON --output-file s0-sbom.json
+          cyclonedx-py requirements requirements.lock --output-format JSON --output-file s0-requirements-sbom.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: sbom

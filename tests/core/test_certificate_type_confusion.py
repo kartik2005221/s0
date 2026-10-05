@@ -208,7 +208,7 @@ def test_cert_schema_also_requires_objects():
     Worth asserting explicitly: the schema was the ground truth the audit checked
     against, and the two hand-written validators had drifted away from it.
     """
-    schema = json.loads((REPO / "src" / "s0" / "data" / "cert_schema.json").read_text())
+    schema = json.loads((REPO / "src" / "s0" / "data" / "cert_schema.json").read_text(encoding="utf-8"))
     props = schema["properties"]
     for section in SECTIONS:
         assert props[section]["type"] == "object", (

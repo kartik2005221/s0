@@ -200,7 +200,7 @@ class TestRejectionsAreVisible:
         )
         index = noisy_image / "out" / "recovery_index.json"
         assert index.is_file(), "recovery_index.json was not written"
-        data = json.loads(index.read_text())
+        data = json.loads(index.read_text(encoding="utf-8"))
         assert "rejected_samples" in data or "rejection_summary" in data, (
             "the index carries neither roll-up nor per-candidate detail, so the "
             "summary has nothing to point the reader at"
