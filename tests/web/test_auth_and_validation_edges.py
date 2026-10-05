@@ -64,6 +64,12 @@ def _auth() -> dict[str, str]:
 
 
 class TestTokenFilePermissions:
+    @pytest.fixture(autouse=True)
+    def _isolate_home(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX file permission bits not supported on Windows")
     def test_a_preexisting_loose_token_file_is_narrowed(self, tmp_path, monkeypatch):
         """The reported defect: 0644 survives because the mode only applies on create."""
         token_file = tmp_path / ".s0" / "web_auth_token"
@@ -102,6 +108,7 @@ class TestTokenFilePermissions:
         assert issued != "truncated", "a malformed token file was adopted as the credential"
         assert len(issued) == 64
 
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX file permission bits not supported on Windows")
     def test_a_fresh_token_file_is_0600(self, tmp_path, monkeypatch):
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.delenv("S0_WEB_AUTH_TOKEN", raising=False)

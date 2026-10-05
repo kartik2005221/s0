@@ -93,6 +93,8 @@ def _under(child: Path, parent: Path) -> bool:
     c, p = str(child), str(parent)
     if os.name == "nt":
         c, p = c.lower(), p.lower()
+        if len(c) >= 2 and c[1] == ":" and (len(p) < 2 or p[1] != ":"):
+            c = c[2:]
         p_clean = p.rstrip("/\\")
         return c == p_clean or c.startswith(p_clean + "\\") or c.startswith(p_clean + "/")
     return c == p or c.startswith(p.rstrip("/") + "/")
@@ -156,7 +158,10 @@ def check_path_is_destructive(
 
     target = str(resolved)
 
-    if target == "/":
+    is_root = target == "/" or (
+        os.name == "nt" and (target in ("\\", "/") or resolved == Path(resolved.anchor))
+    )
+    if is_root:
         _refuse_or_warn(
             warnings,
             force,

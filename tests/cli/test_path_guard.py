@@ -38,7 +38,7 @@ REPO = Path(__file__).resolve().parent.parent.parent
 
 def _s0(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [str(Path(sys.executable).parent / "s0"), *args],
+        [sys.executable, "-m", "s0.cli.main", *args],
         capture_output=True,
         text=True,
         cwd=str(cwd or REPO),

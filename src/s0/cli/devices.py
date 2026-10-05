@@ -509,7 +509,7 @@ def is_os_device(device_path: str) -> bool:
     """Return True if device_path hosts the running root/OS filesystem or is a parent/child of it."""
     if not device_path:
         return False
-    if sys.platform == "win32":
+    if sys.platform == "win32" and not device_path.startswith("/dev/"):
         sys_drive = os.environ.get("SystemDrive", "C:").upper()
         norm = device_path.replace("\\", "/").rstrip("/")
         if norm.upper().startswith(sys_drive) or norm.upper() == sys_drive:

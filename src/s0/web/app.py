@@ -1092,6 +1092,11 @@ def api_browse(path: str = ".") -> JSONResponse:
     # picking an output directory would be choosing from the wrong tree entirely.
     #
     # So the refusal is explicit, and it says which condition failed.
+    if any(_under(requested, Path(sp)) for sp in SYSTEM_PREFIXES):
+        return JSONResponse(
+            {"error": "path is outside the permitted roots", "path": str(requested), "items": []},
+            status_code=403,
+        )
     if not requested.exists():
         return JSONResponse(
             {"error": "no such directory", "path": str(requested), "items": []}, status_code=404
@@ -1675,15 +1680,6 @@ def start_image(req: ImageRequest) -> JSONResponse:
         raise HTTPException(404, f"source does not exist: {req.source}")
 
     dst_p = Path(req.destination)
-    # Refuse an existing destination here, with an actionable message, rather than
-    # letting the imager fail and surface as `operation_failed` with a correlation
-    # id. The operator can act on "destination exists, pass force to overwrite";
-    # they cannot act on a correlation id they have no way to look up.
-    if dst_p.exists() and not req.force:
-        raise HTTPException(
-            409, f"destination already exists: {req.destination}. Set force=true to overwrite it."
-        )
-
     is_blk = False
     try:
         is_blk = platform.is_block_device(dst_p)
@@ -1695,6 +1691,15 @@ def start_image(req: ImageRequest) -> JSONResponse:
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
         raise HTTPException(
             400, f"Cloning to target block device requires typing exact destination: '{req.destination}'"
+        )
+
+    # Refuse an existing destination here, with an actionable message, rather than
+    # letting the imager fail and surface as `operation_failed` with a correlation
+    # id. The operator can act on "destination exists, pass force to overwrite";
+    # they cannot act on a correlation id they have no way to look up.
+    if not is_blk and dst_p.exists() and not req.force:
+        raise HTTPException(
+            409, f"destination already exists: {req.destination}. Set force=true to overwrite it."
         )
 
     job_id = uuid.uuid4().hex[:12]
