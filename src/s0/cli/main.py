@@ -173,6 +173,99 @@ def _warn_if_demo_key(key_path: Path | None, policy=None) -> None:
     )
 
 
+def _prepare_out_dir(args, *, ui=None) -> Path | None:
+    """Create and prove the output directory is writable *before* anything is erased.
+
+    Every command that produces artefacts used to discover an unwritable `--out-dir` at
+    the moment it first tried to write, which is after the destructive work. The
+    reported consequences:
+
+    * `s0 wipe --targets f --out-dir /ro/sub` erased the file, then raised
+      PermissionError, which the top-level handler reported as "This is a bug in s0"
+      with exit 70. The exit-code table promises 73 (`EX_CANTCREAT`) for exactly this.
+    * the same with an `--out-dir` that is a regular file gave `FileExistsError`, also
+      exit 70.
+
+    In both cases the target was gone and no certificate existed. So the directory is
+    created and probed here, and a failure returns the documented code with nothing
+    written.
+
+    The probe is a real file create-and-delete rather than `os.access`, because
+    `os.access` answers for the *real* uid while a process with capabilities or a
+    read-only mount can still fail on write, and `access` lies on those.
+    """
+    raw = getattr(args, "out_dir", None) or "."
+    out_dir = Path(raw)
+
+    if out_dir.exists() and not out_dir.is_dir():
+        msg = f"error: --out-dir {out_dir} exists and is not a directory"
+        (ui.error(msg) if ui else print(msg, file=sys.stderr))
+        return None
+
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        msg = f"error: cannot create --out-dir {out_dir}: {exc.strerror or exc}"
+        (ui.error(msg) if ui else print(msg, file=sys.stderr))
+        return None
+
+    probe = out_dir / f".s0-write-probe-{os.getpid()}"
+    try:
+        probe.write_bytes(b"")
+        probe.unlink()
+    except OSError as exc:
+        msg = (
+            f"error: --out-dir {out_dir} is not writable: {exc.strerror or exc}. "
+            f"Nothing has been written."
+        )
+        (ui.error(msg) if ui else print(msg, file=sys.stderr))
+        try:
+            probe.unlink()
+        except OSError:
+            pass
+        return None
+    return out_dir
+
+
+def _load_issuer_key(args, ui=None) -> tuple[Path | None, str | None]:
+    """Resolve *and load* the signing key before any destructive step.
+
+    Resolving the path is not enough. `--key /path/to/a-file-that-is-not-a-key`
+    resolved fine, the target was erased, certificate generation then failed to load the
+    key, and the handler warned and returned 0 -- a destroyed target, no evidence, and a
+    success exit code.
+
+    Loading here turns that into an error before the first write.
+    """
+    from s0 import crypto
+
+    key_path = default_issuer_key(getattr(args, "key", None))
+    _warn_if_demo_key(key_path, _ui_policy(args))
+
+    if key_path is None:
+        if getattr(args, "no_certificate", False):
+            return None, None
+        msg = (
+            "error: no issuer signing key found.\n"
+            "s0 requires a valid Ed25519 signing key to issue compliance certificates.\n"
+            "Specify --key <path> or pass --no-certificate to run without certification."
+        )
+        (ui.error(msg) if ui else print(msg, file=sys.stderr))
+        return None, "config"
+
+    try:
+        crypto.load_private_pem(key_path)
+    except Exception as exc:
+        msg = (
+            f"error: --key {key_path} is not a usable Ed25519 private key: "
+            f"{type(exc).__name__}: {exc}. Nothing has been erased."
+        )
+        (ui.error(msg) if ui else print(msg, file=sys.stderr))
+        return None, "config"
+
+    return key_path, None
+
+
 def _validate_cli_metadata(args) -> bool:
     """Validate operator and organization metadata arguments. Returns False on validation error."""
     from s0.validation import validate_metadata_str
@@ -1423,16 +1516,12 @@ def cmd_erase_files(args) -> int:
 
     print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
 
-    key_path = default_issuer_key(getattr(args, "key", None))
-    _warn_if_demo_key(key_path, _ui_policy(args))
-    if key_path is None and not getattr(args, "no_certificate", False):
-        print(
-            "error: no issuer signing key found.\n"
-            "S0 requires a valid Ed25519 signing key to issue compliance certificates and audit records.\n"
-            "Specify --key <path> or pass --no-certificate to explicitly run without compliance certification.",
-            file=sys.stderr,
-        )
-        return 2
+    # Everything that can make the *evidence* unwritable is resolved before the first
+    # byte is erased. Three separate inputs used to fail after the erase instead:
+    # an unusable --key, an unwritable --out-dir, and an unencodable --operator.
+    key_path, key_error = _load_issuer_key(args)
+    if key_error:
+        return EX_CONFIG
 
     if getattr(args, "no_certificate", False):
         print(
@@ -1442,6 +1531,13 @@ def cmd_erase_files(args) -> int:
 
     targets = [Path(t) for t in args.targets]
     print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
+
+    # The certificate, the PDF and the QR code all land here. Discovering the directory
+    # was unwritable *after* the erase meant a destroyed target, no evidence, and --
+    # because the mkdir raised -- "This is a bug in s0" with exit 70 instead of the
+    # documented 73 (EX_CANTCREAT).
+    if _prepare_out_dir(args) is None:
+        return EX_CANTCREAT
 
     # One bar per file, sized from the total the eraser reports for that file.
     # This used to build a single bar from the summed size of every target, so
@@ -1596,15 +1692,14 @@ def cmd_carve(args) -> int:
         return EX_USAGE
     ui.note("S0 - Forensic File Carving & Recovery")
 
-    key_path = default_issuer_key(args.key)
-    _warn_if_demo_key(key_path, _ui_policy(args))
-    if key_path is None and not getattr(args, "no_certificate", False):
-        ui.error(
-            "no issuer signing key found. s0 requires a valid Ed25519 signing key to "
-            "issue forensic manifest certificates. Specify --key <path>, or pass "
-            "--no-certificate to explicitly run without compliance certification."
-        )
+    # Both resolved before the scan. `carve` on an unwritable --out-dir used to run the
+    # whole carve and then die in the write, so the operator paid for a full pass over a
+    # large image and got nothing out of it.
+    key_path, key_error = _load_issuer_key(args, ui=ui)
+    if key_error:
         return EX_CONFIG
+    if _prepare_out_dir(args, ui=ui) is None:
+        return EX_CANTCREAT
 
     if getattr(args, "no_certificate", False):
         print(
@@ -2788,15 +2883,15 @@ def cmd_image(args) -> int:
         else:
             _bar[0].finish()
 
-    key_path = default_issuer_key(getattr(args, "key", None))
-    _warn_if_demo_key(key_path, _ui_policy(args))
-    if key_path is None and not getattr(args, "no_certificate", False):
-        ui.error(
-            "no issuer signing key found. s0 requires a valid Ed25519 signing key "
-            "to issue forensic acquisition certificates. Specify --key <path>, or "
-            "pass --no-certificate to run without compliance certification."
-        )
+    # `image` copies the whole source first and only then writes its manifest, so an
+    # unusable --key or an unwritable --out-dir used to leave a full multi-gigabyte copy
+    # on disk with no manifest and no certificate attesting to it. Both are resolved
+    # before acquire_image() opens the source.
+    key_path, key_error = _load_issuer_key(args, ui=ui)
+    if key_error:
         return EX_CONFIG
+    if _prepare_out_dir(args, ui=ui) is None:
+        return EX_CANTCREAT
 
     options = ImagingOptions(
         source=args.source,
