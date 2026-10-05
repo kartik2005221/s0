@@ -697,6 +697,18 @@
           ok: true,
           status: "AUTHENTIC",
           isDemoKey: isDemoKey,
+          // Machine-readable counterpart of the CLI's exit code, and the field a
+          // script should gate on.
+          //
+          // `ok` and `status` describe the *signature*, and for a demo key they are
+          // both truthful: the Ed25519 check passed. That is why they stay. But
+          // `s0 verify` deliberately exits 75 (EX_TEMPFAIL) for this same certificate so
+          // a pipeline cannot read it as a pass, and a consumer reading `ok: true` from
+          // this function got the opposite of that. `attested` says what the operator
+          // actually needs to know -- the document is attributable to an accredited
+          // issuer -- and `cliExitCode` gives the exact value the CLI would return.
+          attested: !isDemoKey,
+          cliExitCode: isDemoKey ? 75 : 0,
           matchedKey: keyObj,
           reason: reasonText,
           issuer: keyObj.issuer || (certObj.issuer ? certObj.issuer.organization : "Unknown"),

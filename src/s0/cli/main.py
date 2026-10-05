@@ -3251,9 +3251,31 @@ def cmd_web(args) -> int:
     print("║      S0 (Sector Zero) — Unified Web Forensics Dashboard         ║")
     print("╚══════════════════════════════════════════════════════════════════╝")
     print(f"[s0 web]  Address  : {url}")
-    print(f"[s0 web]  Auth URL : {auth_url}")
+    if sys.stderr.isatty():
+        print(f"[s0 web]  Auth URL : {auth_url}")
+    else:
+        # Not a TTY: this is a log, a pipe, or an agent transcript, all of which outlive
+        # the session and none of which need the token in clear. The file has it.
+        print(f"[s0 web]  Auth URL : (withheld: not a terminal; see {token_path})")
     print(f"[s0 web]  Token    : {token_path} (mode 0600)")
-    print(f"[s0 web]  Binding  : {host} (Strict loopback isolation)")
+    # The banner claimed "Strict loopback isolation" whatever `--host` said. With
+    # `--host 0.0.0.0` the server listens on every interface and the label is a lie the
+    # operator reads at the exact moment they are deciding how exposed this is. The only
+    # thing protecting a non-loopback bind is the session token -- the Host allow-list
+    # checks the header the client chose to send, so it stops nothing.
+    loopback = host in ("127.0.0.1", "::1", "localhost")
+    print(f"[s0 web]  Binding  : {host}" + (" (loopback only)" if loopback else ""))
+    if not loopback:
+        print(
+            f"\033[1;31m[s0 web]  WARNING : {host} is not a loopback address, so this "
+            f"dashboard is reachable from the network.\033[0m"
+        )
+        print(
+            "[s0 web]            Authentication is still required and every /api route is "
+            "token-guarded, but the token is now the only thing between the network and a "
+            "destructive API."
+        )
+        print("[s0 web]            Use the default 127.0.0.1 unless you have a specific reason.")
     print("[s0 web]  Status   : Live — Press CTRL+C to stop")
     print()
 

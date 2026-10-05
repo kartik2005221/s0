@@ -559,6 +559,27 @@ def _resolve_key(
     return None, True
 
 
+def _reject_system_path(field: str, value: str | None) -> str | None:
+    """Refuse a path inside a system directory, for any request field.
+
+    `/api/carve` guarded `out_dir` but `/api/image` did not guard `destination`, so two
+    routes taking an output path applied different rules to the same class of input:
+
+        POST /api/carve  {"out_dir": "/etc/s0pwn", ...}      -> 422
+        POST /api/image  {"destination": "/etc/s0pwn.img", ...} -> 200, file created
+
+    Run as root -- which the dashboard documents itself as wanting -- that is a write into
+    `/etc`. Guard parity is the point: an API that blocks one of two equivalent inputs is
+    not a security control, it is a coincidence.
+    """
+    if value and value.strip():
+        p = Path(value.strip()).resolve()
+        for sp in _SYSTEM_PATHS:
+            if str(p) == sp or str(p).startswith(sp + "/"):
+                raise ValueError(f"{field} cannot be in system path: {sp}")
+    return value
+
+
 class PlanRequest(BaseModel):
     target: str
 
@@ -610,22 +631,12 @@ class WipeRequest(BaseModel):
     @field_validator("out_dir")
     @classmethod
     def validate_out_dir(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"out_dir cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("out_dir", v)
 
     @field_validator("key_path")
     @classmethod
     def validate_key_path(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"key_path cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("key_path", v)
 
     @field_validator("operator_id")
     @classmethod
@@ -688,22 +699,12 @@ class FileEraseRequest(BaseModel):
     @field_validator("out_dir")
     @classmethod
     def validate_out_dir(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"out_dir cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("out_dir", v)
 
     @field_validator("key_path")
     @classmethod
     def validate_key_path(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"key_path cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("key_path", v)
 
     @field_validator("operator_id")
     @classmethod
@@ -759,22 +760,12 @@ class CarveRequest(BaseModel):
     @field_validator("out_dir")
     @classmethod
     def validate_out_dir(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"out_dir cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("out_dir", v)
 
     @field_validator("key_path")
     @classmethod
     def validate_key_path(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"key_path cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("key_path", v)
 
     @field_validator("operator_id")
     @classmethod
@@ -813,25 +804,22 @@ class ImageRequest(BaseModel):
     )
     no_pdf: bool = False
 
+    @field_validator("destination")
+    @classmethod
+    def validate_destination(cls, v: str) -> str:
+        # The image is *written* here, so this is the field that needed the guard and did
+        # not have it. `out_dir` below was already checked.
+        return _reject_system_path("destination", v)
+
     @field_validator("out_dir")
     @classmethod
     def validate_out_dir(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"out_dir cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("out_dir", v)
 
     @field_validator("key_path")
     @classmethod
     def validate_key_path(cls, v: str | None) -> str | None:
-        if v and v.strip():
-            p = Path(v.strip()).resolve()
-            for sp in _SYSTEM_PATHS:
-                if str(p) == sp or str(p).startswith(sp + "/"):
-                    raise ValueError(f"key_path cannot be in system path: {sp}")
-        return v
+        return _reject_system_path("key_path", v)
 
     @field_validator("operator_id")
     @classmethod
