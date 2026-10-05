@@ -48,10 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -119,7 +119,7 @@ jobs:
           PY
 
       - name: Upload coverage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-xml-fast
           path: coverage.xml
@@ -168,10 +168,10 @@ jobs:
             python-version: "3.12"
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -278,7 +278,7 @@ jobs:
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-xml
           path: coverage.xml
@@ -320,10 +320,10 @@ jobs:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -376,8 +376,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -447,8 +447,8 @@ jobs:
     name: Type check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -519,7 +519,7 @@ jobs:
 
       - name: Publish mypy report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: mypy-report
           path: mypy-report.txt
@@ -535,8 +535,8 @@ jobs:
     name: Packaging
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -683,7 +683,7 @@ jobs:
           PY
 
       - name: Upload the built artefacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: dist
           path: dist/*
@@ -698,8 +698,8 @@ jobs:
     name: Site links
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
       # The portal, the installer pages and the docs are the only parts of this repository
@@ -723,7 +723,7 @@ jobs:
     name: PowerShell
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -802,8 +802,8 @@ jobs:
     name: Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -867,14 +867,14 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Initialize
-        uses: github/codeql-action/init@1190a975f95ce23525efb6a3fc21ea29567c1b52  # v3
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           languages: python
           queries: security-extended
       - name: Analyze
-        uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52  # v3
+        uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2  # v4.38.2
         with:
           category: "/language:python"
 
@@ -889,10 +889,10 @@ jobs:
     # Making it blocking would mean every Monday red for a reason nobody can fix that day.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
@@ -946,7 +946,7 @@ jobs:
     name: Lint workflows and scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       # Was `docker://rhysd/actionlint:latest` -- a mutable ref, and the only one
       # left in these workflows. Every action is now pinned to a commit SHA with the
       # version recorded in a trailing comment, because a tag is mutable: whoever
@@ -954,7 +954,7 @@ jobs:
       # every push. Each SHA below was resolved from the GitHub API and verified to
       # be a real commit before being written down, not guessed from a tag name.
       - name: actionlint
-        uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106  # v1.7.7
+        uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca  # v1.7.12
         with:
           args: -color
       # Was `ludeeus/action-shellcheck@master` -- a third-party action tracking a
@@ -979,7 +979,7 @@ jobs:
             -not -path './build/*' \
             -print0 | xargs -0 --no-run-if-empty shellcheck -x -S warning
       - name: hadolint
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf  # v3.1.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387  # v3.5.0
         with:
           dockerfile: iso/Dockerfile
           failure-threshold: error
@@ -995,8 +995,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test]
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
       - run: |
@@ -1006,7 +1006,7 @@ jobs:
           # auditable without running it.
           cyclonedx-py environment --output-format JSON --output-file s0-sbom.json
           cyclonedx-py requirements requirements.lock --output-format JSON --output-file s0-requirements-sbom.json
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: sbom
           path: s0-*-sbom.json
