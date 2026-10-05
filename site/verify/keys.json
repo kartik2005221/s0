@@ -8,5 +8,12 @@
       "public_key_raw_hex": "e2f8909648f46c79dafae857a54fabe0b8f384a1b99eaded18c8a1f55a11ecad",
       "status": "active"
     }
-  ]
+  ],
+  "trust_set": {
+    "state": "DEMO ONLY",
+    "why": "This set contains exactly one key, the deliberately unaccredited development key. It is here so the portal is useful out of the box and so the demo path is testable. It is NOT an accreditation: a certificate that verifies against this set attests that an Ed25519 signature is internally consistent, nothing more.",
+    "how_the_portal_presents_it": "verify.js marks a demo-key certificate amber, sets attested=false, and returns cliExitCode 75 -- the same code `s0 verify` exits for that file, so a script reading the portal's result cannot mistake it for an accredited pass.",
+    "before_you_publish_a_real_release": "Replace trusted_keys with the accredited issuers' public keys and set state to ACREDITED. Do not delete the entry: an empty trust set makes the portal reject every certificate including genuine ones, which looks like an outage rather than a policy. Leave the demo key in place only if you also want demo certificates to verify as demo -- the labelling above is what makes that safe.",
+    "demo_key_fingerprint": "sha256:8396af8c07a7d40f98ba492cf2b61e23fa768e66a9f627b02a9caff464e48c06"
+  }
 }
