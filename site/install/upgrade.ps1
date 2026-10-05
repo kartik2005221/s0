@@ -5,6 +5,18 @@
 #>
 $ErrorActionPreference = 'Stop'
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }
+# Which ref to upgrade to. `$S0Ref` was used below but never defined, and PowerShell
+# expands an undefined variable to nothing -- so `git fetch origin $S0Ref` became
+# `git fetch origin -q`, which resolves origin/HEAD rather than the ref this machine was
+# installed from. A user tracking a release tag was silently moved to whatever the
+# remote's default branch pointed at, and nothing in the output said so.
+#
+# Precedence matches upgrade.sh and install.sh: S0_INSTALL_REF, then the legacy
+# S0_BRANCH, then the branch this repository is on. Kept in the same order on purpose;
+# two installers with different override rules is its own bug.
+$S0Ref = if ($env:S0_INSTALL_REF) { $env:S0_INSTALL_REF }
+         elseif ($env:S0_BRANCH) { $env:S0_BRANCH }
+         else { "agent/harness" }
 $TotalSteps = 6
 $Step = 0
 

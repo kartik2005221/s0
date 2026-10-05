@@ -134,16 +134,92 @@ class TestTheRefIsChosenNotInherited:
             f"choice, invisible to tools/set_install_ref.py."
         )
 
-    # install.cmd and upgrade.ps1 are deliberately absent: neither reads
-    # S0_INSTALL_REF. That is a real gap, reported separately rather than papered over
-    # here, and widening this list is what exposed it.
-    @pytest.mark.parametrize("name", ["install.sh", "upgrade.sh"])
+    # The PowerShell installers were missing from this list, and a comment said so --
+    # "neither reads S0_INSTALL_REF ... reported separately". That gap is now closed,
+    # so they are in the list. Widening this list is what found it; leaving them out
+    # with a note is how it stayed broken.
+    @pytest.mark.parametrize("name", ["install.sh", "upgrade.sh", "install.ps1", "upgrade.ps1"])
     def test_the_ref_is_overridable_from_the_environment(self, name):
         text = _text(name)
         assert "S0_INSTALL_REF" in text, (
             f"{name} pins a ref an operator cannot change, so a broken or "
             f"unreleased ref cannot be worked around without editing the script"
         )
+
+    @pytest.mark.parametrize("name", ["install.ps1", "upgrade.ps1"])
+    def test_the_powershell_ref_variable_is_defined_before_it_is_used(self, name):
+        """`upgrade.ps1` ran `git fetch origin $S0Ref` with `$S0Ref` never assigned.
+
+        PowerShell expands an undefined variable to nothing, so that was
+        `git fetch origin -q`, which resolves origin/HEAD -- the remote's default branch
+        -- rather than the ref the machine was installed from. A user pinning a release
+        tag was silently moved to whatever the default branch was, with no indication in
+        the output.
+
+        Asserted as ordering rather than by executing PowerShell: the failure mode is
+        "used before assigned", and a presence check would pass on a definition that
+        appears below the use.
+        """
+        text = _text(name)
+        assignment = re.search(r"^\$S0Ref\s*=", text, re.M)
+        assert assignment, f"{name} uses $S0Ref but never assigns it"
+        # Assert on the git *commands*, not on every mention of the name. Two other
+        # kinds of mention exist in these files and neither is a use: the comment that
+        # documents this bug, and the error string "git clone of ref '$S0Ref' failed".
+        # Scanning for the bare variable reports both, and the test then fails on
+        # correct code -- which is how a test gets deleted instead of the bug getting
+        # fixed.
+        assignment_line = next(i for i, l in enumerate(text.splitlines()) if l.startswith("$S0Ref"))
+        commands = [
+            (i, l)
+            for i, l in enumerate(text.splitlines())
+            if "$S0Ref" in l and re.search(r"^\s*(?:&\s*)?git\s", l)
+        ]
+        assert commands, f"{name} does not appear to use $S0Ref in any git command"
+        for i, line in commands:
+            assert i > assignment_line, (
+                f"{name} runs `{line.strip()}` at line {i + 1}, before $S0Ref is "
+                f"assigned at line {assignment_line + 1}"
+            )
+
+    @pytest.mark.parametrize("name", ["install.ps1", "upgrade.ps1"])
+    def test_the_powershell_override_precedence_matches_the_shell_installers(self, name):
+        """S0_INSTALL_REF, then S0_BRANCH, then the default.
+
+        Two installers with different override rules is its own bug: the same
+        environment would pin one ref on Linux and another on Windows.
+        """
+        text = _text(name)
+        assert re.search(r"\$env:S0_INSTALL_REF", text), f"{name} must read S0_INSTALL_REF first"
+        assert re.search(r"\$env:S0_BRANCH", text), (
+            f"{name} must still honour the legacy S0_BRANCH, as install.sh does"
+        )
+        first = text.index("$env:S0_INSTALL_REF")
+        second = text.index("$env:S0_BRANCH")
+        assert first < second, f"{name} checks S0_BRANCH before S0_INSTALL_REF"
+
+    def test_install_ps1_pins_the_branch_on_both_clone_attempts(self):
+        """`git clone` with no `--branch` follows the remote's default.
+
+        install.ps1 did exactly that, so the Windows installer could not pin a ref at
+        all -- S0_INSTALL_REF was accepted and ignored. The full-clone fallback needs the
+        flag too: a fallback that dropped the pin would install a *different* ref than
+        the one that just failed.
+        """
+        text = _text("install.ps1")
+        # Match invocations only. A bare `git clone` also matches the human-readable
+        # error string "git clone of ref '$S0Ref' failed...", which is not a command and
+        # has no --branch to find.
+        clones = [
+            line
+            for line in text.splitlines()
+            if re.match(r"\s*(?:&\s*)?git clone\b", line) and not line.lstrip().startswith("#")
+        ]
+        assert clones, "install.ps1 has no clone to check"
+        for clone in clones:
+            assert "--branch" in clone, (
+                f"a clone without --branch follows the remote default branch: {clone.strip()}"
+            )
 
     def test_the_ref_is_defined_exactly_once_and_clearly(self):
         s = _text("install.sh")

@@ -6,6 +6,16 @@
 $ErrorActionPreference = 'Stop'
 $Repo = "https://github.com/kartik2005221/s0.git"
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }
+# Which ref to install. `git clone` here had no `--branch`, so the Windows installer
+# always took the remote's default branch and had no way to pin a release tag at all --
+# `S0_INSTALL_REF`, which install.sh and upgrade.sh both honour, was silently ignored.
+# A reproducible install is the whole point of that variable; on Windows it did nothing.
+#
+# Precedence matches install.sh: S0_INSTALL_REF, then the legacy S0_BRANCH, then the
+# branch this repository is on.
+$S0Ref = if ($env:S0_INSTALL_REF) { $env:S0_INSTALL_REF }
+         elseif ($env:S0_BRANCH) { $env:S0_BRANCH }
+         else { "agent/harness" }
 $TotalSteps = 9
 $Step = 0
 
@@ -125,16 +135,19 @@ if (Test-Path $InstallDir) {
         Write-Ok; Write-Info "existing install updated"
     }
 } else {
-    & git clone --depth 1 -q $Repo $InstallDir
+    # `--branch "$S0Ref"` on both attempts, including the full-clone fallback: a fallback
+    # that quietly drops the pin would install a different ref than the one that failed,
+    # which is worse than failing.
+    & git clone --depth 1 -q --branch $S0Ref $Repo $InstallDir
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n    [!]  Shallow clone failed, attempting full clone..." -ForegroundColor Yellow
-        & git clone -q $Repo $InstallDir
+        Write-Host "`n    [!]  Shallow clone of '$S0Ref' failed, attempting full clone..." -ForegroundColor Yellow
+        & git clone -q --branch $S0Ref $Repo $InstallDir
         if ($LASTEXITCODE -ne 0) {
-            Write-Host "`n`n[ERROR] git clone failed with exit code $LASTEXITCODE. Check your network connection." -ForegroundColor Red
+            Write-Host "`n`n[ERROR] git clone of ref '$S0Ref' failed with exit code $LASTEXITCODE. Check your network connection, and that '$S0Ref' exists on the remote." -ForegroundColor Red
             exit 1
         }
     }
-    Write-Ok; Write-Info "cloned from $Repo"
+    Write-Ok; Write-Info "cloned $S0Ref from $Repo"
 }
 Set-Location $InstallDir
 
