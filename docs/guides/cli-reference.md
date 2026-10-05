@@ -1382,14 +1382,17 @@ s0 keygen [--out-dir DIR] [--name PREFIX]
 {% tab title="Help Screen" %}
 
 ```
-usage: s0 keygen [-h] [--out-dir OUT_DIR] [--name NAME] [--format {text,json,csv}] [--json]
-                 [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
+usage: s0 keygen [-h] [--out-dir OUT_DIR] [--name NAME] [--force] [--format {text,json,csv}]
+                 [--json] [--quiet] [--verbose] [--color {auto,always,never}] [--no-color] [--yes]
                  [--dry-run]
 
 options:
   -h, --help            show this help message and exit
   --out-dir OUT_DIR     directory to store private and public keys
-  --name NAME           key filename prefix
+  --name NAME           filename prefix for the keypair; a plain name, not a path
+  --force               replace an existing private key in --out-dir. Every certificate already
+                        signed with it stops being attributable, so this is deliberate or it is a
+                        mistake
 
 output:
   --format {text,json,csv}

@@ -2515,10 +2515,53 @@ def cmd_keygen(args) -> int:
         ui.error(f"cannot create output directory {out_dir}: {exc}")
         return EX_CANTCREAT
 
+    # `--name` becomes a filename, so it must not be a path. `out_dir / "../x_private.pem"`
+    # normalises to one level *above* out_dir, and `out_dir / "/tmp/x_private.pem"`
+    # discards out_dir entirely -- so an unchecked name can create or, worse, overwrite
+    # a `*_private.pem` somewhere the operator never named. Validate it as a filename.
+    name = str(getattr(args, "name", "") or "")
+    bad = (
+        not name
+        or name in (".", "..")
+        or name.startswith((".", "-"))
+        or "/" in name
+        or "\\" in name
+        or any(ord(c) < 0x20 or ord(c) == 0x7F for c in name)
+    )
+    if bad:
+        ui.error(
+            f"invalid --name {name!r}: it must be a plain filename prefix -- no path "
+            f"separators, no leading '.' or '-', no control characters"
+        )
+        return EX_USAGE
+
+    priv_p = out_dir / f"{name}_private.pem"
+    pub_p = out_dir / f"{name}_public.pem"
+
+    # Refuse to replace an existing private key. This tool calls the key "the root of
+    # trust for every certificate this authority will ever issue", and running
+    # `s0 keygen` twice in the same directory used to silently overwrite it -- new key,
+    # exit 0, no warning, no backup. Every previously signed certificate then points at
+    # a key that no longer exists locally, and nothing says so.
+    if priv_p.exists() and not getattr(args, "force", False):
+        ui.error(
+            f"refusing to overwrite the existing private key {priv_p}.\n"
+            f"  Replacing it invalidates every certificate already signed with it, and "
+            f"the old key is not recoverable from here.\n"
+            f"  Choose a different --name, remove the file yourself if you are certain, "
+            f"or pass --force to replace it deliberately."
+        )
+        return EX_CANTCREAT
+    if priv_p.exists():
+        ui.warn(f"--force: replacing the existing private key {priv_p}")
+        try:
+            priv_p.unlink()
+        except OSError as exc:
+            ui.error(f"cannot remove the existing private key {priv_p}: {exc}")
+            return EX_CANTCREAT
+
     priv = crypto.generate_private_key()
     pub = priv.public_key()
-    priv_p = out_dir / f"{args.name}_private.pem"
-    pub_p = out_dir / f"{args.name}_public.pem"
     try:
         crypto.write_private_pem(priv, priv_p)
         crypto.write_public_pem(pub, pub_p)
@@ -3495,7 +3538,17 @@ def build_parser() -> argparse.ArgumentParser:
     # 5. Key Generation Subcommand
     kg = sub.add_parser("keygen", help="generate Ed25519 signing keypair for an authority or operator")
     kg.add_argument("--out-dir", default=".", help="directory to store private and public keys")
-    kg.add_argument("--name", default="operator_key", help="key filename prefix")
+    kg.add_argument(
+        "--name",
+        default="operator_key",
+        help="filename prefix for the keypair; a plain name, not a path",
+    )
+    kg.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing private key in --out-dir. Every certificate already "
+        "signed with it stops being attributable, so this is deliberate or it is a mistake",
+    )
     kg.set_defaults(func=cmd_keygen)
 
     # 6. Upgrade Subcommand

@@ -804,22 +804,55 @@ def cmd_live_download(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
+def _still_mounted(target: str) -> list[str]:
+    """Mount points still backed by *target* or one of its partitions.
+
+    Reads /proc/mounts rather than trusting `umount`'s exit status, because
+    `umount -f` on a busy filesystem returns non-zero in some configurations and zero in
+    others, and `check=False` meant nobody was looking either way.
+    """
+    base = os.path.basename(target.rstrip("/"))
+    if not base:
+        return []
+    holders: list[str] = []
+    try:
+        with open("/proc/mounts", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) < 2:
+                    continue
+                dev = parts[0].removeprefix("/dev/").removesuffix("*")
+                # The whole device, or any partition of it (sda1 for sda).
+                if dev == base or dev.startswith(base) and dev[len(base) : len(base) + 1].isdigit():
+                    holders.append(f"{parts[1]} ({dev})")
+    except OSError:
+        return []
+    return holders
+
+
 def _unmount_partitions(target: str) -> bool:
-    """Unmount active partitions on target drive across platforms."""
+    """Unmount active partitions on target. Returns True only if nothing is left mounted.
+
+    The Linux branch used to return `True` unconditionally: it ran `umount -f` with
+    `check=False` and never looked at the result. So when the unmount failed -- a busy
+    filesystem, which is the normal case for a USB stick someone is still using -- the
+    caller was told it had succeeded and wrote the ISO over a *mounted* filesystem,
+    reporting "Successfully flashed". `wipe` and `clone` both refuse a mounted target;
+    `live flash` did not.
+    """
     if sys.platform == "linux":
         try:
-            # Look up partitions of target
             base = os.path.basename(target)
             sys_block = Path(f"/sys/block/{base}")
             if sys_block.is_dir():
-                for p in sys_block.iterdir():
+                for p in sorted(sys_block.iterdir()):
                     if p.name.startswith(base):
-                        part_dev = f"/dev/{p.name}"
-                        subprocess.run(["umount", "-f", part_dev], capture_output=True, check=False)
-            subprocess.run(["umount", "-f", target], capture_output=True, check=False)
-            return True
+                        subprocess.run(["umount", f"/dev/{p.name}"], capture_output=True, check=False)
+            subprocess.run(["umount", target], capture_output=True, check=False)
         except Exception:
             return False
+        # Ask the kernel, not umount.
+        return not _still_mounted(target)
     elif sys.platform == "darwin":
         try:
             disk_target = target.replace("/dev/rdisk", "/dev/disk")
@@ -1090,7 +1123,24 @@ def cmd_live_flash(args: argparse.Namespace) -> int:
             return EX_TEMPFAIL
 
     print("[s0 live]  Unmounting existing filesystems on target drive...")
-    _unmount_partitions(matched_device["path"])
+    if not _unmount_partitions(matched_device["path"]):
+        still = _still_mounted(matched_device["path"])
+        print(
+            "[s0 live]  ERROR : the target still has mounted filesystems, so writing to "
+            "it would corrupt the mounted data rather than replace the device.",
+            file=sys.stderr,
+        )
+        for entry in still:
+            print(f"[s0 live]          still mounted: {entry}", file=sys.stderr)
+        print(
+            "[s0 live]          unmount them and retry, or stop anything using them "
+            "(a shell cwd, a file manager, a backup agent).",
+            file=sys.stderr,
+        )
+        # Refusing is the whole point. Proceeding wrote the ISO over live data and
+        # reported success; `--force` does not override this, because there is no
+        # version of "overwrite a mounted filesystem" that is what the operator meant.
+        return EX_TEMPFAIL
 
     write_target = (
         matched_device.get("raw_path")
