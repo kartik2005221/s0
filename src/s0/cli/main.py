@@ -214,10 +214,7 @@ def _prepare_out_dir(args, *, ui=None) -> Path | None:
         probe.write_bytes(b"")
         probe.unlink()
     except OSError as exc:
-        msg = (
-            f"error: --out-dir {out_dir} is not writable: {exc.strerror or exc}. "
-            f"Nothing has been written."
-        )
+        msg = f"error: --out-dir {out_dir} is not writable: {exc.strerror or exc}. Nothing has been written."
         (ui.error(msg) if ui else print(msg, file=sys.stderr))
         try:
             probe.unlink()
