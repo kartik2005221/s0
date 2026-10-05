@@ -24,7 +24,11 @@ import sys
 from pathlib import Path
 
 import pytest
-import tomllib
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib  # type: ignore[no-redef]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -34,7 +38,7 @@ LOCK = REPO_ROOT / "requirements.lock"
 
 def _declared() -> dict[str, str]:
     """Direct runtime/web/test dependencies, as (normalised name -> specifier)."""
-    data = tomllib.loads(PYPROJECT.read_text())
+    data = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     out: dict[str, str] = {}
     for dep in data["project"]["dependencies"]:
         name = re.split(r"[<>=!~\[ ]", dep, maxsplit=1)[0].strip()

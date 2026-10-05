@@ -26,6 +26,8 @@ import sys
 import zipfile
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 KEYS_DIR = REPO_ROOT / "src" / "s0" / "data" / "keys"
 KEYS_README = KEYS_DIR / "README.md"
@@ -245,6 +247,7 @@ class TestTheWheelReallyContainsIt:
     """
 
     def test_the_built_wheel_contains_the_demo_private_key(self, tmp_path):
+        pytest.importorskip("build")
         proc = subprocess.run(
             [sys.executable, "-m", "build", "--wheel", "--outdir", str(tmp_path)],
             capture_output=True,

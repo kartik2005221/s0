@@ -28,6 +28,7 @@ fi
 echo "==> Fetching current GitBook site customization..."
 CURRENT=$(curl -sSf -H "Authorization: Bearer $GITBOOK_TOKEN" \
     "https://api.gitbook.com/v1/orgs/${ORG_ID}/sites/${SITE_ID}/customization" 2>/dev/null || echo "{}")
+echo "    Current configuration: ${#CURRENT} bytes fetched."
 
 echo "==> Applying s0 standard portal theme (Pitch-Black & Electric Orange)..."
 curl -sSf -X PUT \

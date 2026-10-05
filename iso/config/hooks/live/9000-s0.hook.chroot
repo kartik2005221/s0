@@ -12,6 +12,7 @@ mkdir -p /opt/s0
 # directory to copy. Only site/verify is staged: the rest of site/ is the
 # landing page and the web installer, which have no place on the appliance.
 cp -r /root/repo-snapshot/src /opt/s0/
+find /opt/s0/src -type f \( -name '*private*.pem' -o -name '*private*.key' \) -delete
 if [ -d /root/repo-snapshot/site/verify ]; then
     mkdir -p /opt/s0/site
     cp -r /root/repo-snapshot/site/verify /opt/s0/site/

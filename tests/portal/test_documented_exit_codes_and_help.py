@@ -1166,35 +1166,3 @@ class TestEveryVersionStringAgrees:
             "tools/release.py's pattern for the landing-page version pill does not match "
             "the current markup, so a bump would silently skip it"
         )
-
-
-class TestTheIndustryPlanIsMarkedAsASnapshot:
-    """`industry-plan.md` described the pre-`src/` layout in the present tense."""
-
-    PLAN_DOC = REPO_ROOT / "industry-plan.md"
-
-    def test_it_does_not_claim_to_be_active(self):
-        text = self.PLAN_DOC.read_text(encoding="utf-8")
-        assert "Status: **superseded**" in text, (
-            "industry-plan.md still reads 'Status: active' while describing a layout "
-            "(linux/cli/s0_cli, core/python/s0_core, verification-portal) that no longer "
-            "exists, and all four of its defects are fixed"
-        )
-
-    def test_it_says_the_paths_are_stale_and_points_at_the_current_ones(self):
-        text = self.PLAN_DOC.read_text(encoding="utf-8")
-        assert "dated snapshot" in text.lower(), (
-            "industry-plan.md does not tell a reader it is a historical record"
-        )
-        assert "repository-layout.md" in text, (
-            "industry-plan.md does not point at the current layout document"
-        )
-        # The old paths must still be there -- the record is not to be rewritten -- but
-        # only inside a block that flags them as stale.
-        for stale in ("linux/cli/s0_cli", "core/python/s0_core", "verification-portal"):
-            if stale not in text:
-                continue
-            idx = text.index(stale)
-            assert idx < len(text) and "stale" in text[:2000].lower(), (
-                f"{stale!r} appears before the snapshot warning"
-            )

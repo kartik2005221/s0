@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -55,8 +56,17 @@ TAB = re.compile(r'(?P<head>\{% tab title="Help Screen" %\}\n)(?P<body>.*?)(?P<t
 
 def help_for(command: str) -> str:
     """Run `<entry point> <command> --help` and return it, or a note."""
-    entry = REPO_ROOT / ".venv" / "bin" / "s0"
+    entry: Path | None = Path(sys.executable).parent / ("s0.exe" if os.name == "nt" else "s0")
     if not entry.is_file():
+        found = shutil.which("s0")
+        if found:
+            entry = Path(found)
+        elif (REPO_ROOT / ".venv" / "bin" / "s0").is_file():
+            entry = REPO_ROOT / ".venv" / "bin" / "s0"
+        else:
+            entry = None
+
+    if entry is None or not entry.is_file():
         sys.path.insert(0, str(REPO_ROOT / "src"))
         try:
             from s0.cli.main import build_parser

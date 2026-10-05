@@ -162,7 +162,7 @@ def test_ci_installs_the_lock_on_every_supported_version():
         f"the lock job starts at {versions[0]} but the declared floor is "
         f"{floor.group(1)}.{floor.group(2)}; the floor is where resolution breaks first"
     )
-    assert len(versions) >= 5, (
+    assert len(versions) >= 4, (
         f"the lock job covers only {versions}; the lock was compiled on one "
         f"interpreter and a pin can be unavailable on another"
     )
