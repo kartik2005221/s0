@@ -169,11 +169,12 @@ class TestTheRefIsChosenNotInherited:
         # Scanning for the bare variable reports both, and the test then fails on
         # correct code -- which is how a test gets deleted instead of the bug getting
         # fixed.
-        assignment_line = next(i for i, l in enumerate(text.splitlines()) if l.startswith("$S0Ref"))
+        src_lines = text.splitlines()
+        assignment_line = next(i for i, line in enumerate(src_lines) if line.startswith("$S0Ref"))
         commands = [
-            (i, l)
-            for i, l in enumerate(text.splitlines())
-            if "$S0Ref" in l and re.search(r"^\s*(?:&\s*)?git\s", l)
+            (i, line)
+            for i, line in enumerate(src_lines)
+            if "$S0Ref" in line and re.search(r"^\s*(?:&\s*)?git\s", line)
         ]
         assert commands, f"{name} does not appear to use $S0Ref in any git command"
         for i, line in commands:
