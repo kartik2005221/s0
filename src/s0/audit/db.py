@@ -21,7 +21,14 @@ GENESIS_PREV_HASH = "0" * 64
 
 def get_default_audit_db() -> Path:
     """Dynamically resolve audit database path, respecting S0_AUDIT_DB environment variable."""
-    return Path(os.environ.get("S0_AUDIT_DB", str(Path.home() / ".s0" / "s0_audit.db")))
+    override = os.environ.get("S0_AUDIT_DB")
+    if override:
+        return Path(override)
+    try:
+        home = Path.home()
+    except (RuntimeError, OSError):
+        home = Path.cwd()
+    return home / ".s0" / "s0_audit.db"
 
 
 DEFAULT_AUDIT_DB = get_default_audit_db()

@@ -792,7 +792,7 @@ def test_sniff_identifies_content():
     assert sniff(_png_bytes()).extension == "png"
     assert sniff(_jpeg_bytes()).extension == "jpg"
     assert sniff(_zip_bytes()).extension == "zip"
-    assert sniff(os.urandom(4096)) is None
+    assert sniff(b"\x00" * 4096) is None
 
 
 # --------------------------------------------------------------------------- #

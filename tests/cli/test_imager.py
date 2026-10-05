@@ -123,7 +123,7 @@ def test_fault_tolerant_bad_sector_handling(temp_workspace):
 
     def mock_open(path, mode="r", *args, **kwargs):
         f = original_open(path, mode, *args, **kwargs)
-        if "r" in mode and str(path) == str(src_file):
+        if "r" in mode and Path(path).resolve() == src_file.resolve():
             return MockFailingFile(f)
         return f
 

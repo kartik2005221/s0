@@ -69,11 +69,11 @@ SYSTEM_PREFIXES: tuple[str, ...] = (
 
 #: Paths under system prefixes that are user/temporary space and allowed.
 ALLOWED_TEMP_PREFIXES: tuple[str, ...] = (
-    "/tmp",  # noqa: S108
+    "/tmp",  # nosec B108  # noqa: S108
     "/private/tmp",
     "/private/var/tmp",
     "/private/var/folders",
-    "/var/tmp",  # noqa: S108
+    "/var/tmp",  # nosec B108  # noqa: S108
 )
 
 
@@ -105,14 +105,21 @@ def s0_state_paths() -> list[Path]:
     is whatever `resources.repo_root()` says it is.
     """
     out: list[Path] = []
-    home_s0 = _resolve(Path.home() / ".s0")
-    if home_s0 is not None:
+    raw_home_s0 = Path.home() / ".s0"
+    out.append(raw_home_s0)
+    home_s0 = _resolve(raw_home_s0)
+    if home_s0 is not None and home_s0 != raw_home_s0:
         out.append(home_s0)
     try:
         from s0.resources import repo_root
 
         root = repo_root()
         if root is not None:
+            raw_repo_state = root / ".s0"
+            out.append(raw_repo_state)
+            repo_state = _resolve(raw_repo_state)
+            if repo_state is not None and repo_state != raw_repo_state:
+                out.append(repo_state)
             resolved = _resolve(root)
             if resolved is not None:
                 out.append(resolved)
@@ -157,7 +164,8 @@ def check_path_is_destructive(
             f"proceeding AGAINST THE FILESYSTEM ROOT: {target}",
         )
 
-    if _under(resolved, Path.home()) and resolved == _resolve(Path.home()):
+    resolved_home = _resolve(Path.home())
+    if resolved_home is not None and resolved == resolved_home:
         _refuse_or_warn(
             warnings,
             force,

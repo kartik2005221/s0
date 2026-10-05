@@ -299,7 +299,7 @@ SIGNATURES: list[FileSignature] = [
         "MP3 Audio (MPEG-2.5 Layer III sync frame)",
         "mp3",
         "audio",
-        header=b"\xe3",
+        header=b"\xff\xe3",
         min_size=1024,
         max_size=256 * _MB,
     ),

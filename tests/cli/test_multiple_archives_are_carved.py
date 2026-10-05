@@ -21,6 +21,7 @@ selector, which is why the fix is a selection rule rather than a new heuristic.
 from __future__ import annotations
 
 import io
+import os
 import zipfile
 from pathlib import Path
 
@@ -213,7 +214,13 @@ class TestEndToEndCarveRecoversEveryArchive:
             text=True,
             cwd=str(tmp_path),
             timeout=300,
-            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(tmp_path / "audit.db")},
+            env={
+                **os.environ,
+                "HOME": str(tmp_path),
+                "USERPROFILE": str(tmp_path),
+                "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
+            },
         )
         assert proc.returncode == 0, proc.stderr
 

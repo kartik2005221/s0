@@ -556,7 +556,12 @@ class TestTheEnvelopeIsActuallyPopulated:
             text=True,
             cwd=str(tmp_path),
             timeout=180,
-            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
+            env={
+                **os.environ,
+                "HOME": str(tmp_path),
+                "USERPROFILE": str(tmp_path),
+                **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
+            },
         )
         if not proc.stdout.strip():
             pytest.skip(f"no JSON on stdout: {proc.stderr[-200:]}")

@@ -53,11 +53,15 @@ def _entry_point() -> str:
 
 
 def _run(*args: str, cwd: Path) -> subprocess.CompletedProcess:
+    env = dict(os.environ)
+    env.update({"HOME": str(cwd), "USERPROFILE": str(cwd), "S0_AUDIT_DB": str(cwd / "audit.db")})
+    if os.name != "nt":
+        env["PATH"] = "/usr/bin:/bin"
     return subprocess.run(
         [_entry_point(), *args],
         capture_output=True,
         text=True,
-        env={"HOME": str(cwd), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(cwd / "audit.db")},
+        env=env,
         cwd=str(cwd),
         timeout=180,
     )
@@ -221,7 +225,14 @@ class TestBadTargetsDoNotProduceTracebacks:
     def test_the_traceback_is_still_available_to_developers(self, workdir):
         """Hiding the traceback must not remove it from those who need it."""
         proc_env = dict(os.environ)
-        proc_env.update({"HOME": str(workdir), "S0_TRACEBACK": "1", "S0_AUDIT_DB": str(workdir / "audit.db")})
+        proc_env.update(
+            {
+                "HOME": str(workdir),
+                "USERPROFILE": str(workdir),
+                "S0_TRACEBACK": "1",
+                "S0_AUDIT_DB": str(workdir / "audit.db"),
+            }
+        )
         script = (
             "import s0.cli.main as m\n"
             "m.cmd_list = lambda args: (_ for _ in ()).throw(RuntimeError('boom'))\n"

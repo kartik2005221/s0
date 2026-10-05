@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -38,11 +39,15 @@ def _entry_point() -> str:
 
 
 def _carve(*args: str, cwd: Path) -> subprocess.CompletedProcess:
+    env = dict(os.environ)
+    env.update({"HOME": str(cwd), "USERPROFILE": str(cwd), "S0_AUDIT_DB": str(cwd / "audit.db")})
+    if os.name != "nt":
+        env["PATH"] = "/usr/bin:/bin"
     return subprocess.run(
         [_entry_point(), "carve", *args],
         capture_output=True,
         text=True,
-        env={"HOME": str(cwd), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(cwd / "audit.db")},
+        env=env,
         cwd=str(cwd),
         timeout=300,
     )

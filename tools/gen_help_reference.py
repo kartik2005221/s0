@@ -113,17 +113,19 @@ def help_for(command: str) -> str:
 #: as argparse rendered it for whoever generated it.
 HELP_LINE = re.compile(r"^(?P<indent>\s+)(?P<invocation>\S.*?)(?:\s{2,}(?P<help>\S.*))?$")
 OLD_STYLE_OPTION = re.compile(
-    r"^(?P<long>--[A-Za-z0-9-]+)\s+(?P<meta>.+?),\s+(?P<short>-[A-Za-z])\s+(?P<meta2>.+)$"
+    r"^(?P<opt1>-{1,2}[A-Za-z0-9_-]+)\s+(?P<meta>.+?),\s+(?P<opt2>-{1,2}[A-Za-z0-9_-]+)\s+(?P<meta2>.+)$"
 )
 SECTION_HEADING = re.compile(r"^[A-Za-z][A-Za-z ]*:$")
 
 
 def canonical_invocation(invocation: str) -> str:
-    """`--passes PASSES, -p PASSES` and `--passes, -p PASSES` -> the latter."""
+    """`--passes PASSES, -p PASSES` and `--passes, -p PASSES` -> the latter.
+    Also handles two long options: `--key KEY, --signing-key KEY` -> `--key, --signing-key KEY`.
+    """
     m = OLD_STYLE_OPTION.match(invocation)
     if not m or m.group("meta").strip() != m.group("meta2").strip():
         return " ".join(invocation.split())
-    return " ".join(f"{m.group('long')}, {m.group('short')} {m.group('meta2')}".split())
+    return " ".join(f"{m.group('opt1')}, {m.group('opt2')} {m.group('meta2')}".split())
 
 
 def _skeleton(text: str) -> list[str]:

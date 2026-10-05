@@ -20,6 +20,7 @@ the source rather than in the guard, because "the ledger exists" has to keep mea
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -68,13 +69,19 @@ def workspace(tmp_path):
 
 
 def _run(workspace: Path, *args: str, timeout: int = 60):
+    env = dict(os.environ)
+    env.update(
+        {"HOME": str(workspace), "USERPROFILE": str(workspace), "S0_AUDIT_DB": str(workspace / "audit.db")}
+    )
+    if os.name != "nt":
+        env["PATH"] = "/usr/bin:/bin"
     return subprocess.run(
         [_entry_point(), *args],
         capture_output=True,
         text=True,
         timeout=timeout,
         cwd=str(workspace),
-        env={"HOME": str(workspace), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(workspace / "audit.db")},
+        env=env,
     )
 
 

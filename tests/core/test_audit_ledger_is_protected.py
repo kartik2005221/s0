@@ -69,8 +69,13 @@ def _wipe(path: Path, home: Path, tag: str) -> subprocess.CompletedProcess:
         ],
         capture_output=True,
         text=True,
-        timeout=300,
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(home / "audit.db")},
+        env={
+            **os.environ,
+            "HOME": str(home),
+            "USERPROFILE": str(home),
+            "S0_AUDIT_DB": str(home / "audit.db"),
+            **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
+        },
         cwd=str(home),
     )
 
@@ -327,7 +332,13 @@ class TestConcurrentAppendsDoNotCollide:
             capture_output=True,
             text=True,
             timeout=300,
-            env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(tmp_path / "audit.db")},
+            env={
+                **os.environ,
+                "HOME": str(tmp_path),
+                "USERPROFILE": str(tmp_path),
+                "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
+            },
             cwd=str(tmp_path),
         )
         assert "Traceback" not in proc.stdout + proc.stderr

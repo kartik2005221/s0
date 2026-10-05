@@ -140,6 +140,7 @@ class TestLiveFlashRefusesAMountedTarget:
         from s0.live import live_manager
         from s0.live.live_manager import _unmount_partitions
 
+        monkeypatch.setattr(sys, "platform", "linux")
         calls: list[list[str]] = []
 
         def _fake_run(cmd, *a, **k):
@@ -159,6 +160,7 @@ class TestLiveFlashRefusesAMountedTarget:
         from s0.live import live_manager
         from s0.live.live_manager import _unmount_partitions
 
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             live_manager,
             "MOUNTS_PATH",
@@ -177,6 +179,7 @@ class TestLiveFlashRefusesAMountedTarget:
         from s0.live import live_manager
         from s0.live.live_manager import _unmount_partitions
 
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(live_manager, "MOUNTS_PATH", str(tmp_path / "absent"))
         monkeypatch.setattr(
             live_manager.subprocess,

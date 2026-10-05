@@ -22,6 +22,7 @@ a slow test that gets tolerated.
 
 from __future__ import annotations
 
+import os
 import struct
 import subprocess
 import sys
@@ -50,7 +51,13 @@ def _carve(image: Path, out: Path, timeout: int = 60) -> subprocess.CompletedPro
         text=True,
         cwd=str(REPO_ROOT),
         timeout=timeout,
-        env={"PYTHONPATH": str(REPO_ROOT / "src"), "PATH": "/usr/bin:/bin", "HOME": str(out)},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(REPO_ROOT / "src"),
+            "HOME": str(out),
+            "USERPROFILE": str(out),
+            **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
+        },
     )
 
 

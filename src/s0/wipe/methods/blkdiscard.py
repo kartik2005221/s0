@@ -61,14 +61,14 @@ class BlkdiscardMethod(WipeMethod):
         import os
 
         result = MethodResult(status="success")
-        if sys.platform != "linux":
-            result.status = "failure"
-            result.errors.append("BLKDISCARD is a Linux kernel ioctl and is not available on this platform")
-            return result
-
         if target.kind != "block":
             result.status = "failure"
             result.errors.append("BLKDISCARD requires a block device, not an image file")
+            return result
+
+        if sys.platform != "linux":
+            result.status = "failure"
+            result.errors.append("BLKDISCARD is a Linux kernel ioctl and is not available on this platform")
             return result
 
         if not supports_discard(target.path):

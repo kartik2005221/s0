@@ -28,6 +28,7 @@ having to remember it.
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -59,7 +60,10 @@ def _run(*args: str, home: Path) -> subprocess.CompletedProcess:
     The ledger matters too: a carve that wrote no files but appended a block
     would still have altered evidence, which is what --dry-run exists to prevent.
     """
-    env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(home / "audit.db")}
+    env = dict(os.environ)
+    env.update({"HOME": str(home), "USERPROFILE": str(home), "S0_AUDIT_DB": str(home / "audit.db")})
+    if os.name != "nt":
+        env["PATH"] = "/usr/bin:/bin"
     return subprocess.run(
         [_entry_point(), *args], capture_output=True, text=True, env=env, cwd=str(home), timeout=180
     )

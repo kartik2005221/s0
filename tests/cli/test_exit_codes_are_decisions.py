@@ -44,7 +44,16 @@ def _entry_point() -> str:
 
 
 def _run(*args: str, cwd: Path, env: dict | None = None, timeout: int = 180):
-    base = {"HOME": str(cwd), "PATH": "/usr/bin:/bin", "S0_AUDIT_DB": str(cwd / "audit.db")}
+    base = dict(os.environ)
+    base.update(
+        {
+            "HOME": str(cwd),
+            "USERPROFILE": str(cwd),
+            "S0_AUDIT_DB": str(cwd / "audit.db"),
+        }
+    )
+    if os.name != "nt":
+        base["PATH"] = "/usr/bin:/bin"
     base.update(env or {})
     return subprocess.run(
         [_entry_point(), *args], capture_output=True, text=True, env=base, cwd=str(cwd), timeout=timeout

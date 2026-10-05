@@ -157,13 +157,17 @@ def platform_sync(fd: int) -> bool:
     on a compliance certificate. The overwrite is still attempted either way;
     what changes is whether the tool tells the truth about it.
     """
+    try:
+        os.fsync(fd)
+    except OSError:
+        return False
+
     if sys.platform == "darwin":
         # Apple macOS: F_FULLFSYNC (fcntl command 51) flushes drive hardware cache
         try:
             import fcntl
 
             fcntl.fcntl(fd, 51, 0)
-            return True
         except Exception:
             pass
     elif sys.platform == "win32":
@@ -172,16 +176,11 @@ def platform_sync(fd: int) -> bool:
             import msvcrt
 
             handle = msvcrt.get_osfhandle(fd)
-            if ctypes.windll.kernel32.FlushFileBuffers(handle):
-                return True
+            ctypes.windll.kernel32.FlushFileBuffers(handle)
         except Exception:
             pass
 
-    try:
-        os.fsync(fd)
-        return True
-    except OSError:
-        return False
+    return True
 
 
 def platform_cleanse_attributes(path_str: str, fd: int | None = None) -> None:
