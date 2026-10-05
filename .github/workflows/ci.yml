@@ -2,8 +2,8 @@ name: CI
 
 # Runs on every branch, not just master.
 #
-# The original trigger was `master` only, which meant that all of the work on
-# `agent/harness` had never been through CI at all. A gate that does not run is
+# The original trigger was `master` only, which meant that feature branches
+# had never been through CI at all. A gate that does not run is
 # not a gate, so the trigger is every push and every pull request.
 on:
   push:

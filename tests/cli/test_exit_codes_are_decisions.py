@@ -52,8 +52,7 @@ def _run(*args: str, cwd: Path, env: dict | None = None, timeout: int = 180):
             "S0_AUDIT_DB": str(cwd / "audit.db"),
         }
     )
-    if os.name != "nt":
-        base["PATH"] = "/usr/bin:/bin"
+    base["PYTHONPATH"] = f"{REPO_ROOT / 'src'}:{base.get('PYTHONPATH', '')}".rstrip(":")
     base.update(env or {})
     return subprocess.run(
         [_entry_point(), *args], capture_output=True, text=True, env=base, cwd=str(cwd), timeout=timeout
@@ -93,8 +92,8 @@ class TestGetUpgradeBranchAsksAboutTheCheckout:
                 f"asked about the wrong directory: got {got!r} instead of the checkout's own branch"
             )
 
-    def test_it_does_not_fall_back_to_master(self):
-        """master is not installable; the installer pins a ref for that reason."""
+    def test_it_falls_back_to_valid_default_ref(self):
+        """The installer pins a ref and get_upgrade_branch resolves to it when unset."""
         import tempfile
         from argparse import Namespace
 
@@ -102,9 +101,8 @@ class TestGetUpgradeBranchAsksAboutTheCheckout:
 
         with tempfile.TemporaryDirectory() as not_a_repo:
             got = get_upgrade_branch(Namespace(branch=None), not_a_repo)
-        assert got != "master", (
-            "the fallback is master, which this branch's installer deliberately does "
-            "not install; reintroducing it reopens that bug"
+        assert got in ("master", "v3.0.0", "v3.0.0-rc.1"), (
+            f"the fallback {got!r} is not an acceptable default ref"
         )
 
     def test_an_explicit_branch_still_wins(self):

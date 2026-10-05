@@ -17,14 +17,12 @@ Both are needed. `master` is what a fresh install should follow between releases
 the tag is what a reproducible install should pin, and it is what the installer
 documentation already tells operators to set.
 
-The value is left at `agent/harness` on this branch, which is correct today: it is
-the branch that is installable, and `master` is not.
+The default value on master is pinned to `master`.
 
 Accepted values:
 
 * `master`
 * a release tag: `v3.0.0`, or a pre-release `v3.0.0-rc.1`
-* the current branch, `agent/harness`, so the pre-merge state stays expressible
 
 Anything else is refused. A typo like `v3.0.0.` or `mastre` would otherwise be
 written into six places and only discovered when an operator's install failed.
@@ -67,8 +65,8 @@ SCRIPT_TARGETS: tuple[tuple[Path, re.Pattern[str]], ...] = (
 )
 
 VALID_TAG = re.compile(r"^v\d+\.\d+\.\d+(-rc\.\d+)?$")
-CURRENT_BRANCH = "agent/harness"
-ALLOWED = ("master", CURRENT_BRANCH)
+CURRENT_BRANCH = "master"
+ALLOWED = ("master",)
 
 #: A ref fallback returns a git ref at either indent. Narrow on purpose: the envelope
 #: builder also returns quoted strings at 8 spaces, and matching those would find two
@@ -82,10 +80,15 @@ PY_COMMENT_MARKER = "installer pins a ref precisely"
 #: Why the fallback is pinned rather than inherited. `{ref}` is the value in force.
 #: Written for a branch; the wording for a tag is different, because a tag *is* the
 #: installable ref and "not installable" would be false.
+PY_COMMENT_MASTER = (
+    "        # Default fallback for s0 upgrade: master branch. This\n"
+    "        # installer pins a ref precisely so that standalone upgrades\n"
+    "        # track the default branch '{ref}'."
+)
 PY_COMMENT_BRANCH = (
-    '        # Deliberately NOT "{ref}". This branch\'s installer pins a ref precisely\n'
-    "        # because {ref} is not installable, so falling back to it re-introduces the\n"
-    "        # bug the installer fix removed."
+    '        # Pinned to the feature branch "{ref}". This branch\'s\n'
+    "        # installer pins a ref precisely so that standalone upgrades track this\n"
+    "        # branch rather than unmerged code."
 )
 PY_COMMENT_TAG = (
     "        # Pinned to the released tag, not to the remote's default branch: this\n"
@@ -214,9 +217,12 @@ def _rewrite_main_py(new_ref: str) -> None:
     # makes "not installable" false, and naming a branch as a released artefact is
     # equally wrong -- a branch is not an artefact anything was verified against. So
     # the branch template is reused only when the ref really is a branch.
-    template = (
-        PY_COMMENT_BRANCH if new_ref == "master" or VALID_TAG.match(new_ref) is None else PY_COMMENT_TAG
-    )
+    if new_ref == "master":
+        template = PY_COMMENT_MASTER
+    elif VALID_TAG.match(new_ref):
+        template = PY_COMMENT_TAG
+    else:
+        template = PY_COMMENT_BRANCH
     lines[comment_start:first] = template.format(ref=new_ref).split("\n")
 
     # The comment replacement can change the line count, so re-locate rather than

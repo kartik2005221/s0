@@ -76,10 +76,13 @@ def _read_linux_temp(device_path: str) -> int | None:
 
 
 def _try_linux_hwmon(dev_name: str) -> int | None:
-    base = Path(f"/sys/class/block/{dev_name}/device")
+    clean_name = os.path.basename(dev_name.strip())
+    if not clean_name or not re.match(r"^[A-Za-z0-9_.-]+$", clean_name):
+        return None
+    base = Path(f"/sys/class/block/{clean_name}/device")
     if not base.exists():
-        parent = re.sub(r"\d+$", "", dev_name)
-        if parent != dev_name:
+        parent = clean_name.rstrip("0123456789")
+        if parent and parent != clean_name:
             base = Path(f"/sys/class/block/{parent}/device")
         if not base.exists():
             return None
@@ -144,9 +147,9 @@ def _read_windows_temp(device_path: str) -> int | None:
                     "}"
                 )
             elif "physicaldrive" in norm.lower() or norm.isdigit():
-                m_num = re.search(r"(\d+)$", norm)
-                if m_num:
-                    disk_num = m_num.group(1)
+                tail_digits = "".join(c for c in reversed(norm) if c.isdigit())[::-1]
+                if tail_digits:
+                    disk_num = int(tail_digits)
                     ps_cmd = (
                         f"$d = Get-Disk -Number {disk_num} -ErrorAction SilentlyContinue | Get-PhysicalDisk -ErrorAction SilentlyContinue; "
                         "if ($d) { (Get-StorageReliabilityCounter -PhysicalDisk $d -ErrorAction SilentlyContinue).Temperature }"

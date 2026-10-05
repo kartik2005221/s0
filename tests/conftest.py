@@ -32,10 +32,16 @@ from __future__ import annotations
 
 import atexit
 import os
+from pathlib import Path
 import shutil
 import tempfile
 
 import pytest
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_src = str(_REPO_ROOT / "src")
+if _src not in os.environ.get("PYTHONPATH", ""):
+    os.environ["PYTHONPATH"] = f"{_src}:{os.environ.get('PYTHONPATH', '')}".rstrip(":")
 
 # A per-run temporary home. `prefix` keeps it out of $TMPDIR's immediate listing
 # noise and makes it obvious in a `ls /tmp` what the directory is.

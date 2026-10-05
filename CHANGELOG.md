@@ -7,7 +7,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [3.0.0] - 2026-10-05
 
-Everything below has landed on `agent/harness` and is verified by the test suite,
+Everything below has landed on `master` and is verified by the test suite,
 which is the gate rather than a number recorded here: a count in a changelog is
 stale the moment anyone adds a test, and this one was already wrong. The changes are
 ordered by how much they change what the tool *reports*, because that is the order
@@ -105,9 +105,8 @@ set it explicitly:**
 S0_INSTALL_REF=v3.0.0 sh site/install/install.sh
 ```
 
-Without that, the default on this branch is `agent/harness`, which is correct only
-until that branch is deleted. Run `python tools/set_install_ref.py master` right after
-merging, and `python tools/set_install_ref.py v3.0.0` at release time.
+The default install ref on `master` is pinned to `master`. Run
+`python tools/set_install_ref.py v3.0.0` at release time.
 
 **Old editable installs need reinstalling.** A `pip install -e` from a 2.x checkout
 leaves `__editable__` finder shims pointing at `core/python` and `linux/cli`, which no

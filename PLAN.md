@@ -1,7 +1,7 @@
 # s0 (Sector Zero) — Master Engineering Architecture & Blueprint
 
 **Title:** Integrated Secure Data Erasure, Bit-Stream Imaging, File Recovery, and Cryptographic Ledger Suite for Digital Forensics and Media Sanitization  
-**Status:** v3.0.0 release candidate — 3.0 work lives on `agent/harness`, pending merge and release. Breaking changes and the 2.x migration path are in `CHANGELOG.md` under *Breaking changes and migration from 2.x*.  
+**Status:** v3.0.0 release candidate — 3.0 work has landed on `master`, pending hardening and release. Breaking changes and the 2.x migration path are in `CHANGELOG.md` under *Breaking changes and migration from 2.x*.  
 **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)  
 **Documentation:** [sector-zero.gitbook.io](https://sector-zero.gitbook.io)  
 **Install Portal:** [sector-zero.pages.dev](https://sector-zero.pages.dev)  

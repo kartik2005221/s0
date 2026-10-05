@@ -2802,10 +2802,10 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
                 return cur
         except (OSError, subprocess.SubprocessError):
             pass
-        # Deliberately NOT "master". This branch's installer pins a ref precisely
-        # because master is not installable, so falling back to it re-introduces the
-        # bug the installer fix removed.
-        return "agent/harness"
+        # Default fallback for s0 upgrade: master branch. This
+        # installer pins a ref precisely so that standalone upgrades
+        # track the default branch 'master'.
+        return "master"
 
     try:
         cur = subprocess.check_output(
@@ -2818,7 +2818,7 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
             return cur
     except (OSError, subprocess.SubprocessError):
         pass
-    return "agent/harness"
+    return "master"
 
 
 def cmd_upgrade(args) -> int:

@@ -21,9 +21,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from html.parser import HTMLParser
 import json
-import re
 from pathlib import Path
+import re
 
 import pytest
 
@@ -292,6 +293,31 @@ def test_the_landing_page_is_covered_by_a_policy_at_both_urls():
         )
 
 
+class _ScriptExtractor(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.scripts: list[str] = []
+        self._in_script = False
+        self._cur: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        if tag.lower() == "script":
+            if not any(k.lower() == "src" for k, _ in attrs):
+                self._in_script = True
+                self._cur = []
+            else:
+                self._in_script = False
+
+    def handle_endtag(self, tag: str):
+        if tag.lower() == "script" and self._in_script:
+            self.scripts.append("".join(self._cur))
+            self._in_script = False
+
+    def handle_data(self, data: str):
+        if self._in_script:
+            self._cur.append(data)
+
+
 @pytest.mark.parametrize(
     "html,block", ALL_CSP_BLOCKS, ids=[f"{h.parent.name or 'root'}{b}" for h, b in ALL_CSP_BLOCKS]
 )
@@ -305,7 +331,9 @@ def test_csp_hashes_match_the_inline_blocks(html, block):
     listed = set(re.findall(r"'?(sha256-[A-Za-z0-9+/=]+)'?", csp))
 
     source = html.read_text(encoding="utf-8")
-    blocks = re.findall(r"<script>(.*?)</script>", source, flags=re.S)
+    extractor = _ScriptExtractor()
+    extractor.feed(source)
+    blocks = extractor.scripts
     assert blocks, f"{rel} has no inline script to hash"
     for inline in blocks:
         digest = "sha256-" + base64.b64encode(hashlib.sha256(inline.encode("utf-8")).digest()).decode("ascii")

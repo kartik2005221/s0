@@ -16,7 +16,7 @@ $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USER
 # two installers with different override rules is its own bug.
 $S0Ref = if ($env:S0_INSTALL_REF) { $env:S0_INSTALL_REF }
          elseif ($env:S0_BRANCH) { $env:S0_BRANCH }
-         else { "agent/harness" }
+         else { "master" }
 $TotalSteps = 6
 $Step = 0
 

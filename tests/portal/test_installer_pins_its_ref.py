@@ -40,9 +40,8 @@ SCRIPTS = sorted(p for p in INSTALL_DIR.iterdir() if p.suffix in (".sh", ".ps1",
 def _sandbox_ref(module) -> str:
     """The ref currently written in a sandbox copy, whatever value the repo holds.
 
-    Read rather than assumed: these tests must hold whether the tree is on
-    `agent/harness` (pre-merge) or `master` (post-merge), and hardcoding either one
-    made them pass or fail depending on which state the branch was in.
+    Read rather than assumed: these tests must hold whatever the declared default,
+    whether `master` or a release tag like `v3.0.0`.
     """
     found = module.read_refs()
     refs = {ref for values in found.values() for ref in values}
@@ -390,15 +389,15 @@ class TestTheRefHasOneSetter:
     def test_the_setter_refuses_a_ref_it_cannot_verify(self, sandbox, bad):
         """A typo written into five files is only discovered by a broken install."""
         module, _tmp = sandbox
-        reason = module.validate(bad, "agent/harness")
+        reason = module.validate(bad, "master")
         assert reason is not None, f"the setter would accept {bad!r}"
         assert "not an acceptable install ref" in reason
 
-    @pytest.mark.parametrize("good", ["master", "v3.0.0", "v3.0.0-rc.1", "agent/harness"])
+    @pytest.mark.parametrize("good", ["master", "v3.0.0", "v3.0.0-rc.1"])
     def test_the_setter_accepts_the_refs_the_owner_actually_uses(self, sandbox, good):
         module, _tmp = sandbox
-        assert module.validate(good, "agent/harness") is None, (
-            f"the setter would refuse {good!r}: {module.validate(good, 'agent/harness')}"
+        assert module.validate(good, "master") is None, (
+            f"the setter would refuse {good!r}: {module.validate(good, 'master')}"
         )
         known = set(module.read_refs())
         module._rewrite_scripts(good)
@@ -485,7 +484,7 @@ class TestTheRefHasOneSetter:
         """The property the setter exists to maintain, demonstrated by breaking it."""
         module, tmp = sandbox
         current = _sandbox_ref(module)
-        other = "master" if current != "master" else "agent/harness"
+        other = "master" if current != "master" else "v3.0.0"
         install_sh = tmp / "install" / "install.sh"
         install_sh.write_text(
             install_sh.read_text(encoding="utf-8").replace(current, other), encoding="utf-8"
