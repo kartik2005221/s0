@@ -489,11 +489,12 @@ s0 wipe --target PATH \
 usage: s0 wipe [-h] [--version] [--target TARGET] [--passes PASSES] [--pattern {zero,random}]
                [--no-firmware] [--discard-purge-justification TEXT] [--force]
                [--targets TARGETS [TARGETS ...]] [--require-tier {Clear,Purge,Destroy}]
-               [--allow-downgrade] [--yes] [--key KEY] [--out-dir OUT_DIR] [--operator OPERATOR]
-               [--organization ORGANIZATION] [--no-certificate] [--no-pdf]
-               [--verify-samples VERIFY_SAMPLES] [--plant-markers] [--portal-url PORTAL_URL]
-               [--qr-url-template QR_URL_TEMPLATE] [--format {text,json,csv}] [--json] [--quiet]
-               [--verbose] [--color {auto,always,never}] [--no-color] [--dry-run]
+               [--allow-downgrade] [--yes] [--as-image] [--as-file] [--key KEY]
+               [--out-dir OUT_DIR] [--operator OPERATOR] [--organization ORGANIZATION]
+               [--no-certificate] [--no-pdf] [--verify-samples VERIFY_SAMPLES] [--plant-markers]
+               [--portal-url PORTAL_URL] [--qr-url-template QR_URL_TEMPLATE]
+               [--format {text,json,csv}] [--json] [--quiet] [--verbose]
+               [--color {auto,always,never}] [--no-color] [--dry-run]
 
 options:
   -h, --help            show this help message and exit
@@ -519,6 +520,8 @@ options:
   --allow-downgrade     if --require-tier cannot be met, proceed with the best available method
                         and record the downgrade on the certificate
   --yes, -y             skip interactive confirmation prompt
+  --as-image            treat target as a raw disk image (overwrite in place, do not unlink)
+  --as-file             treat target as a regular file to erase and delete, not a disk image
   --key, --signing-key KEY
                         issuer private key PEM (default: demo issuer key)
   --out-dir OUT_DIR     directory to store certificate, PDF, and QR assets (default: .)
@@ -1549,7 +1552,7 @@ s0 upgrade
 [s0 upgrade]  Refreshing dependencies...
 [s0 upgrade]  OK : Dependencies refreshed.
 
-[s0 upgrade]  OK : S0 upgraded successfully to 2.4.4 (4a9f12c)
+[s0 upgrade]  OK : S0 upgraded successfully to 3.0.0 (4a9f12c)
 ```
 
 **Force reinstall dependencies**
@@ -1904,7 +1907,7 @@ Fetch official release assets directly from GitHub with automatic SHA-256 integr
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--version` | String | `latest` | Specific version tag to download (e.g., `v2.4.4`) |
+| `--version` | String | `latest` | Specific version tag to download (e.g., `v3.0.0`) |
 | `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
 | `--allow-older` | Flag | `false` | Allow downloading the Live ISO from an older release if the target release has no ISO attached |
 

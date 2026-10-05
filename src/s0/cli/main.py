@@ -729,7 +729,7 @@ def cmd_plan(args) -> int:
                 ],
             }
         )
-        return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
+        return EX_NOPERM if refused else (EX_OK if ladder["satisfiable"] else EX_TEMPFAIL)
 
     _print_plan(ui, target, candidate, alternatives, warnings, hpa_dco)
 
@@ -777,11 +777,13 @@ def cmd_plan(args) -> int:
                     f"file first if you meant to preserve it."
                 )
 
-    ui.note("")
-    ui.note("DRY RUN - nothing was written. Run `s0 wipe` when satisfied.")
-    # A refusal must not exit 0. See the note where `refused` is set.
+    # A refusal must not exit 0. Suppress the dry-run footer when refused: telling an
+    # operator "Run `s0 wipe` when satisfied" after refusing the target is contradictory.
     if refused:
         return EX_NOPERM
+
+    ui.note("")
+    ui.note("DRY RUN - nothing was written. Run `s0 wipe` when satisfied.")
     return EX_OK if ladder["satisfiable"] else EX_TEMPFAIL
 
 
@@ -894,6 +896,12 @@ def cmd_wipe(args) -> int:
         ui.error("one of --target or --targets is required")
         return EX_USAGE
 
+    as_file = getattr(args, "as_file", False)
+    as_image = getattr(args, "as_image", False)
+    if as_file and as_image:
+        ui.error("cannot specify both --as-file and --as-image")
+        return EX_USAGE
+
     # --- tier gate, before anything is opened for writing ---
     require_tier = getattr(args, "require_tier", None)
     if getattr(args, "firmware", False):
@@ -920,6 +928,9 @@ def cmd_wipe(args) -> int:
 
     is_file_mode = False
     if targets:
+        if as_image:
+            ui.error("--as-image is not supported with --targets (strictly for files and directories)")
+            return EX_USAGE
         for tgt in targets:
             try:
                 p = Path(tgt)
@@ -938,24 +949,27 @@ def cmd_wipe(args) -> int:
         t_path = Path(target_arg)
         is_blk = platform.is_block_device(t_path)
 
-        if not is_blk:
+        if is_blk:
+            if as_file:
+                ui.error(
+                    f"'{target_arg}' is a block storage device; cannot use --as-file on a block storage device"
+                )
+                return EX_USAGE
+        else:
             if t_path.is_dir():
+                if as_image:
+                    ui.error(f"'{target_arg}' is a directory; cannot use --as-image on a directory")
+                    return EX_USAGE
                 is_file_mode = True
                 args.targets = [target_arg]
+            elif as_file:
+                is_file_mode = True
+                args.targets = [target_arg]
+            elif as_image:
+                is_file_mode = False
             elif t_path.is_file() and not _looks_like_raw_image(t_path):
                 # A regular file that is not a recognised raw disk image takes the
                 # file-erase path.
-                #
-                # This used to be decided by extension alone -- anything not in
-                # (".img", ".raw", ".iso", ".bin") -- so the *same command* silently
-                # did two different destructive things:
-                #
-                #   s0 wipe --target evidence.bin --yes   -> overwritten, kept
-                #   s0 wipe --target evidence.dat --yes   -> ERASED
-                #
-                # Nothing in the help text, the manual or the AI skill said so. Two
-                # identical files differed only in their suffix, and the operator had
-                # no way to know which they had.
                 is_file_mode = True
                 args.targets = [target_arg]
 
@@ -1009,7 +1023,7 @@ def cmd_wipe(args) -> int:
     # about paperwork.
     key_path, key_error = _load_issuer_key(args, ui=ui)
     if key_error is not None:
-        return EX_CONFIG if key_error == "config" else key_error
+        return EX_CONFIG
 
     portal_problem = _portal_url_error(getattr(args, "portal_url", None))
     if portal_problem:
@@ -1658,6 +1672,34 @@ def cmd_erase_files(args) -> int:
     targets = [Path(t) for t in args.targets]
     print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
 
+    ui_obj = getattr(args, "ui", None) or UI(_ui_policy(args) or OutputPolicy(), "wipe")
+
+    if not getattr(args, "yes", False):
+        prompt_target = str(targets[0]) if len(targets) == 1 else f"{len(targets)} targets"
+        ui_obj.note(f"[s0 wipe]  Target(s)     : {prompt_target}")
+        ui_obj.note(f"[s0 wipe]  Passes        : {passes_val}")
+        ui_obj.note(f"[s0 wipe]  Pattern       : {pattern}")
+        if not sys.stdin.isatty():
+            ui_obj.note(
+                "Cannot confirm: standard input is closed / non-interactive. Refusing to write without --yes."
+            )
+            return EX_TEMPFAIL
+        try:
+            print(
+                f"\nType 'WIPE' to confirm permanent erasure of {prompt_target}: ",
+                end="",
+                file=sys.stderr,
+                flush=True,
+            )
+            answer = input()
+        except (EOFError, KeyboardInterrupt, OSError):
+            ui_obj.note("Aborted by interrupt - nothing was written")
+            return EX_INTERRUPTED
+        expected_answers = {"WIPE", str(targets[0])} if len(targets) == 1 else {"WIPE"}
+        if answer.strip() not in expected_answers:
+            ui_obj.note(f"Confirmation failed (got '{answer.strip()}', expected 'WIPE'). Aborting.")
+            return EX_TEMPFAIL
+
     # The certificate, the PDF and the QR code all land here. Discovering the directory
     # was unwritable *after* the erase meant a destroyed target, no evidence, and --
     # because the mkdir raised -- "This is a bug in s0" with exit 70 instead of the
@@ -1665,12 +1707,6 @@ def cmd_erase_files(args) -> int:
     if _prepare_out_dir(args) is None:
         return EX_CANTCREAT
 
-    # One bar per file, sized from the total the eraser reports for that file.
-    # This used to build a single bar from the summed size of every target, so
-    # every file's own byte count was measured against a total that belonged to
-    # the whole batch -- a small file in a mixed batch could render "0 B / 293 KiB",
-    # a denominator belonging to no file the operator was looking at.
-    ui_obj = getattr(args, "ui", None) or UI(_ui_policy(args) or OutputPolicy(), "wipe")
     bar = ui_obj.file_progress("s0 wipe")
 
     def erase_progress_cb(path_str: str, written: int, total_f: int) -> None:
@@ -2439,6 +2475,8 @@ def cmd_audit(args) -> int:
                 },
                 status="success" if report.is_valid else "failure",
             )
+            if report.is_valid and getattr(report, "is_demo_signed", False):
+                return EX_TEMPFAIL
             return EX_OK if report.is_valid else EX_FAILURE
 
         ui.heading("Auditing the hash-chained cryptographic ledger")
@@ -2448,6 +2486,8 @@ def cmd_audit(args) -> int:
         if state == "warn" and getattr(report, "demo_key_warning", None):
             ui.note("")
             ui.warn(report.demo_key_warning)
+        if report.is_valid and getattr(report, "is_demo_signed", False):
+            return EX_TEMPFAIL
         return EX_OK if report.is_valid else EX_FAILURE
 
     return EX_USAGE
@@ -3562,6 +3602,16 @@ def build_parser() -> argparse.ArgumentParser:
     # selection stays automatic, and --require-tier is how an operator asserts a
     # tier rather than naming a command.
     wp.add_argument("--yes", "-y", action="store_true", help="skip interactive confirmation prompt")
+    wp.add_argument(
+        "--as-image",
+        action="store_true",
+        help="treat target as a raw disk image (overwrite in place, do not unlink)",
+    )
+    wp.add_argument(
+        "--as-file",
+        action="store_true",
+        help="treat target as a regular file to erase and delete, not a disk image",
+    )
     wp.add_argument("--key", "--signing-key", help="issuer private key PEM (default: demo issuer key)")
     wp.add_argument(
         "--out-dir", default=".", help="directory to store certificate, PDF, and QR assets (default: .)"

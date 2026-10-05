@@ -21,7 +21,9 @@ between modules and had already started to drift:
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 __all__ = [
@@ -30,6 +32,7 @@ __all__ = [
     "is_windows_volume_path",
     "looks_like_windows_volume_letter",
     "darwin_raw_device_path",
+    "safe_home",
 ]
 
 #: Prefixes Windows uses for raw volume and physical-disk paths.
@@ -110,6 +113,15 @@ def darwin_raw_device_path(value: str) -> str | None:
     if not v.startswith("/dev/rdisk"):
         return None
     return "/dev/disk" + v[len("/dev/rdisk") :]
+
+
+def safe_home() -> Path:
+    """Return the user's home directory safely, falling back if not configured."""
+    try:
+        return Path.home()
+    except (RuntimeError, OSError):
+        raw = os.environ.get("USERPROFILE") or os.environ.get("HOME") or tempfile.gettempdir()
+        return Path(raw)
 
 
 # --------------------------------------------------------------------------- #

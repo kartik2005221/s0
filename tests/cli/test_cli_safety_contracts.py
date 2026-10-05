@@ -101,7 +101,7 @@ def test_file_and_folder_wipe_json_is_valid_and_uncontaminated(tmp_path):
     (victim / "a.txt").write_text("hello")
     (victim / "b.txt").write_text("world")
 
-    result = _s0("wipe", "--targets", str(victim), "--json", "--out-dir", str(tmp_path))
+    result = _s0("wipe", "--yes", "--targets", str(victim), "--json", "--out-dir", str(tmp_path))
 
     assert result.returncode == 0, result.stderr[-800:]
     assert result.stdout.strip(), "expected a JSON document on stdout"
@@ -115,7 +115,7 @@ def test_erase_files_chrome_goes_to_stderr(tmp_path):
     victim.mkdir()
     (victim / "a.txt").write_text("hello")
     (victim / "b.txt").write_text("world")
-    result = _s0("wipe", "--targets", str(victim), "--json", "--out-dir", str(tmp_path))
+    result = _s0("wipe", "--yes", "--targets", str(victim), "--json", "--out-dir", str(tmp_path))
     for marker in ("Files Processed", "Successful", "Failed", "Bytes Sanitized"):
         assert marker not in result.stdout, (
             f"{marker!r} is chrome and must not appear on stdout in --json mode"

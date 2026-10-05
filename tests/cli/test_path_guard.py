@@ -229,8 +229,9 @@ def test_relative_paths_resolve_absolutely(tmp_path):
         os.chdir(tmp_path)
         (tmp_path / "evidence.txt").write_text("x")
         assert check_path_is_destructive("evidence.txt") == []
+        rel_target = os.path.relpath("/etc/hostname", tmp_path)
         with pytest.raises(ProtectedPathError):
-            check_path_is_destructive("../../../../../etc/hostname")
+            check_path_is_destructive(rel_target)
     finally:
         os.chdir(here)
 

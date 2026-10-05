@@ -317,8 +317,10 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
                 print("  ⚠️  STATUS: VALID SIGNATURE — UNACCREDITED DEMO KEY")
                 print("     This certificate was signed with the bundled demonstration key.")
                 print("     DO NOT use for legal chain-of-custody or regulatory compliance.")
-            else:
-                print("  ✅ STATUS: CRYPTOGRAPHICALLY VALID & TAMPER-FREE")
+                print(_row("Key file", resolved_key))
+                print(_row("Evidence", reason))
+                return 75
+            print("  ✅ STATUS: CRYPTOGRAPHICALLY VALID & TAMPER-FREE")
             print(_row("Key file", resolved_key))
             print(_row("Evidence", reason))
             return 0

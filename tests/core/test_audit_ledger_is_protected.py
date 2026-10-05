@@ -331,7 +331,7 @@ class TestConcurrentAppendsDoNotCollide:
             cwd=str(tmp_path),
         )
         assert "Traceback" not in proc.stdout + proc.stderr
-        assert proc.returncode in (0, 65), (
+        assert proc.returncode in (0, 75), (
             f"audit verify exited {proc.returncode} after concurrent appends:\n"
             f"{(proc.stdout + proc.stderr)[-800:]}"
         )

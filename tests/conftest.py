@@ -44,6 +44,9 @@ _SANDBOX_HOME = tempfile.mkdtemp(prefix="s0-test-home-")
 os.environ["HOME"] = _SANDBOX_HOME
 os.environ["USERPROFILE"] = _SANDBOX_HOME  # Windows
 os.environ["homedir"] = _SANDBOX_HOME  # consulted by Path.home() on some builds
+_drive, _rest = os.path.splitdrive(_SANDBOX_HOME)
+os.environ["HOMEDRIVE"] = _drive or "C:"
+os.environ["HOMEPATH"] = _rest or _SANDBOX_HOME
 
 # Point the audit ledger at the sandbox explicitly as well, so isolation holds even
 # if a future refactor reintroduces a direct path that does not consult HOME.
@@ -122,6 +125,7 @@ _DEVICE_COMMANDS = frozenset(
         "cfdisk",
         "dd",
         "diskpart",
+        "diskutil",
         "fdisk",
         "hdparm",
         "mkfs",
@@ -153,11 +157,18 @@ _MKFS_LIKE = _re.compile(r"^(mkfs|mke2fs|newfs|mkdosfs)(\.[a-z0-9]+)?$")
 # cannot express both `\d+` and `p\d+`, and an earlier attempt at one missed `/dev/sda1`
 # entirely -- which is the case that matters.
 _DEVICE_NODE = _re.compile(
-    r"^/dev/("
+    r"^("
+    r"/dev/(?:"
     r"(?:sd|hd|vd|xvd)[a-z]+\d*"  # sda, sda1, sda12, hdb, xvdf2
-    r"|nvme\d+n\d+(?:p\d+)?"  # nvme0n1, nvme0n1p2
+    r"|nvme\d+(?:n\d+(?:p\d+)?)?"  # nvme0 (controller), nvme0n1 (namespace), nvme0n1p2 (partition)
     r"|mmcblk\d+(?:p\d+)?"  # mmcblk0, mmcblk0p1
     r"|loop\d+(?:p\d+)?"  # loop0, loop0p1
+    r"|dm-\d+"  # dm-0
+    r"|md\d+"  # md0
+    r"|mapper/[A-Za-z0-9_.-]+"  # /dev/mapper/vg0-lv1
+    r"|r?disk\d+(?:s\d+)*"  # macOS: disk0, rdisk2, disk2s1
+    r")"
+    r"|(?i:\\\\\.\\PhysicalDrive\d+)"  # Windows: \\.\PhysicalDrive0
     r")$"
 )
 
@@ -230,7 +241,9 @@ def _is_device_command(argv) -> bool:
     return any(_DEVICE_NODE.match(a) for a in elements) or bool(
         _re.findall(
             r"/dev/(?:sd[a-z]+|hd[a-z]+|vd[a-z]+|xvd[a-z]+)\d*|"
-            r"/dev/(?:nvme\d+n\d+|mmcblk\d+|loop\d+)(?:p\d+)?",
+            r"/dev/(?:nvme\d+(?:n\d+(?:p\d+)?)?|mmcblk\d+(?:p\d+)?|loop\d+(?:p\d+)?)|"
+            r"/dev/(?:dm-\d+|md\d+|mapper/[A-Za-z0-9_.-]+|r?disk\d+(?:s\d+)*)|"
+            r"(?i:\\\\\.\\PhysicalDrive\d+)",
             text,
         )
     )
@@ -346,6 +359,9 @@ def test_the_guard_itself_works() -> None:
         (["/usr/bin/umount", "/dev/sde1"], "an absolute path to the binary"),
         (["bash", "-c", "mkfs.vfat /dev/sdf"], "hidden behind bash -c"),
         (["nvme", "format", "/dev/nvme0n1"], "an nvme write subcommand"),
+        (["nvme", "sanitize", "/dev/nvme0"], "nvme sanitize controller node"),
+        (["diskutil", "unmountDisk", "/dev/disk2"], "macOS diskutil on disk node"),
+        (["diskpart", "/s", r"\\.\PhysicalDrive0"], "Windows diskpart on physical drive"),
         (["hdparm", "-I", "/dev/sda"], "a read-only command pointed at a real disk"),
         (
             ["hdparm", "--user-master", "u", "--security-set-pass", "x", "/dev/sdb"],
@@ -375,8 +391,16 @@ def test_the_guard_itself_works() -> None:
     for path, why in (
         ("/dev/sda", "a whole disk"),
         ("/dev/sda1", "a partition"),
+        ("/dev/nvme0", "an NVMe controller"),
         ("/dev/nvme0n1", "an NVMe namespace"),
         ("/dev/nvme0n1p2", "an NVMe partition"),
+        ("/dev/disk0", "a macOS disk node"),
+        ("/dev/rdisk2", "a macOS raw disk node"),
+        ("/dev/disk2s1", "a macOS partition"),
+        ("/dev/dm-0", "a device-mapper node"),
+        ("/dev/md0", "a software RAID node"),
+        ("/dev/mapper/vg0-lv1", "a device-mapper path"),
+        (r"\\.\PhysicalDrive0", "a Windows physical drive"),
         ("/dev/loop0", "a loop device"),
     ):
         assert _is_device_node_write(path, "wb"), f"the guard missed {why}"

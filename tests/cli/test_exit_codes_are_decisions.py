@@ -250,6 +250,9 @@ class TestPlanExitsNonZeroOnRefusal:
             "the plan printed a refusal and exited 0, so an agent gating on the "
             "plan's exit code -- the documented first step -- would proceed to wipe"
         )
+        assert "DRY RUN" not in combined, (
+            "a refused plan must not print 'DRY RUN - nothing was written. Run s0 wipe when satisfied'"
+        )
 
     def test_a_normal_plan_still_succeeds(self, tmp_path):
         blob = bytearray(bytes(range(256)) * 800)

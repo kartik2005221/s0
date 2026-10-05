@@ -109,7 +109,7 @@ def test_unknown_capability_is_recorded_as_unknown_not_absent(monkeypatch):
     """A probe that cannot reach the device must not silently read as 'no Purge'."""
     c = DeviceCapabilities(path="/dev/nvme9")
     monkeypatch.setattr(cap, "_nvme_controller", lambda _d: "/dev/nvme9")
-    monkeypatch.setattr(cap, "has_external_tool", lambda _n: False)
+    monkeypatch.setattr(cap, "_run", lambda _cmd, **_kw: (1, "", "device not accessible"))
     cap.probe_nvme("/dev/nvme9", c)
     assert c.notes, "an undeterminable capability must leave a note"
     assert any("unknown" in n or "not assumed" in n for n in c.notes)
@@ -173,9 +173,10 @@ def test_ata_block_erase_reports_the_exact_cdb():
     assert METHOD_TIERS[out.method_id] == {"Purge"}
 
 
-def test_nvme_crypto_erase_uses_opcode_0x84():
+def test_nvme_crypto_erase_uses_opcode_0x84(monkeypatch):
+    monkeypatch.setattr(san, "has_external_tool", lambda _n: False)
     out = san.nvme_sanitize("/dev/nvme0", "crypto_erase")
-    assert "0x84" in out.command
+    assert "0x84" in out.mechanism
     assert out.method_id == "NVME_SANITIZE_CRYPTO_ERASE"
     assert out.tier == Tiers.CRYPTOGRAPHIC_ERASE
     from s0.certificate import METHOD_TIERS

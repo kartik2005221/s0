@@ -30,7 +30,7 @@ import urllib.parse
 import uuid
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any
+from typing import Any, overload
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
@@ -81,8 +81,25 @@ def _get_s0_cmd() -> list[str]:
 
 IMAGE_DIRS = [
     Path(os.environ.get("S0_IMAGE_DIR", "")) if os.environ.get("S0_IMAGE_DIR") else None,
-    REPO / "demo-out",
+    platform.safe_home() / ".s0" / "out",
 ]
+
+
+def _prepare_job_out_dir(req_out_dir: str | None, prefix: str, job_id: str) -> Path:
+    if req_out_dir and req_out_dir.strip():
+        out_dir = Path(req_out_dir.strip()).resolve()
+    else:
+        out_dir = platform.safe_home() / ".s0" / "out" / f"{prefix}-{job_id}"
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError as exc:
+        status_code = 400 if (req_out_dir and req_out_dir.strip()) else 500
+        raise HTTPException(status_code, f"output directory cannot be created: {exc}") from exc
+    except OSError as exc:
+        status_code = 400 if (req_out_dir and req_out_dir.strip()) else 500
+        raise HTTPException(status_code, f"invalid output directory: {exc}") from exc
+    return out_dir
+
 
 _LOG = logging.getLogger("s0.web")
 
@@ -557,6 +574,18 @@ def _resolve_key(
     if default_key.exists():
         return default_key, True
     return None, True
+
+
+@overload
+def _reject_system_path(field: str, value: str) -> str: ...
+
+
+@overload
+def _reject_system_path(field: str, value: None) -> None: ...
+
+
+@overload
+def _reject_system_path(field: str, value: str | None) -> str | None: ...
 
 
 def _reject_system_path(field: str, value: str | None) -> str | None:
@@ -1164,11 +1193,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
         raise HTTPException(422, "no applicable wipe method")
 
     job_id = uuid.uuid4().hex[:12]
-    if req.out_dir and req.out_dir.strip():
-        out_dir = Path(req.out_dir.strip()).resolve()
-    else:
-        out_dir = REPO / "demo-out" / f"web-wipe-{job_id}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _prepare_job_out_dir(req.out_dir, "web-wipe", job_id)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
@@ -1308,11 +1333,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
         raise HTTPException(400, "no file targets provided")
 
     job_id = uuid.uuid4().hex[:12]
-    if req.out_dir and req.out_dir.strip():
-        out_dir = Path(req.out_dir.strip()).resolve()
-    else:
-        out_dir = REPO / "demo-out" / f"web-filewipe-{job_id}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _prepare_job_out_dir(req.out_dir, "web-filewipe", job_id)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
@@ -1463,11 +1484,7 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         raise HTTPException(404, "target media does not exist")
 
     job_id = uuid.uuid4().hex[:12]
-    if req.out_dir and req.out_dir.strip():
-        out_dir = Path(req.out_dir.strip()).resolve()
-    else:
-        out_dir = REPO / "demo-out" / f"web-carve-{job_id}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _prepare_job_out_dir(req.out_dir, "web-carve", job_id)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 
@@ -1671,11 +1688,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
         )
 
     job_id = uuid.uuid4().hex[:12]
-    if req.out_dir and req.out_dir.strip():
-        out_dir = Path(req.out_dir.strip()).resolve()
-    else:
-        out_dir = REPO / "demo-out" / f"web-image-{job_id}"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _prepare_job_out_dir(req.out_dir, "web-image", job_id)
 
     key, is_demo = _resolve_key(req.key_path, req.key_data, out_dir)
 

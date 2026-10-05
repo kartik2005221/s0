@@ -113,9 +113,9 @@ class OverwriteMethod(WipeMethod):
             # Best-effort hint that this file's blocks were overwritten; for
             # sparse image targets also punch a hole so the demo doesn't leave
             # a 256 MB zero file lying around. NOT a security step.
-            if target.kind == "image":
+            if target.kind == "image" and hasattr(os, "posix_fadvise"):
                 try:
-                    os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+                    os.posix_fadvise(fd, 0, 0, getattr(os, "POSIX_FADV_DONTNEED", 4))
                 except OSError:
                     pass
         except KeyboardInterrupt:

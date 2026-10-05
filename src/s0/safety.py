@@ -54,6 +54,17 @@ SYSTEM_PREFIXES: tuple[str, ...] = (
     "/run",
     "/srv",
     "/opt",
+    # macOS resolved prefixes (symlinks in root resolve to /private/*)
+    "/private/etc",
+    "/private/var",
+    "/System",
+    "/Library",
+    "/Applications",
+    # Windows system prefixes
+    "C:\\Windows",
+    "C:\\Program Files",
+    "C:\\Program Files (x86)",
+    "C:\\ProgramData",
 )
 
 
@@ -71,6 +82,10 @@ def _under(child: Path, parent: Path) -> bool:
     sibling like `/etcfoo` is not mistaken for a child of `/etc`.
     """
     c, p = str(child), str(parent)
+    if os.name == "nt":
+        c, p = c.lower(), p.lower()
+        p_clean = p.rstrip("/\\")
+        return c == p_clean or c.startswith(p_clean + "\\") or c.startswith(p_clean + "/")
     return c == p or c.startswith(p.rstrip("/") + "/")
 
 
@@ -117,8 +132,11 @@ def check_path_is_destructive(
     # Block devices are handled by the device-tier safety check (mounts, root
     # filesystem, HPA). Refusing `/dev/sda` here would duplicate that logic and
     # lose the better error messages.
-    if resolved.is_block_device():
-        return warnings
+    try:
+        if resolved.is_block_device():
+            return warnings
+    except OSError:
+        pass
 
     target = str(resolved)
 

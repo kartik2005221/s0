@@ -251,6 +251,7 @@ def test_win_cli_subcommand_dispatch(tmp_path: Path):
     code = win_main(
         [
             "wipe",
+            "--yes",
             "--targets",
             str(target),
             "--out-dir",

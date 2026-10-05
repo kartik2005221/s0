@@ -257,6 +257,7 @@ def test_mac_cli_subcommand_dispatch(tmp_path: Path):
     code = mac_main(
         [
             "wipe",
+            "--yes",
             "--targets",
             str(target),
             "--out-dir",

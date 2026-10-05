@@ -129,7 +129,7 @@ def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
     target.write_bytes(b"DATA FOR S0 ERASE PDF TEST")
     out_dir = tmp_path / "s0_erase_out"
 
-    rc = s0_main(["wipe", "--targets", str(target), "--out-dir", str(out_dir)])
+    rc = s0_main(["wipe", "--yes", "--targets", str(target), "--out-dir", str(out_dir)])
     assert rc == 0
     assert not target.exists()
 
@@ -145,7 +145,7 @@ def test_s0_wipe_cli_file_pdf_and_qr(tmp_path):
     # Test auto-detection via single --target
     target2 = tmp_path / "erase_target2.txt"
     target2.write_bytes(b"DATA FOR SINGLE TARGET AUTO DETECT")
-    rc2 = s0_main(["wipe", "--target", str(target2), "--out-dir", str(out_dir)])
+    rc2 = s0_main(["wipe", "--yes", "--target", str(target2), "--out-dir", str(out_dir)])
     assert rc2 == 0
     assert not target2.exists()
 
@@ -172,3 +172,56 @@ def test_erase_hardlink_safety(tmp_path):
     res_force = erase_single_file(orig, force=True)
     assert res_force.status == "success"
     assert not orig.exists()
+
+
+def test_file_wipe_aborts_on_wrong_confirmation(tmp_path, monkeypatch):
+    from s0.cli.main import main as s0_main
+
+    target = tmp_path / "victim.txt"
+    target.write_bytes(b"DATA TO NOT ERASE")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda: "wrong")
+
+    rc = s0_main(["wipe", "--targets", str(target), "--out-dir", str(tmp_path)])
+    assert rc == 75
+    assert target.exists()
+
+
+def test_file_wipe_refuses_on_non_tty_without_yes(tmp_path, monkeypatch):
+    from s0.cli.main import main as s0_main
+
+    target = tmp_path / "victim.txt"
+    target.write_bytes(b"DATA TO NOT ERASE")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    monkeypatch.setattr("builtins.input", lambda: "")
+
+    rc = s0_main(["wipe", "--targets", str(target), "--out-dir", str(tmp_path)])
+    assert rc == 75
+    assert target.exists()
+
+
+def test_file_wipe_succeeds_with_wipe_confirmation(tmp_path, monkeypatch):
+    from s0.cli.main import main as s0_main
+
+    target = tmp_path / "victim.txt"
+    target.write_bytes(b"DATA TO ERASE")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda: "WIPE")
+
+    rc = s0_main(["wipe", "--targets", str(target), "--out-dir", str(tmp_path)])
+    assert rc == 0
+    assert not target.exists()
+
+
+def test_file_wipe_as_file_and_as_image_flags(tmp_path):
+    from s0.cli.main import main as s0_main
+
+    # 1. Mutually exclusive
+    rc = s0_main(["wipe", "--target", str(tmp_path / "dummy.raw"), "--as-file", "--as-image"])
+    assert rc == 64
+
+    # 2. Directory with --as-image
+    sub_dir = tmp_path / "sub_dir"
+    sub_dir.mkdir()
+    rc = s0_main(["wipe", "--target", str(sub_dir), "--as-image"])
+    assert rc == 64
