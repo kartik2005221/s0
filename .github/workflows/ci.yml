@@ -471,7 +471,13 @@ jobs:
           # `--target`, not `--targets`: plan takes a single target, and the first version
           # of this step wrote `--targets`, which exits 2 on a usage error. Redirecting
           # stdout hid the message and the failure looked like a passing step.
-          /tmp/wheelenv/bin/s0 plan --target /etc/hostname --format json > /dev/null
+          #
+          # A real temp file, not /etc/hostname. That was the second version, and it
+          # exercised the system-path refusal instead of the planning path -- the step
+          # printed "REFUSED: Refusing to target system path" and passed, which is a smoke
+          # test asserting that the tool refuses a file it was never asked about.
+          printf 'sample evidence\n' > /tmp/smoke-target.txt
+          /tmp/wheelenv/bin/s0 plan --target /tmp/smoke-target.txt --format json > /dev/null
           /tmp/wheelenv/bin/s0 list --format json > /dev/null
           echo "the installed wheel runs outside the source tree"
 
