@@ -2915,6 +2915,28 @@ def cmd_uninstall(args) -> int:
 # --------------------------------------------------------------------------- #
 
 
+# errno / strerror fragments that mean "the kernel said no", not "the disk is bad".
+_PRIVILEGE_MARKERS = (
+    "permission denied",
+    "operation not permitted",
+    "eperm",
+)
+
+
+def _looks_like_privilege_problem(error: str) -> bool:
+    """True when an acquisition failure is plausibly a privilege problem.
+
+    Deliberately narrow: it only adds a hint, so a false positive costs one extra
+    line while a false negative costs the operator a guess. `errno 13` is matched
+    on the number as well as the text, because some layers re-wrap it as
+    "[Errno 13] Permission denied" and others drop the text entirely.
+    """
+    lowered = error.lower()
+    if any(marker in lowered for marker in _PRIVILEGE_MARKERS):
+        return True
+    return bool(re.search(r"\berrno 13\b", lowered))
+
+
 def cmd_image(args) -> int:
     """Forensic bit-stream acquisition and device-to-device cloning.
 
@@ -3032,6 +3054,14 @@ def cmd_image(args) -> int:
     if result.error:
         _end_acquisition("FAILED")
         ui.error(f"acquisition failed: {result.error}")
+        # Reading a whole block device needs privilege, and that is the single most
+        # common reason this fails on a laptop. The device open error alone does not
+        # say so, so the operator is left guessing between a bad cable and sudo.
+        if _looks_like_privilege_problem(result.error):
+            ui.error(
+                "reading a block device usually needs root: re-run with "
+                "`sudo s0 image ...` (see docs/guides/cli-reference.md)"
+            )
         return EX_IOERR
 
     hash_label = "Image SHA-256" if result.bad_sectors_count > 0 else "Source SHA-256"

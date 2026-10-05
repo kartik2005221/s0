@@ -55,7 +55,7 @@ ISO_URL=""
 ISO_NAME=""
 CHECKSUM_URL=""
 if command -v python3 >/dev/null 2>&1; then
-    read -r ISO_URL ISO_NAME CHECKSUM_URL <<< $(python3 -c '
+    read -r ISO_URL ISO_NAME CHECKSUM_URL <<< "$(python3 -c '
 import sys, json
 data = json.loads(sys.stdin.read())
 assets = data.get("assets", [])
@@ -72,7 +72,7 @@ if not chk:
     chk = next((a for a in assets if a.get("name", "").endswith(".sha256")), None)
 chk_url = chk.get("browser_download_url", "") if chk else ""
 print(f"{iso_url} {iso_name} {chk_url}")
-' <<< "$RELEASE_JSON" 2>/dev/null || echo "")
+' <<< "$RELEASE_JSON" 2>/dev/null || echo "")"
 fi
 
 if [ -z "$ISO_URL" ] && command -v jq >/dev/null 2>&1; then

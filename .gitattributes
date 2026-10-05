@@ -23,6 +23,14 @@
 *.pem text eol=lf
 *.crt text eol=lf
 
+# Batch files are the exception to the eol=lf rule above. `* text=auto eol=lf`
+# checks them out with LF endings, and cmd.exe does not reliably accept an LF
+# before a label or a `goto` target -- the classic failure is a script whose
+# last line is a label silently falling through, or a call jumping into the
+# middle of a command. CRLF is what these files were authored against.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
 # Keep generated output out of diffs and out of language statistics.
 docs/book/build/ linguist-generated=true
 *.min.js linguist-generated=true

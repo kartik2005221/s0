@@ -1,14 +1,14 @@
 <#
 .SYNOPSIS
-    S0 (Sector Zero) — Download Pre-Built Live ISO for Windows
+    S0 (Sector Zero) -- Download Pre-Built Live ISO for Windows
     Usage: irm https://sector-zero.pages.dev/download-iso-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║      S0 (Sector Zero) — Live ISO Downloader & Verifier           ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
+Write-Host "|      S0 (Sector Zero) -- Live ISO Downloader & Verifier           |" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
 Write-Host ""
 
 $Repo = "kartik2005221/s0"
@@ -34,7 +34,7 @@ try {
     
     Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $OutFile
     
-    Write-Host "`n✅ Download complete!" -ForegroundColor Green
+    Write-Host "`n[OK] Download complete!" -ForegroundColor Green
     Write-Host "   Path: $OutFile" -ForegroundColor White
     
     # Calculate SHA256
@@ -58,9 +58,9 @@ try {
         if ($expectedHash) {
             Write-Host "   Official SHA-256: $expectedHash" -ForegroundColor Yellow
             if ($hash -eq $expectedHash) {
-                Write-Host "✅ SHA-256 checksum VERIFIED against official release!" -ForegroundColor Green
+                Write-Host "[OK] SHA-256 checksum VERIFIED against official release!" -ForegroundColor Green
             } else {
-                Write-Host "❌ [CRITICAL SECURITY ERROR] SHA-256 checksum MISMATCH!" -ForegroundColor Red
+                Write-Host "[X] [CRITICAL SECURITY ERROR] SHA-256 checksum MISMATCH!" -ForegroundColor Red
                 Write-Host "   Expected: $expectedHash" -ForegroundColor Red
                 Write-Host "   Computed: $hash" -ForegroundColor Red
                 Write-Host "   Removing compromised/corrupted download: $OutFile" -ForegroundColor Red
@@ -68,10 +68,10 @@ try {
                 exit 1
             }
         } else {
-            Write-Host "⚠️  [WARNING] Could not parse hash from official checksum file." -ForegroundColor Yellow
+            Write-Host "[!]  [WARNING] Could not parse hash from official checksum file." -ForegroundColor Yellow
         }
     } else {
-        Write-Host "⚠️  [WARNING] Official checksum asset not found on release; manual verification recommended." -ForegroundColor Yellow
+        Write-Host "[!]  [WARNING] Official checksum asset not found on release; manual verification recommended." -ForegroundColor Yellow
     }
     
     Write-Host "`n==> Flashing to USB Drive:" -ForegroundColor Cyan

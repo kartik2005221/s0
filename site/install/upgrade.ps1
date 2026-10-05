@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    S0 (Sector Zero) — Resilient Upgrader for Windows (PowerShell)
+    S0 (Sector Zero) -- Resilient Upgrader for Windows (PowerShell)
     Usage: irm https://sector-zero.pages.dev/upgrade-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
@@ -16,9 +16,9 @@ function Write-Ok { Write-Host " done" -ForegroundColor Green }
 function Write-Info($Msg) { Write-Host "`n    -> $Msg" -ForegroundColor Yellow }
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║      S0 (Sector Zero) — Suite Upgrade & Maintenance Tool         ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
+Write-Host "|      S0 (Sector Zero) -- Suite Upgrade & Maintenance Tool         |" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Check existing installation
@@ -129,7 +129,7 @@ try {
 }
 
 Write-Host ""
-Write-Host "✅ S0 upgraded successfully!" -ForegroundColor Green
+Write-Host "[OK] S0 upgraded successfully!" -ForegroundColor Green
 Write-Host "   Version    : $s0Ver" -ForegroundColor White
 Write-Host "   Directory  : $InstallDir" -ForegroundColor White
 Write-Host "   Command    : s0 --version" -ForegroundColor Cyan

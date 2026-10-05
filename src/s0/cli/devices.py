@@ -346,8 +346,14 @@ def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     return bool(re.match(pattern, cand_real))
 
 
-def check_safety(target: Target, force: bool = False) -> list[str]:
-    """Refuse system-critical targets unless --force. Returns warnings."""
+def check_safety(target: Target, force: bool = False, *, force_honoured: bool = True) -> list[str]:
+    """Refuse system-critical targets unless --force. Returns warnings.
+
+    `force_honoured` says whether the caller will actually act on a `--force`.
+    `wipe` does; `clone` does not, because its `--force` means "overwrite an existing
+    image file" and nothing more. It only changes the wording of the refusal, never
+    whether the refusal happens.
+    """
     warnings: list[str] = []
 
     # Path guard first, and for every target kind. It used to `return` early for
@@ -369,10 +375,23 @@ def check_safety(target: Target, force: bool = False) -> list[str]:
     hits = sorted(m for m in mounted if _is_dev_or_subpartition(target.path, m))
     if hits:
         if not force:
-            raise SafetyError(
-                f"{target.path} has mounted filesystems ({', '.join(hits)}). "
-                f"Unmount them first, or pass --force if you truly mean it."
+            # Only offer `--force` when the caller actually honours it.
+            #
+            # `clone` calls this with no force path -- cloning onto a mounted
+            # filesystem corrupts the mounted data, and `--force` there only means
+            # "overwrite an existing image *file*". Telling that operator to pass
+            # `--force` pointed them at an escape hatch that does not exist, and they
+            # would only find that out by re-running the command.
+            hint = (
+                "Unmount them first, or pass --force if you truly mean it."
+                if force_honoured
+                else (
+                    "Unmount them first. Cloning onto a mounted filesystem would corrupt "
+                    "the mounted data, so --force does not bypass this -- unmount, or "
+                    "choose a different destination."
+                )
             )
+            raise SafetyError(f"{target.path} has mounted filesystems ({', '.join(hits)}). {hint}")
         warnings.append(f"proceeding WITH MOUNTED FILESYSTEMS: {', '.join(hits)}")
 
     root_src = _get_root_mount_source()

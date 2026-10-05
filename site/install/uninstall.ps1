@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    S0 (Sector Zero) — Uninstaller for Windows (PowerShell)
+    S0 (Sector Zero) -- Uninstaller for Windows (PowerShell)
     Usage: irm https://sector-zero.pages.dev/uninstall-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }
 $BinDir = Join-Path $InstallDir "bin"
 
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║      S0 (Sector Zero) — Uninstaller                             ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
+Write-Host "|      S0 (Sector Zero) -- Uninstaller                             |" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
 
 # Navigate away from InstallDir in case the terminal is currently inside it
 Set-Location $env:USERPROFILE
@@ -58,11 +58,11 @@ if (Test-Path $InstallDir) {
     $isDefault = ($InstallDir.TrimEnd('\') -eq $defaultDir.TrimEnd('\'))
     $hasMarker = (Test-Path (Join-Path $InstallDir ".s0_install_marker")) -or (Test-Path (Join-Path $InstallDir "s0_config.json"))
     if (-not $isDefault -and -not $hasMarker) {
-        Write-Error "ERROR: Refusing to delete $InstallDir — directory does not appear to be an S0 installation (missing .s0_install_marker or s0_config.json)."
+        Write-Error "ERROR: Refusing to delete $InstallDir -- directory does not appear to be an S0 installation (missing .s0_install_marker or s0_config.json)."
         exit 1
     }
     Write-Host "==> Removing $InstallDir..." -ForegroundColor Yellow
     Remove-Item -Recurse -Force $InstallDir -ErrorAction SilentlyContinue
 }
 
-Write-Host "`n✅ S0 has been completely uninstalled from your system." -ForegroundColor Green
+Write-Host "`n[OK] S0 has been completely uninstalled from your system." -ForegroundColor Green

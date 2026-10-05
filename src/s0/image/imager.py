@@ -138,7 +138,10 @@ def acquire_image(
     if is_clone:
         # Check safety of destination device
         dst_dev = DevTarget(path=str(dst_p), kind="block", capacity_bytes=get_block_device_size(dst_p))
-        check_safety(dst_dev)
+        # No force path here: `clone --force` means "overwrite an existing image
+        # file", and it must not become an escape hatch for writing onto a mounted
+        # filesystem. Declared so the refusal says so rather than offering it.
+        check_safety(dst_dev, force_honoured=False)
         if dst_dev.capacity_bytes > 0 and src_capacity > dst_dev.capacity_bytes:
             raise SafetyError(
                 f"Destination drive capacity ({dst_dev.capacity_bytes} B) is smaller than "

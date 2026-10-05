@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    S0 (Sector Zero) — Windows Bootable Live ISO Build Orchestrator
+    S0 (Sector Zero) -- Windows Bootable Live ISO Build Orchestrator
     Builds the bare-metal Debian live ISO from Windows using Docker Desktop or WSL2.
     Usage: .\tools\build_iso.ps1
 #>
 $ErrorActionPreference = 'Stop'
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║      S0 (Sector Zero) — Windows Live ISO Build Orchestrator      ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
+Write-Host "|      S0 (Sector Zero) -- Windows Live ISO Build Orchestrator      |" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
 Write-Host ""
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -39,7 +39,7 @@ if ($hasDocker) {
     
     $isoPath = Join-Path $RepoRoot "s0-live-amd64.hybrid.iso"
     if (Test-Path $isoPath) {
-        Write-Host "`n✅ SUCCESS! Bootable ISO generated at:" -ForegroundColor Green
+        Write-Host "`n[OK] SUCCESS! Bootable ISO generated at:" -ForegroundColor Green
         Write-Host "   $isoPath" -ForegroundColor White
         Write-Host "   Flash to USB using Rufus (https://rufus.ie/) in DD Image mode." -ForegroundColor Cyan
         return
@@ -73,7 +73,7 @@ if ($hasWsl) {
     if (Test-Path $isoPath) {
         $targetIso = Join-Path $RepoRoot "s0-live-amd64.hybrid.iso"
         Copy-Item $isoPath $targetIso -Force
-        Write-Host "`n✅ SUCCESS! Bootable ISO generated at:" -ForegroundColor Green
+        Write-Host "`n[OK] SUCCESS! Bootable ISO generated at:" -ForegroundColor Green
         Write-Host "   $targetIso" -ForegroundColor White
         Write-Host "   Flash to USB using Rufus (https://rufus.ie/) in DD Image mode." -ForegroundColor Cyan
         return

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    S0 (Sector Zero) — Resilient One-Line Installer for Windows (PowerShell)
+    S0 (Sector Zero) -- Resilient One-Line Installer for Windows (PowerShell)
     Usage: irm https://sector-zero.pages.dev/ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
@@ -26,7 +26,7 @@ function Invoke-NativeCommand {
         & $Command
         if ($LASTEXITCODE -eq 0) { return }
         if ($attempt -lt $MaxRetries) {
-            Write-Host "`n    ⚠️  $Description failed (attempt $attempt/$MaxRetries), retrying in 3s..." -ForegroundColor Yellow
+            Write-Host "`n    [!]  $Description failed (attempt $attempt/$MaxRetries), retrying in 3s..." -ForegroundColor Yellow
             Start-Sleep -Seconds 3
         }
     }
@@ -41,7 +41,7 @@ try {
     )
     if ($isAdmin) {
         Write-Host ""
-        Write-Host "⚠️  Running as Administrator." -ForegroundColor Yellow
+        Write-Host "[!]  Running as Administrator." -ForegroundColor Yellow
         Write-Host "   S0 installs to '$InstallDir' (your user profile)." -ForegroundColor Yellow
         Write-Host "   This should work correctly under Windows UAC elevation," -ForegroundColor Yellow
         Write-Host "   but running without elevation is recommended." -ForegroundColor Yellow
@@ -50,9 +50,9 @@ try {
 } catch {}
 
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║      S0 (Sector Zero) — Digital Forensic & Sanitization Suite   ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
+Write-Host "|      S0 (Sector Zero) -- Digital Forensic & Sanitization Suite   |" -ForegroundColor Cyan
+Write-Host "+==================================================================+" -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Detect / Install Python 3.10+
@@ -120,14 +120,14 @@ if (Test-Path $InstallDir) {
     Set-Location $InstallDir
     & git pull --ff-only -q 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n    ⚠️  git pull failed; continuing with existing files." -ForegroundColor Yellow
+        Write-Host "`n    [!]  git pull failed; continuing with existing files." -ForegroundColor Yellow
     } else {
         Write-Ok; Write-Info "existing install updated"
     }
 } else {
     & git clone --depth 1 -q $Repo $InstallDir
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "`n    ⚠️  Shallow clone failed, attempting full clone..." -ForegroundColor Yellow
+        Write-Host "`n    [!]  Shallow clone failed, attempting full clone..." -ForegroundColor Yellow
         & git clone -q $Repo $InstallDir
         if ($LASTEXITCODE -ne 0) {
             Write-Host "`n`n[ERROR] git clone failed with exit code $LASTEXITCODE. Check your network connection." -ForegroundColor Red
@@ -213,13 +213,13 @@ function global:s0 { & "$InstallDir\.venv\Scripts\s0.exe" @args }
 New-Item -Path (Join-Path $InstallDir ".s0_install_marker") -ItemType File -Force -ErrorAction SilentlyContinue | Out-Null
 
 Write-Host ""
-Write-Host "✅ S0 installed successfully!" -ForegroundColor Green
+Write-Host "[OK] S0 installed successfully!" -ForegroundColor Green
 Write-Host "   Command : s0" -ForegroundColor Green
 Write-Host "   Binary  : $InstallDir\.venv\Scripts\s0.exe" -ForegroundColor Gray
 Write-Host "   Run     : s0 --version" -ForegroundColor Green
 Write-Host "   Web UI  : s0 web" -ForegroundColor Green
 Write-Host ""
-Write-Host "⚖  LEGAL NOTICE: Only operate on storage devices and files you legally own" -ForegroundColor Yellow
+Write-Host "[i]  LEGAL NOTICE: Only operate on storage devices and files you legally own" -ForegroundColor Yellow
 Write-Host "   or have explicit written authorization to process." -ForegroundColor Yellow
 Write-Host "   Legal FAQ: https://sector-zero.gitbook.io/getting-started/faq" -ForegroundColor Gray
 Write-Host ""
