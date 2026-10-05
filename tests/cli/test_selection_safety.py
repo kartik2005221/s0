@@ -112,7 +112,29 @@ def test_no_hdparm_binary_skips_firmware_path(monkeypatch):
 
 
 def test_discard_justification_promotes_blkdiscard_to_purge():
-    chosen, _ = select_method(SSD, discard_justification="Vendor spec guarantees DRAT/RZAT (rev 3.1 §4.2)")
+    """`select_method` takes injectable probe hooks; this was reaching past them.
+
+    Called with no `ata_probe`, `probe_ata` falls through to
+    `AtaSecureEraseMethod(enhanced=False).probe(t)`, which runs `hdparm -I /dev/sda` --
+    against whatever disk the machine running the suite happens to have. So this test,
+    whose entire subject is a string argument and the tier it promotes to, was reading the
+    build machine's hardware to decide its result. On a machine with no SATA drive the
+    answer could differ, which makes it a test of the host rather than of the planner.
+
+    The planner's own docstring says the hooks exist for testing. They are used here.
+    """
+    probed: list[Target] = []
+
+    def fake_ata_probe(target: Target) -> dict:
+        probed.append(target)
+        return {"supported": False, "enhanced_supported": False, "frozen": False}
+
+    chosen, _ = select_method(
+        SSD,
+        discard_justification="Vendor spec guarantees DRAT/RZAT (rev 3.1 §4.2)",
+        ata_probe=fake_ata_probe,
+    )
+    assert probed, "the injected probe was bypassed; this test is reading real hardware again"
     assert chosen.method.id == "BLKDISCARD"
     assert chosen.method.nist_category == "Purge"
 
