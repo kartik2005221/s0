@@ -156,3 +156,134 @@ class TestEveryActionIsPinnedToACommit:
                 if not re.fullmatch(r"[0-9a-f]{40}", ref):
                     offenders.append(f"{job_name}: {uses}")
         assert not offenders, f"actions referenced by something other than a commit SHA: {offenders}"
+
+
+class TestWindowsIsActuallyExercised:
+    """Every platform defect found on this branch was invisible to a Linux-only suite.
+
+    Ten `.ps1` files that could not parse under Windows PowerShell 5.1; `install.ps1`
+    ignoring `S0_INSTALL_REF` because its clone had no `--branch`; `upgrade.ps1` running
+    `git fetch origin $S0Ref` with `$S0Ref` never assigned. None of them could have been
+    caught by a job that only ran on Linux, and all of them shipped.
+    """
+
+    def test_the_matrix_includes_windows(self, ci):
+        includes = ci["jobs"]["test"]["strategy"]["matrix"]["include"]
+        windows = [i for i in includes if i.get("os") == "windows-latest"]
+        assert windows, (
+            "no Windows leg in the test matrix; the Windows code paths are the ones this "
+            "branch shipped defects in"
+        )
+
+    def test_a_windows_linter_job_exists(self, ci):
+        assert "powershell" in ci["jobs"], "no job lints the PowerShell installers"
+        steps = yaml.safe_dump(ci["jobs"]["powershell"])
+        assert "PSScriptAnalyzer" in steps, (
+            "PSScriptAnalyzer is installed but never invoked, which reads as a check that passed"
+        )
+
+    def test_the_powershell_job_runs_on_windows(self, ci):
+        assert ci["jobs"]["powershell"]["runs-on"] == "windows-latest", (
+            "PSScriptAnalyzer needs a Windows runner to be meaningful"
+        )
+
+
+class TestThePowerShellChecksCanFail:
+    @pytest.fixture(scope="class")
+    def pwsh_steps(self, ci) -> str:
+        return yaml.safe_dump(ci["jobs"]["powershell"])
+
+    def test_missing_psscriptanalyzer_is_an_error(self, pwsh_steps):
+        assert "throw" in pwsh_steps, (
+            "the job installs PSScriptAnalyzer and reports findings; if it is missing the "
+            "job must fail rather than report zero findings and look green"
+        )
+
+    def test_every_script_is_parsed(self, pwsh_steps):
+        """The check that would have caught the worst finding on this branch.
+
+        The defect was a *parse* failure caused by Windows PowerShell decoding a BOM-less
+        UTF-8 file as ANSI, so an analyzer rule would not have seen it. Parsing each file
+        with the real parser is what catches it.
+        """
+        assert "Parser]::ParseFile" in pwsh_steps, (
+            "no PowerShell parse check; a file that cannot be parsed still installs and "
+            "still fails only when an operator runs it"
+        )
+
+    def test_non_ascii_scripts_are_rejected(self, pwsh_steps):
+        assert "127" in pwsh_steps, (
+            "the ASCII invariant is not asserted, so a box-drawing character can be "
+            "reintroduced and re-break all seventeen scripts at once"
+        )
+
+
+class TestCrossPlatformStepsDeclareTheirShell:
+    """A step written in bash runs under PowerShell on a Windows runner.
+
+    That is a syntax error on arrival, so the step fails for a reason that has nothing to
+    do with what it was checking -- and the report points at the wrong thing entirely.
+    """
+
+    def test_bash_loops_declare_bash_or_never_reach_windows(self, ci):
+        """Either `shell: bash`, or an `if:` that excludes the Windows runner.
+
+        Both are sufficient. A bash loop with neither would be a syntax error on arrival
+        under PowerShell -- failing for a reason unrelated to what it checks, with the
+        error pointing at the wrong thing. A loop scoped to Linux never sees PowerShell, so
+        demanding `shell: bash` there would be noise.
+        """
+        offenders = []
+        for job_name, job in ci["jobs"].items():
+            for step in job.get("steps", []):
+                run = step.get("run") or ""
+                if "done" not in run:
+                    continue
+                if step.get("shell") == "bash":
+                    continue
+                # Scoped away from Windows if it names Linux explicitly, or excludes
+                # Windows by inequality. Checking only for the *word* "Windows" would miss
+                # `runner.os == 'Linux'`, which is the most common way to do this -- that
+                # condition never mentions the platform it excludes.
+                condition = str(step.get("if") or "")
+                if "Linux" in condition:
+                    continue
+                if "!=" in condition and "Windows" in condition:
+                    continue
+                if "==" in condition and "macOS" in condition:
+                    continue
+                offenders.append(f"{job_name} / {step.get('name')!r}")
+        assert not offenders, (
+            f"these steps contain a bash loop and would run under PowerShell on a Windows "
+            f"runner: {offenders}. Declare `shell: bash` or scope the step away from "
+            f"windows-latest."
+        )
+
+    def test_linux_only_diagnostics_are_scoped(self, ci):
+        for job_name, job in ci["jobs"].items():
+            for step in job.get("steps", []):
+                run = step.get("run") or ""
+                if not run.strip().startswith("df ") and "df -h" not in run:
+                    continue
+                assert step.get("if"), (
+                    f"{job_name} / {step.get('name')!r} runs `df`, which is absent on "
+                    f"Windows; a diagnostic that fails the job it is diagnosing is worse "
+                    f"than no diagnostic"
+                )
+
+
+class TestTheSiteIsChecked:
+    def test_a_site_job_exists(self, ci):
+        assert "site" in ci["jobs"], "no job checks the deployed site's links"
+
+    def test_it_runs_the_link_checker(self, ci):
+        steps = yaml.safe_dump(ci["jobs"]["site"])
+        assert "check_site_links.py" in steps, "the site job does not run the link checker"
+
+    def test_the_link_checker_only_checks_local_links(self):
+        """Fetching every external URL turns a fast lint into a network-bound flake."""
+        source = (REPO_ROOT / "tools" / "check_site_links.py").read_text(encoding="utf-8")
+        assert "urlopen" not in source and "requests" not in source, (
+            "the link checker performs network requests; an offline run cannot tell a "
+            "dead link from a firewall"
+        )

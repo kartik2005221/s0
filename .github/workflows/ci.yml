@@ -42,6 +42,15 @@ jobs:
           # long, and a platform-specific failure is what this is here to find.
           - os: macos-latest
             python-version: "3.12"
+          # Windows is in the matrix, not deferred to a release day. Every platform
+          # defect found on this branch was invisible to a Linux-only suite:
+          # ten `.ps1` files that could not parse under Windows PowerShell 5.1,
+          # `install.ps1` ignoring S0_INSTALL_REF because it had no `git clone
+          # --branch`, and `upgrade.ps1` running `git fetch origin $S0Ref` with
+          # `$S0Ref` never assigned. All three shipped because nothing ran the
+          # Windows path in CI.
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
@@ -76,6 +85,14 @@ jobs:
             sqlite3
 
       - name: Report which probed tools are present
+        # `shell: bash` explicitly. The Windows leg's default shell is PowerShell, where
+        # this `for ... do ... done` loop is a syntax error -- so the step would fail on
+        # arrival rather than on a missing tool, which is a far more confusing report than
+        # no report. GitHub's Windows runners ship bash.
+        shell: bash
+        # Every OS. On Windows most of these are genuinely absent, and the list of what is
+        # missing is the interesting output -- it says which parts of the suite are not
+        # running on that platform rather than leaving it to be inferred from the skips.
         # Printed either way. A skip that is not visible is a test that is not running,
         # and the whole point of installing these is that the answer is knowable.
         run: |
@@ -111,6 +128,9 @@ jobs:
       # /tmp is small on some runners, and a full suite writes a lot to it. A
       # quota error mid-run looks like a test failure and is not one.
       - name: Free scratch space
+        # Linux and macOS only: `df` is not on PATH in the Windows leg's PowerShell, and a
+        # diagnostic that fails the job it is diagnosing is worse than no diagnostic.
+        if: runner.os != 'Windows'
         run: df -h /tmp || true
 
       - name: Pytest
@@ -508,6 +528,98 @@ jobs:
         with:
           name: dist
           path: dist/*
+
+  site:
+    name: Site links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.12"
+      # The portal, the installer pages and the docs are the only parts of this repository
+      # an operator reads without a terminal. A broken `src` on the verification page means
+      # the crypto bundle silently does not load: the page still renders, it just cannot
+      # verify anything, which is the worst failure mode for a trust surface.
+      #
+      # Local links only. A checker that fetches every external URL turns a five-second
+      # lint into a network-bound flake, and an offline run cannot tell a dead link from a
+      # firewall -- so external URLs are counted and reported, not fetched.
+      - name: Every local link in site/ resolves
+        run: python tools/check_site_links.py --root .
+
+  powershell:
+    name: PowerShell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          # Installed from the Gallery rather than assumed: a Windows runner that
+          # silently lacks it would otherwise report "no findings" and look like a pass.
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -AllowClobber
+          Import-Module PSScriptAnalyzer
+          $version = (Get-Module PSScriptAnalyzer).Version
+          Write-Host "PSScriptAnalyzer $version"
+          if (-not $version) { throw 'PSScriptAnalyzer did not load' }
+
+          $files = Get-ChildItem -Path . -Recurse -Include *.ps1,*.psm1 |
+            Where-Object { $_.FullName -notmatch '\\(\.git|node_modules|build|dist|\.venv)\\' }
+          Write-Host "Analysing $($files.Count) PowerShell file(s)"
+          if ($files.Count -eq 0) { throw 'no PowerShell files found -- the glob is wrong' }
+
+          # All findings are warnings, so this reports without failing. The severity that
+          # actually broke a script here was a *parse* failure, and that is caught below
+          # by parsing every file rather than by any analyzer rule.
+          $results = Invoke-ScriptAnalyzer -Path $files.FullName -Severity Warning,Error
+          foreach ($r in $results) {
+            Write-Host ("  {0}:{1}  [{2}]  {3}" -f $r.ScriptName, $r.Line, $r.Severity, $r.Message)
+          }
+          Write-Host "$($results.Count) finding(s)"
+
+      - name: Every PowerShell script parses
+        # The check that would have caught this branch's worst finding.
+        #
+        # Windows PowerShell 5.1 reads a BOM-less file as the ANSI code page and accepts
+        # smart quotes as string delimiters. The UTF-8 bytes of a box-drawing `╔` end in
+        # 0x94, which is cp1252 `”` -- so `Write-Host "╔════╗"` ended the string early
+        # and ten scripts stopped being valid PowerShell. The documented `irm | iex`
+        # path was unaffected, which is why it survived; `s0 uninstall` prints the
+        # saved-file path on Windows.
+        #
+        # All seventeen `.ps1` files are ASCII now. This asserts that stays true, and
+        # parses each file, so the failure mode has nowhere to hide.
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+            Where-Object { $_.FullName -notmatch '\\(\.git|node_modules|build|dist|\.venv)\\' }
+          $nonAscii = @()
+          $parseFailures = @()
+          foreach ($f in $files) {
+            $text = [System.IO.File]::ReadAllText($f.FullName)
+            foreach ($ch in $text.ToCharArray()) {
+              if ([int]$ch -gt 127) { $nonAscii += "$($f.FullName): U+{0:X4}" -f [int]$ch; break }
+            }
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $f.FullName, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $parseFailures += "$($f.FullName): $($errors[0].Message)"
+            }
+          }
+          Write-Host "$($files.Count) script(s) checked"
+          foreach ($n in $nonAscii)   { Write-Host "  NON-ASCII: $n" }
+          foreach ($p in $parseFailures) { Write-Host "  PARSE FAILURE: $p" }
+          if ($nonAscii.Count -gt 0 -or $parseFailures.Count -gt 0) {
+            throw "$($nonAscii.Count) non-ASCII file(s), $($parseFailures.Count) parse failure(s)"
+          }
+          Write-Host "all scripts are ASCII and parse"
 
   security:
     name: Security

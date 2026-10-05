@@ -54,9 +54,32 @@ PATTERNS: dict[str, re.Pattern[str]] = {
 
 # Binary-ish and generated paths that are not worth scanning and produce false positives.
 SKIP_SUFFIXES = {
-    ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp", ".mp4", ".mkv", ".webm",
-    ".mp3", ".zip", ".gz", ".bz2", ".xz", ".zst", ".iso", ".pdf", ".woff",
-    ".woff2", ".ttf", ".otf", ".eot", ".so", ".pyc", ".min.js", ".min.css",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".webp",
+    ".mp4",
+    ".mkv",
+    ".webm",
+    ".mp3",
+    ".zip",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".zst",
+    ".iso",
+    ".pdf",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    ".so",
+    ".pyc",
+    ".min.js",
+    ".min.css",
 }
 SKIP_DIR_PARTS = {".git", "node_modules", "build", "dist", "__pycache__", ".venv"}
 
