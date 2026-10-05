@@ -260,3 +260,44 @@ class TestTheWipeDryRunStillExplainsItself:
         assert "3" in combined and "random" in combined, (
             "the dry run did not report the parameters that would be used, so it is not a usable preview"
         )
+
+
+class TestWebDryRun:
+    """`web` was exempted from the guard because it "only serves the dashboard".
+
+    It also writes a session token to ~/.s0/web_auth_token and starts a server that
+    runs until interrupted. So `s0 web --dry-run` created a credential on disk, never
+    exited, and previewed none of it. The flag's own help text is "plan only; never
+    write to the target", and a 0644-then-chmod'd auth token is a write.
+    """
+
+    def test_it_writes_no_token(self, sandbox):
+        _run("web", "--dry-run", "--no-browser", home=sandbox)
+        assert not (sandbox / ".s0").exists(), (
+            "web --dry-run created ~/.s0; it should have written nothing at all"
+        )
+
+    def test_it_exits_instead_of_serving_forever(self, sandbox):
+        proc = _run("web", "--dry-run", "--no-browser", home=sandbox)
+        assert proc.returncode == 0, f"expected a clean exit, got {proc.returncode}"
+        assert "Dry run" in proc.stdout + proc.stderr
+
+    def test_it_reports_what_it_would_have_done(self, sandbox):
+        # Binding to all interfaces is the scenario under test: the point is that the
+        # dry run *previews* the warning a real run would print.
+        wide = "0.0.0.0"  # noqa: S104
+        proc = _run("web", "--dry-run", "--no-browser", "--host", wide, home=sandbox)
+        combined = proc.stdout + proc.stderr
+        assert wide in combined, "the dry run did not report the binding it would use"
+        assert "not a loopback" in combined, (
+            "a non-loopback bind was previewed without the warning that would accompany it"
+        )
+
+    def test_it_does_not_start_a_server(self, sandbox):
+        """The strongest form: a real `web` run leaves a listener behind, a dry run must not.
+
+        Nothing here connects to the port -- this only asserts the command returned at
+        all, which a server that ran until interrupted could not do inside a test.
+        """
+        proc = _run("web", "--dry-run", "--no-browser", home=sandbox)
+        assert proc.returncode is not None

@@ -3176,6 +3176,37 @@ def cmd_web(args) -> int:
     host = getattr(args, "host", None) or "127.0.0.1"
     url = f"http://{host}:{port}"
 
+    # `--dry-run` used to be exempted from the guard on the grounds that "web only
+    # serves the dashboard". It does two other things: it writes a session token to
+    # ~/.s0/web_auth_token, and it starts a server that runs until interrupted. So
+    # `s0 web --dry-run` created a credential on disk, never exited, and did none of
+    # the work the flag is supposed to be previewing. Under a dry run: print the plan,
+    # touch nothing, return.
+    if getattr(args, "dry_run", False):
+        print("[s0 web]  Dry run: nothing will be written and no server will start.", file=sys.stderr)
+        print(f"[s0 web]  Address  : {url}", file=sys.stderr)
+        loopback = host in ("127.0.0.1", "::1", "localhost")
+        print(
+            f"[s0 web]  Binding  : {host}" + (" (loopback only)" if loopback else ""),
+            file=sys.stderr,
+        )
+        if not loopback:
+            print(
+                f"[s0 web]  WARNING : {host} is not a loopback address, so this would "
+                f"be reachable from the network, protected only by the session token.",
+                file=sys.stderr,
+            )
+        print(
+            f"[s0 web]  Token    : would write {Path.home() / '.s0' / 'web_auth_token'} (mode 0600)",
+            file=sys.stderr,
+        )
+        print(
+            "[s0 web]  Browser  : "
+            + ("would open" if not getattr(args, "no_browser", False) else "suppressed"),
+            file=sys.stderr,
+        )
+        return EX_OK
+
     # Sudo / Root privilege detection
     is_root = False
     if hasattr(os, "geteuid"):
@@ -3841,10 +3872,9 @@ _DRY_RUN_READ_ONLY = ("list", "plan", "audit", "verify")
 def _dry_run_guard(args) -> int | None:
     """Stop a state-changing command under --dry-run. Returns None to proceed.
 
-    `web` is included as read-only because it only serves the dashboard; it starts a
-    server but performs no wipe, image, download or install on the operator's behalf.
     Commands that implement their own richer dry run -- `wipe`, which prints a full
-    per-target plan, and `live flash` -- keep doing so.
+    per-target plan, `live flash`, and `web`, which prints the address and binding it
+    would use -- keep doing so.
     """
     if not getattr(args, "dry_run", False):
         return None
