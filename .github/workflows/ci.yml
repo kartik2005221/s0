@@ -38,16 +38,132 @@ env:
   PYTHONDONTWRITEBYTECODE: "1"
 
 jobs:
+  fast-test:
+    name: Test (Python 3.12, ubuntu-latest [fast])
+    if: >-
+      github.event_name == 'push' &&
+      github.ref != 'refs/heads/master' &&
+      !contains(github.event.head_commit.message, '[ci full]') &&
+      !contains(github.event.head_commit.message, '[full ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system tools the suite probes for
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            ffmpeg \
+            zstd \
+            e2fsprogs \
+            exfatprogs \
+            shellcheck \
+            sqlite3
+
+      - name: Report which probed tools are present
+        shell: bash
+        run: |
+          missing=0
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              echo "  present: $tool"
+            else
+              echo "  MISSING: $tool"
+              missing=1
+            fi
+          done
+          echo "missing=$missing"
+
+      - name: Fail if a probed tool is absent
+        if: runner.os == 'Linux'
+        run: |
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            command -v "$tool" >/dev/null 2>&1 || {
+              echo "::error::required tool missing: $tool -- tests that need it would skip silently"
+              exit 1
+            }
+          done
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[web,test,dev]"
+
+      - name: Free scratch space
+        if: runner.os != 'Windows'
+        run: df -h /tmp || true
+
+      - name: Pytest
+        run: >-
+          pytest -q --tb=short
+          --cov=src/s0 --cov-report=term-missing:skip-covered --cov-report=xml
+          --cov-fail-under=70
+        env:
+          PYTHONHASHSEED: "0"
+
+      - name: Coverage floor is enforced
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          line = float(ET.parse("coverage.xml").getroot().get("line-rate")) * 100
+          print(f"measured line coverage: {line:.2f}%")
+          if line < 70.0:
+              raise SystemExit(f"Coverage {line:.2f}% is below 70% floor")
+          PY
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: coverage-xml-fast
+          path: coverage.xml
+
+      - name: Verify the wheel installs and runs standalone
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir dist/
+          python -m venv /tmp/wheeltest
+          /tmp/wheeltest/bin/pip install --quiet dist/*.whl
+          /tmp/wheeltest/bin/s0 --version
+          /tmp/wheeltest/bin/s0 carve --help > /dev/null
+          echo "wheel ok"
+
   test:
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     runs-on: ${{ matrix.os }}
     continue-on-error: false
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
-        os: [windows-latest]
+        # 3.11 is the floor declared by pyproject; 3.13 is new enough to catch
+        # use of a deprecated API before users do.
+        python-version: ["3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
         include:
+          # macOS is exercised only on the floor and the ceiling: the suite is
+          # long, and a platform-specific failure is what this is here to find.
+          - os: macos-latest
+            python-version: "3.12"
+          # Windows is in the matrix, not deferred to a release day. Every platform
+          # defect found on this branch was invisible to a Linux-only suite:
+          # ten `.ps1` files that could not parse under Windows PowerShell 5.1,
+          # `install.ps1` ignoring S0_INSTALL_REF because it had no `git clone
+          # --branch`, and `upgrade.ps1` running `git fetch origin $S0Ref` with
+          # `$S0Ref` never assigned. All three shipped because nothing ran the
+          # Windows path in CI.
           - os: windows-latest
             python-version: "3.12"
     steps:
@@ -187,7 +303,12 @@ jobs:
   # pin that stopped resolving, or a hash that stopped matching, would have been found
   # by whoever tried it first. This job is that check, on every supported interpreter.
   lockfile:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Lock file resolves (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
@@ -252,7 +373,6 @@ jobs:
           PY
 
   lint:
-    if: github.event_name == 'never'
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -318,7 +438,12 @@ jobs:
           extra_args: --all-files
 
   typecheck:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Type check
     runs-on: ubuntu-latest
     steps:
@@ -401,7 +526,12 @@ jobs:
           retention-days: 30
 
   packaging:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Packaging
     runs-on: ubuntu-latest
     steps:
@@ -559,7 +689,12 @@ jobs:
           path: dist/*
 
   site:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Site links
     runs-on: ubuntu-latest
     steps:
@@ -579,7 +714,12 @@ jobs:
         run: python tools/check_site_links.py --root .
 
   powershell:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: PowerShell
     runs-on: windows-latest
     steps:
@@ -653,7 +793,12 @@ jobs:
           Write-Host "all scripts are ASCII and parse"
 
   security:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Security
     runs-on: ubuntu-latest
     steps:
@@ -710,7 +855,12 @@ jobs:
         run: python tools/scan_for_secrets.py --root .
 
   codeql:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: CodeQL
     runs-on: ubuntu-latest
     permissions:
@@ -729,7 +879,10 @@ jobs:
           category: "/language:python"
 
   freshness:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/master'
     name: Dependency freshness
     # Advisory on purpose, and it says so in its output. The finding is information, not a
     # verdict: how far behind the lockfile is, and what a newer resolution would pull in.
@@ -784,7 +937,12 @@ jobs:
           cp /tmp/lock.committed requirements.lock
 
   workflow-lint:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: Lint workflows and scripts
     runs-on: ubuntu-latest
     steps:
@@ -827,7 +985,12 @@ jobs:
           failure-threshold: error
 
   sbom:
-    if: github.event_name == 'never'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ci full]') || contains(github.event.head_commit.message, '[full ci]')))
     name: SBOM
     runs-on: ubuntu-latest
     needs: [test]
