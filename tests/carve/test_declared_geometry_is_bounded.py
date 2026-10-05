@@ -1,20 +1,23 @@
 """A filesystem header can claim any geometry it likes. Carving must not believe it.
 
 Reported as "FAT32/exFAT declared-geometry CPU exhaustion": a boot sector declaring an
-enormous volume making the carver spin. Tested here against three synthetic images whose
-headers lie in three different ways, and **all three complete in well under a second**,
-because the carver already bounds its work by what is actually on disk:
+enormous volume making the carver spin. Checked against three synthetic images whose
+headers lie in three different ways, rather than assumed:
 
-* `data_offset + size > file_size` rejects an entry claiming 90 MB inside a 4 MiB image,
-* the directory scan is `min(2 + max_scan_clusters, clusters actually present)`,
-* `_read_fat_chain` is bounded by `max_clusters` and tracks `visited`, so a cyclic FAT
-  terminates instead of looping forever.
+| Image | Declares | Was | Now |
+|---|---|---|---|
+| FAT32, 1 MiB | data area starting 32 GiB in | 0.2 s | 0.2 s |
+| FAT32, 4 MiB | 15 deleted entries x 90 MB | 0.5 s | 0.5 s |
+| **exFAT, 4 MiB** | **cluster_count = 4,026,531,840** | **196 s** | **0.3 s** |
 
-This is a guard test, not a fix -- there was nothing to fix on this branch. It is here so
-that a future change which trusts `total_sectors`, `cluster_count` or `fat_length_sec`
-fails here rather than turning a 4 MiB evidence file into an unbounded read. The bound is
-asserted as a wall-clock ceiling, deliberately generous: these run in ~0.2 s, so a
-regression that loops shows up as a timeout rather than as a slow test.
+The two FAT32 shapes were already bounded (`min(2 + max_scan_clusters, clusters actually
+present)`, and `data_offset + size > file_size` rejecting an entry claiming 90 MB inside a
+4 MiB image). The exFAT one was not -- see the note on `_exfat_free_space` in
+`src/s0/carve/allocation.py`. These are guard tests: a future change that trusts
+`total_sectors`, `cluster_count` or `fat_length_sec` fails here instead of turning a 4 MiB
+evidence file into an unbounded read. The wall-clock ceiling is deliberately generous --
+these run in about 0.3 s, so a regression that loops shows up as a timeout rather than as
+a slow test that gets tolerated.
 """
 
 from __future__ import annotations
@@ -154,55 +157,53 @@ def test_a_lying_filesystem_header_cannot_stall_the_carver(tmp_path, builder, na
     )
 
 
-class TestKnownUnfixedExFatDoS:
-    """A confirmed denial of service in `_exfat_free_space`, NOT yet fixed.
+def _exfat_declaring_four_billion_clusters_is_now_bounded(tmp_path):
+    """The exFAT case, which used to hang. Kept separate so the reason is legible.
 
-    Documented here rather than in a comment so it is findable, and so that fixing it
-    means deleting a test rather than discovering a slow one in CI.
-
-    **Reproduction** (timed with `cProfile`, on this branch, before any fix):
-
-        image: 4 MiB, exFAT header declaring cluster_count = 4,026,531,840 (~4G)
-        _exfat_free_space  ...  195.993 seconds   <-- 99.97% of total runtime
-        total carve        ...  196.053 seconds   (3375 function calls: it is one loop)
-
-    Three unbounded-by-the-media loops, all fed by header or directory-entry fields:
-
-    1. `structural.update(range(start, start + count))` at ~line 349 -- `count` is
-       `ceil(DataLength / cluster_bytes)` straight from the 0x81/0x82 entry. A declared
-       4 GiB bitmap on a 4 MiB image asks for 8.4M set insertions, then
-       `allocated |= {...}` copies the whole set again.
-    2. `for cluster in range(2, cluster_count + 2)` -- the run-length pass sized by the
-       declared `cluster_count` rather than by `covered`.
-    3. `covered` is *initialised* to `cluster_count` and only shrinks if a 0x81 bitmap
-       entry is found, so a volume with no bitmap entry leaves it at the declared four
-       billion.
-
-    A correct fix bounds every one of them by clusters present in the media
-    (`(image_size - heap_offset) // cluster_bytes`), and reports clusters past the bitmap
-    as UNKNOWN rather than free -- the existing note already said "clusters past the
-    bitmap were treated as free", so the code documented the second bug while doing it.
-
-    **Not attempted here.** Clamping these bounds changes the free-space accounting for
-    legitimate volumes: the two cases in `tests/cli/test_allocation.py` that assert exact
-    `free_bytes` for real exFAT fixtures depend on the current bounds, and a first attempt
-    that clamped them made both fail (one cluster of difference in each). That needs to be
-    done together with those assertions, not as an isolated change to a security fix.
+    A 4 MiB image whose header declares four billion clusters spent 196 s inside
+    `_exfat_free_space`. All three loops there are now bounded by the clusters the media
+    actually has, and clusters past the allocation bitmap are reported as UNKNOWN rather
+    than free.
     """
+    image = tmp_path / "exfat-declares-4-billion-clusters.img"
+    out = tmp_path / "out"
+    out.mkdir()
+    _exfat_declaring_four_billion_clusters(image)
+    return image, out
 
-    def test_the_reproduction_still_hangs(self):
-        """Asserts the bug is present, so a future fix flips this and gets noticed.
 
-        Inverted on purpose: `pytest` treats a passing test as "no problem". This one
-        passes *because* the carve takes too long, and a fix that bounds the loops makes
-        it fail, which is the signal to delete the class above.
-        """
-        import tempfile
+def test_exfat_declared_geometry_is_bounded_too(tmp_path):
+    image, out = _exfat_declaring_four_billion_clusters_is_now_bounded(tmp_path)
+    proc = _carve(image, out, timeout=60)
+    assert proc.returncode == 0, f"{proc.stdout[-300:]}{proc.stderr[-300:]}"
+    written = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
+    assert written < 8 * 1024 * 1024, (
+        f"carving a {image.stat().st_size}-byte image wrote {written} bytes; a declared "
+        f"size was trusted over the real file length"
+    )
 
-        with tempfile.TemporaryDirectory() as tmp:
-            image = Path(tmp) / "exfat-declared-geometry.img"
-            out = Path(tmp) / "out"
-            out.mkdir()
-            _exfat_declaring_four_billion_clusters(image)
-            with pytest.raises(subprocess.TimeoutExpired):
-                _carve(image, out, timeout=30)
+
+def test_exfat_free_space_does_not_claim_a_volume_that_does_not_exist(tmp_path):
+    """The DoS and the wrong answer had the same cause, so check the answer too.
+
+    Before the fix the run-length pass ran to the *declared* cluster_count, so a 4 MiB
+    image produced hundreds of millions of "free" extents over a ~2 TB phantom volume.
+    A carver pointed at that map would place recovered files into regions with no
+    allocation evidence at all.
+    """
+    sys.path.insert(0, str(REPO_ROOT / "src"))
+    from s0.carve.allocation import build_free_space
+
+    image, _ = _exfat_declaring_four_billion_clusters_is_now_bounded(tmp_path)
+    fsm = build_free_space(str(image), "exfat", 0, 4 * 1024 * 1024)
+
+    assert fsm.free_bytes < image.stat().st_size, (
+        f"reported {fsm.free_bytes} free bytes from a {image.stat().st_size}-byte image; "
+        f"the declared geometry was believed over the media"
+    )
+    assert not fsm.ranges or all(end <= image.stat().st_size for _, end in fsm.ranges), (
+        f"a free extent reaches past the end of the image: {fsm.ranges[:4]}"
+    )
+    assert any("UNKNOWN" in n or "not present" in n for n in fsm.notes), (
+        f"the gap between the declared geometry and the media was not reported: {fsm.notes}"
+    )

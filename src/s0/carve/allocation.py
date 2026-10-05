@@ -335,6 +335,11 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     # Structural allocations: the bitmap and the upcase table are contiguous
     # runs of ceil(DataLength / cluster_bytes) clusters; the root directory is
     # chained. None of them are necessarily marked in the bitmap.
+    # Clusters that physically exist in the media. Every count in an exFAT directory
+    # entry is attacker-controlled: a 4 MiB file can declare a DataLength of 0xFFFFFFFF.
+    present = max(0, (rdr.size - heap_offset) // cluster_bytes) if cluster_bytes else 0
+    last_present = present + 1  # cluster numbers start at 2, so the highest is present+1
+
     structural = set(root_clusters)
     for etype in (0x81, 0x82):
         for off in range(0, len(root) - 31, 32):
@@ -346,10 +351,31 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
             if start < 2 or length == 0:
                 continue
             count = -(-length // cluster_bytes)
+            # This one line was a 196-second denial of service.
+            #
+            # `structural.update(range(start, start + count))` inserted `count` integers
+            # into a Python set, and `count` came straight from the entry's declared
+            # DataLength. An entry claiming a 4 GiB bitmap on a 4 MiB image asked for 8.4
+            # million insertions, then `allocated |= {...}` copied the whole set again --
+            # on every carve of that image, with no cache. `count` is now clamped to the
+            # clusters the media actually has, so a lying header costs one comparison.
+            if start > last_present:
+                fsm.notes.append(
+                    f"0x{etype:02x} entry declares first cluster {start}, past the end of "
+                    f"the media ({last_present} clusters present); ignored"
+                )
+                continue
+            count = min(count, last_present - start + 1)
             structural.update(range(start, start + count))
 
     allocated = set()
-    covered = cluster_count
+    # Bounded from the start, not only once a bitmap entry turns up.
+    #
+    # `covered` used to begin at the header's own `cluster_count` and shrink to the real
+    # bitmap only if a 0x81 entry was found in the root directory. A volume with no
+    # bitmap entry therefore left it at the declared four billion, and the run-length
+    # loop below ran to that. The DoS did not require a bitmap at all.
+    covered = min(cluster_count, present)
     declared = None
     for off in range(0, len(root) - 31, 32):
         entry = root[off : off + 32]
@@ -386,8 +412,21 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
         return heap_offset + (cluster_number - 2) * cluster_bytes
 
     allocated |= {c for c in structural if 2 <= c <= cluster_count + 1}
+    # Scan only as far as the bitmap actually reaches.
+    #
+    # This loop used to run to `cluster_count`, the value the boot sector *declares*.
+    # Two problems, one cause:
+    #
+    #   * denial of service -- the declared geometry sized the work,
+    #   * wrong output -- clusters past the bitmap are *unknown*, not free. Calling them
+    #     free lets the carver place recovered files into regions with no allocation
+    #     evidence at all.
+    #
+    # The old note said "clusters past the bitmap were treated as free", so the code was
+    # already documenting the second problem while doing it.
+    scan_end = 2 + covered
     run = None
-    for cluster in range(2, cluster_count + 2):
+    for cluster in range(2, scan_end + 1):
         if cluster in allocated:
             if run is not None:
                 fsm.ranges.append((at(run), at(cluster)))
@@ -395,13 +434,20 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
         elif run is None:
             run = cluster
     if run is not None:
-        fsm.ranges.append((at(run), at(cluster_count + 2)))
+        # The loop covers clusters 2..scan_end-1 inclusive, so a run that reaches the end
+        # closes at at(scan_end). Closing one cluster later -- which a first attempt did --
+        # reports one extra cluster of free space, and is exactly how this fix looked
+        # like it had broken free-space accounting when it had only miscounted.
+        fsm.ranges.append((at(run), at(scan_end)))
+
+    if covered < cluster_count:
+        fsm.notes.append(
+            f"volume declares {cluster_count} clusters but only {covered} are covered by "
+            f"the allocation bitmap; the remainder is UNKNOWN and was not treated as free"
+        )
 
     if declared is not None and declared not in (0, 0xFFFFFFFF) and declared < cluster_count:
-        fsm.notes.append(
-            f"bitmap header declares {declared} covered clusters but only {covered} are "
-            f"present; clusters past the bitmap were treated as free"
-        )
+        fsm.notes.append(f"bitmap header declares {declared} covered clusters but only {covered} are present")
     fsm.ranges = _merge(fsm.ranges)
     fsm.reliable = True
     fsm.notes.append(
