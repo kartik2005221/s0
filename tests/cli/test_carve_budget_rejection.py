@@ -214,6 +214,12 @@ class _BytesSource:
 @pytest.fixture
 def hard_timeout():
     """Fail instead of hanging. A hanging test is worse than no test."""
+    if not hasattr(signal, "SIGALRM"):
+
+        def _run_plain(fn, *args):
+            return fn(*args)
+
+        return _run_plain
 
     def _run(fn, *args):
         previous = signal.signal(signal.SIGALRM, _alarm)

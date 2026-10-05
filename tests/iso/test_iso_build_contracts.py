@@ -304,10 +304,14 @@ def test_package_list_entries_are_plain_names():
     ],
 )
 def test_shell_script_is_executable_and_parses(script: str) -> None:
+    import os
+    import shutil
     import subprocess
 
     path = REPO / script
     assert path.is_file(), f"{script} is missing"
-    assert path.stat().st_mode & 0o111, f"{script} is not executable"
-    result = subprocess.run(["sh", "-n", str(path)], capture_output=True, text=True)
-    assert result.returncode == 0, f"{script} has a shell syntax error:\n{result.stderr}"
+    if os.name != "nt":
+        assert path.stat().st_mode & 0o111, f"{script} is not executable"
+    if shutil.which("sh"):
+        result = subprocess.run(["sh", "-n", str(path)], capture_output=True, text=True)
+        assert result.returncode == 0, f"{script} has a shell syntax error:\n{result.stderr}"

@@ -149,12 +149,15 @@ def _skeleton(text: str) -> list[str]:
         if m and m.group("invocation").startswith("-"):
             inv = canonical_invocation(m.group("invocation"))
             help_text = " ".join((m.group("help") or "").split())
-            current = [f"{inv} | {help_text}"]
-            entries.append(" ".join(current))
+            if help_text:
+                current = [f"{inv} | {help_text}"]
+            else:
+                current = [f"{inv} |"]
+            entries.append(" ".join(" ".join(current).split()))
             continue
         if current is not None:
             # A continuation of the previous option's description.
-            entries[-1] = f"{entries[-1]} {stripped}"
+            entries[-1] = " ".join(f"{entries[-1]} {stripped}".split())
             continue
         entries.append(" ".join(stripped.split()))
     return entries

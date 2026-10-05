@@ -67,6 +67,15 @@ SYSTEM_PREFIXES: tuple[str, ...] = (
     "C:\\ProgramData",
 )
 
+#: Paths under system prefixes that are user/temporary space and allowed.
+ALLOWED_TEMP_PREFIXES: tuple[str, ...] = (
+    "/tmp",  # noqa: S108
+    "/private/tmp",
+    "/private/var/tmp",
+    "/private/var/folders",
+    "/var/tmp",  # noqa: S108
+)
+
 
 def _resolve(path: str | os.PathLike[str]) -> Path | None:
     try:
@@ -157,6 +166,12 @@ def check_path_is_destructive(
         )
 
     for prefix in SYSTEM_PREFIXES:
+        if prefix == "/System" and (
+            str(resolved) == "/System/Volumes" or str(resolved).startswith("/System/Volumes/")
+        ):
+            continue
+        if any(_under(resolved, Path(allowed)) for allowed in ALLOWED_TEMP_PREFIXES):
+            continue
         if _under(resolved, Path(prefix)):
             _refuse_or_warn(
                 warnings,

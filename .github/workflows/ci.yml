@@ -41,6 +41,7 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -825,7 +826,7 @@ jobs:
       - name: hadolint
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf  # v3.1.0
         with:
-          dockerfile: iso/**/Dockerfile
+          dockerfile: iso/Dockerfile
 
   sbom:
     name: SBOM

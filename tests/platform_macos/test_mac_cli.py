@@ -107,8 +107,20 @@ def test_mac_cli_fullfsync_fallback():
         macos_full_fsync(tmp.fileno())
 
 
-def test_mac_cli_wipe_safety_refusal():
+def test_mac_cli_wipe_safety_refusal(monkeypatch):
+    import subprocess
+
+    import s0.platform.macos.s0_eraser as mod
     from s0.platform.macos import check_macos_wipe_safety
+
+    monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk0")
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type(
+            "CompletedProcess", (), {"returncode": 0, "stdout": "/dev/disk0s1 on / (apfs, read-only)\n"}
+        )(),
+    )
 
     # disk0 / rdisk0 without force must be refused
     with pytest.raises(PermissionError, match="SAFETY REFUSAL"):
@@ -121,8 +133,8 @@ def test_mac_cli_wipe_safety_refusal():
         check_macos_wipe_safety("/dev/disk0s2", force=False)
 
     # Removable drive or force override should pass safety check
-    check_macos_wipe_safety("/dev/rdisk2")
-    check_macos_wipe_safety("/dev/disk2s1")
+    check_macos_wipe_safety("/dev/rdisk99")
+    check_macos_wipe_safety("/dev/disk99s1")
     check_macos_wipe_safety("/dev/disk0", force=True)
 
 
@@ -344,11 +356,19 @@ def test_is_macos_dev_or_subpartition():
 
 
 def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
+    import subprocess
+
     import s0.platform.macos.s0_eraser as mod
     from s0.platform.macos.s0_eraser import check_macos_wipe_safety
 
     # Mock dynamic detection returning disk3 (not default disk0)
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
+    fake_mount = "/dev/disk3s1 on / (apfs, local, read-only)\n"
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type("CompletedProcess", (), {"returncode": 0, "stdout": fake_mount})(),
+    )
 
     with pytest.raises(PermissionError, match="SAFETY REFUSAL.*macOS boot disk"):
         check_macos_wipe_safety("/dev/disk3", force=False)
@@ -363,7 +383,7 @@ def test_mac_cli_wipe_safety_dynamic_boot(monkeypatch):
     check_macos_wipe_safety("/dev/disk3", force=True)
 
     # Unrelated disk should pass
-    check_macos_wipe_safety("/dev/disk2", force=False)
+    check_macos_wipe_safety("/dev/disk99", force=False)
 
 
 def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
@@ -394,7 +414,7 @@ def test_mac_cli_wipe_safety_mount_subpartition(monkeypatch):
         check_macos_wipe_safety("/dev/disk5s1s1", force=False)
 
     # Different disk passes
-    check_macos_wipe_safety("/dev/disk2", force=False)
+    check_macos_wipe_safety("/dev/disk99", force=False)
 
 
 def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
@@ -414,11 +434,19 @@ def test_mac_cli_unmount_failure_gates_wipe(monkeypatch):
 def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
     """On Apple Silicon, boot disk reports APFS container 'disk3', but physical SSD is 'disk0'.
     Both disk0 (physical store) and disk3 (container) must be refused."""
+    import subprocess
+
     import s0.platform.macos.s0_eraser as mod
     from s0.platform.macos.s0_eraser import check_macos_wipe_safety
 
     monkeypatch.setattr(mod, "_get_macos_boot_disk", lambda: "disk3")
     monkeypatch.setattr(mod, "_resolve_apfs_physical_store", lambda c: "disk0" if c == "disk3" else None)
+    fake_mount = "/dev/disk3s1 on / (apfs, local, read-only)\n"
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: type("CompletedProcess", (), {"returncode": 0, "stdout": fake_mount})(),
+    )
 
     # Physical disk0 must be refused
     with pytest.raises(PermissionError, match="SAFETY REFUSAL.*physical internal SSD"):
@@ -437,5 +465,5 @@ def test_mac_cli_wipe_safety_apple_silicon_apfs_physical_store(monkeypatch):
     with pytest.raises(PermissionError, match="SAFETY REFUSAL.*boot disk"):
         check_macos_wipe_safety("/dev/disk3s1", force=False)
 
-    # An unrelated external USB disk (e.g. disk4) passes
-    check_macos_wipe_safety("/dev/disk4", force=False)
+    # An unrelated external USB disk (e.g. disk99) passes
+    check_macos_wipe_safety("/dev/disk99", force=False)

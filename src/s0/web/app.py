@@ -52,7 +52,13 @@ from s0.cli.devices import (
 from s0.cli.file_eraser import erase_batch
 from s0.config import CONFIG
 from s0.image.imager import ImagingOptions, acquire_image
-from s0.safety import SYSTEM_PREFIXES, ProtectedPathError, check_path_is_destructive
+from s0.safety import (
+    ALLOWED_TEMP_PREFIXES,
+    SYSTEM_PREFIXES,
+    ProtectedPathError,
+    _under,
+    check_path_is_destructive,
+)
 from s0.temperature import read_temperature
 from s0.validation import validate_metadata_str
 from s0.wipe.methods.ata import hpa_dco_report
@@ -604,6 +610,10 @@ def _reject_system_path(field: str, value: str | None) -> str | None:
     if value and value.strip():
         p = Path(value.strip()).resolve()
         for sp in _SYSTEM_PATHS:
+            if sp == "/System" and (str(p) == "/System/Volumes" or str(p).startswith("/System/Volumes/")):
+                continue
+            if any(_under(p, Path(allowed)) for allowed in ALLOWED_TEMP_PREFIXES):
+                continue
             if str(p) == sp or str(p).startswith(sp + "/"):
                 raise ValueError(f"{field} cannot be in system path: {sp}")
     return value

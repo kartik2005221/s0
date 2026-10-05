@@ -86,6 +86,14 @@ def hard_timeout():
     suite hang for two minutes instead of failing -- a regression test that
     takes the runner down with it is worse than no test.
     """
+    if not hasattr(signal, "SIGALRM"):
+
+        def _run_plain(fn, *args, **kwargs):
+            return fn(*args, **kwargs)
+
+        yield _run_plain
+        return
+
     previous = signal.signal(signal.SIGALRM, _alarm)
 
     def _run(fn, *args, **kwargs):

@@ -59,6 +59,8 @@ def _alarm(_signum, _frame):
 
 @pytest.fixture
 def hard_timeout():
+    if not hasattr(signal, "SIGALRM"):
+        pytest.skip("SIGALRM not supported on this platform")
     previous = signal.signal(signal.SIGALRM, _alarm)
 
     def _run(fn, *args, **kwargs):

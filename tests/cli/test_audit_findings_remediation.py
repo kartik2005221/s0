@@ -331,6 +331,12 @@ def test_partition_boundary_matching():
 def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
     import argparse
     import shutil
+    import sys
+
+    import pytest
+
+    if sys.platform != "linux":
+        pytest.skip("hdparm HPA gate is Linux-specific")
 
     from s0.cli.main import cmd_wipe
 
@@ -365,6 +371,7 @@ def test_hpa_gate_fails_closed_when_hdparm_missing(monkeypatch, capsys):
         yes=True,
         force=False,
         json=False,
+        operator="Auditor",
         operator_name="Auditor",
         operator_id="AUD-01",
         operator_role="Tester",

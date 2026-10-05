@@ -98,7 +98,7 @@ class TestTheBindingLabelIsTrue:
         entry = shutil.which("s0") or str(Path(sys.executable).parent / "s0")
         if not Path(entry).is_file():
             pytest.skip("s0 entry point not available")
-        if not shutil.which("script"):
+        if not shutil.which("script") or sys.platform != "linux":
             pytest.skip("needs util-linux `script` to give the banner a TTY")
 
         def banner(*args: str) -> str:

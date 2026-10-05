@@ -80,7 +80,7 @@ class TestMethodIdTypo:
 
     def test_serializer_source_does_not_mention_method_id(self):
         """Pin the exact expression that raised, independent of class discovery."""
-        source = (REPO_ROOT / "src/s0/cli/main.py").read_text()
+        source = (REPO_ROOT / "src/s0/cli/main.py").read_text(encoding="utf-8")
         assert "method.method_id" not in source, (
             "the plan serializer references method.method_id, but WipeMethod has "
             "'id' -- this raises AttributeError on any target with a real method"
@@ -124,7 +124,7 @@ class TestCIInstallsRealPackages:
         path = REPO_ROOT / ".github/workflows" / name
         if not path.exists():  # pragma: no cover
             pytest.skip(f"{name} not present")
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
 
     def test_ci_does_not_reference_a_nonexistent_package(self):
         """`httx` is not on PyPI; `httpx` is. Assert the typo cannot come back."""
@@ -155,7 +155,7 @@ class TestCIInstallsRealPackages:
         )
 
     def test_every_extra_named_in_ci_exists_in_pyproject(self):
-        text = (REPO_ROOT / "pyproject.toml").read_text()
+        text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         match = re.search(r'pip install -e "\.\[([^\]]+)\]"', self._workflow_text("ci.yml"))
         assert match, "could not parse the extras from ci.yml"
         for extra in (e.strip() for e in match.group(1).split(",")):
@@ -172,11 +172,11 @@ class TestCIInstallsRealPackages:
         install line -- which is the thing that drifted in the first place.
         """
         others = [p for p in (REPO_ROOT / "tests").rglob("*.py") if p.resolve() != Path(__file__).resolve()]
-        users = [p.name for p in others if "pytest.mark.asyncio" in p.read_text()]
+        users = [p.name for p in others if "pytest.mark.asyncio" in p.read_text(encoding="utf-8")]
         if not users:
             assert "pytest-asyncio" not in self._workflow_text("ci.yml")
             return
-        declared = (REPO_ROOT / "pyproject.toml").read_text()
+        declared = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
         assert "pytest-asyncio" in declared, (
             f"async tests appeared in {users} but no extra declares pytest-asyncio, so CI will fail on them"
         )
