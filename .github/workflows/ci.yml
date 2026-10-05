@@ -83,6 +83,74 @@ jobs:
           /tmp/wheeltest/bin/s0 carve --help > /dev/null
           echo "wheel ok"
 
+  # The lock exists so the things this project *builds* -- ISO, container, release
+  # tarball -- resolve the same graph every time. Nothing was installing from it, so a
+  # pin that stopped resolving, or a hash that stopped matching, would have been found
+  # by whoever tried it first. This job is that check, on every supported interpreter.
+  lockfile:
+    name: Lock file resolves (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The full declared support range, floor to ceiling. A lock compiled on one
+        # interpreter can pin an artefact that does not exist for another, or one whose
+        # wheel is cp3XX-only, and neither shows up until a build runs on it.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install exactly what the lock pins
+        run: |
+          python -m pip install --upgrade pip
+          # --require-hashes is the point: it refuses any artefact whose hash is not
+          # listed, so this cannot quietly degrade into a normal resolve. --dry-run
+          # because the assertion is that the graph resolves, not that it is installed
+          # here; the `test` job installs the real thing.
+          python -m pip install --require-hashes --dry-run -r requirements.lock
+
+      - name: The lock carries no local paths
+        run: |
+          # pip-compile records its own invocation in the header, so regenerating from a
+          # scratch directory writes that directory into a committed file. It happened:
+          # ten references to /tmp/opencode.
+          if grep -nE '(^|[[:space:]])(/tmp/|/home/|/Users/|/private/var/)' requirements.lock; then
+            echo "::error::requirements.lock contains a local filesystem path"
+            exit 1
+          fi
+          echo "lock header is free of local paths"
+
+      - name: Every pin is hash-pinned
+        run: |
+          python - <<'PY'
+          import re, sys
+          from pathlib import Path
+
+          text = Path("requirements.lock").read_text(encoding="utf-8")
+          # Blocks are separated by a blank line; a distribution without a --hash line
+          # would install whatever the index serves, which is the whole thing the lock
+          # exists to prevent.
+          blocks = [b for b in re.split(r"\n\n+", text) if "==" in b]
+          unpinned = [
+              m.group(1)
+              for b in blocks
+              if "--hash=sha256:" not in b
+              for m in [re.search(r"^([A-Za-z0-9_.-]+)==", b, re.MULTILINE)]
+              if m
+          ]
+          if unpinned:
+              print(f"::error::not hash-pinned: {unpinned}")
+              sys.exit(1)
+          print(f"{len(blocks)} pins, all hash-pinned")
+          PY
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
