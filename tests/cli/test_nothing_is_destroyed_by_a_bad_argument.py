@@ -264,3 +264,72 @@ class TestTheHappyPathsStillWork:
         _wipe("--targets", "evidence.txt", "--out-dir", str(sandbox / "out"), cwd=sandbox)
         leftovers = [p.name for p in (sandbox / "out").iterdir() if p.name.startswith(".s0-write-probe")]
         assert not leftovers, f"the writability probe left files behind: {leftovers}"
+
+
+class TestPortalUrlIsRefusedBeforeTheDriveIsTouched:
+    """`--portal-url` was validated *after* the erase, and its validator called sys.exit.
+
+    So a space in the URL -- an ordinary typo -- destroyed the evidence and then exited
+    1. The validator now has a non-exiting half (`_portal_url_error`) that preflight can
+    ask, and `cmd_wipe` asks it before a whole drive is opened for writing.
+    """
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "http://evil.example/cert",  # plaintext HTTP to a remote host
+            "https://user:pw@portal.example/",  # embedded credentials
+            "https://portal.example/a b",  # a space
+            "ftp://portal.example/",  # wrong scheme
+        ],
+    )
+    def test_it_is_refused(self, sandbox, bad):
+        _wipe(
+            "--targets",
+            "evidence.txt",
+            "--portal-url",
+            bad,
+            "--no-certificate",
+            cwd=sandbox,
+        )
+        assert (sandbox / "evidence.txt").exists(), (
+            f"the target was erased despite an invalid --portal-url ({bad})"
+        )
+
+    def test_the_message_says_nothing_was_erased(self, sandbox):
+        proc = _wipe(
+            "--targets",
+            "evidence.txt",
+            "--portal-url",
+            "https://portal.example/a b",
+            "--no-certificate",
+            cwd=sandbox,
+        )
+        combined = proc.stdout + proc.stderr
+        assert "portal-url" in combined, "the refusal did not name the offending flag"
+        assert "erase" in combined.lower(), "the refusal did not say the target is intact"
+
+
+class TestCertificateWriteFailureAfterTheEraseIsNotSuccess:
+    """A failed certificate write must not exit 0 or 70.
+
+    `cert_json.write_text` and the PDF generation were unguarded, so out-of-space or a
+    read-only mount reached the top-level handler and printed "This is a bug in s0" with
+    exit 70 -- for an ordinary condition, on a machine whose disk had just been erased.
+
+    Exercised through the helper rather than through a real full filesystem: ENOSPC is
+    not portable to arrange in a test, and a test that simulated it by deleting the
+    output directory mid-run would be testing its own setup rather than the code.
+    """
+
+    def test_the_guard_returns_the_documented_code(self):
+        """Direct: the helper returns 73 and never 0 or 70."""
+        import sys as _sys
+
+        _sys.path.insert(0, str(REPO_ROOT / "src"))
+        from s0.cli.main import _certificate_write_failed
+
+        out = Path("/nonexistent-out-dir")
+        rc = _certificate_write_failed(out, OSError(28, "No space left on device"))
+        assert rc == 73, f"expected EX_CANTCREAT (73), got {rc}"
+        assert rc not in (0, 70), "a failed certificate write must never look like success"

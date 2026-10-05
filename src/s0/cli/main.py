@@ -117,25 +117,35 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _validate_portal_url(url: str | None) -> str | None:
+def _portal_url_error(url: str | None) -> str | None:
+    """Return why *url* is an unusable portal URL, or None if it is fine.
+
+    Split out from `_validate_portal_url` so preflight can ask the question *without*
+    `sys.exit`. The old validator was only ever called after the target had been
+    erased, so a typo in `--portal-url` -- a space in it, say -- destroyed the evidence
+    and then exited 1.
+    """
     if not url:
-        return url
+        return None
     import urllib.parse
 
     parsed = urllib.parse.urlparse(url)
     if parsed.scheme not in ("https", "http"):
-        sys.stderr.write(f"\n❌ Error: Invalid portal URL scheme '{parsed.scheme}': must be http or https\n")
-        sys.exit(1)
+        return f"invalid portal URL scheme {parsed.scheme!r}: must be http or https"
     if parsed.scheme == "http" and parsed.hostname not in ("localhost", "127.0.0.1"):
-        sys.stderr.write(
-            "\n❌ Error: Plaintext HTTP portal URL is restricted to localhost/127.0.0.1; use HTTPS for remote hosts\n"
-        )
-        sys.exit(1)
+        return "plaintext HTTP portal URL is restricted to localhost/127.0.0.1; use HTTPS for remote hosts"
     if parsed.username or parsed.password:
-        sys.stderr.write("\n❌ Error: Portal URL must not contain embedded user credentials (@)\n")
-        sys.exit(1)
+        return "portal URL must not contain embedded user credentials (@)"
     if any(c in url for c in "<>\"'`\\| "):
-        sys.stderr.write("\n❌ Error: Portal URL contains disallowed characters\n")
+        return "portal URL contains disallowed characters"
+    return None
+
+
+def _validate_portal_url(url: str | None) -> str | None:
+    """Exit(1) if *url* is unusable, else return it unchanged."""
+    problem = _portal_url_error(url)
+    if problem:
+        sys.stderr.write(f"\n\N{HEAVY MULTIPLICATION X} Error: {problem}\n")
         sys.exit(1)
     return url
 
@@ -222,6 +232,27 @@ def _prepare_out_dir(args, *, ui=None) -> Path | None:
             pass
         return None
     return out_dir
+
+
+def _certificate_write_failed(out_dir: Path, exc: OSError, *, ui=None) -> int:
+    """Report an unwritable output directory *after* the target was already erased.
+
+    There is no honest exit code for "I destroyed the drive and then could not write the
+    paperwork". 73 is the documented code for "output file cannot be created", and it is
+    non-zero, which is the part that matters: automation must not read this as a
+    completed, certified sanitization. The message leads with what did happen, so the
+    operator knows the drive is already gone and the job is not to retry blindly.
+    """
+    msg = (
+        f"error: the target was sanitized, but the certificate could not be written to "
+        f"{out_dir}: {exc.strerror or exc}\n"
+        f"       The sanitization DID happen; it is not rolled back and re-running will "
+        f"not undo it.\n"
+        f"       Free space on that filesystem, then recover the certificate from the "
+        f"audit ledger."
+    )
+    (ui.error(msg) if ui else print(msg, file=sys.stderr))
+    return EX_CANTCREAT
 
 
 def _load_issuer_key(args, ui=None) -> tuple[Path | None, str | None]:
@@ -968,6 +999,27 @@ def cmd_wipe(args) -> int:
     if is_file_mode:
         return cmd_erase_files(args)
 
+    # --- preflight, before a whole drive is overwritten ---
+    #
+    # The device path had no preflight at all. Each of these was discovered *after* the
+    # drive was sanitized: a missing signing key (EX_CONFIG at line ~1410, long after
+    # `verify_wipe`), an unwritable `--out-dir` (mkdir after the erase), and an invalid
+    # `--portal-url` (`_validate_portal_url` called after the erase, and it `sys.exit`s).
+    # In each case the operator had already destroyed the evidence and then got an error
+    # about paperwork.
+    key_path, key_error = _load_issuer_key(args, ui=ui)
+    if key_error is not None:
+        return EX_CONFIG if key_error == "config" else key_error
+
+    portal_problem = _portal_url_error(getattr(args, "portal_url", None))
+    if portal_problem:
+        ui.error(f"--portal-url: {portal_problem}. Nothing has been erased.")
+        return EX_USAGE
+
+    out_dir = _prepare_out_dir(args, ui=ui)
+    if out_dir is None:
+        return EX_CANTCREAT
+
     passes_val = getattr(args, "passes", 1)
     if passes_val < 1 or passes_val > 100:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
@@ -1436,14 +1488,23 @@ def cmd_wipe(args) -> int:
             f"ledger: {exc}. The certificate exists; the chain of custody has a gap."
         )
 
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    cert_json = out_dir / f"certificate_{cert['cert_uuid'][:8]}.json"
-    cert_json.write_text(json.dumps(cert, indent=2) + "\n")
+    # Every write below is unguarded, and the drive is already sanitized by now.
+    #
+    # `cert_json.write_text` raising PermissionError reached the top-level handler,
+    # which reported "This is a bug in s0" and exited 70 -- for what is an ordinary
+    # out-of-space or read-only-mount condition on a machine that has just had a disk
+    # erased. Any PDF-library exception did the same. So the two outcomes an operator
+    # could get were "70, this is a bug" or, if the failure happened after the summary
+    # was printed, a success exit code over an unaccredited drive.
+    try:
+        cert_json = out_dir / f"certificate_{cert['cert_uuid'][:8]}.json"
+        cert_json.write_text(json.dumps(cert, indent=2) + "\n")
+    except OSError as exc:
+        return _certificate_write_failed(out_dir, exc, ui=ui)
 
     # Resolve URL template
     qr_url_tpl = args.qr_url_template
-    portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
+    portal_url_val = getattr(args, "portal_url", None)
     if portal_url_val and "{cert_uuid}" not in portal_url_val:
         qr_url_tpl = f"{portal_url_val.rstrip('/')}/?cert={{cert_uuid}}"
 
@@ -1451,12 +1512,23 @@ def cmd_wipe(args) -> int:
     if not args.no_pdf:
         from s0 import pdfgen
 
-        pdf_path = pdfgen.generate_pdf(
-            cert,
-            out_dir / f"certificate_{cert['cert_uuid'][:8]}.pdf",
-            qr_url_template=qr_url_tpl,
-        )
-        pdfgen.write_qr_file(cert, out_dir / f"certificate_{cert['cert_uuid'][:8]}.qr.png")
+        try:
+            pdf_path = pdfgen.generate_pdf(
+                cert,
+                out_dir / f"certificate_{cert['cert_uuid'][:8]}.pdf",
+                qr_url_template=qr_url_tpl,
+            )
+            pdfgen.write_qr_file(cert, out_dir / f"certificate_{cert['cert_uuid'][:8]}.qr.png")
+        except Exception as exc:
+            # The JSON certificate is already on disk and is the authoritative record.
+            # Losing the PDF and the QR code is a real loss, but it is not a reason to
+            # hide the fact that the drive *was* wiped, nor to exit 70.
+            ui.warn(
+                f"the drive was sanitized and the certificate was written, but the PDF "
+                f"and QR code could not be generated: {type(exc).__name__}: {exc}"
+            )
+            ui.warn(f"the authoritative certificate is {cert_json}; re-run `s0 pdf` if you need the PDF.")
+            pdf_path = None
 
     ok = result.status == "success" and verif.get("all_samples_match_wipe_pattern") is True
     sampled = verif.get("samples_checked", 0)
@@ -1564,6 +1636,18 @@ def cmd_erase_files(args) -> int:
     key_path, key_error = _load_issuer_key(args)
     if key_error:
         return EX_CONFIG
+
+    # Same reasoning for --portal-url. It was validated only at the point the QR code
+    # was written, after the erase, by a function that `sys.exit`s -- so a space in the
+    # URL deleted the file and then exited 1.
+    #
+    # Checked unconditionally rather than only when explicitly supplied: the flag's
+    # default is the hosted portal, which passes validation, so there is nothing to
+    # exempt and one less branch to get wrong.
+    portal_problem = _portal_url_error(getattr(args, "portal_url", None))
+    if portal_problem:
+        print(f"error: --portal-url: {portal_problem}. Nothing has been erased.", file=sys.stderr)
+        return EX_USAGE
 
     if getattr(args, "no_certificate", False):
         print(
