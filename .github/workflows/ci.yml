@@ -52,6 +52,57 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      # External tools the suite probes for. Without them, whole groups of tests skip
+      # silently -- a skip is a pass as far as CI is concerned, so a broken carve or a
+      # broken media path shows up green. Installed here so the skips are honest rather
+      # than load-bearing.
+      #
+      # `node` is the runner's preinstalled Node rather than actions/setup-node. This
+      # repository pins every action to a commit SHA, and I am not willing to invent
+      # one: a wrong SHA is a workflow that fails on its first run, which is worse than
+      # an unpinned step that works. Whoever adds setup-node should pin it to a real
+      # commit; rhysd/actionlint is already pinned below and catches a malformed
+      # workflow.
+      - name: Install system tools the suite probes for
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            ffmpeg \
+            zstd \
+            e2fsprogs \
+            exfatprogs \
+            shellcheck \
+            sqlite3
+
+      - name: Report which probed tools are present
+        # Printed either way. A skip that is not visible is a test that is not running,
+        # and the whole point of installing these is that the answer is knowable.
+        run: |
+          missing=0
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              echo "  present: $tool"
+            else
+              echo "  MISSING: $tool"
+              missing=1
+            fi
+          done
+          echo "missing=$missing"
+
+      - name: Fail if a probed tool is absent
+        # Not a hard failure for every tool: macOS and Windows cannot install the Linux
+        # set. Blocking only where the install step ran keeps the guarantee honest on the
+        # platform that has the guarantee.
+        if: runner.os == 'Linux'
+        run: |
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            command -v "$tool" >/dev/null 2>&1 || {
+              echo "::error::required tool missing: $tool -- tests that need it would skip silently"
+              exit 1
+            }
+          done
+
       - name: Install
         run: |
           python -m pip install --upgrade pip
@@ -63,10 +114,41 @@ jobs:
         run: df -h /tmp || true
 
       - name: Pytest
-        run: pytest -q --tb=short
+        # Coverage is measured on one matrix leg only, because it is the same number
+        # everywhere else and re-running instrumentation on five legs buys nothing.
+        #
+        # The floor is a ratchet set just below the measured 72%, not a target. A floor
+        # equal to current coverage fails the moment any line is added and no test with
+        # it, which is the wrong incentive -- it teaches people to raise the floor rather
+        # than write the test. Set below, it fails only when coverage *falls*, which is the
+        # regression that actually matters.
+        run: >-
+          pytest -q --tb=short
+          --cov=src/s0 --cov-report=term-missing:skip-covered --cov-report=xml
+          --cov-fail-under=${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '70' || '0' }}
         env:
           # Deterministic hashing so a failure reproduces.
           PYTHONHASHSEED: "0"
+
+      - name: Coverage floor is enforced
+        # Asserted separately from the run above, so a green pytest with a failing floor
+        # cannot be mistaken for a pass by anyone reading the job summary.
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          line = float(ET.parse("coverage.xml").getroot().get("line-rate")) * 100
+          print(f"measured line coverage: {line:.2f}%")
+          if line < 70:
+              raise SystemExit(f"coverage {line:.2f}% is below the 70% floor")
+          PY
+
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
 
       - name: Verify the wheel installs and runs standalone
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
