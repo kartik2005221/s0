@@ -917,7 +917,7 @@ def erase_batch(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-erase",
-                tool_version=CONFIG.get("version", "2.4.4"),
+                tool_version=CONFIG.get("version", "3.0.0"),
                 platform="linux",
                 device_id=device_id,
                 device_type=kind,

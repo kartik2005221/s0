@@ -120,7 +120,7 @@ function fetchLatestReleaseVersion() {
     })
     .catch(() => {
       versionTags.forEach((el) => {
-        el.textContent = "v2.4.4";
+        el.textContent = "v3.0.0";
       });
     });
 }

@@ -2,7 +2,7 @@
 
 > **Test Environment:** Linux Kernel 6.8.0 x86_64 • AMD Ryzen 7 / Intel Xeon • 16 GiB DDR5 • Samsung 980 PRO PCIe Gen4 NVMe  
 > **Python Runtime:** Python 3.12 / 3.14 (GIL-free compatible, native C I/O bindings)  
-> **Evaluation Date:** Active Production Testing (v2.4.4)
+> **Evaluation Date:** Active Production Testing (v3.0.0)
 
 ---
 

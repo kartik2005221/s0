@@ -16,7 +16,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0] - 2026-10-05
 
 Everything below has landed on `agent/harness` and is verified by the test suite,
 which is the gate rather than a number recorded here: a count in a changelog is

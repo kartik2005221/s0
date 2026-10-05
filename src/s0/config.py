@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import resources
+from . import platform, resources
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "version": "2.4.4",
+    "version": "3.0.0",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
     "documentation_url": "https://sector-zero.gitbook.io/",
@@ -43,7 +43,7 @@ def find_config_file() -> Path | None:
     packaged = resources.packaged_config()
     if packaged is not None:
         candidates.append(packaged)
-    candidates.append(Path.home() / ".s0" / "s0_config.json")
+    candidates.append(platform.safe_home() / ".s0" / "s0_config.json")
     candidates.append(Path("/etc/s0/s0_config.json"))
     for c in candidates:
         if c.is_file():

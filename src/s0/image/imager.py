@@ -377,7 +377,7 @@ def acquire_image(
             organization=options.organization,
             operator_id=options.operator,
             tool_name="s0-imager",
-            tool_version=CONFIG.get("version", "2.4.4"),
+            tool_version=CONFIG.get("version", "3.0.0"),
             platform=platform_mod.current(),
             device_id=f"drive-{hashlib.sha256(src_path.encode()).hexdigest()[:16]}",
             device_type="image_file" if src_kind == "image" else "internal_disk",

@@ -4,7 +4,7 @@
 
 **Unified Forensic Data Sanitization, Bit-Stream Acquisition & Evidence Carving Suite**
 
-[![Release](https://img.shields.io/badge/Release-v2.4.4-blue.svg)](https://github.com/kartik2005221/s0/releases)
+[![Release](https://img.shields.io/badge/Release-v3.0.0-blue.svg)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://sector-zero.pages.dev/)
 [![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88_Rev.2_aligned-green.svg)](https://sector-zero.gitbook.io/compliance/)

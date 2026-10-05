@@ -254,7 +254,7 @@ INSTALLED_VERSION=$(./.venv/bin/s0 --version 2>/dev/null | awk '{print $NF}')
 [ -n "$INSTALLED_VERSION" ] || INSTALLED_VERSION="unknown"
 printf "${_bold}${_green}✅ S0 ${INSTALLED_VERSION} installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
-printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "2.4.4")"
+printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "3.0.0")"
 # Not `sudo s0 web`. The dashboard serves a destructive API and writes its session
 # token to ~/.s0, so recommending root here contradicts the least-privilege advice
 # printed a few lines earlier in this same script -- and root on the loopback

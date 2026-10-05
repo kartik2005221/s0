@@ -42,11 +42,11 @@ sudo s0 live flash --target /dev/sdb
 
 ## Alternative: Manual Download from GitHub Releases
 
-You can also manually download the versioned bootable hybrid ISO (`s0-live-v2.4.4-amd64.hybrid.iso`) and accompanying cryptographic hashes:
+You can also manually download the versioned bootable hybrid ISO (`s0-live-v3.0.0-amd64.hybrid.iso`) and accompanying cryptographic hashes:
 
 ### 1. Download via GitHub CLI
 ```bash
-gh release download v2.4.4 -R kartik2005221/s0 -p "s0-live-*.hybrid.iso*"
+gh release download v3.0.0 -R kartik2005221/s0 -p "s0-live-*.hybrid.iso*"
 ```
 
 ### 2. Manual Download & Verification
@@ -55,38 +55,38 @@ gh release download v2.4.4 -R kartik2005221/s0 -p "s0-live-*.hybrid.iso*"
 {% tab title="Linux/MacOS" %}
 ```bash
 # Download ISO and SHA-256 checksum
-curl -fSL -o s0-live-v2.4.4-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso
-curl -fSL -o s0-live-v2.4.4-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso.sha256
+curl -fSL -o s0-live-v3.0.0-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso
+curl -fSL -o s0-live-v3.0.0-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso.sha256
 
 # Verify integrity
-sha256sum -c s0-live-v2.4.4-amd64.hybrid.iso.sha256
+sha256sum -c s0-live-v3.0.0-amd64.hybrid.iso.sha256
 ```
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}
 ```powershell
 # Download ISO and SHA-256 checksum
-Invoke-WebRequest -Uri "https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso" -OutFile "s0-live-v2.4.4-amd64.hybrid.iso"
-Invoke-WebRequest -Uri "https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso.sha256" -OutFile "s0-live-v2.4.4-amd64.hybrid.iso.sha256"
+Invoke-WebRequest -Uri "https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso" -OutFile "s0-live-v3.0.0-amd64.hybrid.iso"
+Invoke-WebRequest -Uri "https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso.sha256" -OutFile "s0-live-v3.0.0-amd64.hybrid.iso.sha256"
 
 # Verify integrity
-(Get-FileHash s0-live-v2.4.4-amd64.hybrid.iso -Algorithm SHA256).Hash -eq (Get-Content s0-live-v2.4.4-amd64.hybrid.iso.sha256).Split(" ")[0].ToUpper()
+(Get-FileHash s0-live-v3.0.0-amd64.hybrid.iso -Algorithm SHA256).Hash -eq (Get-Content s0-live-v3.0.0-amd64.hybrid.iso.sha256).Split(" ")[0].ToUpper()
 ```
 {% endtab %}
 {% tab title="Windows (CMD)" %}
 ```cmd
 rem Download ISO and SHA-256 checksum
-curl -fSL -o s0-live-v2.4.4-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso
-curl -fSL -o s0-live-v2.4.4-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v2.4.4/s0-live-v2.4.4-amd64.hybrid.iso.sha256
+curl -fSL -o s0-live-v3.0.0-amd64.hybrid.iso https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso
+curl -fSL -o s0-live-v3.0.0-amd64.hybrid.iso.sha256 https://github.com/kartik2005221/s0/releases/download/v3.0.0/s0-live-v3.0.0-amd64.hybrid.iso.sha256
 
 rem Verify integrity
-certutil -hashfile s0-live-v2.4.4-amd64.hybrid.iso SHA256
+certutil -hashfile s0-live-v3.0.0-amd64.hybrid.iso SHA256
 ```
 {% endtab %}
 {% endtabs %}
 
 ### 3. Flash to USB Drive
 ```bash
-sudo dd if=s0-live-v2.4.4-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
+sudo dd if=s0-live-v3.0.0-amd64.hybrid.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
 ---
