@@ -42,7 +42,7 @@ REM ── Phase 2: Pytest Suites ───────────────�
 set /a PHASE=PHASE+1
 echo.
 echo ── [%PHASE%/%TOTAL%] Executing Automated Pytest Suites
-"%PYTEST%" core\tests linux\cli\tests web\tests windows\cli\tests macos\cli\tests site/verify\tests -v
+"%PYTEST%" core\tests linux\cli\tests web\tests windows\cli\tests macos\cli\tests tests\portal -v
 if %ERRORLEVEL% neq 0 (
     echo   [ERROR] Pytest test suite failed!
     exit /b %ERRORLEVEL%
@@ -59,7 +59,7 @@ for %%F in (
     "site/verify\verify.js"
     "site/verify\vendor\crypto-bundle.js"
     "site/verify\keys.json"
-    "site/verify\tests\test_runner.html"
+    "tests\portal\fixtures\test_runner.html"
 ) do (
     if exist %%F (
         echo   [OK] %%~F

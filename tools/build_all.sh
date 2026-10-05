@@ -86,7 +86,7 @@ PORTAL_FILES=(
     "site/verify/verify.js"
     "site/verify/vendor/crypto-bundle.js"
     "site/verify/keys.json"
-    "tests/portal/test_runner.html"
+    "tests/portal/fixtures/test_runner.html"
 )
 ALL_OK=true
 for f in "${PORTAL_FILES[@]}"; do

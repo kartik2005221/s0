@@ -13,6 +13,11 @@ import pytest
 from s0.resources import repo_root
 
 PORTAL = repo_root() / "site" / "verify"
+# The sample certificates used to live in site/verify/tests/, which meant the
+# verification portal served them: a publicly reachable, validly signed certificate
+# anyone could copy and present as evidence. They are test fixtures, so they live with
+# the tests now.
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
 # Probe for node
@@ -52,14 +57,20 @@ def test_sha512_nist_vectors(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
+    result = subprocess.run(
+        [NODE, "-e", script],
+        capture_output=True,
+        text=True,
+        cwd=str(PORTAL),
+        env={**os.environ, "S0_FIXTURES": str(FIXTURES)},
+    )
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
 
 
 def test_valid_cert_cross_verification(node_available):
     script = """
     const V = require('./verify');
-    const cert = require('./tests/sample_valid_cert.json');
+    const cert = require(process.env.S0_FIXTURES + '/sample_valid_cert.json');
     const keys = require('./keys.json');
     const res = V.verifyCertificate(cert, keys.trusted_keys);
     console.log(JSON.stringify(res));
@@ -67,7 +78,13 @@ def test_valid_cert_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
+    result = subprocess.run(
+        [NODE, "-e", script],
+        capture_output=True,
+        text=True,
+        cwd=str(PORTAL),
+        env={**os.environ, "S0_FIXTURES": str(FIXTURES)},
+    )
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is True
@@ -77,7 +94,7 @@ def test_valid_cert_cross_verification(node_available):
 def test_tampered_cert_cross_verification(node_available):
     script = """
     const V = require('./verify');
-    const cert = require('./tests/sample_tampered_cert.json');
+    const cert = require(process.env.S0_FIXTURES + '/sample_tampered_cert.json');
     const keys = require('./keys.json');
     const res = V.verifyCertificate(cert, keys.trusted_keys);
     console.log(JSON.stringify(res));
@@ -85,7 +102,13 @@ def test_tampered_cert_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
+    result = subprocess.run(
+        [NODE, "-e", script],
+        capture_output=True,
+        text=True,
+        cwd=str(PORTAL),
+        env={**os.environ, "S0_FIXTURES": str(FIXTURES)},
+    )
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
@@ -95,7 +118,7 @@ def test_tampered_cert_cross_verification(node_available):
 def test_mutated_payload_hash_cross_verification(node_available):
     script = """
     const V = require('./verify');
-    const cert = JSON.parse(JSON.stringify(require('./tests/sample_valid_cert.json')));
+    const cert = JSON.parse(JSON.stringify(require(process.env.S0_FIXTURES + '/sample_valid_cert.json')));
     const keys = require('./keys.json');
     cert.signature.signed_payload_hash = 'sha256:' + '0'.repeat(64);
     const res = V.verifyCertificate(cert, keys.trusted_keys);
@@ -104,7 +127,13 @@ def test_mutated_payload_hash_cross_verification(node_available):
       process.exit(1);
     }
     """
-    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
+    result = subprocess.run(
+        [NODE, "-e", script],
+        capture_output=True,
+        text=True,
+        cwd=str(PORTAL),
+        env={**os.environ, "S0_FIXTURES": str(FIXTURES)},
+    )
     assert result.returncode == 0, f"Node.js error: {result.stderr}"
     data = json.loads(result.stdout.strip())
     assert data["ok"] is False
@@ -114,7 +143,7 @@ def test_mutated_payload_hash_cross_verification(node_available):
 def test_float_and_duplicate_key_rejection(node_available):
     script = """
     const V = require('./verify');
-    const validJson = JSON.stringify(require('./tests/sample_valid_cert.json'));
+    const validJson = JSON.stringify(require(process.env.S0_FIXTURES + '/sample_valid_cert.json'));
     // Float smuggle: replace 1048576 with 1048576.0
     const floatJson = validJson.replace('1048576', '1048576.0');
     const keys = require('./keys.json');
@@ -133,5 +162,11 @@ def test_float_and_duplicate_key_rejection(node_available):
       process.exit(2);
     }
     """
-    result = subprocess.run([NODE, "-e", script], capture_output=True, text=True, cwd=str(PORTAL))
+    result = subprocess.run(
+        [NODE, "-e", script],
+        capture_output=True,
+        text=True,
+        cwd=str(PORTAL),
+        env={**os.environ, "S0_FIXTURES": str(FIXTURES)},
+    )
     assert result.returncode == 0, f"Node.js error: {result.stderr}"

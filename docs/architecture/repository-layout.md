@@ -88,7 +88,7 @@ s0/
 | `web/tests/` | `tests/web/` |
 | `verification-portal/` | `site/verify/` |
 | `verification-portal/tests/*.py` | `tests/portal/` |
-| `verification-portal/tests/*.html|json` | `site/verify/tests/` (browser assets, not pytest) |
+| `verification-portal/fixtures/*.html|json` | `tests/portal/fixtures/` (browser assets, not pytest) |
 | `install-portal/` | `site/install/` |
 | `scripts/` | `tools/` |
 | `windows/cli/tests/` | `tests/platform_windows/` |

@@ -495,7 +495,7 @@ def test_no_third_party_font_or_cdn_reference_anywhere():
 
 
 def test_every_surface_self_hosts_its_fonts():
-    for html in PUBLIC_HTML + [REPO / "site/verify" / "tests" / "test_runner.html"]:
+    for html in PUBLIC_HTML + [REPO / "tests" / "portal" / "fixtures" / "test_runner.html"]:
         text = html.read_text(encoding="utf-8")
         assert "fonts/fonts.css" in text or "../fonts/fonts.css" in text, (
             f"{html.relative_to(REPO)} does not load the self-hosted font sheet"
