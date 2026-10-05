@@ -1,383 +1,264 @@
-# Changelog & Engineering Release History
+<!-- GENERATED FILE - DO NOT EDIT.
 
-All notable changes to the **s0 (Sector Zero)** suite are documented in this file. The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standards.
+     Mirrored from /CHANGELOG.md at the repository root by
+     `python tools/sync_changelog.py --write`, which is run by the docs check in CI.
 
-```mermaid
-flowchart LR
-    subgraph M1 ["Foundation (v0.9)"]
-        direction TB
-        F1["Canonical JSON v1"]
-        F2["Ed25519 Signatures"]
-        F3["WebCrypto Verifier"]
-    end
-    subgraph M2 ["Core Suite (v1.0)"]
-        direction TB
-        C1["Drive Eraser (Purge & Clear)"]
-        C2["File Eraser & Metadata Scrub"]
-        C3["NTFS & ext4 Carvers"]
-        C4["SQLite Hash Chain"]
-    end
-    subgraph M3 ["Hardening (v1.5)"]
-        direction TB
-        H1["Cross-Platform Parity"]
-        H2["Windows ADS Scrubbing"]
-        H3["macOS F_FULLFSYNC"]
-        H4["exFAT & FAT32 Carvers"]
-    end
-    subgraph M4 ["Production (v2.0+)"]
-        direction TB
-        P1["Bare-Metal Live ISO"]
-        P2["Web Dashboard Console"]
-        P3["Unified Media Wipe (v2.4)"]
-        P4["Cloudflare Zero-Trust Portals"]
-    end
-    M1 --> M2 --> M3 --> M4
-```
+     Edit the root file. Changes made here are overwritten.
+-->
+
+> **This page is a mirror.** The canonical changelog is
+> [`CHANGELOG.md`](https://github.com/kartik2005221/s0/blob/master/CHANGELOG.md) at
+> the repository root. It is mirrored here so the GitBook navigation keeps working;
+> if the two ever disagree, the root file is right.
+
+All notable changes to this project are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Landed on `agent/harness`; not yet tagged.
+Everything below has landed on `agent/harness` and is verified by the test suite,
+which is the gate rather than a number recorded here: a count in a changelog is
+stale the moment anyone adds a test, and this one was already wrong. The changes are
+ordered by how much they change what the tool *reports*, because that is the order
+in which they matter to someone holding a report.
 
-### Forensic recovery
+### Breaking changes and migration from 2.x
 
-- **Matroska / WebM / MKA carving** (`carve/matroska.py`): structural carving from
-  top-level elements, unknown-size Segment and Cluster handling, DocType and
-  top-level-ID gates. Byte-exact recovery verified across x264, VP8, VP9 and
-  MPEG4 video, plus audio+video muxing.
-- **Fragment reassembly** (`carve/fragmentation.py`): fragmented files are rebuilt
-  in key order from `mfhd.sequence_number` (MP4/HEIF), `tfdt` and Matroska
-  `Cluster.Timestamp`, instead of assuming fragments appear in order. Recovery is
-  byte-exact under reversed and arbitrarily scattered fragment layout.
-- **Structural and decompression boundaries**: AIFF, TIFF, JPEG 2000, MIDI, RTF,
-  Java class, RAR, registry hives, bzip2, xz, zstd and lz4. Findings contained
-  inside another file are dropped after the outer file is recovered.
-- **jbd2 diagnosis**: a real ext4 image is built and unlinked with `debugfs`
-  without root, and the parser reads all 4,096 journal blocks with zero checksum
-  failures. `debugfs` does not journal, so the name survives only in a stale
-  dirent outside the journal and s0 correctly reports `inode<N>`. This is a
-  fixture limitation, not a parser defect; a kernel-written mounted filesystem
-  would be needed to close it.
+Every item below was checked against the actual diff from `master`, not inferred.
+Where a statement could not be verified from the code it is not here.
 
-### Honest evidence
+**The distribution is now one package, not two.** `master` shipped `s0-core`
+(`core/python/`) and `s0-cli` (`linux/cli/`) as separate distributions with separate
+entry points. Both are now the single distribution `s0`, importable as `s0`, with one
+console script. If you had both installed, uninstall both before installing v3:
 
-- Sampled-wipe certificates record the bound they actually support: a 64-block
-  clean sample bounds residual data at about 45,730 ppm (4.573%) at 95%
-  confidence. The sample count was previously reported where a guarantee was
-  implied.
-- The AI skill, README and docs no longer claim that one zero pass proves "full
-  Clear sanitization". `carving-signatures.md` is now generated from the live
-  signature registry (62 signatures, 51 extensions, 38 structural rules, 13
-  unresolved extensions) with a `--check` mode in CI.
-- NIST SP 800-88 references moved from Rev. 1 to Rev. 2 across all docs. Per-media
-  overwrite claims are cited to IEEE 2883-2022, since Rev. 2 withdrew those tables.
-- The `wipe` and `carve` help screens now state the sampling bound instead of
-  implying whole-media verification.
+```bash
+pip uninstall -y s0-core s0-cli
+pip install s0
+```
+
+The importable names moved with it. `s0_core.*` and `s0_cli.*` no longer exist:
+
+| 2.x | 3.0 |
+|---|---|
+| `s0_core.canonical` | `s0.canonical` |
+| `s0_core.crypto` | `s0.crypto` |
+| `s0_core.certificate` | `s0.certificate` |
+| `s0_core.audit` | `s0.audit` |
+| `s0_core.carve` | `s0.carve` |
+| `s0_core.wipe` | `s0.wipe` |
+| `s0_cli.main` | `s0.cli.main` |
+| `s0_cli.wipe` | `s0.wipe` |
+
+The platform engines moved too: `macos.cli.s0_eraser` and `windows.cli.s0_eraser` are
+now `s0.platform.macos.s0_eraser` and `s0.platform.windows.s0_eraser`, and they ship
+inside the wheel. On 2.x they were top-level packages that `pyproject.toml` did not
+package, so an installed (rather than cloned) copy had no wipe engine at all and
+reported a drive as having "zero or unreadable capacity".
+
+**The repository layout moved under `src/`.** `core/python/s0_core/` and
+`linux/cli/s0_cli/` became `src/s0/`. The two sites `verification-portal/` and
+`install-portal/` are now one `site/` directory, and `scripts/` is now `tools/`. If
+you have tooling, CI jobs or `.gitignore` rules pointing at the old paths they need
+updating; nothing at runtime depends on the checkout layout any more.
+
+**The demo signing key moved, and the old lookup was CWD-dependent.**
+`s0_config.json`'s `default_key_path` was `core/keys/demo_issuer_private.pem`, which
+`default_issuer_key()` resolved relative to the repository root *or* relative to the
+current working directory -- so running s0 from a directory that happened to contain a
+`core/keys/` picked up a different key depending on where you were standing. It is now
+`src/s0/data/keys/demo_issuer_private.pem`, resolved through package resources, so the
+key is the same wherever you run the tool from.
+
+**Exit codes changed.** 2.x returned bare `0`, `1` and `2` from the CLI -- 37 separate
+`return 2` sites, and argparse's own usage error also being 2. 3.0 uses the
+`sysexits.h` convention, defined once in `s0.terminal`:
+
+| Meaning | 2.x | 3.0 |
+|---|---|---|
+| success | 0 | 0 |
+| ran and failed | 1 | 1 |
+| bad flags or arguments | 2 | **64** |
+| supplied data malformed | 2 | **65** |
+| input missing or unreadable | 2 | **66** |
+| refused, or insufficient privileges | 2 | **77** |
+| configuration error | 2 | **78** |
+| interrupted (SIGINT) | 1 | **130** |
+
+If you gate on exit codes, `s0 <cmd> && next_step` still works, but a script that
+distinguished 1 from 2 no longer can, and one that treated 2 as "bad flags" now has to
+test 64. Full table: `docs/guides/cli-reference.md`, "Exit Codes". Note that a non-zero
+exit is never a success: `s0 live flash` declining and `s0 plan` refusing a mounted
+target both return non-zero where 2.x returned 0.
+
+**`--dry-run` is now a real guard, and it is fail-closed.** On 2.x the flag was
+attached to every subcommand by the shared parent parser but read only by `wipe` on its
+block-device path, so `s0 image --dry-run` wrote a full image, `s0 clone --dry-run`
+cloned, `s0 carve --dry-run` wrote carved files and appended to the audit ledger,
+`keygen` wrote a private key, `live download` pulled ~550 MB, `upgrade` ran a real
+`git fetch` and three `pip install`s, and `uninstall` wrote a database backup -- each
+while printing that nothing would be written. In 3.0 every state-changing command
+stops at a single guard, and the allowlist is inverted so anything not known to be
+read-only is refused. A new command is therefore safe by default.
+
+**The installer and `s0 upgrade` pin an explicit ref.** 2.x `install.sh` ran
+`git clone --depth 1` with no ref, so it followed whatever the remote's default branch
+was at that moment, while `upgrade.sh` independently hard-coded `origin master` -- so
+an upgrade could move an install to a different ref than the one it was installed
+from, and neither honoured an override. 3.0 pins one ref in both, resolved from
+`S0_INSTALL_REF` then `S0_BRANCH` then the declared default, and the default is set in
+one place by `tools/set_install_ref.py`. **If you are upgrading across this boundary,
+set it explicitly:**
+
+```bash
+S0_INSTALL_REF=v3.0.0 sh site/install/install.sh
+```
+
+Without that, the default on this branch is `agent/harness`, which is correct only
+until that branch is deleted. Run `python tools/set_install_ref.py master` right after
+merging, and `python tools/set_install_ref.py v3.0.0` at release time.
+
+**Old editable installs need reinstalling.** A `pip install -e` from a 2.x checkout
+leaves `__editable__` finder shims pointing at `core/python` and `linux/cli`, which no
+longer exist, and s0 fails to import. Remove and reinstall:
+
+```bash
+pip uninstall -y s0-core s0-cli
+pip install -e .          # from a fresh checkout
+```
+
+**Not breaking, but worth knowing:** the global output flags now work on either side of
+the subcommand (`s0 --json list` as well as `s0 list --json`; on 2.x only the latter did
+anything). In text mode stdout stays empty and human output goes to stderr on every
+command, so `s0 <cmd> > file` captures nothing -- use `--json` or `--format csv`.
+Compatibility-only flags were removed rather than deprecated: `--output-format` and
+`--keep-audit` are gone, because there was no prior userbase to migrate.
 
 ### Fixed
 
-- `s0 live build` raised `NameError` before it could check anything: it looked for
-  `iso/build.sh` through a `_root` variable that was never defined.
-- `capabilities.__all__` advertised `PURGE_METHODS`, which the module never
-  defined, so `from ... import *` raised `AttributeError`.
-- `_get_root_mount_source` was annotated `Optional[str]` with no `Optional`
-  import.
-- Exception chaining added where a handler replaces the original error. The web
-  app's path-traversal guard uses `from None` on purpose, so a probe cannot learn
-  the directory prefix from a traceback.
+- `s0 live build` crashed with `NameError` before it could check anything. The
+  script looked for `iso/build.sh` through a `_root` variable that was never
+  defined, so the non-root path always raised instead of reporting where it
+  looked. It now resolves the install tree with `s0.resources.repo_root()`, the
+  same helper the rest of the package uses.
+- `s0.wipe.methods.capabilities.__all__` advertised `PURGE_METHODS`, a name the
+  module never defined, so `from s0.wipe.methods.capabilities import *` raised
+  `AttributeError`. The entry now names `SCSI_SANITIZE_SERVICE_ACTIONS`, which
+  does exist. Whether a purge-capable method is available is a property of the
+  connected device, so it comes from `probe_capabilities` rather than a
+  hardcoded list.
+- `s0.cli.devices._get_root_mount_source` was annotated `Optional[str]` without
+  importing `Optional`, so the annotation referenced an undefined name.
+- Exception chaining (`raise ... from`) added where a handler deliberately
+  replaces the original error with a more meaningful one. The path-traversal
+  guard in the web app uses `from None` on purpose: chaining the
+  `ValueError` from `relative_to()` would tell a caller which prefix it was
+  probing.
 - `test_global_flags_are_not_required` iterated every parser action and then did
-  nothing, asserting nothing while looking like coverage.
+  nothing, so it asserted nothing while looking like coverage. It now checks the
+  property it claims to.
 
 ### Changed
 
-- The lint backlog (~1,286 findings) is cleared and ruff is a blocking whole-tree
-  gate. It was a changed-files ratchet, which let a tree-wide regression through
-  whenever the offending file was untouched by the commit. Intentional exceptions
-  are `per-file-ignores` in `pyproject.toml`, each with a stated reason.
-- A repo-wide test walks for `setattr`-style string paths and fails if the target
-  is not an explicit `__all__` export. A `ruff --fix` had silently removed
-  `s0.audit.verify.DEFAULT_AUDIT_DB` and broken 37 tests, because its only
-  consumer patches it by string path, which no import analysis can follow.
+- Ruff is now a blocking whole-tree gate in CI. The previous ratchet
+  (hard gate on changed files, advisory whole-tree report) existed to absorb
+  ~1,286 findings, mostly `List` -> `list` modernisation; those are cleared.
+  A changed-files-only gate would have let a tree-wide regression through
+  whenever the offending file was untouched by the commit.
+- The lint exceptions are `per-file-ignores` in `pyproject.toml` with a stated
+  reason each, not scattered `# noqa` comments: best-effort cleanup (`S110`),
+  deliberately deferred imports (`E402`), and the platform erasers, release
+  script, benchmark and skill checker calling tools found on `PATH`
+  (`S603`, `S607`). 129 genuinely unused imports were removed.
+- Bandit reports zero medium, high or undefined findings across `src/`. The 177
+  low-severity hits are the same accepted-risk patterns above (`B404`, `B603`,
+  `B607`, `B110`).
 
-## [2.4.4] — 2026-09-29
 
-### Security & Safety
-- **Cross-Platform OS & Boot Drive Safety:** Enforced unconditional physical `disk0` protection and APFS container/synthesized store resolution on macOS, Fedora/Linux LUKS/dm-crypt backing device resolution, and Windows boot-drive safeguards.
-- **Fail-Closed HPA/DCO Guard:** Implemented fail-closed handling on indeterminate Host Protected Area (HPA) and Device Configuration Overlay (DCO) capacity checks, and documented platform limitations in macOS wipe summaries.
-- **Web Console Hardening:** Mandated token-based API authentication for mutating operations, added strict numeric and path parameter bounds, reinforced path traversal mitigations, and ensured truthful error reporting on failed wipes.
-- **Cryptographic Audit Verification Integrity:** Enforced verification of `signed_payload_hash` against canonical certificate payload to detect payload mutation, added checkpoint-based ledger truncation detection, and clarified unknown key audit errors.
-- **Forensic Carver Hardening:** Fixed ZIP End of Central Directory (EOCD) truncation, added structural validation for archive headers/trailers, and enforced extraction memory caps.
-- **Media Imaging & Erasure Safeguards:** Prevented destination drive self-overwrites in `s0 image`, scrubbed sensitive filenames from audit logs, surfaced truthful imaging status, and added warnings when targeting hard links during file wiping.
-- **Installer & Uninstaller Reliability:** Verified exit codes in Windows `.cmd` and PowerShell scripts, implemented retry loops for transient network failures, and preserved the cryptographic audit ledger across uninstallation.
-
-### Added
-- **Standardized Bracketed CLI Output:** Unified command line outputs across all modules (`s0 wipe`, `s0 image`, `s0 carve`, `s0 verify`, `s0 audit`, `s0 plan`, `s0 live`, `s0 upgrade`) to standard bracketed `[s0 <cmd>]` layout.
-- **Zero-Dependency Live ISO Downloader:** Added `download_iso.sh` (Linux/macOS) and `download_iso.ps1` (Windows) hosted directly on the install portal for air-gapped bootstrapping.
-- **Portal & Website Synchronization:** Unified headers, footers, SVG logo brand assets, and favicon manifests across Web Dashboard, Install Portal, Verification Portal, and the official project website (`sector-zero.pages.dev`).
-- **Comprehensive Release Tooling (`tools/release.py`):** Enhanced release automation to synchronize 25 core files, configuration schemas, CLI engines, benchmark harnesses, and documentation suites automatically.
-
-### Changed
-- **Audit Ledger Nomenclature Refinement:** Formally transitioned "blockchain" terminology to "hash-chained cryptographic audit ledger" throughout all user-facing documentation, CLI output, and internal comments, demoting the ledger to a supporting feature.
-- **Purge of Unverified Claims:** Removed unverified certification assertions across core modules, portals, CLI documentation, and legal notices.
-- **Verification Consistency:** Normalized random-pattern verification algorithms across operating systems and aligned floating-point throughput calculation in verification routines.
-- **Documentation Refinement:** Standardized documentation tab layout (Linux/MacOS, Windows PowerShell, Windows CMD) and purged code block comments and legacy badge chips.
-
----
-
-## [2.4.3] — 2026-09-26
-
-### Security & Safety
-- **Host OS Drive Protection (`is_os_device`):** Added root filesystem detection across Linux and Windows mount tables. In `s0 list`, added the `OS_DRIVE?` column (`YES [OS]` / `-`) and JSON boolean `os_drive` to prevent accidental sanitization of active system drives.
-- **Batch Targets Block Device Guard:** Enforced strict parameter validation in `s0 wipe --targets`, rejecting raw block device paths (`/dev/*`, `\\.\*`) to prevent inadvertent whole-drive sanitization during batch file or directory wiping.
-- **Active OS Carving Advisory:** Implemented an automated runtime warning in `s0 carve` when targeting a running OS root disk, explaining TRIM and background write overwrite risks, and advising the use of the bare-metal Live ISO or an offline bit-stream disk image.
-
-### Added
-- **Dynamic Dark/Light Favicons:** Integrated custom dark and light favicons across Install Portal, Verification Portal, Web Dashboard, and GitBook documentation with real-time browser theme listeners (`prefers-color-scheme`).
-- **Unified Release Automation Tooling (`tools/release.py`):** Added synchronized release script and automated test suite (`tests/cli/test_release_script.py`) ensuring semver compliance and multi-file version synchronization.
-
-### Changed
-- **Documentation Overhaul & Navigation:** Restored left navigation sidebar on the documentation home page (`tableOfContents.visible: true`), removed badge chips, normalized repetitive compliance terminology, transitioned "blockchain" to "hash-chained audit ledger", and updated all command outputs to match actual CLI outputs.
-- **Carving Signature Specification:** Documented all 19 binary signature rules across 16 file formats in forensic carving documentation.
-- **Install Portal Code Organization:** Extracted inline CSS and JavaScript into modular `css/install.css` and `js/install.js` files, significantly reducing `index.html` size.
-- **Cloudflare Pages Routing:** Updated CLI upgrade notices and documentation links to use `sector-zero.pages.dev` endpoints.
-
----
-
-## [2.4.2] — 2026-09-26
-
-### Security
-- **Audit Ledger Unsigned-Block Detection:** Fixed verification vulnerability in `verify_audit_ledger()` where unsigned blocks slipped past default verification because checks evaluated original parameters instead of resolved effective trusted keys. Default audit verification now strictly catches unsigned or invalid blocks.
-- **Uninstaller Safety Hardening:** Hardened `uninstall.sh` and `uninstall.ps1` against arbitrary directory deletion; uninstallation now requires verifying valid `s0` install markers and core project signatures rather than allowing `.git` directory presence alone.
-- **Shared Metadata Input Validation:** Unified input validation across CLI (`--operator`, `--operator-id`, `--organization`) and Web REST API via `s0.validation` to prevent control character injection, header splitting, and malformed audit metadata.
+- **A failed NVMe sanitize was attested as successful.** SSTAT bits 3:0 are a
+  status *code*, not a set of flags, but the decoder tested the field as a bit
+  set. A completed sanitize read as *not* completed, and a **failed** sanitize
+  read as *completed and not failed*. A drive that refused to erase attested as
+  erased. The Global Data Erased bit -- the strongest evidence the specification
+  offers -- was not decoded at all. The test suite had pinned the misreading: it
+  asserted that "in progress" meant "completed".
+- **Sanitize progress was off by a factor of 65536.** SPROG's denominator is
+  65536, not 100, so a finished sanitize read as 0.15% complete.
+- **The same bytes were reported twice under two names.** JPEG 2000 opens with a
+  `ftyp` box naming the `jp2 ` brand, so the ISO-BMFF walker found a valid box
+  tree inside a file that had already been recovered whole.
+- **A resumed carve could report nothing while appearing to succeed.** A skip
+  flag was threaded into the signature carver and not the filesystem one; the
+  engine caught the resulting `NameError` and downgraded it to a warning.
+- **An unknown-size Matroska Segment was rejected as absurdly oversized.** The
+  all-ones VINT sentinel means "no size", not 2^56-1 bytes, and the sanity check
+  ran before the unknown flag was tested.
+- **Matroska padding was reported as video.** A run of `0x5a` parses as element
+  `0x5A5A` with a size of 6746, which fits any carve window.
+- **Frame extents ran past the end of the file.** The cluster offset was added
+  to an already-absolute offset.
+- **A freshly formatted volume lost every Matroska fragment.** A zero-size box
+  means "to the end of the file" in ISO-BMFF, and the shared box walker
+  normalises it that way.
+- **TIFF resolved 6 bytes short, zstd 4 bytes short**, and every registry hive
+  and every Java class file was refused outright. Details in the commit history.
+- **An ISO download could be redirected to a local file.** The asset URL comes
+  from a GitHub API response and was written straight to disk, so a `file://` or
+  plain `http://` value would have turned a release download into a local file
+  read. There is now a scheme check.
 
 ### Added
-- **Unaccredited Demo Key Transparency:** Added explicit visual warnings across the Web Verification Portal (`portal.js`, `verify.js`) and forensic tools (`verify_cert.py`) when certificates are cryptographically valid but signed using the unaccredited testing key pair (`demo_issuer`).
-- **Device Sizing Fallback Warnings:** Added diagnostic warning logging when storage device capacity probes encounter zero-sized descriptors or non-standard sysfs entries in `devices.py`.
 
-### Fixed
-- **Cross-Platform Engine Resolution:** Resolved `sys.path` auto-resolution for Windows and macOS erasure engines when executing within nested virtual environments and multi-package layouts.
-- **CLI Subcommand Numbering:** Cleaned up subparser metadata, help text documentation, and sequential forensic capability references across all CLI modules.
+- **Fragment reassembly ordered by the key inside each fragment.** `mfhd`
+  sequence numbers, `tfdt` decode times and Matroska cluster timestamps survive
+  fragmentation, so the ordering is read rather than inferred. Byte-exact
+  recovery under every permutation tried, including exact reverse order, with
+  unrelated evidence between each piece. 46% of real fragmented recordings are
+  laid out out of order, which is what defeats every forward-scanning carver.
+- **Matroska and WebM carving**, including unknown-size Segments and clusters.
+- **Hash-set suppression**, applied to both the signature and the
+  filesystem-native paths, with every suppression attributed to an algorithm and
+  counted rather than silently dropped.
+- **Bodyfile output**, including the gaps -- the ranges searched and found
+  nothing, which for fragmented work is the finding.
+- **Resume-able sessions.** A session is evidence about a past run and never
+  about the present: a file it names that is no longer there is reported, and a
+  session taken against a different image is refused.
+- **Name and path provenance.** exFAT, FAT32 and ext4 cannot recover a path
+  from a deleted record; the report now says so in a sentence rather than
+  printing a null or assembling a path from whatever directories still parse.
+- **Structural boundaries for twelve container formats** that previously had a
+  signature and no way to size the file, including exact decompression-derived
+  lengths for bzip2, xz, lzma, zstd and lz4.
+- **A sampling proof with its bound attached**, because a sample says nothing
+  about the bytes it did not read.
+- **CI on every branch** rather than `master` only, across Python 3.10-3.13,
+  with ruff, mypy, bandit, pip-audit, CodeQL, actionlint, shellcheck, hadolint
+  and an SBOM.
+- `SECURITY.md`, `CODEOWNERS`, `.editorconfig`, `.gitattributes`, pre-commit,
+  Dependabot and this changelog.
 
-### Removed
-- **Legacy Vercel Configuration Purge:** Completely removed deprecated Vercel configuration files and deployment artifacts in adherence to the Cloudflare Zero-Trust hosting architecture.
+### Not done
 
----
-
-## [2.4.1] — 2026-09-24
-
-### Added
-- **Unified Media & File Sanitization (`s0 wipe`):** Merged file/folder erasing into the master `s0 wipe` command with automatic detection of block devices, disk images, single files, and directories. Completely removed obsolete `s0 erase` and `s0 erase-files` commands.
-- **ASCII Art Banner:** Added branded fastfetch-style ASCII art banner for interactive TTY invocations of bare `s0` and `s0 --help`, displaying the active version and repository link while preserving scripted pipeline compatibility.
-- **Hardware Thermal Telemetry:** Added hardware temperature monitoring across both CLI and Web Dashboard (real-time temperature badge with normal, warm, and critical states).
-- **Graceful Signal Handling:** Implemented clean `SIGINT` / Ctrl+C cancellation handlers across all commands (`s0 wipe`, `s0 image`, `s0 carve`, `s0 live flash/download`, `s0 web`), restoring cursor state and terminating workers safely.
-- **Web Console Sudo Privilege Detection:** Added runtime root/administrator privilege detection in the Web Dashboard (`/api/capabilities`). Detects unprivileged execution, alerts users with an informational banner, and disables direct physical drive wiping while keeping file sanitization accessible.
-- **Modern Web Progress Bars:** Upgraded web execution consoles with visual orange-gradient progress bars, percentage readouts, throughput metrics, and estimated time remaining across light and dark themes.
-- **Cloudflare Pages Production Deployment & Zero-Vercel Policy:** Migrated all production hosting endpoints (`sector-zero.gitbook.io`, `sector-zero.pages.dev/verify`, `sector-zero.pages.dev`) to Cloudflare Pages with native headers and security headers, purging all legacy hosting artifacts.
-- **Verification Portal One-Click Install:** Embedded cross-platform one-line installation commands (`curl` for Linux/MacOS and `irm` for Windows PowerShell) and official documentation links directly into the zero-trust Verification Portal.
-- **Sequential Forensic Architecture Renumbering:** Formally sequenced core forensic modules following media/file sanitization unification: Module 1 (Defensive Sanitization), Module 2 (Offensive Carving), Module 3 (Forensic Bit-Stream Imaging & Cloning), Hash-Chained Cryptographic Audit Ledger.
-
-### Security
-- **Path Traversal Hardening:** Patched potential path traversal vulnerabilities in `cmd_uninstall` directory cleanup and live image downloads.
-- **Subprocess Shell Injection Prevention:** Replaced shell-wrapped execution in Live ISO builder fallbacks with direct argument vector invocations.
-- **Secure File Flush & Plant Marker Progress:** Added visual progress indicators during disk marker planting and hardware `fsync` operations.
-
-### Changed
-- **Default Web Dashboard Port:** Migrated default web dashboard port from `8000` to `8669` across `s0_config.json`, CLI arguments, runner scripts (`run.sh`, `run.bat`, `run.ps1`), and Live ISO systemd services.
-- **Standalone Software Release Mode:** Decoupled GitHub Releases from the Live ISO generation toolchain to deliver lightweight, fast, pure software distribution without requiring 550MB ISO image generation.
-
----
-
-## [2.4.0] — 2026-09-17
-
-### Added
-- **`s0 live` Command Suite:** Added native CLI subcommands (`download`, `devices`, `flash`, `build`) to manage bare-metal Live ISO acquisition and USB burning directly from the terminal without third-party flashing utilities.
-- **Safe Removable USB Enumeration:** Implemented cross-platform physical USB drive discovery (`s0 live devices`) that automatically filters out internal system, root, and boot disks to prevent destructive misidentification.
-- **Automated ISO Download & Verification:** Built-in public GitHub Releases discovery and streaming download with real-time progress bar (`ProgressBar`) and strict SHA-256 integrity validation against release signatures.
-- **Native Block Flashing Engine:** Cross-platform raw block writer with partition unmounting (`umount`, `diskutil unmountDisk`, Win32 dismount), interactive safety confirmation prompt, and streaming progress bar.
-- **Versioned ISO Release Naming:** Updated `.github/workflows/build-iso.yml` to package and attach versioned hybrid ISOs (`s0-live-v2.4.0-amd64.hybrid.iso`) with corresponding checksum files.
-- **Cross-Platform CLI Context & Tips:** Added intelligent device path error detection (e.g. Linux path on Windows or Windows path on Linux/MacOS) with actionable platform syntax tips.
-
-### Fixed
-- **Documentation Portal Desktop Sidebar Navigation:** Fixed desktop sidebar navigation regression by properly scoping mobile drawer drill-down back bars inside `@media screen and (max-width: 76.1875em)`, eliminating unwanted orange back arrows on desktop viewports.
-- **Install Portal Header Harmonization:** Standardized Install Portal header dimensions, typography, button palettes, and status indicators to exactly match the Verification Portal design system.
-- **Debian Live-Build SHA-256 Checksum:** Pinned Debian archive bookworm checksum (`a863905724e7b69d45066ebab113cb6de12a11984349847ad49f6151c10f017d`) ensuring 100% reproducible ISO builds on GitHub Actions.
-
----
-
-## [2.3.0] — 2026-09-17
-
-### Security
-- **HIGH — Web Authentication Token Hardening:** Restricted `/run/s0/web_auth_token` permissions from `0644` to `0640` with group ownership assigned to the dedicated `s0-kiosk` security group, preventing unauthorized local processes from reading session tokens.
-- **HIGH — ISO Build Toolchain Integrity Verification:** Hardened `.github/workflows/build-iso.yml` to download Debian live-build packages over HTTPS and enforce strict SHA-256 checksum validation (`db5e5ae5925092066fee0e87e9e274af32c56f7b08db254377e248e95e07efae`) before installation.
-- **MEDIUM — macOS Symlink-Safe Extended Attribute Clearing:** Added `-s` flag to `xattr` invocations across `macos/cli/s0_eraser.py` and `src/s0/s0/file_eraser.py` to prevent extended attribute manipulation across symbolic links, with absolute binary path resolution (`/usr/bin/xattr`).
-- **MEDIUM — Windows NTFS Alternate Data Stream (ADS) Multi-Chunk Scrubbing:** Upgraded Windows ADS scrubbing in `windows/cli/s0_eraser.py` to zero out entire stream allocations in multi-chunk buffers regardless of size prior to stream unlinking.
-- **LOW — Central Configuration Discovery Path Alignment:** Added `/etc/s0/s0_config.json` to central `find_config_file()` discovery candidates in `s0.config`, ensuring live appliances and system-wide installations resolve global configuration without split-brain issues.
-
-### Added
-- **Automated GitHub Actions ISO Releases:** Configured automated bare-metal hybrid ISO generation in GitHub Actions (`build-iso.yml`) on release publication, automatically attaching `s0-live-amd64.hybrid.iso` and cryptographic checksums to GitHub Releases.
-- **Cross-Platform CLI Harmonization:** Fully synced Windows (`windows/cli/s0_eraser.py`) and macOS (`macos/cli/s0_eraser.py`) command-line interfaces to support both modern subcommands (`erase`, `wipe`, `list`, `plan`, `audit`, `verify`, `keygen`, `web`) and legacy flags, standardizing options across platforms (`-y`, `-p`, `-t`, `--key`, `--operator`, `--portal-url`, `--verify-samples`).
-- **Unified Portal Theming & Legal Protection:** Standardized footer layout across Verification Portal, Install Portal, Web Dashboard, and Documentation Portal to vertically stack the statutory legal authorization notice directly below the author accreditation.
-
-### Changed
-- **Total Eradication of Legacy 'GUI' Nomenclature:** Completely transitioned all internal services, directories, scripts, and documentation from `gui` to `web` (`s0 web`). Renamed systemd service to `s0-web.service` and daemon health-check to `s0-wait-web`. Removed legacy alias `s0 gui`.
-- **Documentation Portal Mobile Navigation:** Eliminated duplicate header artifacts on mobile viewports by hiding redundant Level-0 drawer titles while preserving sub-navigation back buttons.
-- **Verification Portal Gradient Styling:** Resolved background gradient cutoff and banding by applying `background-repeat: no-repeat` and pinned canvas backgrounds.
-- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, CI workflows, and documentation to `2.3.0`.
-
----
-
-## [2.2.1] — 2026-09-16
-
-### Security
-- **CRITICAL — GUI Audit Ledger Signature Verification:** Resolved critical flaw in `verify_audit_ledger()` where default trusted keys were omitted during signature checks, ensuring Ed25519 certificate signatures and authority key pinning are strictly validated during GUI and CLI verification.
-- **HIGH — TOCTOU Symlink & Reparse-Point Eraser Hardening:** Added atomic `O_NOFOLLOW` descriptor opening, `fstat(fd)` regular file validation, Win32 `FILE_ATTRIBUTE_REPARSE_POINT` handle inspection, and direct descriptor overwriting across Windows (`s0_eraser.py`) and macOS (`s0_eraser.py`).
-- **HIGH — Canonical JSON Deterministic Block Hashing:** Migrated blockchain audit ledger block hashing from pipe-delimited string formatting to RFC 8785 Canonical JSON (`s0.canonical`), preventing input collisions while maintaining backward-compatible fallback verification for legacy ledgers.
-- **HIGH — Destructive Web API Per-Session Token Authentication:** Protected `/api/wipe`, `/api/erase-files`, `/api/carve`, and `/api/image` with a high-entropy session authentication token (`X-S0-Auth-Token`) saved to `~/.s0/web_auth_token` (mode 0600) and injected via meta tag into the Web Dashboard DOM, blocking unauthorized local script execution.
-- **MEDIUM — QR Verification Portal URL Validation:** Enforced strict URL scheme and hostname sanitization on custom `portal_url` parameters in `pdfgen.py` and API request models, restricting redirection to HTTPS and local loopback.
-- **MEDIUM — Configuration Path Hijacking Remediation:** Removed `Path.cwd()` from `s0_config.json` candidate discovery list, preventing untrusted local directories from overriding cryptographic key paths and authority settings.
-- **LOW — Metadata Pipe & Delimiter Sanitization:** Enforced strict Pydantic model validation rejecting pipe (`|`) and markup characters across operator and organization metadata fields.
-- **LOW — Client-Side Key Fingerprint Cryptographic Recalculation:** Updated `site/verify/verify.js` to derive public key fingerprints directly from raw public key bytes via `Crypto.rawPublicKeyToSpki()`.
-
-### Fixed
-- **Mobile Documentation Navigation & Back Button:** Overhauled the mobile drawer header and sub-menu navigation layout in `extra.css`. Fixed back button arrow alignment, eliminated duplicate text clipping and unnecessary "(Tap to return)" annotations, and restored clean horizontal centering for root branding.
-- **Monorepo Production Deployment:** Optimized deployment ignore rules at the repository root, ensuring automated git deployments correctly retain documentation sources and build tools.
-- **Debian Live ISO Build Workflow (`build-iso.yml`):** Corrected recursive directory self-copy bug in `iso/auto/build.sh` when staging the repository snapshot. Migrated CI runner to use Docker containerization via `tools/build_iso.sh` for hermetic Debian Bookworm builds, added `permissions: contents: write`, and enabled automated attachment of `s0-live-amd64.hybrid.iso` to GitHub Releases.
-- **Web GUI Missing Import:** Added missing `import tempfile` in `src/s0/web/app.py` for fallback key directory creation.
-
-### Changed
-- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, test assertions, and documentation to `2.2.1`.
-- **Dynamic Version Resolution:** Refactored CLI and GUI modules to resolve runtime version dynamically from `s0_config.json` as the single source of truth.
-
----
-
-## [2.2.0] — 2026-09-16
-
-### Security
-- **CRITICAL — TOCTOU Symlink Race Remediation (`file_eraser.py`):** Eliminated time-of-check to time-of-use symlink substitution race (CWE-367) by opening target files with atomic `O_NOFOLLOW` flags and validating regular-file status via `fstat(fd)` on the opened descriptor before data overwrite. Extended symlink and reparse-point rejection across Windows and macOS eraser engines.
-- **HIGH — PDF Certificate Markup Injection Remediation (`pdfgen.py`):** Escaped all user-supplied and dynamic certificate metadata (operator ID, organization, device details, custom notes, and URLs) using `xml.sax.saxutils.escape` prior to ReportLab `Paragraph` construction, preventing visual forgery and malformed tag parsing crashes.
-- **LOW — Recursion Limit Protection (`certificate.py`, `canonical.py`):** Enforced a 64-level maximum nesting depth limit and explicit `RecursionError` guards in `_walk_floats()` and `_canon()`, ensuring adversarial nested JSON inputs produce clean validation rejections rather than unhandled tracebacks.
-
-### Added
-- **`s0 uninstall` CLI Subcommand:** Added native uninstallation command that removes `~/.s0/`, `/usr/local/bin/s0`, and shell environment PATH entries, featuring interactive safety confirmation (`--yes` bypass) and optional blockchain audit ledger preservation (`--keep-audit`).
-- **Install Portal Redesign:** Redesigned `sector-zero.pages.dev` for 100% theme parity with the Verification Portal, replacing emojis with clean SVG and ASCII markers, eliminating card paragraph clutter, and exposing Windows Command Prompt install, upgrade, and uninstall cards.
-- **Automated CI/CD Workflows:** Configured GitHub Actions workflows: `ci.yml` running pytest test suites across Python 3.11 and 3.12 matrices on push and pull requests, and `release.yml` automating release artifact packaging (`.tar.gz`, `SHA256SUMS.txt`), changelog extraction, and GitHub Releases publication.
-
-### Changed
-- **Suite Version Bump:** Version unified across `s0_config.json`, Python packages, and documentation to `2.2.0`.
-- **README & Documentation Sanitization:** Stripped extraneous decorative emojis from capability tables and headers in favor of professional technical indicators.
-
----
-
-## [2.1.1] — 2026-09-14
-
-### Security & Hardening
-- **Verification Portal Stored XSS Remediation & CSP:** Remediated stored cross-site scripting vulnerability in `showResult()` by building badge DOM elements using `textContent` instead of string-concatenated `innerHTML`. Audited and secured `handleCertLocator()` and `renderPinnedKeys()`. Added strict Content-Security-Policy (CSP) meta tag preventing external script execution and inline evaluation.
-- **Custom Key Isolation:** Restricted pasted custom private key writing to protected `~/.s0/keys/` directory with `0o700`/`0o600` permissions, ensuring user signing keys are never saved into deliverables/evidence output directories.
-- **Unaccredited Demonstration Key Warning:** Added conspicuous warnings whenever operations fall back to the public demo key (`demo_issuer_private.pem`): emitted to `sys.stderr` in all CLI commands, highlighted via an amber notice in the Web Dashboard, and stamped as a prominent warning header banner in generated PDF certificates.
-- **Directory Browse Allowlist (`/api/browse`):** Restricted Web Dashboard file picker directory traversal to authorized roots (`REPO`, user home, `/media`, `/mnt`), preventing arbitrary host inspection.
-
-### Fixed
-- **Mobile Navigation Drawer Scroll:** Resolved mobile navigation drawer clipping by offsetting `.md-sidebar--primary` below the sticky top header (`top: var(--s0-header-height)` and `height: calc(100dvh - var(--s0-header-height))`), restoring full scrollability to the top `Home` item.
-- **Callout Box Color Unification:** Unified admonition styles in `docs/stylesheets/extra.css` so that each callout type (`info`, `note`, `tip`, `warning`, `danger`, `success`, `important`) strictly uses a single harmonious color across its left border, box border, icon mask (`::before`), and title text, eliminating dual-color clashes.
-
----
-
-## [2.1.0] — 2026-09-10
-
-### Added
-- **Custom File Signatures in Carver (CLI & GUI):** Added support for arbitrary user-defined magic byte signatures (`--custom-sig` on CLI and interactive Signature Builder on Web Dashboard) supporting hex headers, optional footers, extensions, categories, and max carving sizes across NTFS, ext4, FAT32, exFAT, and raw carving engines.
-- **Central Workspace Configuration (`s0_config.json`):** Unified default operator, organization, documentation URLs, and key paths automatically loaded across Linux, macOS, and Windows CLIs, Web Dashboard, and Verification Portal.
-- **Persistent Light & Dark Theme Mode:** Implemented accessible, high-contrast light and dark mode toggles with zero-flicker `<head>` initialization and `localStorage` persistence across both Web Dashboard and Verification Portal.
-- **Offline Typography Consolidation:** Strictly consolidated Web Dashboard and Verification Portal on self-hosted Rubik (sans-serif) and JetBrains Mono (monospace) `.woff2` font assets, eliminating external CDN dependencies.
-- **Verification Portal QR & PDF Verification:** Added direct PDF certificate upload support with embedded QR code extraction and immediate cryptographically verified payload rendering.
-- **Carver Output Directory Option:** Added custom extraction output directory selection to both GUI and CLI carving workflows.
-
-### Changed
-- **Drive Sanitizer Form Refinement:** Streamlined drive wipe options in Web Dashboard, providing explicit operator and organization fields and harmonizing overwrite pattern standards with pass counts.
-
-### Fixed
-- **Verification Portal Background Flare:** Constrained top radial gradient and removed fixed card minimum height constraints, eliminating viewport blowout and mid-screen visual artifacts.
-
----
-
-## [2.0.0] — 2026-09-09
-
-### Added
-- **Production Documentation Suite:** Deployed complete technical documentation at [sector-zero.gitbook.io](https://sector-zero.gitbook.io/) with GitBook Site Git Sync.
-- **Forensic Color Theme:** Integrated high-contrast forensic styling with customized code blocks, admonitions, and typography.
-- **Bare-Metal Bootable Live ISO (`iso/`):** Complete Debian 12 (Bookworm) `live-build` recipe with automated Chromium kiosk, loopback FastAPI wipe daemon (`127.0.0.1:8000`), and QEMU virtual smoke-test harness (`qemu-test.sh`).
-- **Offline Asset Bundling:** Bundled local Fira Sans and Fira Code fonts in the verification portal and live ISO to guarantee 100% air-gapped styling without external web requests.
-- **One-Line Cross-Platform Installers & Uninstallers:** Added streamlined `install.sh`, `install.ps1`, `install.cmd`, `uninstall.sh`, and `uninstall.ps1` scripts with PATH registration and virtualenv bootstrapping.
-
-### Changed
-- **Unified Progress Bar & Thermal Telemetry:** Standardized real-time ANSI terminal progress bars across drive wiping, file erasing, and carving, with a 2-second rate-limited thermal sensor query via Linux `hwmon` and SMART telemetry.
-- **Standardized Certificate Identifiers:** Standardized tool naming to `s0` across all output JSON payloads, PDF certificates, and audit blocks.
-- **Complete README Overhaul:** Redesigned project README with clean comparative matrices, quickstart examples, and architecture maps.
-
-### Fixed
-- **Windows Startup Crash (`fcntl`):** Implemented lazy-import guards for POSIX-only `fcntl` calls in `blkdiscard.py`, resolving startup failures on Windows systems.
-- **Stored XSS Remediation:** Hardened the Web Dashboard audit ledger and Verification Portal against stored cross-site scripting by strictly sanitizing operator metadata, device serial numbers, and notes before DOM insertion.
-- **Portal Layout Stability:** Fixed flexbox layout blowout in `site/verify/index.html` when rendering large multi-fragment certificate payloads.
-
----
-
-## [1.5.0] — 2026-08-28
-
-### Added
-- **Native Cross-Platform File Eraser (Module 2):**
-  - **Windows (`windows/`):** Win32 direct file I/O with `FlushFileBuffers`, Alternate Data Stream (`:Zone.Identifier`) discovery and destruction, and ReFS CoW volume detection.
-  - **macOS (`macos/`):** Darwin direct hardware cache synchronization via `fcntl(fd, F_FULLFSYNC, 0)`, Extended Attribute (`xattr -c`) quarantine stripping, and APFS snapshot warnings.
-- **Removable Media & Partition Sanitization:** Added native USB flash drive and secondary partition wiping capabilities to Windows and macOS CLI utilities.
-- **FAT32 & exFAT Carving Engines (`src/s0/s0/carver/`):**
-  - **FAT32 (`fat_carver.py`):** BPB boot sector parsing, `0xE5` deleted directory entry scanning, and contiguous cluster recovery.
-  - **exFAT (`exfat_carver.py`):** VBR parsing, 32-byte directory entry set reconstruction (`0x05`/`0x85`, `0x40`/`0xC0`, `0x41`/`0xC1`), and Cluster Heap allocation extraction.
-- **Fragmented Reconstruction Heuristics (`fragmentation.py`):** Implemented non-resident cluster runlist reassembly and bifragment stream recovery across cluster gaps.
-
-### Changed
-- **Project Standardization:** Scrubbed all legacy hackathon and institutional problem statement identifiers; unified repository and binary nomenclature under **s0 (Sector Zero)**.
-- **Strict Key Pinning Enforcement:** Updated the Verification Portal to classify certificates into three unambiguous tiers: Green (Accredited Authority), Amber (Valid Math / Unregistered Key), and Red (Tamper Detected).
-
-### Security
-- Strengthened verification portal download boundary policies and restricted file path resolution to prevent directory traversal during evidence extraction.
-
----
-
-## [1.0.0] — 2026-08-15
-
-### Added
-- **Module 1: Secure Drive Eraser (`s0/methods/`):**
-  - ATA Secure Erase (`ATA_SECURE_ERASE`, `ATA_SECURE_ERASE_ENHANCED`) via controller firmware commands.
-  - NVMe Sanitize (`NVME_SANITIZE_BLOCK_ERASE`, `NVME_SANITIZE_CRYPTO_ERASE`) and NVMe Format (`NVME_FORMAT_CRYPTO_ERASE`).
-  - Kernel Discard (`BLKDISCARD`) with DRAT/RZAT deterministic readback checks.
-  - Logical multi-pass and single-pass zero/random overwriting with 64-block post-wipe verification.
-  - Host Protected Area (HPA) and Device Configuration Overlay (DCO) probe detection.
-- **Module 2: Secure File & Folder Eraser (`file_eraser.py`):**
-  - In-place cluster overwriting, inode timestamp zeroing (`1970-01-01T00:00:00Z`), and filename scrambling before unlinking.
-  - Batch file erasure issuance with consolidated Ed25519 certificates.
-- **Module 3: Advanced Multi-Filesystem File Carver (`carver/`):**
-  - Signature engine supporting JPEG, PNG, PDF, ZIP/Office, GIF, GZIP, BMP, ELF, SQLite3, and MP3.
-  - Direct ext4 superblock, block group descriptor, and inode extent tree parser (`ext4_carver.py`).
-  - Direct NTFS Master File Table ($MFT) parser extracting resident attributes and non-resident runlists (`ntfs_carver.py`).
-  - 4-factor confidence scoring (header 30%, footer 30%, size 20%, 3-point Shannon entropy 20%).
-- **Hash-Chained Cryptographic Audit Ledger (`audit/`):**
-  - Append-only SQLite database (`~/.s0/s0_audit.db`) with SHA-256 block hash chaining:
-    $$\text{block\_hash} = \text{SHA256}(\text{index} \parallel \text{timestamp} \parallel \text{op\_type} \parallel \text{target\_id} \parallel \text{cert\_uuid} \parallel \text{payload\_hash} \parallel \text{signature} \parallel \text{prev\_hash})$$
-  - Built-in `s0 audit verify` command confirming unbroken mathematical continuity from genesis to tip.
-- **Unified 4-Tab Web Dashboard (`gui/`):** FastAPI backend providing visual controls for wiping, file erasure, evidence carving, and blockchain ledger inspection.
-
----
-
-## [0.9.0] — 2026-08-01
-
-### Added
-- **Core Cryptography Engine (`src/s0/`):**
-  - Pure Ed25519 asymmetric digital signatures per RFC 8032.
-  - `s0 Canonical JSON v1` deterministic serializer (`canonical.py`) forbidding float values to eliminate multi-language formatting divergences.
-  - Official certificate schema definition (`src/s0/data/cert_schema.json`).
-  - High-resolution ReportLab PDF certificate generator with embedded optical QR codes (`pdfgen.py`).
-- **Static Verification Portal (`site/verify/`):**
-  - Zero-backend, 100% client-side WebCrypto / TweetNaCl verification engine.
-  - Drag-and-drop certificate JSON verification.
-  - Pinned trusted public key registry (`keys.json`).
-- **Master Test Orchestrator (`tools/build_all.sh`):**
-  - Automated virtual environment setup and pytest execution across 120+ test cases.
-  - Tamper matrix verification tests asserting signature rejection upon single-byte payload corruption.
+- No sanitize was executed during development: there is no NVMe, ATA or SCSI
+  sanitizer in the test environment, so command construction is verified against
+  the specification and the decoders against synthesised log pages, but the
+  drivers remain untested against hardware. This limitation is carried in the
+  method docstrings and surfaced as certificate notes.
+- ext4 jbd2 filename recovery is still blocked, but the blocker is now
+  diagnosed rather than assumed. `debugfs` builds and unlinks on a real ext4
+  image without root or a mount, which was thought impossible here; the journal
+  superblock parses and 4,096 blocks read with zero checksum failures, and the
+  reader correctly finds no names because the name is not in the journal -- it
+  survives in a stale directory entry at block 1854, while the journal starts at
+  16385. Closing it needs a kernel writing through a mount.
+- Compressed TIFF is refused rather than sized. A compressed strip's length is
+  not its byte count, so the strip geometry gives a confident wrong answer.
+- Clusters whose header was overwritten are not reconstructed. With no in-band
+  key left, any position is a guess, and a guessed position yields a file that
+  plays the wrong footage rather than no footage.
+- Platform erasers (`macos/cli/`, `windows/cli/`) are covered by import, CLI
+  dispatch and dry-run tests only. The commands that actually write to a disk
+  need the native OS and real hardware, so they remain unverified here.

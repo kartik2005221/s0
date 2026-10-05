@@ -59,27 +59,54 @@ jobs:
       - name: Extract Release Notes from Changelog
         id: notes
         run: |
-          python3 - <<'EOF'
-          import os, re
+          # Fails loudly when the section for the tag being released is missing.
+          #
+          # This used to fall back to "Release <tag> of s0 (Sector Zero) forensic data
+          # sanitization suite." That fallback is worse than no release notes: it looks
+          # like a successful extraction, so a v3 tag cut from a changelog that had
+          # stopped at 2.4.4 published generic text and nobody noticed until the
+          # release page was public. It also read only docs/project/changelog.md, which
+          # is a mirror -- the canonical file is /CHANGELOG.md at the repository root,
+          # so notes were being taken from the copy rather than the source.
+          #
+          # A missing section is a release-preparation bug. Stopping here is correct:
+          # the tag can be re-cut once the changelog has the entry.
+          python3 - <<'PY'
+          import os, re, sys
           from pathlib import Path
 
           tag = os.environ.get("GITHUB_REF_NAME", "")
           ver = tag.lstrip("v")
-          changelog_path = Path("docs/project/changelog.md")
-          notes = ""
-          if changelog_path.is_file():
-              content = changelog_path.read_text(encoding="utf-8")
-              escaped_ver = re.escape(ver)
-              pattern = rf"##\s*\[{escaped_ver}\][^\n]*\n(.*?)(?=\n---\n|\n##\s*\[|\Z)"
-              m = re.search(pattern, content, re.DOTALL)
-              if m:
-                  notes = m.group(1).strip()
+          if not ver:
+              sys.exit(f"error: GITHUB_REF_NAME is empty; cannot pick a changelog section")
 
+          candidates = [Path("CHANGELOG.md"), Path("docs/project/changelog.md")]
+          changelog_path = next((p for p in candidates if p.is_file()), None)
+          if changelog_path is None:
+              sys.exit(f"error: no changelog found at any of {candidates}")
+
+          content = changelog_path.read_text(encoding="utf-8")
+          escaped_ver = re.escape(ver)
+          pattern = rf"##\s*\[{escaped_ver}\][^\n]*\n(.*?)(?=\n---\n|\n##\s*\[|\Z)"
+          m = re.search(pattern, content, re.DOTALL)
+          if not m:
+              have = re.findall(r"^##\s*\[([^\]]+)\]", content, re.MULTILINE)
+              sys.exit(
+                  f"error: {changelog_path} has no section for {tag} (looked for "
+                  f"'## [{ver}]').\n"
+                  f"       Sections present: {have}\n"
+                  f"       Add the entry to the canonical changelog "
+                  f"(CHANGELOG.md at the repository root), run "
+                  f"`python tools/sync_changelog.py --write`, commit, and re-cut the tag."
+              )
+
+          notes = m.group(1).strip()
           if not notes:
-              notes = f"Release {tag} of s0 (Sector Zero) forensic data sanitization suite."
+              sys.exit(f"error: the '{ver}' section in {changelog_path} is empty")
 
           Path("RELEASE_NOTES.md").write_text(notes + "\n", encoding="utf-8")
-          EOF
+          print(f"extracted {len(notes)} characters of notes for {tag} from {changelog_path}")
+          PY
           cat RELEASE_NOTES.md
 
       - name: Package Source Tarball & Checksums

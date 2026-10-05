@@ -774,3 +774,153 @@ class TestTheSkillAgreesWithTheCode:
             "the skill states the cross-origin rule unconditionally, but the check "
             "only covers cookie auth -- which is the one path agents do not use"
         )
+
+
+class TestReleaseNotesFailLoudly:
+    """A release whose notes are generic looks like a release that worked.
+
+    `release.yml` extracted notes for the tag being released and, when the section was
+    absent, substituted `Release <tag> of s0 (Sector Zero) forensic data sanitization
+    suite.` The substitution was invisible: the step succeeded, the notes file was
+    written, and the release was published. So a v3 tag cut while the changelog still
+    ended at 2.4.4 shipped a release page with no content, and the only way anyone
+    found out was to look at the page.
+
+    A missing section is a release-preparation bug, so it stops the release. The
+    extraction also lived inline in the workflow, which is the one place a silent
+    fallback is most expensive and least likely to be exercised; it is now
+    `tools/release_notes.py`, testable on its own.
+    """
+
+    EXTRACTOR = REPO_ROOT / "tools" / "release_notes.py"
+
+    def test_notes_are_extracted_for_a_section_that_exists(self, tmp_path):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("release_notes", self.EXTRACTOR)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        changelog = tmp_path / "CHANGELOG.md"
+        changelog.write_text(
+            "# Changelog\n\n"
+            "## [Unreleased]\n\n### Fixed\n\n- Something not yet released.\n\n---\n\n"
+            "## [9.9.9-rc.1] - 2026-01-01\n\n"
+            "### Added\n\n- A fake entry used only to test extraction.\n\n---\n\n"
+            "## [0.0.1] - 2025-01-01\n\n### Added\n\n- The first thing s0 ever did.\n",
+            encoding="utf-8",
+        )
+
+        for spelling in ("9.9.9-rc.1", "v9.9.9-rc.1"):
+            notes, source = module.extract(spelling, (changelog,))
+            assert "A fake entry" in notes, f"{spelling}: {notes!r}"
+            assert "not yet released" not in notes, (
+                f"{spelling}: the Unreleased section leaked into the tagged notes"
+            )
+            assert "first thing s0 ever did" not in notes, f"{spelling}: the next section leaked in"
+            assert source == changelog
+
+    def test_a_missing_section_raises_rather_than_returning_generic_text(self, tmp_path):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("release_notes", self.EXTRACTOR)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        changelog = tmp_path / "CHANGELOG.md"
+        changelog.write_text(
+            "## [Unreleased]\n\n### Fixed\n\n- Not released yet.\n\n"
+            "## [2.4.4] - 2025-09-01\n\n### Added\n\n- The last released thing.\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(module.MissingSection) as excinfo:
+            module.extract("3.0.0", (changelog,))
+        message = str(excinfo.value)
+        assert "no release notes for version '3.0.0'" in message
+        # It must name what it did find, or the operator has to go looking.
+        assert "Unreleased" in message and "2.4.4" in message, (
+            f"the failure does not list the sections that exist: {message}"
+        )
+        # And it must not contain the generic fallback that caused this.
+        assert "forensic data sanitization suite" not in message
+
+    def test_an_empty_section_is_treated_as_missing(self, tmp_path):
+        """An empty heading would otherwise publish an empty release page."""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("release_notes", self.EXTRACTOR)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        changelog = tmp_path / "CHANGELOG.md"
+        changelog.write_text("## [4.0.0] - 2026-02-01\n\n---\n\n## [3.0.0]\n\n### Added\n\n- Real.\n")
+        with pytest.raises(module.MissingSection) as excinfo:
+            module.extract("4.0.0", (changelog,))
+        assert "empty" in str(excinfo.value)
+
+    def test_the_workflow_uses_the_extractor_and_has_no_fallback(self):
+        workflow = (REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+        assert "forensic data sanitization suite" not in workflow, (
+            "release.yml still contains the generic-notes fallback that let a v3 tag publish with no content"
+        )
+        assert "CHANGELOG.md" in workflow, (
+            "release.yml does not read the canonical changelog at the repository root"
+        )
+        assert "sys.exit" in workflow, "release.yml must be able to fail when the notes section is missing"
+
+
+class TestTheChangelogHasOneSource:
+    """There were two changelogs and the release workflow read the stale one."""
+
+    def test_the_root_changelog_is_canonical(self):
+        mirror = (REPO_ROOT / "docs" / "project" / "changelog.md").read_text(encoding="utf-8")
+        assert "GENERATED FILE" in mirror[:400], (
+            "docs/project/changelog.md does not declare itself generated, so an editor "
+            "will happily change the copy instead of the source"
+        )
+        assert "canonical changelog is" in mirror[:800], (
+            "the mirror does not point a reader at the canonical file"
+        )
+
+    def test_the_mirror_is_current(self):
+        proc = subprocess.run(
+            [sys.executable, str(REPO_ROOT / "tools" / "sync_changelog.py"), "--check"],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            timeout=120,
+        )
+        assert proc.returncode == 0, (
+            f"docs/project/changelog.md no longer matches CHANGELOG.md:\n{proc.stderr}\n"
+            f"Run: python tools/sync_changelog.py --write"
+        )
+
+    def test_the_gitbook_summary_link_still_resolves(self):
+        summary = (REPO_ROOT / "docs" / "SUMMARY.md").read_text(encoding="utf-8")
+        assert "project/changelog.md" in summary, (
+            "docs/SUMMARY.md no longer links the changelog, so GitBook stops publishing "
+            "the page the mirror exists to keep alive"
+        )
+
+    def test_no_stale_test_count_is_claimed(self):
+        """A test count in a changelog is stale the moment anyone adds a test."""
+        for name in ("CHANGELOG.md", "docs/project/changelog.md"):
+            text = (REPO_ROOT / name).read_text(encoding="utf-8")
+            assert "1071 collected" not in text, (
+                f"{name} still claims '1071 collected: 1061 passed, 10 skipped', which "
+                f"was already wrong and is not checked by anything"
+            )
+
+    def test_the_unreleased_section_documents_the_2x_migration(self):
+        text = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        assert "### Breaking changes and migration from 2.x" in text, (
+            "there is no migration section, so a 2.x user has no way to find out that "
+            "the package names, layout, key path, exit codes, dry-run behaviour and "
+            "installer ref all changed"
+        )
+        for topic in ("s0-core", "s0-cli", "default_key_path", "64", "--dry-run", "S0_INSTALL_REF"):
+            assert topic in text, f"the migration section does not mention {topic!r}"

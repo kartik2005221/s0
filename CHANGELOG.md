@@ -7,10 +7,123 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
-Everything below has landed on `agent/harness` and is verified by the suite
-(1071 collected: 1061 passed, 10 skipped). The changes are ordered by how
-much they change what the tool *reports*, because that is the order in which
-they matter to someone holding a report.
+Everything below has landed on `agent/harness` and is verified by the test suite,
+which is the gate rather than a number recorded here: a count in a changelog is
+stale the moment anyone adds a test, and this one was already wrong. The changes are
+ordered by how much they change what the tool *reports*, because that is the order
+in which they matter to someone holding a report.
+
+### Breaking changes and migration from 2.x
+
+Every item below was checked against the actual diff from `master`, not inferred.
+Where a statement could not be verified from the code it is not here.
+
+**The distribution is now one package, not two.** `master` shipped `s0-core`
+(`core/python/`) and `s0-cli` (`linux/cli/`) as separate distributions with separate
+entry points. Both are now the single distribution `s0`, importable as `s0`, with one
+console script. If you had both installed, uninstall both before installing v3:
+
+```bash
+pip uninstall -y s0-core s0-cli
+pip install s0
+```
+
+The importable names moved with it. `s0_core.*` and `s0_cli.*` no longer exist:
+
+| 2.x | 3.0 |
+|---|---|
+| `s0_core.canonical` | `s0.canonical` |
+| `s0_core.crypto` | `s0.crypto` |
+| `s0_core.certificate` | `s0.certificate` |
+| `s0_core.audit` | `s0.audit` |
+| `s0_core.carve` | `s0.carve` |
+| `s0_core.wipe` | `s0.wipe` |
+| `s0_cli.main` | `s0.cli.main` |
+| `s0_cli.wipe` | `s0.wipe` |
+
+The platform engines moved too: `macos.cli.s0_eraser` and `windows.cli.s0_eraser` are
+now `s0.platform.macos.s0_eraser` and `s0.platform.windows.s0_eraser`, and they ship
+inside the wheel. On 2.x they were top-level packages that `pyproject.toml` did not
+package, so an installed (rather than cloned) copy had no wipe engine at all and
+reported a drive as having "zero or unreadable capacity".
+
+**The repository layout moved under `src/`.** `core/python/s0_core/` and
+`linux/cli/s0_cli/` became `src/s0/`. The two sites `verification-portal/` and
+`install-portal/` are now one `site/` directory, and `scripts/` is now `tools/`. If
+you have tooling, CI jobs or `.gitignore` rules pointing at the old paths they need
+updating; nothing at runtime depends on the checkout layout any more.
+
+**The demo signing key moved, and the old lookup was CWD-dependent.**
+`s0_config.json`'s `default_key_path` was `core/keys/demo_issuer_private.pem`, which
+`default_issuer_key()` resolved relative to the repository root *or* relative to the
+current working directory -- so running s0 from a directory that happened to contain a
+`core/keys/` picked up a different key depending on where you were standing. It is now
+`src/s0/data/keys/demo_issuer_private.pem`, resolved through package resources, so the
+key is the same wherever you run the tool from.
+
+**Exit codes changed.** 2.x returned bare `0`, `1` and `2` from the CLI -- 37 separate
+`return 2` sites, and argparse's own usage error also being 2. 3.0 uses the
+`sysexits.h` convention, defined once in `s0.terminal`:
+
+| Meaning | 2.x | 3.0 |
+|---|---|---|
+| success | 0 | 0 |
+| ran and failed | 1 | 1 |
+| bad flags or arguments | 2 | **64** |
+| supplied data malformed | 2 | **65** |
+| input missing or unreadable | 2 | **66** |
+| refused, or insufficient privileges | 2 | **77** |
+| configuration error | 2 | **78** |
+| interrupted (SIGINT) | 1 | **130** |
+
+If you gate on exit codes, `s0 <cmd> && next_step` still works, but a script that
+distinguished 1 from 2 no longer can, and one that treated 2 as "bad flags" now has to
+test 64. Full table: `docs/guides/cli-reference.md`, "Exit Codes". Note that a non-zero
+exit is never a success: `s0 live flash` declining and `s0 plan` refusing a mounted
+target both return non-zero where 2.x returned 0.
+
+**`--dry-run` is now a real guard, and it is fail-closed.** On 2.x the flag was
+attached to every subcommand by the shared parent parser but read only by `wipe` on its
+block-device path, so `s0 image --dry-run` wrote a full image, `s0 clone --dry-run`
+cloned, `s0 carve --dry-run` wrote carved files and appended to the audit ledger,
+`keygen` wrote a private key, `live download` pulled ~550 MB, `upgrade` ran a real
+`git fetch` and three `pip install`s, and `uninstall` wrote a database backup -- each
+while printing that nothing would be written. In 3.0 every state-changing command
+stops at a single guard, and the allowlist is inverted so anything not known to be
+read-only is refused. A new command is therefore safe by default.
+
+**The installer and `s0 upgrade` pin an explicit ref.** 2.x `install.sh` ran
+`git clone --depth 1` with no ref, so it followed whatever the remote's default branch
+was at that moment, while `upgrade.sh` independently hard-coded `origin master` -- so
+an upgrade could move an install to a different ref than the one it was installed
+from, and neither honoured an override. 3.0 pins one ref in both, resolved from
+`S0_INSTALL_REF` then `S0_BRANCH` then the declared default, and the default is set in
+one place by `tools/set_install_ref.py`. **If you are upgrading across this boundary,
+set it explicitly:**
+
+```bash
+S0_INSTALL_REF=v3.0.0 sh site/install/install.sh
+```
+
+Without that, the default on this branch is `agent/harness`, which is correct only
+until that branch is deleted. Run `python tools/set_install_ref.py master` right after
+merging, and `python tools/set_install_ref.py v3.0.0` at release time.
+
+**Old editable installs need reinstalling.** A `pip install -e` from a 2.x checkout
+leaves `__editable__` finder shims pointing at `core/python` and `linux/cli`, which no
+longer exist, and s0 fails to import. Remove and reinstall:
+
+```bash
+pip uninstall -y s0-core s0-cli
+pip install -e .          # from a fresh checkout
+```
+
+**Not breaking, but worth knowing:** the global output flags now work on either side of
+the subcommand (`s0 --json list` as well as `s0 list --json`; on 2.x only the latter did
+anything). In text mode stdout stays empty and human output goes to stderr on every
+command, so `s0 <cmd> > file` captures nothing -- use `--json` or `--format csv`.
+Compatibility-only flags were removed rather than deprecated: `--output-format` and
+`--keep-audit` are gone, because there was no prior userbase to migrate.
 
 ### Fixed
 

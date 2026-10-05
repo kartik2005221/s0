@@ -33,31 +33,40 @@ Other Useful Flags:
 ================================================================================
 FILES SYNCHRONIZED BY THIS SCRIPT
 ================================================================================
-1.  s0_config.json                          (Primary Single Source of Truth)
-2.  pyproject.toml              (s0-core Python package metadata)
-3.  src/s0/pyproject.toml                (s0-cli Python package metadata)
-4.  src/s0/config.py           (DEFAULT_CONFIG fallback)
-5.  src/s0/__init__.py         (__version__ export)
-6.  src/s0/__init__.py            (__version__ export)
-7.  src/s0/imager.py              (tool_version fallback)
-8.  src/s0/cli/file_eraser.py         (tool_version fallback)
-9.  src/s0/carve/engine.py       (tool_version fallback)
-10. src/s0/live_manager.py        (User-Agent header & tag_synth versions)
-11. src/s0/platform/macos/s0_eraser.py       (macOS CLI version string & tool_version)
-12. src/s0/platform/windows/s0_eraser.py     (Windows CLI version string & tool_version)
-13. tools/benchmark_perf.py               (Benchmark tool_version)
-14. site/install/install.sh               (Web/sh installer fallback echo)
-15. README.md                               (Release badge link)
-16. PLAN.md                                 (Roadmap status line)
-17. docs/project/evaluator-guide.md         (Software release metadata)
-18. docs/project/README.md                  (Release notes table link)
-19. docs/getting-started/quickstart.md      (CLI output & config JSON examples)
-20. docs/architecture/certificate-spec.md   (Certificate JSON spec example)
-21. docs/architecture/system-architecture.md(System architecture certificate spec)
-22. docs/architecture/performance.md        (Performance benchmark evaluation date)
-23. docs/guides/cli-reference.md            (CLI upgrade sample & download flag)
-24. docs/guides/live-iso.md                 (Live ISO downloads, filenames, checksums)
-25. docs/project/changelog.md               (Release header verification & stubbing)
+     (Paths below are the ones this script actually rewrites. `python tools/release.py
+     <version> --dry-run` prints the live list; this table is a reading of the code and
+     can drift, so trust the dry-run over it. The old table still listed
+     `src/s0/pyproject.toml`, `src/s0/imager.py` and `src/s0/live_manager.py`, which
+     moved to `src/s0/image/imager.py` and `src/s0/live/live_manager.py` and no longer
+     exist.)
+
+ 1. s0_config.json                          (Primary Single Source of Truth)
+ 2. pyproject.toml                          (s0 package metadata)
+ 3. src/s0/config.py                        (DEFAULT_CONFIG fallback)
+ 4. src/s0/__init__.py                      (__version__ export)
+ 5. src/s0/image/imager.py                  (tool_version fallback)
+ 6. src/s0/cli/file_eraser.py               (tool_version fallback)
+ 7. src/s0/carve/engine.py                  (tool_version fallback)
+ 8. src/s0/live/live_manager.py             (User-Agent header & tag_synth versions)
+ 9. src/s0/platform/macos/s0_eraser.py      (macOS CLI version string & tool_version)
+10. src/s0/platform/windows/s0_eraser.py    (Windows CLI version string & tool_version)
+11. tools/benchmark_perf.py                 (Benchmark tool_version)
+12. site/install/install.sh                 (Web/sh installer fallback echo)
+13. README.md                               (Release badge link)
+14. PLAN.md                                 (Roadmap status line)
+15. docs/project/evaluator-guide.md         (Software release metadata)
+16. docs/project/README.md                  (Release notes table link)
+17. docs/getting-started/quickstart.md      (CLI output & config JSON examples)
+18. docs/architecture/certificate-spec.md   (Certificate JSON spec example)
+19. docs/architecture/system-architecture.md(System architecture certificate spec)
+20. docs/architecture/performance.md        (Performance benchmark evaluation date)
+21. docs/guides/cli-reference.md            (CLI upgrade sample & download flag)
+22. docs/guides/live-iso.md                 (Live ISO downloads, filenames, checksums)
+
+And, separately: CHANGELOG.md, the *canonical* changelog, which gets a stub for the
+new version if it has no entry -- then re-mirrored into docs/project/changelog.md by
+tools/sync_changelog.py. The docs copy used to be stubbed directly, which is now
+silently undone by the mirror, so a release could claim it had written notes.
 ================================================================================
 """
 
@@ -340,10 +349,17 @@ def ensure_changelog_entry(target_version: str, dry_run: bool = False) -> bool:
 
     if not dry_run:
         changelog_path.write_text(new_content, encoding="utf-8")
-        print(f"[+] Created release notes stub in docs/project/changelog.md for [{target_version}].")
+        print(f"[+] Created release notes stub in CHANGELOG.md for [{target_version}].")
+        # Keep the GitBook mirror in step, or the docs check fails on the release commit.
+        subprocess.run(
+            [sys.executable, str(REPO_ROOT / "tools" / "sync_changelog.py"), "--write"],
+            check=True,
+            cwd=str(REPO_ROOT),
+        )
     else:
         print(
-            f"[dry-run] Would prepend release notes stub in docs/project/changelog.md for [{target_version}]."
+            f"[dry-run] Would prepend a release notes stub in CHANGELOG.md for "
+            f"[{target_version}] and re-mirror it into docs/project/changelog.md."
         )
     return True
 
