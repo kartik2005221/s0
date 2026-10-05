@@ -2805,7 +2805,7 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
         # Deliberately NOT "master". This branch's installer pins a ref precisely
         # because master is not installable, so falling back to it re-introduces the
         # bug the installer fix removed.
-        return "master"
+        return "agent/harness"
 
     try:
         cur = subprocess.check_output(
@@ -2818,7 +2818,7 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
             return cur
     except (OSError, subprocess.SubprocessError):
         pass
-    return "master"
+    return "agent/harness"
 
 
 def cmd_upgrade(args) -> int:

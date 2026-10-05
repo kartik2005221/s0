@@ -6,7 +6,7 @@ set -euo pipefail
 # Must match install.sh. If the two resolve different refs, an upgrade can move an
 # install to a ref the installer would never have chosen -- or onto a branch with no
 # package metadata at all.
-S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-master}}"
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-agent/harness}}"
 INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 BIN_DIR="${HOME}/.local/bin"
 TOTAL_STEPS=5
