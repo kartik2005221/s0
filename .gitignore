@@ -65,3 +65,4 @@ carve_manifest_*
 acquisition_manifest_*
 *.qr.png
 demo-out/
+.wrangler/
