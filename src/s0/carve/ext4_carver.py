@@ -45,6 +45,13 @@ class Ext4RecoveredInode:
     extent_block_ranges: list[tuple[int, int]] = field(default_factory=list)  # (start_block, count)
     data: bytes | None = None
     fragment_count: int = 1
+    #: Bytes per filesystem block, from the superblock. `extent_block_ranges` holds
+    #: block *numbers*, so a caller converting one to a byte offset needs this -- and
+    #: it is 1024 only on a 1 KiB filesystem. Carried here because the alternative is
+    #: guessing at the call site, which is what produced a 4x error on every 4 KiB
+    #: ext4 volume: every real filesystem larger than a megabyte or two uses 4 KiB
+    #: blocks, so the wrong answer was the common case.
+    block_size: int = 1024
 
 
 def parse_ext4_superblock(
@@ -216,6 +223,7 @@ def scan_ext4_deleted_inodes(
                                     extent_block_ranges=extents,
                                     data=inode_data,
                                     fragment_count=len(extents),
+                                    block_size=sb.block_size,
                                 )
                             )
     except Exception:

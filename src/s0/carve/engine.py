@@ -364,7 +364,14 @@ def _recover_from_filesystem(
                         f"inode{i.inode_num}",
                         i.data,
                         i.fragment_count,
-                        part_offset + (i.extent_block_ranges[0][0] * 1024 if i.extent_block_ranges else 0),
+                        # The filesystem's own block size, not a guess. This was a
+                        # hardcoded 1024, so on a 4 KiB-block ext4 volume every
+                        # recovered inode was reported at a quarter of its real offset,
+                        # and `--bodyfile` / `--gaps-bodyfile` inherited the error. The
+                        # gaps file is the artefact a fragmented-recovery report leans
+                        # on, so this was not cosmetic.
+                        part_offset
+                        + (i.extent_block_ranges[0][0] * i.block_size if i.extent_block_ranges else 0),
                         None,
                         None,
                     )
