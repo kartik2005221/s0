@@ -26,6 +26,10 @@
 * [Certificate & Canonical JSON Spec](architecture/certificate-spec.md)
 * [Verification & Air-Gapped Trust](architecture/verification.md)
 * [Performance Benchmarks](architecture/performance.md)
+* [Signing Key Policy (proposal)](architecture/signing-key-policy.md)
+* [Canonical JSON v1](architecture/canonical-json.md)
+* [Repository Layout](architecture/repository-layout.md)
+* [NIST SP 800-88 Rev. 2 Mapping](compliance/nist-800-88-mapping.md)
 
 ## Compliance & Platforms
 
