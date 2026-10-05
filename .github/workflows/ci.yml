@@ -10,6 +10,17 @@ on:
     branches: ["**"]
   pull_request:
   workflow_dispatch:
+  # Weekly, because most of what this file checks can rot without any commit happening.
+  #
+  # `pip-audit` only finds an advisory for a package that has one *today*; the lockfile,
+  # the resolved dependency graph, and every tool the suite probes for all change on someone
+  # else's schedule. A repository that only runs CI on push will report "no known
+  # vulnerabilities" about a dependency set that is three weeks stale, and nothing in the
+  # history shows when that stopped being true.
+  schedule:
+    # 04:17 UTC Monday. An off-the-hour minute is deliberate: every repository that defaults
+    # to :00 queues there, and GitHub delays the jobs that arrive all at once.
+    - cron: "17 4 * * 1"
 
 # A superseded run is not worth finishing.
 concurrency:
@@ -685,6 +696,60 @@ jobs:
         uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52  # v3
         with:
           category: "/language:python"
+
+  freshness:
+    name: Dependency freshness
+    # Advisory on purpose, and it says so in its output. The finding is information, not a
+    # verdict: how far behind the lockfile is, and what a newer resolution would pull in.
+    # Making it blocking would mean every Monday red for a reason nobody can fix that day.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: How old is the pinned resolution?
+        run: |
+          python -m pip install --upgrade pip
+          echo "  last commit touching requirements.lock:"
+          git log -1 --format='    %h  %ad  %s' --date=short -- requirements.lock
+          echo "  current HEAD:"
+          git log -1 --format='    %h  %ad  %s' --date=short
+      - name: What would a fresh resolution pull in?
+        # The flags here must match tools/lock_dependencies.sh exactly, and the output file
+        # must be named requirements.lock.
+        #
+        # Both details matter and both were wrong in a first attempt. pip-compile records
+        # its own invocation in the header, so `--output-file fresh.lock` writes a
+        # different header than the committed one and the diff is then 780 lines of
+        # "everything changed" on every single Monday. Regenerating in place and diffing
+        # against a copy reproduces the committed file byte for byte -- verified locally,
+        # where it reports "the lock is current".
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-tools
+          cp requirements.lock /tmp/lock.committed
+          python -m piptools compile \
+            --generate-hashes \
+            --strip-extras \
+            --allow-unsafe \
+            --no-emit-index-url \
+            --no-emit-trusted-host \
+            --quiet \
+            --output-file requirements.lock \
+            requirements.in
+          if diff -q /tmp/lock.committed requirements.lock >/dev/null; then
+            echo "  the lock is current"
+          else
+            echo "  ::warning::requirements.lock differs from a fresh resolution."
+            echo "  ::warning::Review it, then run tools/lock_dependencies.sh and commit."
+            diff -u /tmp/lock.committed requirements.lock | head -60 || true
+          fi
+          # Leave the tree as it was found: this job reports staleness, it does not fix it.
+          cp /tmp/lock.committed requirements.lock
 
   workflow-lint:
     name: Lint workflows and scripts
