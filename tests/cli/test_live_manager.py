@@ -105,7 +105,7 @@ def test_flash_dry_run_never_writes(tmp_path):
         patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]),
         patch("builtins.open", side_effect=exploding_open),
         patch("sys.platform", "linux"),
-        patch("os.geteuid", return_value=0),
+        patch("os.geteuid", return_value=0, create=True),
     ):
         assert cmd_live_flash(args) == 0
 
@@ -129,7 +129,7 @@ def test_flash_force_still_requires_a_block_device(tmp_path):
     with (
         patch("s0.live.live_manager.get_removable_usb_devices", return_value=[]),
         patch("sys.platform", "linux"),
-        patch("os.geteuid", return_value=0),
+        patch("os.geteuid", return_value=0, create=True),
     ):
         assert cmd_live_flash(args) == 2
 
@@ -208,7 +208,7 @@ def test_cmd_live_flash_safety_refusal(tmp_path, capsys):
             yes=True,
             force=False,
         )
-        with patch("os.geteuid", return_value=0):
+        with patch("os.geteuid", return_value=0, create=True):
             rc = cmd_live_flash(args)
             assert rc == 2
             captured = capsys.readouterr()

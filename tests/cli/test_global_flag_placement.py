@@ -33,7 +33,13 @@ _SCRATCH.write_bytes(b"\0" * 4096)
 
 
 def _s0(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run([str(S0), *args], capture_output=True, text=True, cwd=str(REPO), timeout=120)
+    return subprocess.run(
+        [sys.executable, "-m", "s0.cli.main", *args],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
+        timeout=120,
+    )
 
 
 #: (leading global flags, trailing subcommand args, expected start of stdout)

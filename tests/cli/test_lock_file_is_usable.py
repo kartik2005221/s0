@@ -26,7 +26,10 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LOCK = REPO_ROOT / "requirements.lock"
@@ -138,6 +141,7 @@ def test_the_generator_records_no_absolute_paths():
     )
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Shell scripts are not verified with bash on Windows")
 def test_the_generator_parses_as_a_shell_script():
     proc = subprocess.run(["bash", "-n", str(SCRIPT)], capture_output=True, text=True, timeout=60)
     assert proc.returncode == 0, f"tools/lock_dependencies.sh does not parse: {proc.stderr}"

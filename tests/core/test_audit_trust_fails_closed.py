@@ -36,7 +36,7 @@ DEMO_PUB = REPO / "src" / "s0" / "data" / "keys" / "demo_issuer_public.pem"
 def _run_verify(db: Path, *extra: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
     env = {**os.environ, "S0_AUDIT_DB": str(db)}
     return subprocess.run(
-        [str(Path(sys.executable).parent / "s0"), "audit", "verify", *extra],
+        [sys.executable, "-m", "s0.cli.main", "audit", "verify", *extra],
         capture_output=True,
         text=True,
         env=env,

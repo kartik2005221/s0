@@ -38,9 +38,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _entry() -> str:
-    found = Path(sys.executable).parent / "s0"
-    if found.is_file():
-        return str(found)
+    found = shutil.which("s0") or shutil.which("s0.exe")
+    if found:
+        return found
+    cand = Path(sys.executable).parent / ("s0.exe" if sys.platform == "win32" else "s0")
+    if cand.is_file():
+        return str(cand)
     which = shutil.which("s0")
     if not which:
         pytest.skip("s0 entry point not available")
@@ -68,9 +71,13 @@ def sandbox(tmp_path) -> Path:
 class TestTheTargetSurvivesABadOutDir:
     def test_unwritable_parent_directory(self, sandbox):
         """Reported as: erase, then `PermissionError`, exit 70, "This is a bug in s0"."""
-        blocked = sandbox / "blocked"
-        blocked.mkdir()
-        blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
+        if sys.platform == "win32":
+            blocked = sandbox / "blocked_file"
+            blocked.write_text("blocked")
+        else:
+            blocked = sandbox / "blocked"
+            blocked.mkdir()
+            blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
         try:
             proc = _wipe("--targets", "evidence.txt", "--out-dir", str(blocked / "sub"), cwd=sandbox)
             assert (sandbox / "evidence.txt").is_file(), (
@@ -82,7 +89,8 @@ class TestTheTargetSurvivesABadOutDir:
             assert "bug in s0" not in proc.stdout + proc.stderr
             assert "not writable" in proc.stderr or "cannot create" in proc.stderr
         finally:
-            blocked.chmod(stat.S_IRWXU)
+            if sys.platform != "win32":
+                blocked.chmod(stat.S_IRWXU)
 
     def test_out_dir_is_a_regular_file(self, sandbox):
         notadir = sandbox / "iam_a_file"
@@ -187,9 +195,13 @@ class TestCarveAndImageAlsoPreflight:
     def test_carve_refuses_before_scanning(self, sandbox):
         image = sandbox / "c.img"
         image.write_bytes(bytes(range(256)) * 200)
-        blocked = sandbox / "blocked"
-        blocked.mkdir()
-        blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
+        if sys.platform == "win32":
+            blocked = sandbox / "blocked_file_carve"
+            blocked.write_text("blocked")
+        else:
+            blocked = sandbox / "blocked"
+            blocked.mkdir()
+            blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
         try:
             proc = subprocess.run(
                 [
@@ -215,15 +227,20 @@ class TestCarveAndImageAlsoPreflight:
                 "on a real evidence image that is hours of work discarded"
             )
         finally:
-            blocked.chmod(stat.S_IRWXU)
+            if sys.platform != "win32":
+                blocked.chmod(stat.S_IRWXU)
 
     def test_image_leaves_no_orphan_copy(self, sandbox):
         source = sandbox / "src.img"
         source.write_bytes(b"SOURCE DATA\n" * 500)
         dest = sandbox / "copy.img"
-        blocked = sandbox / "blocked"
-        blocked.mkdir()
-        blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
+        if sys.platform == "win32":
+            blocked = sandbox / "blocked_file_image"
+            blocked.write_text("blocked")
+        else:
+            blocked = sandbox / "blocked"
+            blocked.mkdir()
+            blocked.chmod(stat.S_IRUSR | stat.S_IXUSR)
         try:
             proc = subprocess.run(
                 [
@@ -249,7 +266,8 @@ class TestCarveAndImageAlsoPreflight:
                 "certificate attesting to it"
             )
         finally:
-            blocked.chmod(stat.S_IRWXU)
+            if sys.platform != "win32":
+                blocked.chmod(stat.S_IRWXU)
 
 
 class TestTheHappyPathsStillWork:

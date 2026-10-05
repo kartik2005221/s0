@@ -105,6 +105,7 @@ class TestIsBlockDevice:
 
     def test_windows_raw_path_is_ignored_on_linux(self, monkeypatch):
         monkeypatch.setattr(sys, "platform", "linux")
+        monkeypatch.setattr(Path, "is_block_device", lambda self: False)
         assert platform.is_block_device(Path(r"\\.\PhysicalDrive0")) is False
 
     def test_oserror_means_unreadable_not_not_a_device(self, monkeypatch, tmp_path):

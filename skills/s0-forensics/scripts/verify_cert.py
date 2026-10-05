@@ -35,6 +35,17 @@ from pathlib import Path
 #: Where a repository checkout keeps its importable package.
 _SRC_DIRNAME = "src"
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 
 def find_repo_root(start: Path) -> Path | None:
     """Walk up from *start* looking for the repository root.

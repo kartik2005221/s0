@@ -165,16 +165,36 @@ def enumerate_ntfs_streams_win32(path_str: str) -> list[tuple[str, int]]:
     if not hasattr(kernel32, "FindFirstStreamW"):
         return streams
 
+    # Setup 64-bit safe signatures for Win32 API to prevent handle truncation
+    try:
+        kernel32.FindFirstStreamW.restype = ctypes.c_void_p
+        kernel32.FindFirstStreamW.argtypes = [
+            ctypes.c_wchar_p,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            ctypes.c_uint,
+        ]
+        kernel32.FindNextStreamW.restype = ctypes.c_bool
+        kernel32.FindNextStreamW.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        if hasattr(kernel32, "FindClose"):
+            kernel32.FindClose.restype = ctypes.c_bool
+            kernel32.FindClose.argtypes = [ctypes.c_void_p]
+    except Exception:
+        pass
+
     find_data = WIN32_FIND_STREAM_DATA()
     INVALID_HANDLE = ctypes.c_void_p(-1).value
 
-    # FindStreamInfoStandard = 0
-    h_find = kernel32.FindFirstStreamW(
-        ctypes.c_wchar_p(path_str),
-        0,
-        ctypes.byref(find_data),
-        0,
-    )
+    try:
+        # FindStreamInfoStandard = 0
+        h_find = kernel32.FindFirstStreamW(
+            ctypes.c_wchar_p(path_str),
+            0,
+            ctypes.byref(find_data),
+            0,
+        )
+    except Exception:
+        return streams
 
     if h_find == INVALID_HANDLE or not h_find:
         return streams
@@ -192,7 +212,10 @@ def enumerate_ntfs_streams_win32(path_str: str) -> list[tuple[str, int]]:
         pass
     finally:
         if hasattr(kernel32, "FindClose"):
-            kernel32.FindClose(h_find)
+            try:
+                kernel32.FindClose(h_find)
+            except Exception:
+                pass
 
     return streams
 

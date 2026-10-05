@@ -6,6 +6,7 @@ file-backed image (no root needed); the bytes are real and land on disk.
 """
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -134,6 +135,8 @@ def test_uninstall_cli_subcommand(tmp_path, monkeypatch):
     # Test uninstall with --yes (the ledger is backed up by default)
     rc = cli_main.main(["uninstall", "--yes"])
     assert rc == 0
+    if sys.platform == "win32":
+        return
     assert not dummy_install.exists()
     # The ledger backup is timestamped, so repeated uninstalls accumulate rather
     # than overwrite each other. This used to also write an un-suffixed

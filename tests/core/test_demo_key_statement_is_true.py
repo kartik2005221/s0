@@ -20,6 +20,7 @@ prose, so the README cannot drift back into being wrong without a test failing.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -134,17 +135,16 @@ class TestEverySurfaceSaysUnaccredited:
     def _fixture(tmp_path: Path) -> Path:
         target = tmp_path / "evidence.bin"
         target.write_bytes(b"needle in a haystack\n" * 200)
-        entry = Path(sys.executable).parent / "s0"
-        if not entry.is_file():
-            import shutil
+        import shutil
 
-            found = shutil.which("s0")
-            if not found:
-                raise AssertionError("s0 entry point not available")
-            entry = Path(found)
+        entry = shutil.which("s0") or shutil.which("s0.exe")
+        if not entry:
+            cand = Path(sys.executable).parent / ("s0.exe" if sys.platform == "win32" else "s0")
+            entry = str(cand) if cand.is_file() else None
+        cmd = [entry] if entry else [sys.executable, "-m", "s0.cli.main"]
         out = subprocess.run(
             [
-                str(entry),
+                *cmd,
                 "wipe",
                 "--targets",
                 str(target),
@@ -167,11 +167,13 @@ class TestEverySurfaceSaysUnaccredited:
     def _verify(cert: Path, tmp_path: Path, *flags: str):
         import shutil
 
-        entry = Path(sys.executable).parent / "s0"
-        if not entry.is_file():
-            entry = Path(shutil.which("s0") or "s0")
+        entry = shutil.which("s0") or shutil.which("s0.exe")
+        if not entry:
+            cand = Path(sys.executable).parent / ("s0.exe" if sys.platform == "win32" else "s0")
+            entry = str(cand) if cand.is_file() else None
+        cmd = [entry] if entry else [sys.executable, "-m", "s0.cli.main"]
         return subprocess.run(
-            [str(entry), "verify", str(cert), *flags],
+            [*cmd, "verify", str(cert), *flags],
             capture_output=True,
             text=True,
             cwd=str(tmp_path),
@@ -230,6 +232,7 @@ class TestEverySurfaceSaysUnaccredited:
             text=True,
             cwd=str(tmp_path),
             timeout=300,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
         )
         combined = proc.stdout + proc.stderr
         assert "unaccredited" in combined.lower() or "demonstration" in combined.lower(), (

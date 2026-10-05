@@ -44,13 +44,16 @@ from s0.audit.db import BUSY_TIMEOUT_MS, get_db_connection, init_audit_db
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _entry_point() -> str:
+def _entry_cmd() -> list[str]:
     import shutil
 
-    found = shutil.which("s0") or str(Path(sys.executable).parent / "s0")
-    if not Path(found).is_file():
-        pytest.skip("s0 entry point not available")
-    return found
+    found = shutil.which("s0") or shutil.which("s0.exe")
+    if found:
+        return [found]
+    cand = Path(sys.executable).parent / ("s0.exe" if sys.platform == "win32" else "s0")
+    if cand.is_file():
+        return [str(cand)]
+    return [sys.executable, "-m", "s0.cli.main"]
 
 
 def _wipe(path: Path, home: Path, tag: str) -> subprocess.CompletedProcess:
@@ -58,7 +61,7 @@ def _wipe(path: Path, home: Path, tag: str) -> subprocess.CompletedProcess:
     target.write_text(f"evidence {tag}\n" * 8)
     return subprocess.run(
         [
-            _entry_point(),
+            *_entry_cmd(),
             "wipe",
             "--target",
             str(target),
@@ -80,6 +83,7 @@ def _wipe(path: Path, home: Path, tag: str) -> subprocess.CompletedProcess:
     )
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions (0600) are not enforced on Windows")
 class TestTheLedgerIsNotWorldReadable:
     def test_a_new_ledger_is_0600(self, tmp_path):
         db = tmp_path / "audit.db"
@@ -220,7 +224,7 @@ class TestConcurrentAppendsDoNotCollide:
             procs.append(
                 subprocess.Popen(
                     [
-                        _entry_point(),
+                        *_entry_cmd(),
                         "wipe",
                         "--target",
                         str(target),
@@ -232,9 +236,11 @@ class TestConcurrentAppendsDoNotCollide:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     env={
+                        **os.environ,
                         "HOME": str(tmp_path),
-                        "PATH": "/usr/bin:/bin",
+                        "USERPROFILE": str(tmp_path),
                         "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                        **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
                     },
                     cwd=str(tmp_path),
                 )
@@ -264,7 +270,7 @@ class TestConcurrentAppendsDoNotCollide:
             procs.append(
                 subprocess.Popen(
                     [
-                        _entry_point(),
+                        *_entry_cmd(),
                         "wipe",
                         "--target",
                         str(target),
@@ -276,9 +282,11 @@ class TestConcurrentAppendsDoNotCollide:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     env={
+                        **os.environ,
                         "HOME": str(tmp_path),
-                        "PATH": "/usr/bin:/bin",
+                        "USERPROFILE": str(tmp_path),
                         "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                        **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
                     },
                     cwd=str(tmp_path),
                 )
@@ -304,7 +312,7 @@ class TestConcurrentAppendsDoNotCollide:
             procs.append(
                 subprocess.Popen(
                     [
-                        _entry_point(),
+                        *_entry_cmd(),
                         "wipe",
                         "--target",
                         str(target),
@@ -316,9 +324,11 @@ class TestConcurrentAppendsDoNotCollide:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     env={
+                        **os.environ,
                         "HOME": str(tmp_path),
-                        "PATH": "/usr/bin:/bin",
+                        "USERPROFILE": str(tmp_path),
                         "S0_AUDIT_DB": str(tmp_path / "audit.db"),
+                        **({} if os.name == "nt" else {"PATH": "/usr/bin:/bin"}),
                     },
                     cwd=str(tmp_path),
                 )
@@ -328,7 +338,7 @@ class TestConcurrentAppendsDoNotCollide:
 
         # `audit verify` takes the ledger through S0_AUDIT_DB; there is no --db flag.
         proc = subprocess.run(
-            [_entry_point(), "audit", "verify"],
+            [*_entry_cmd(), "audit", "verify"],
             capture_output=True,
             text=True,
             timeout=300,

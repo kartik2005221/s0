@@ -172,6 +172,7 @@ class TestTheLockIsUsable:
             f"requirements.lock does not install with --require-hashes:\n{proc.stderr[-1500:]}"
         )
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="Shell scripts are not verified with bash on Windows")
     def test_the_regeneration_script_is_valid_bash(self):
         script = REPO_ROOT / "tools" / "lock_dependencies.sh"
         assert script.is_file()

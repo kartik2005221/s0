@@ -341,6 +341,8 @@ class TestSilentSuccessesAreGone:
 
     def test_an_unwritable_session_path_is_an_error(self, workdir):
         """A session that cannot be written means the next run starts from nothing."""
+        blocker = workdir / "blocker_file"
+        blocker.write_text("x")
         proc = _run(
             "carve",
             "--target",
@@ -350,7 +352,7 @@ class TestSilentSuccessesAreGone:
             "--no-certificate",
             "--no-pdf",
             "--write-session",
-            "/proc/definitely/not/writable",
+            str(blocker / "session.json"),
             cwd=workdir,
         )
         assert proc.returncode != 0, (

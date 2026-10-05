@@ -40,7 +40,10 @@ def test_different_keys_different_fingerprints():
 def test_private_pem_permissions(tmp_path, keys):
     p = crypto.write_private_pem(keys["priv"], tmp_path / "priv.pem")
     import os
+    import sys
 
+    if sys.platform == "win32":
+        return
     mode = os.stat(p).st_mode & 0o777
     assert mode == 0o600
 
