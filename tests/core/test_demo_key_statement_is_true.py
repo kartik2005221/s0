@@ -230,11 +230,13 @@ class TestEverySurfaceSaysUnaccredited:
             [sys.executable, str(script), str(cert), "--key", str(pub)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(tmp_path),
             timeout=300,
             env={**os.environ, "PYTHONIOENCODING": "utf-8"},
         )
-        combined = proc.stdout + proc.stderr
+        combined = (proc.stdout or "") + (proc.stderr or "")
         assert "unaccredited" in combined.lower() or "demonstration" in combined.lower(), (
             f"the standalone verifier does not mark a demo-key certificate:\n{combined[-400:]}"
         )
