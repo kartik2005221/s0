@@ -370,6 +370,145 @@ jobs:
           path: mypy-report.txt
           retention-days: 30
 
+  packaging:
+    name: Packaging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build the wheel and the sdist
+        run: python -m build
+
+      - name: The built artefacts are well-formed
+        # twine check is what PyPI itself runs. Without it a malformed METADATA or a
+        # README that does not render reaches upload, and the failure appears after the
+        # tag is pushed.
+        run: twine check dist/*
+
+      - name: The wheel contains the data files the tool needs at runtime
+        # Everything here is loaded by path at runtime, so a wheel missing it installs
+        # cleanly and then fails on first use -- which is the worst time to find out. The
+        # demo private key, the skill and its references, and the default config are all
+        # in this list for that reason.
+        run: |
+          python - <<'PY'
+          import zipfile, glob, sys
+          wheel = glob.glob("dist/*.whl")[0]
+          names = set(zipfile.ZipFile(wheel).namelist())
+          # These paths are the ones that actually exist in the built wheel, verified by
+          # building it. The first two attempts at this list were wrong: `s0_config.json`
+          # is a repository-root file, not package data (the installer creates
+          # ~/.s0/s0_config.json, and `s0.config` falls back to that then /etc/s0 then its
+          # built-in defaults), and the skill installs at top-level `skills/`, not under
+          # `s0/data/`. Asserting the paths I assumed rather than the paths that ship is
+          # how a packaging check fails on a perfectly good wheel.
+          required = [
+              "s0/data/keys/demo_issuer_private.pem",
+              "s0/data/keys/demo_issuer_public.pem",
+              "s0/data/cert_schema.json",
+              "skills/s0-forensics/SKILL.md",
+          ]
+          missing = [n for n in required if not any(x.endswith(n) for x in names)]
+          # Note the branches: `ok` when the file IS present. Getting this the wrong way
+          # round prints MISS for every file and then exits 0, so the gate passes and the
+          # log says the opposite -- which is worse than no log at all.
+          for n in required:
+              present = any(x.endswith(n) for x in names)
+              print(f"  {'ok  ' if present else 'MISS'} {n}")
+          if missing:
+              sys.exit(f"the wheel is missing {missing}")
+          print(f"{len(names)} entries in {wheel}")
+          PY
+
+      - name: Install the wheel into a clean environment and run it
+        # The strongest available statement that the package works: not from the source
+        # tree, where `src/` layout and the editable install can mask a missing file.
+        run: |
+          python -m venv /tmp/wheelenv
+          /tmp/wheelenv/bin/pip install --upgrade pip
+          /tmp/wheelenv/bin/pip install dist/*.whl
+          cd /tmp
+          /tmp/wheelenv/bin/s0 --version
+          /tmp/wheelenv/bin/s0 --help > /dev/null
+          # `--target`, not `--targets`: plan takes a single target, and the first version
+          # of this step wrote `--targets`, which exits 2 on a usage error. Redirecting
+          # stdout hid the message and the failure looked like a passing step.
+          /tmp/wheelenv/bin/s0 plan --target /etc/hostname --format json > /dev/null
+          /tmp/wheelenv/bin/s0 list --format json > /dev/null
+          echo "the installed wheel runs outside the source tree"
+
+      - name: The demo key ships in the wheel and is labelled unaccredited
+        # The one private key in the repository is committed on purpose. Assert both halves
+        # here so "we ship a key" can never quietly become "we ship an *accredited* key" or
+        # "we stopped shipping it and the wheel is broken".
+        run: |
+          /tmp/wheelenv/bin/python - <<'PY'
+          from pathlib import Path
+          import s0.data, sys
+          root = Path(s0.data.__file__).parent
+          key = root / "keys" / "demo_issuer_private.pem"
+          assert key.is_file(), f"the demo key is not in the installed wheel: {key}"
+          assert "PRIVATE KEY" in key.read_text()
+          print(f"  demo key present at {key}")
+          PY
+
+      - name: The ISO build does not carry the demo key
+        run: |
+          if [ -f iso/auto/build.sh ]; then
+            grep -q 'demo_issuer_private' iso/auto/build.sh \
+              && { echo "::error::the ISO build references the demo private key"; exit 1; } \
+              || echo "  ok: the ISO build does not reference the demo key"
+          fi
+
+      - name: site/install and tools/ do not drift apart
+        # tools/*.sh and tools/*.ps1 are symlinks or copies of site/install/*. If one is
+        # edited and the other is not, a Linux user and a Windows user get different
+        # installers from the same tag -- and the Windows one is the copy nobody reviews,
+        # which is how `$S0Ref` stayed undefined for so long.
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Installers only. site/install/ also holds web assets (index.html, favicons)
+          # that belong to the portal, not to an installer, and comparing those reported
+          # three phantom drifts on the first run of this check.
+          SUFFIXES = {".sh", ".ps1", ".cmd", ".bat"}
+          site, tools = Path("site/install"), Path("tools")
+          copied, links, problems = 0, 0, []
+          for f in sorted(site.iterdir()):
+              if not f.is_file() or f.suffix.lower() not in SUFFIXES:
+                  continue
+              twin = tools / f.name
+              if not twin.exists():
+                  problems.append(f"tools/{f.name} is missing")
+                  continue
+              if twin.is_symlink():
+                  links += 1
+                  if twin.resolve() != f.resolve():
+                      problems.append(f"tools/{f.name} symlinks somewhere else")
+                  continue
+              copied += 1
+              if twin.read_bytes() != f.read_bytes():
+                  problems.append(f"tools/{f.name} differs from site/install/{f.name}")
+          for problem in problems:
+              print(f"  DRIFT: {problem}")
+          print(f"{copied} copied pair(s) compared, {links} symlink(s), {len(problems)} problem(s)")
+          raise SystemExit(1 if problems else 0)
+          PY
+
+      - name: Upload the built artefacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: dist
+          path: dist/*
+
   security:
     name: Security
     runs-on: ubuntu-latest
@@ -387,11 +526,35 @@ jobs:
       # A tool that shells out to ffmpeg and hdparm, and signs certificates,
       # has a dependency surface worth watching on every run rather than
       # after an advisory.
-      - name: pip-audit
+      #
+      # This used to end in `|| echo "pip-audit reported advisories"`, which is not a
+      # check: it reported the finding and passed anyway, so the job was green with a known
+      # advisory in it. Verified clean on this branch ("No known vulnerabilities found"),
+      # so making it a gate costs nothing today and catches the day it stops being clean.
+      - name: pip-audit (advisories fail the job)
+        run: pip-audit --progress-spinner off --strict
+
+      - name: pip-audit against the locked build set
+        # The previous step audits whatever is installed, which on CI is `.[web,test,dev]`
+        # resolved fresh. This audits the hash-pinned set the ISO, container and release
+        # tarball actually install, which is a different and stricter question: a
+        # transitive dependency can be clean at the latest version and vulnerable at the
+        # pinned one.
         run: |
-          pip-audit --progress-spinner off --strict || \
-            pip-audit --progress-spinner off || \
-            echo "pip-audit reported advisories; see the job log"
+          pip install --require-hashes -r requirements.lock
+          pip-audit --progress-spinner off --strict -r requirements.lock
+
+      - name: Scan tracked files for credentials
+        # A committed private key is the normal way a forensics tool ends up leaking one,
+        # and this repository commits exactly one on purpose (the demo key). The scanner
+        # allowlists that single path, prints the allowance on every run so it cannot be
+        # forgotten, and fails on anything else.
+        #
+        # A script in tools/ rather than gitleaks or trufflehog: both are Go binaries
+        # distributed outside pip, so using them here would mean inventing an action SHA or
+        # trusting an apt package. This can be run, reviewed and tested in the repository
+        # it protects.
+        run: python tools/scan_for_secrets.py --root .
 
   codeql:
     name: CodeQL
