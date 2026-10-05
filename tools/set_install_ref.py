@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Set the default git ref that every installer and `s0 upgrade` resolves to.
 
-The default ref was written out by hand in four places: `site/install/install.sh`,
-`site/install/upgrade.sh`, `site/install/upgrade.cmd`, and twice in
-`src/s0/cli/main.py` (the two `s0 upgrade` fallbacks). Nothing kept them in step,
-so after this branch is merged and deleted, every install and every `s0 upgrade` on
-a machine without an explicit `S0_INSTALL_REF` would try to fetch a branch that no
-longer exists.
+The default ref was written out by hand in six places: `site/install/install.sh`,
+`site/install/upgrade.sh`, `site/install/upgrade.cmd`, `site/install/install.ps1`,
+`site/install/upgrade.ps1`, and twice in `src/s0/cli/main.py` (the two `s0 upgrade`
+fallbacks). Nothing kept them in step, so after this branch is merged and deleted,
+every install and every `s0 upgrade` on a machine without an explicit `S0_INSTALL_REF`
+would try to fetch a branch that no longer exists.
 
-Run this instead of editing four files by hand:
+Run this instead of editing six places by hand:
 
     python tools/set_install_ref.py master        # immediately after merging to master
     python tools/set_install_ref.py v3.0.0        # at release time
@@ -27,7 +27,7 @@ Accepted values:
 * the current branch, `agent/harness`, so the pre-merge state stays expressible
 
 Anything else is refused. A typo like `v3.0.0.` or `mastre` would otherwise be
-written into four files and only discovered when an operator's install failed.
+written into six places and only discovered when an operator's install failed.
 
 `--check` reports where the files disagree and exits non-zero; `--show` lists every
 place the default is written and the value in each.
@@ -50,11 +50,20 @@ SHELL_PATTERN = re.compile(
 )
 #: `upgrade.cmd`: an `if` that assigns the default when the override is unset.
 CMD_PATTERN = re.compile(r'(?P<prefix>if "%S0_INSTALL_REF%"=="" \(set "S0_REF=)(?P<ref>[^"]+)(?P<suffix>")')
+#: `install.ps1` and `upgrade.ps1`: the default sits inside the $S0Ref fallback block.
+PS1_PATTERN = re.compile(
+    r'(?P<prefix>\$S0Ref\s*=\s*if\s*\([^)]+\)\s*\{[^}]+\}\s*elseif\s*\([^)]+\)\s*\{[^}]+\}\s*else\s*\{\s*")'
+    r'(?P<ref>[^"]+)'
+    r'(?P<suffix>"\s*\})',
+    re.DOTALL,
+)
 
 SCRIPT_TARGETS: tuple[tuple[Path, re.Pattern[str]], ...] = (
     (REPO_ROOT / "site" / "install" / "install.sh", SHELL_PATTERN),
     (REPO_ROOT / "site" / "install" / "upgrade.sh", SHELL_PATTERN),
     (REPO_ROOT / "site" / "install" / "upgrade.cmd", CMD_PATTERN),
+    (REPO_ROOT / "site" / "install" / "install.ps1", PS1_PATTERN),
+    (REPO_ROOT / "site" / "install" / "upgrade.ps1", PS1_PATTERN),
 )
 
 VALID_TAG = re.compile(r"^v\d+\.\d+\.\d+(-rc\.\d+)?$")
@@ -182,6 +191,12 @@ def _rewrite_scripts(new_ref: str) -> None:
                 f"{Path(__file__).name} no longer fits the source; fix it rather than "
                 f"leaving the ref unset."
             )
+        if path.suffix == ".ps1":
+            non_ascii = [ch for ch in updated if ord(ch) > 127]
+            if non_ascii:
+                raise SystemExit(
+                    f"{path.relative_to(REPO_ROOT)} contains non-ASCII characters: {set(non_ascii)}"
+                )
         path.write_text(updated, encoding="utf-8")
 
 

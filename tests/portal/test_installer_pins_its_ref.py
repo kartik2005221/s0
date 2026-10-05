@@ -337,7 +337,7 @@ class TestTheRefHasOneSetter:
 
     def test_the_setter_covers_every_location_the_ref_is_written(self):
         text = self.SETTER.read_text(encoding="utf-8")
-        for name in ("install.sh", "upgrade.sh", "upgrade.cmd"):
+        for name in ("install.sh", "upgrade.sh", "upgrade.cmd", "install.ps1", "upgrade.ps1"):
             assert name in text, f"the setter does not mention {name}"
         assert "main.py" in text, "the setter does not cover the `s0 upgrade` fallbacks"
 
@@ -408,6 +408,18 @@ class TestTheRefHasOneSetter:
         assert {r for refs in after.values() for r in refs} == {good}, (
             f"setting {good!r} left the files at {after}"
         )
+
+    @pytest.mark.parametrize("target_ref", ["master", "v3.0.0", "v3.0.0-rc.1"])
+    def test_setting_release_or_master_ref_removes_agent_harness_completely(self, sandbox, target_ref):
+        """Switching to master or a release tag leaves no trace of the feature branch."""
+        module, _tmp = sandbox
+        module._rewrite_scripts(target_ref)
+        module._rewrite_main_py(target_ref)
+        after = module.read_refs()
+        for path, refs in after.items():
+            assert "agent/harness" not in refs, f"{path} still references agent/harness in refs: {refs}"
+            content = path.read_text(encoding="utf-8")
+            assert "agent/harness" not in content, f"{path} still contains 'agent/harness' in text"
 
     def test_setting_a_ref_touches_only_the_ref(self, sandbox):
         """Rewriting must not reformat, reorder or truncate the file it edits.
