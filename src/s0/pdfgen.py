@@ -143,8 +143,47 @@ def generate_pdf(
     payload would render ~177 modules into 45 mm, roughly 6 px per module, which
     no camera or verifier can decode. The JSON remains the artifact of record.
     """
+    if not isinstance(cert, dict):
+        raise TypeError(f"certificate must be a dict, got {type(cert).__name__}")
     if "signature" not in cert:
         raise ValueError("refusing to render an UNSIGNED certificate to PDF")
+
+    # Validate the shape the renderer actually reads, and say what is missing.
+    #
+    # Called directly -- which `s0 wipe` does -- this raised whatever the first subscript
+    # happened to hit, from the middle of the layout code:
+    #
+    #   {"cert_uuid": 1, "wipe": "nope", "signature": []}  ->  KeyError: 'result'
+    #   {k: None for k in cert}                             ->  TypeError: 'NoneType' is
+    #                                                              not subscriptable
+    #
+    # Neither names the certificate field, so an operator debugging a bad artifact had no
+    # way to tell a malformed certificate from a bug in the renderer. And a certificate
+    # with a `signature` but no `wipe` record rendered a *complete-looking* PDF with no
+    # wipe data on it, which is the one outcome worse than an exception: the PDF is
+    # presentable and unattested.
+    #
+    # Every check below is a field the renderer reads unconditionally. Absent means we
+    # cannot draw a truthful certificate, so we refuse rather than draw a blank field.
+    for required, kind in (
+        ("cert_uuid", str),
+        ("result", dict),
+        ("wipe", dict),
+        ("signature", dict),
+    ):
+        if required not in cert:
+            raise ValueError(
+                f"certificate is missing {required!r}; refusing to render a PDF with an "
+                f"unattested field. The signed JSON is the artifact of record -- do not "
+                f"repair a certificate, re-issue it."
+            )
+        if not isinstance(cert[required], kind):
+            raise TypeError(
+                f"certificate field {required!r} must be {kind.__name__}, got {type(cert[required]).__name__}"
+            )
+    if "status" not in cert["result"]:
+        raise ValueError("certificate 'result' has no 'status'")
+
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
