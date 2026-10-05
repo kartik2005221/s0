@@ -217,6 +217,37 @@ done
 {% endtab %}
 {% endtabs %}
 
+{% hint style="warning" %}
+**`wipe --target FILE` either keeps the file or deletes it, and which one depends on the content**
+
+For a regular file, `s0 wipe --target` takes one of two quite different destructive paths.
+This is not documented by the extension, and it is not what the same command does to every
+file:
+
+* **Recognised as a raw disk image** — the file is **overwritten in place and kept**.
+* **Not recognised** — the file is **erased and unlinked**. The path stops existing.
+
+A file is recognised as a raw disk image when it is **at least 1 MiB**, **512-byte
+aligned**, and **either** carries a known image signature **or** is a whole number of 1
+MiB (or 63-sector CD-track) units. The extension is *not* the test, which is why a 600 MB
+`.dat` that really is an image is kept and a 40 KB `.img` that is really a spreadsheet is
+removed.
+
+Measured behaviour, so the threshold is not folklore:
+
+| Input | Result |
+|---|---|
+| 64 KiB `.img` of random bytes | **deleted**, `file_wipe_certificate` |
+| 1 MiB / 8 MiB / 32 MiB `.img` | kept, overwritten with zeros, `certificate` |
+
+**Run `s0 plan --target FILE` first.** It now prints a `File outcome` line saying whether
+the file will be kept or removed, and why. Previously `plan` reported "1-pass zero
+overwrite" for both, so the plan could not tell you that the file was about to be deleted.
+
+If you meant to preserve the file, copy it first, or use `s0 carve` -- or make it a real
+image by padding it to a whole number of 1 MiB units.
+{% endhint %}
+
 {% hint style="success" %}
 **No root required for image files**
 `s0 list` enumerates block devices and may require root to show all entries. However, any `.raw`, `.img`, or `.dd` image file works as a `--target` in `plan`, `wipe`, `erase`, `image`, and `carve` without elevated privileges — ideal for CI/CD test pipelines.

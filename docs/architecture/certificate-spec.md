@@ -26,9 +26,9 @@ flowchart TD
     end
 
     subgraph Cryptography ["3. Ed25519 Signing"]
-        BYTES --> SHA[Compute SHA-256 Digest]
-        SHA --> ED[Sign with Authority Private Key RFC 8032]
-        ED --> EMBED[Embed Signature Block into Final Certificate]
+        BYTES --> ED[Sign the canonical bytes directly<br/>Ed25519 RFC 8032 over Canonical(P)]
+        ED --> SHA[Compute SHA-256 of the canonical bytes<br/>for the display-only signed_payload_hash]
+        SHA --> EMBED[Embed Signature Block into Final Certificate]
     end
 
     subgraph Artifacts ["4. Multi-Format Output"]

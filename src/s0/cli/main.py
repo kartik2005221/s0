@@ -723,6 +723,29 @@ def cmd_plan(args) -> int:
         ui.note("")
         ui.error(ladder["refusal_reason"])
 
+    # For a regular file, `wipe --target` does one of two quite different destructive
+    # things depending on whether the file looks like a raw disk image: keep it and
+    # overwrite in place, or erase it and unlink it. `plan` used to describe both as
+    # "1-pass zero overwrite", so an operator reading the plan could not tell that the
+    # file they were about to point at would be *deleted*. Say which, and why.
+    if getattr(target, "kind", "") == "image" or Path(target.path).is_file():
+        t_path = Path(target.path)
+        if t_path.is_file():
+            as_image = _looks_like_raw_image(t_path)
+            if as_image:
+                ui.key("File outcome", "kept - overwritten in place")
+                ui.note(f"    recognised as a raw disk image: {_image_reason(t_path)}")
+            else:
+                ui.key("File outcome", "ERASED AND REMOVED - the file will be deleted")
+                ui.note(
+                    f"    not recognised as a raw disk image: {human_bytes(t_path.stat().st_size)}. "
+                    f"A file is treated as an image when it is at least 1 MiB, 512-byte "
+                    f"aligned, and either carries a known image signature or is a whole "
+                    f"number of 1 MiB (or 63-sector CD track) units. Anything else takes "
+                    f"the file-erase path, which unlinks it. Use `s0 carve` or copy the "
+                    f"file first if you meant to preserve it."
+                )
+
     ui.note("")
     ui.note("DRY RUN - nothing was written. Run `s0 wipe` when satisfied.")
     # A refusal must not exit 0. See the note where `refused` is set.
@@ -735,6 +758,28 @@ def cmd_plan(args) -> int:
 #: `_looks_like_raw_image` confirms with a signature or a sector-aligned size
 #: before treating a file as an image, because a suffix alone is not evidence.
 IMAGE_SUFFIXES = (".img", ".raw", ".iso", ".bin")
+
+
+def _image_reason(path) -> str:
+    """Why `_looks_like_raw_image` said yes, in the terms the operator can check.
+
+    Two independent tests can pass and an operator debugging a surprise needs to know
+    which one fired: a signature, or the size-and-alignment shape. Claiming a signature
+    that is not there would make the explanation useless.
+    """
+    size = path.stat().st_size
+    human = human_bytes(size)
+    if size < 1024 * 1024:
+        return f"{human}, but under the 1 MiB minimum"
+    if size % 512:
+        return f"{human}, but not 512-byte aligned"
+    if _has_known_image_magic(_read_head_bytes(path, 512)):
+        return f"{human}, sector-aligned, and carries a known image signature"
+    if size % (1024 * 1024) == 0:
+        return f"{human}, a whole number of 1 MiB units"
+    if size % (2048 * 63) == 0:
+        return f"{human}, a whole number of 63-sector CD track units"
+    return f"{human}, sector-aligned"
 
 
 def _looks_like_raw_image(path) -> bool:

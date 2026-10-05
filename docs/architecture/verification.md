@@ -98,11 +98,19 @@ s0 solves this by separating **Attestation** from **Verification** using asymmet
 1. **Deterministic Canonicalization (s0 Canonical JSON v1):**
    - Key order, whitespace, and string escaping are deterministically canonicalized into an unambiguous UTF-8 byte stream per the [s0 Canonical JSON v1 specification](certificate-spec.md). The spec deliberately deviates from RFC 8785/JCS on one point: float fields are forbidden at the schema level (all numeric values are integers), eliminating ES6 double-formatting ambiguity across languages without implementing it.
 2. **Ed25519 Digital Signature (RFC 8032):**
-   - The issuing authority signs the canonical byte digest with its private key:
-     $$S = \text{Sign}_{K_{\text{priv}}}(\text{SHA256}(\text{Canonical}(P)))$$
+   - The issuing authority signs the **canonical payload bytes directly** with its private
+     key. The payload is *not* hashed before signing — Ed25519 is defined over a message,
+     and the message here is the canonical form:
+     $$S = \text{Sign}_{K_{\text{priv}}}(\text{Canonical}(P))$$
+   - `signature.signed_payload_hash` carries `sha256:` + the digest of those same canonical
+     bytes. It is a **display annotation for a human reader**, not the signed message. A
+     verifier that signs or checks `SHA256(Canonical(P))` instead of `Canonical(P)` will
+     fail against every real s0 certificate. This was checked directly against a real
+     certificate: Ed25519 verifies over the canonical bytes and does **not** verify over
+     the digest.
 3. **Client-Side Mathematical Check:**
    - The verifier loads the public key $K_{\text{pub}}$ from `keys.json` (or reads it from the certificate) and checks:
-     $$\text{Verify}_{K_{\text{pub}}}(\text{SHA256}(\text{Canonical}(P)), S) \stackrel{?}{=} \text{TRUE}$$
+     $$\text{Verify}_{K_{\text{pub}}}(\text{Canonical}(P), S) \stackrel{?}{=} \text{TRUE}$$
    - If any actor modifies a single character (e.g., altering `bytes_processed` or changing `OVERWRITE_ZERO_1PASS` to `ATA_SECURE_ERASE`), the SHA-256 digest changes and verification **mathematically fails**.
 
 ---

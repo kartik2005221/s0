@@ -204,7 +204,7 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 | **NIST SP 800-88 Rev. 2** | Media Sanitization | Purge (NVMe Sanitize, ATA Secure Erase), Clear (1-pass zero overwrite, file cluster sanitization). |
 | **IEEE 2883-2022** | Storage Sanitization | Standardized classification of physical and logical block sanitization. |
 | **ISO/IEC 27037** | Digital Evidence Handling | Simultaneous SHA-256 & MD5 evidence hashing, non-repudiation via Ed25519 signing, append-only ledger. |
-| **RFC 8785** | Canonical JSON (JCS) | Deterministic cryptographic certificate serialization and block hashing. |
+| **RFC 8785** | Canonical JSON (JCS) | Deterministic certificate serialization and block hashing. **Compatible, not identical:** s0 Canonical JSON v1 sorts keys by Unicode code point where RFC 8785 sorts by UTF-16 code unit, and refuses floats where RFC 8785 emits them. For the fixed certificate schema, whose keys are ASCII and which has no float fields, the two produce identical bytes. Deviations: `docs/architecture/canonical-json.md`. |
 | **RFC 8032** | Digital Signatures | High-performance Ed25519 public-key signature system. |
 
 Full compliance details: [docs/compliance/nist-compliance.md](https://sector-zero.gitbook.io/compliance/)
