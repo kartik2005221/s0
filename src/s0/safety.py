@@ -137,6 +137,81 @@ def s0_state_paths() -> list[Path]:
     return out
 
 
+def evaluate_path_safety(
+    path: str | os.PathLike[str],
+    *,
+    force: bool = False,
+    allow_state: bool = False,
+) -> tuple[list[str], str | None]:
+    """Evaluate whether *path* is protected without raising an exception.
+
+    Returns (warnings, refusal_reason).
+    """
+    resolved = _resolve(path)
+    if resolved is None:
+        return [], f"cannot resolve {str(path)!r} to a real path; refusing to act on it"
+
+    warnings: list[str] = []
+
+    # Block devices are handled by the device-tier safety check (mounts, root
+    # filesystem, HPA). Refusing `/dev/sda` here would duplicate that logic and
+    # lose the better error messages.
+    try:
+        from s0 import platform
+
+        if platform.is_block_device(resolved):
+            return warnings, None
+    except OSError:
+        pass
+
+    target = str(resolved)
+
+    is_root = target == "/" or (
+        os.name == "nt" and (target in ("\\", "/") or resolved == Path(resolved.anchor))
+    )
+    if is_root:
+        if not force:
+            return warnings, "Refusing to target the filesystem root '/'."
+        warnings.append(f"proceeding AGAINST THE FILESYSTEM ROOT: {target}")
+
+    resolved_home = _resolve(Path.home())
+    if resolved_home is not None and resolved == resolved_home:
+        if not force:
+            return warnings, (
+                f"Refusing to target the entire home directory ({target}). Target a specific path inside it."
+            )
+        warnings.append(f"proceeding AGAINST THE ENTIRE HOME DIRECTORY: {target}")
+
+    for prefix in SYSTEM_PREFIXES:
+        if prefix == "/System" and (
+            str(resolved) == "/System/Volumes" or str(resolved).startswith("/System/Volumes/")
+        ):
+            continue
+        if any(_under(resolved, Path(allowed)) for allowed in ALLOWED_TEMP_PREFIXES):
+            continue
+        if _under(resolved, Path(prefix)):
+            if not force:
+                return warnings, f"Refusing to target system path: {target}"
+            warnings.append(f"proceeding AGAINST A SYSTEM PATH: {target}")
+            break
+
+    if not allow_state:
+        for state in s0_state_paths():
+            if _under(resolved, state):
+                label = "s0's own state" if state.name == ".s0" else "the s0 installation tree"
+                if not force:
+                    return warnings, (
+                        f"Refusing to target {label}: {target}\n"
+                        "       This holds the audit ledger and signing material. Wiping it "
+                        "destroys the\n"
+                        "       chain of custody for every operation already recorded."
+                    )
+                warnings.append(f"proceeding AGAINST {label.upper()}: {target}")
+                break
+
+    return warnings, None
+
+
 def check_path_is_destructive(
     path: str | os.PathLike[str],
     *,
@@ -148,74 +223,9 @@ def check_path_is_destructive(
     Callers that already have a warning channel should raise; the returned list is
     only non-empty when `force=True` overrode something, so it must be shown.
     """
-    resolved = _resolve(path)
-    if resolved is None:
-        raise ProtectedPathError(f"cannot resolve {str(path)!r} to a real path; refusing to act on it")
-
-    warnings: list[str] = []
-
-    # Block devices are handled by the device-tier safety check (mounts, root
-    # filesystem, HPA). Refusing `/dev/sda` here would duplicate that logic and
-    # lose the better error messages.
-    try:
-        if resolved.is_block_device():
-            return warnings
-    except OSError:
-        pass
-
-    target = str(resolved)
-
-    is_root = target == "/" or (
-        os.name == "nt" and (target in ("\\", "/") or resolved == Path(resolved.anchor))
-    )
-    if is_root:
-        _refuse_or_warn(
-            warnings,
-            force,
-            "Refusing to target the filesystem root '/'.",
-            f"proceeding AGAINST THE FILESYSTEM ROOT: {target}",
-        )
-
-    resolved_home = _resolve(Path.home())
-    if resolved_home is not None and resolved == resolved_home:
-        _refuse_or_warn(
-            warnings,
-            force,
-            f"Refusing to target the entire home directory ({target}). Target a specific path inside it.",
-            f"proceeding AGAINST THE ENTIRE HOME DIRECTORY: {target}",
-        )
-
-    for prefix in SYSTEM_PREFIXES:
-        if prefix == "/System" and (
-            str(resolved) == "/System/Volumes" or str(resolved).startswith("/System/Volumes/")
-        ):
-            continue
-        if any(_under(resolved, Path(allowed)) for allowed in ALLOWED_TEMP_PREFIXES):
-            continue
-        if _under(resolved, Path(prefix)):
-            _refuse_or_warn(
-                warnings,
-                force,
-                f"Refusing to target system path: {target}",
-                f"proceeding AGAINST A SYSTEM PATH: {target}",
-            )
-            break
-
-    if not allow_state:
-        for state in s0_state_paths():
-            if _under(resolved, state):
-                label = "s0's own state" if state.name == ".s0" else "the s0 installation tree"
-                _refuse_or_warn(
-                    warnings,
-                    force,
-                    f"Refusing to target {label}: {target}\n"
-                    "       This holds the audit ledger and signing material. Wiping it "
-                    "destroys the\n"
-                    "       chain of custody for every operation already recorded.",
-                    f"proceeding AGAINST {label.upper()}: {target}",
-                )
-                break
-
+    warnings, refusal = evaluate_path_safety(path, force=force, allow_state=allow_state)
+    if refusal is not None:
+        raise ProtectedPathError(refusal)
     return warnings
 
 
@@ -231,8 +241,5 @@ class ProtectedPathError(Exception):
 
 def is_protected_path(path: str | os.PathLike[str], *, allow_state: bool = False) -> bool:
     """Boolean form for the web tier, which answers with a status code."""
-    try:
-        check_path_is_destructive(path, force=False, allow_state=allow_state)
-    except ProtectedPathError:
-        return True
-    return False
+    _, refusal = evaluate_path_safety(path, force=False, allow_state=allow_state)
+    return refusal is not None

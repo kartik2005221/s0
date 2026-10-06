@@ -12,7 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from s0.safety import ProtectedPathError, check_path_is_destructive
+from s0.safety import evaluate_path_safety
 from s0.wipe.methods.base import Target
 
 logger = logging.getLogger("s0.devices")
@@ -370,10 +370,10 @@ def evaluate_safety(
     """
     warnings: list[str] = []
 
-    try:
-        warnings.extend(check_path_is_destructive(target.path, force=force))
-    except ProtectedPathError as exc:
-        return warnings, str(exc)
+    warnings_path, refusal = evaluate_path_safety(target.path, force=force)
+    warnings.extend(warnings_path)
+    if refusal is not None:
+        return warnings, refusal
 
     if target.kind == "image":
         return warnings, None

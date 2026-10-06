@@ -92,14 +92,7 @@ def is_block_device(path: Path) -> bool:
     if not s_path or "\x00" in s_path:
         return False
     if sys.platform == "win32":
-        if is_windows_volume_path(s_path):
-            return True
-        if s_path.startswith(("\\\\.\\", "\\\\?\\")):
-            try:
-                return path.is_block_device()
-            except OSError:
-                return False
-        return False
+        return is_windows_volume_path(s_path)
 
     norm = os.path.normpath(s_path)
     if ".." in norm.split(os.sep) or not norm.startswith("/dev/"):

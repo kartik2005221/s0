@@ -84,6 +84,34 @@ def _get_s0_cmd() -> list[str]:
     return [_sys.executable, "-m", "s0.cli.main"]
 
 
+ALLOWED_TARGET_ROOTS = [
+    REPO.resolve(),
+    Path.home().resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+    Path("/tmp").resolve(),  # nosec B108  # noqa: S108
+    Path("/media").resolve(),
+    Path("/mnt").resolve(),
+]
+
+ALLOWED_OUT_DIR_ROOTS = [
+    platform.safe_home().resolve(),
+    REPO.resolve(),
+    Path.home().resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+    Path("/tmp").resolve(),  # nosec B108  # noqa: S108
+    Path("/media").resolve(),
+    Path("/mnt").resolve(),
+]
+
+ALLOWED_KEY_ROOTS = [
+    REPO.resolve(),
+    Path.home().resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+    Path("/tmp").resolve(),  # nosec B108  # noqa: S108
+    Path("/media").resolve(),
+    Path("/mnt").resolve(),
+]
+
 IMAGE_DIRS = [
     Path(os.environ.get("S0_IMAGE_DIR", "")) if os.environ.get("S0_IMAGE_DIR") else None,
     platform.safe_home() / ".s0" / "out",
@@ -101,12 +129,28 @@ def _prepare_job_out_dir(req_out_dir: str | None, prefix: str, job_id: str) -> P
         for sp in SYSTEM_PREFIXES:
             norm_sp = os.path.normpath(sp)
             if norm_str == norm_sp or norm_str.startswith(norm_sp.rstrip(os.sep) + os.sep):
-                raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
+                if not any(
+                    norm_str == at or norm_str.startswith(at.rstrip(os.sep) + os.sep)
+                    for at in ALLOWED_TEMP_PREFIXES
+                ):
+                    raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
         real_str = os.path.realpath(norm_str)
         for sp in SYSTEM_PREFIXES:
             real_sp = os.path.realpath(sp)
             if real_str == real_sp or real_str.startswith(real_sp.rstrip(os.sep) + os.sep):
-                raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
+                if not any(
+                    real_str == at or real_str.startswith(at.rstrip(os.sep) + os.sep)
+                    for at in ALLOWED_TEMP_PREFIXES
+                ):
+                    raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
+        is_safe = False
+        for root in ALLOWED_OUT_DIR_ROOTS:
+            r_str = str(root)
+            if real_str == r_str or real_str.startswith(r_str.rstrip(os.sep) + os.sep):
+                is_safe = True
+                break
+        if not is_safe:
+            raise HTTPException(400, f"output directory is outside permitted roots: {raw_str}")
         out_dir = Path(real_str)
     else:
         out_dir = platform.safe_home() / ".s0" / "out" / f"{prefix}-{job_id}"
@@ -139,13 +183,7 @@ _SYSTEM_PATHS = SYSTEM_PREFIXES
 
 
 def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
-    """Refuse protected paths, using the same rules as the CLI.
-
-    This used to keep its own `_SYSTEM_PATHS` copy, which is how the two
-    interfaces came to disagree: the web tier refused `/etc/passwd` while the CLI
-    refused nothing, and `~/.s0` was not on either list. One module owns the rules
-    now (`s0.safety`), so a change applies to both.
-    """
+    """Refuse protected paths, using the same rules as the CLI."""
     if not target_path or "\x00" in target_path:
         return False, "Invalid target path"
     norm = os.path.normpath(target_path.strip())
@@ -593,6 +631,14 @@ def _resolve_key(
                 or real_str.startswith(real_sp + os.sep)
             ):
                 raise HTTPException(403, f"Access to system key path is forbidden: {raw}")
+        is_safe = False
+        for root in ALLOWED_KEY_ROOTS:
+            r_str = str(root)
+            if real_str == r_str or real_str.startswith(r_str.rstrip(os.sep) + os.sep):
+                is_safe = True
+                break
+        if not is_safe:
+            raise HTTPException(403, f"Specified signing key is outside permitted roots: {raw}")
         kp = Path(real_str)
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {raw}")
@@ -903,13 +949,14 @@ def _find_target(path: str):
         raise HTTPException(400, "directory traversal not allowed")
     p = Path(norm)
     if platform.is_block_device(p):
+        norm_real = os.path.realpath(norm)
         for t in list_block_targets():
-            if Path(t.path).resolve() == p.resolve():
+            if os.path.realpath(t.path) == norm_real:
                 return t
-        size = get_block_device_size(p)
+        size = get_block_device_size(norm)
         if size > 0:
             return Target(
-                path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
+                path=norm, kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
             )
         raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
     safe, reason = _is_safe_wipe_path(norm)
@@ -1087,6 +1134,9 @@ ALLOWED_BROWSE_ROOTS = [
     Path.home().resolve(),
     Path("/media").resolve(),
     Path("/mnt").resolve(),
+    Path(tempfile.gettempdir()).resolve(),
+    Path("/tmp").resolve(),  # nosec B108  # noqa: S108
+    *([Path("/").resolve()] if _sys.platform != "win32" else [Path("C:\\")]),
 ]
 
 
@@ -1095,7 +1145,7 @@ def _is_safe_browse_path(target: Path | str) -> bool:
         real_target = os.path.realpath(str(target))
         for root in ALLOWED_BROWSE_ROOTS:
             real_root = os.path.realpath(str(root))
-            if real_target == real_root or real_target.startswith(real_root + os.sep):
+            if real_target == real_root or real_target.startswith(real_root.rstrip(os.sep) + os.sep):
                 return True
         return False
     except Exception:
@@ -1117,6 +1167,11 @@ def api_browse(path: str = ".") -> JSONResponse:
             status_code=400,
         )
     real_target_str = os.path.realpath(norm)
+    if real_target_str == "/" or (_sys.platform == "win32" and real_target_str in ("\\", "/") or norm == ""):
+        return JSONResponse(
+            {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
+            status_code=403,
+        )
     for sp in SYSTEM_PREFIXES:
         norm_sp = os.path.normpath(sp)
         real_sp = os.path.realpath(sp)
@@ -1126,10 +1181,23 @@ def api_browse(path: str = ".") -> JSONResponse:
             or real_target_str == real_sp
             or real_target_str.startswith(real_sp + os.sep)
         ):
+            if any(
+                norm == at
+                or norm.startswith(at.rstrip(os.sep) + os.sep)
+                or real_target_str == at
+                or real_target_str.startswith(at.rstrip(os.sep) + os.sep)
+                for at in ALLOWED_TEMP_PREFIXES
+            ):
+                continue
             return JSONResponse(
                 {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
                 status_code=403,
             )
+    if not _is_safe_browse_path(real_target_str):
+        return JSONResponse(
+            {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
+            status_code=403,
+        )
     requested = Path(real_target_str)
     if not requested.exists():
         return JSONResponse(
@@ -1138,11 +1206,6 @@ def api_browse(path: str = ".") -> JSONResponse:
     if not requested.is_dir():
         return JSONResponse(
             {"error": "not a directory", "path": str(requested), "items": []}, status_code=400
-        )
-    if not _is_safe_browse_path(real_target_str):
-        return JSONResponse(
-            {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
-            status_code=403,
         )
 
     target = requested
@@ -1550,6 +1613,17 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         ):
             if not platform.is_block_device(Path(real_target_str)):
                 raise HTTPException(403, f"Access to system path is forbidden: {req.target}")
+    is_safe = False
+    if platform.is_block_device(Path(norm_target)):
+        is_safe = True
+    else:
+        for root in ALLOWED_TARGET_ROOTS:
+            r_str = str(root)
+            if real_target_str == r_str or real_target_str.startswith(r_str.rstrip(os.sep) + os.sep):
+                is_safe = True
+                break
+    if not is_safe:
+        raise HTTPException(403, f"Target media is outside permitted roots: {req.target}")
     target_p = Path(real_target_str)
     if not target_p.exists():
         raise HTTPException(404, "target media does not exist")
@@ -1739,6 +1813,18 @@ def start_image(req: ImageRequest) -> JSONResponse:
         raise HTTPException(400, "source and destination cannot be the same path")
 
     real_src_str = os.path.realpath(norm_src)
+    is_src_safe = False
+    if platform.is_block_device(Path(norm_src)):
+        is_src_safe = True
+    else:
+        for root in ALLOWED_TARGET_ROOTS:
+            r_str = str(root)
+            if real_src_str == r_str or real_src_str.startswith(r_str.rstrip(os.sep) + os.sep):
+                is_src_safe = True
+                break
+    if not is_src_safe:
+        raise HTTPException(403, f"source path is outside permitted roots: {req.source}")
+
     src_p = Path(real_src_str)
     if not src_p.exists():
         raise HTTPException(404, f"source does not exist: {req.source}")
@@ -1752,6 +1838,16 @@ def start_image(req: ImageRequest) -> JSONResponse:
         pass
     if _sys.platform == "win32" and platform.is_windows_volume_path(req.destination):
         is_blk = True
+
+    is_dst_safe = is_blk
+    if not is_dst_safe:
+        for root in ALLOWED_TARGET_ROOTS:
+            r_str = str(root)
+            if real_dst_str == r_str or real_dst_str.startswith(r_str.rstrip(os.sep) + os.sep):
+                is_dst_safe = True
+                break
+    if not is_dst_safe:
+        raise HTTPException(403, f"destination path is outside permitted roots: {req.destination}")
 
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
         raise HTTPException(
@@ -1947,6 +2043,14 @@ def download(job_id: str, filename: str) -> FileResponse:
     if safe_name != filename or safe_name in (".", ".."):
         raise HTTPException(400, "invalid artifact name")
     out_dir_str = os.path.realpath(str(job["out_dir"]))
+    is_out_safe = False
+    for root in ALLOWED_OUT_DIR_ROOTS:
+        r_str = str(root)
+        if out_dir_str == r_str or out_dir_str.startswith(r_str.rstrip(os.sep) + os.sep):
+            is_out_safe = True
+            break
+    if not is_out_safe:
+        raise HTTPException(404, "no such artifact")
     file_path_str = os.path.realpath(os.path.join(out_dir_str, safe_name))
     if not (file_path_str == out_dir_str or file_path_str.startswith(out_dir_str + os.sep)):
         raise HTTPException(404, "no such artifact")
