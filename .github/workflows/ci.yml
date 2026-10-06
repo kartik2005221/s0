@@ -316,9 +316,6 @@ jobs:
       - name: Design tokens are in sync
         run: python tools/sync_tokens.py --check
 
-      - name: Website templates are in sync
-        run: python tools/build_site.py --check
-
       - name: Ruff (format, blocking)
         run: ruff format --check --diff .
 

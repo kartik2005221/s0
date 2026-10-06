@@ -4,21 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>s0 — Unified Forensic Data Sanitization, Acquisition &amp; Carving Suite</title>
+  <!-- SEO & Social Meta Tags -->
+  <title>s0 — Unified Forensic Data Sanitization, Acquisition & Carving Suite</title>
   <link rel="canonical" href="https://sector0.pages.dev/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="s0 — Sector Zero: Unified Forensic Suite">
+  <meta name="twitter:image" content="https://sector0.pages.dev/og-image.png">
   <meta name="description" content="s0 (Sector Zero) is an open-source digital forensic and media sanitization suite. Aligned with NIST SP 800-88 Rev. 2, with Ed25519-signed attestation records.">
   <meta name="author" content="Kartik (@kartik2005221)">
   
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://sector0.pages.dev/">
-  <meta property="og:title" content="s0 — Unified Forensic Data Sanitization, Acquisition &amp; Carving Suite">
-  <meta property="og:description" content="s0 (Sector Zero) is an open-source digital forensic and media sanitization suite. Aligned with NIST SP 800-88 Rev. 2, with Ed25519-signed attestation records.">
-  <meta property="og:image" content="assets/favicons/s0-dark/android-chrome-512x512.png">
+  <meta property="og:title" content="s0 — Sector Zero: Unified Forensic Suite">
+  <meta property="og:description" content="Sanitization aligned with NIST SP 800-88 Rev. 2, deep evidence carving, bit-stream acquisition & Ed25519-signed attestation records.">
+  <meta property="og:image" content="https://sector0.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="s0 — Unified Forensic Data Sanitization, Acquisition &amp; Carving Suite">
-  <meta name="twitter:description" content="s0 (Sector Zero) is an open-source digital forensic and media sanitization suite. Aligned with NIST SP 800-88 Rev. 2, with Ed25519-signed attestation records.">
-  <meta name="twitter:image" content="assets/favicons/s0-dark/android-chrome-512x512.png">
+  <meta name="twitter:title" content="s0 — Sector Zero: Unified Forensic Suite">
+  <meta name="twitter:description" content="Forensic sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
+  <meta name="twitter:image" content="https://sector0.pages.dev/assets/favicons/s0-dark/android-chrome-512x512.png">
 
   <!-- Instant Theme Bootstrapping -->
   <script>
@@ -37,10 +41,22 @@
   <link rel="apple-touch-icon" sizes="180x180" href="assets/favicons/s0-dark/apple-touch-icon.png">
   <link rel="manifest" href="assets/favicons/s0-dark/site.webmanifest">
 
+  <!-- Stylesheet -->
   <link rel="stylesheet" href="css/home.css">
 </head>
 <body>
 
+<!--
+  Comparison-matrix icon sprite.
+
+  The marks in the feature table used to be tick, cross and tilde characters.
+  They are glyphs rather than emoji, but they read out unpredictably, they do
+  not align in a monospace table, and they break the rule the rest of the
+  product holds itself to: geometric Unicode only, drawn as SVG like the portals
+  do. Each is aria-hidden -- the cell's own text ("Purge & Clear", "None", "No")
+  already carries the meaning, so announcing the mark as well would only repeat
+  it.
+-->
 <svg class="icon-sprite" width="0" height="0" aria-hidden="true" focusable="false">
   <symbol id="i-check-icon" viewBox="0 0 16 16">
     <path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor"
@@ -56,17 +72,15 @@
   </symbol>
 </svg>
 
+<!-- Header — Minimal & Clean -->
 <header class="site-header">
   <div class="site-header-inner">
-    <a href="/" class="site-logo-link" title="s0 — Sector Zero Home">
+    <a href="/" class="site-logo-link">
       <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
       <span class="site-logo-title"><span class="logo-name">s0</span><span class="logo-sub"> — Sector Zero</span></span>
     </a>
 
     <div class="site-header-right">
-      <a href="/install/" class="nav-btn ">Install</a>
-      <a href="/verify/" class="nav-btn ">Verify</a>
-      <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
       <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span class="github-repo-text">kartik2005221/s0</span>
@@ -85,6 +99,7 @@
     </div>
   </div>
 </header>
+
 <main>
   <!-- Hero Section — Fullscreen & Grand -->
   <section class="hero">
@@ -169,7 +184,7 @@
         </div>
         <h3>Forensic Evidence Carving</h3>
         <p>
-          Reconstruct deleted evidence from raw images across ext4, NTFS, FAT32, and exFAT. Evaluates structural confidence using 4-factor Shannon entropy scoring and bifragment cluster reassembly across 62+ signatures.
+          Reconstruct deleted evidence from raw images across ext4, NTFS, FAT32, and exFAT. Evaluates structural confidence using 4-factor Shannon entropy scoring and bifragment cluster reassembly.
         </p>
       </div>
 
@@ -212,7 +227,7 @@
             <span class="feature-tag">SUPPORTING FEATURE</span>
           </div>
         </div>
-        <h3>Zero-Trust Certificate Verification</h3>
+        <h3>Zero-Trust Verification Portal</h3>
         <p>
           100% client-side WebCrypto validator at <a href="/verify/">sector0.pages.dev/verify</a>. Drag and drop JSON certificates, PDFs, or QR images with zero data leaving your machine.
         </p>
@@ -234,71 +249,34 @@
       <div class="terminal-window">
         <div class="terminal-header">
           <div class="terminal-dots">
-            <span class="dot dot-red"></span>
-            <span class="dot dot-yellow"></span>
-            <span class="dot dot-green"></span>
+            <div class="terminal-dot dot-red"></div>
+            <div class="terminal-dot dot-yellow"></div>
+            <div class="terminal-dot dot-green"></div>
           </div>
-          <div class="terminal-title" id="terminalTitle">s0 — Terminal Showcase</div>
+          <div class="terminal-title">s0 — Forensic CLI Session</div>
           <div class="terminal-actions">
-            <button class="term-action-btn" id="termRestartBtn" title="Replay demo">Replay</button>
+            <button class="terminal-replay-btn" data-action="replay-terminal">↺ Replay</button>
           </div>
         </div>
         <div class="terminal-body" id="terminalBody">
-          <!-- Populated by terminal.js -->
+          <div class="terminal-line"><span class="term-prompt">analyst@s0:~$ </span><span class="term-cursor"></span></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Architecture & Integrity Section -->
-  <section class="container section-spacer reveal-on-scroll" id="architecture">
-    <div class="section-header">
-      <span class="section-label">[ Cryptography &amp; Trust ]</span>
-      <h2 class="section-title">Cryptographic Architecture</h2>
-      <p class="section-desc">
-        Deterministic hashing, RFC 8785 canonical serialization, and zero-trust verification.
-      </p>
-    </div>
-
-    <div class="arch-flow-grid">
-      <div class="arch-card">
-        <div class="arch-number">01</div>
-        <h4>Hardware Operation</h4>
-        <p>Sanitization, acquisition, or carving executes against raw block devices. Real-time thermal telemetry and zero writeback verification.</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-card">
-        <div class="arch-number">02</div>
-        <h4>Canonical Serialization</h4>
-        <p>Attestation data is normalized using RFC 8785 (JSON Canonicalization Scheme) to prevent semantic tampering and key-ordering variance.</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-card">
-        <div class="arch-number">03</div>
-        <h4>Ed25519 Signing</h4>
-        <p>A pure RFC 8032 Ed25519 digital signature is computed across the canonical payload and embedded into the final certificate and audit ledger.</p>
-      </div>
-      <div class="arch-arrow">→</div>
-      <div class="arch-card">
-        <div class="arch-number">04</div>
-        <h4>Zero-Trust Verification</h4>
-        <p>Anyone can verify certificates offline using the CLI (<code>s0 verify</code>) or the static WebCrypto verifier without a server backend.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Installation Matrix -->
+  <!-- Quick Installation Commands — Expansive & Wide -->
   <section class="container section-spacer reveal-on-scroll" id="install">
     <div class="section-header">
-      <span class="section-label">[ Deployment ]</span>
+      <span class="section-label">[ Installation ]</span>
       <h2 class="section-title">Quick Installation</h2>
       <p class="section-desc">
-        One command to install s0 across all major operating systems.
+        One command configures an isolated virtual environment and registers s0 on your system PATH.
       </p>
     </div>
 
-    <div class="install-grid">
-      <!-- Linux / macOS -->
+    <div class="install-list">
+      <!-- Linux & macOS -->
       <div class="install-item-card">
         <div class="install-item-header">
           <h3>Linux &amp; macOS</h3>
@@ -348,8 +326,8 @@
     </div>
 
     <div class="install-cta">
-      <a class="install-cta-link" href="/install/">
-        Visit Full Installation Guide (sector0.pages.dev/install) →
+      <a class="install-cta-link" href="https://sector0.pages.dev/install/" target="_blank" rel="noopener">
+        Visit full Installation &amp; Upgrade Portal (sector0.pages.dev) →
       </a>
     </div>
   </section>
@@ -465,6 +443,7 @@
   </section>
 </main>
 
+<!-- Footer with Extended Documentation Links -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
@@ -484,24 +463,24 @@
           <h5>Documentation</h5>
           <ul>
             <li><a href="https://sector0.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/guides/user-manual" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/architecture/system-architecture" target="_blank" rel="noopener">System Architecture ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/guides/cli-reference" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/guides/forensic-carving" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/guides/live-iso" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/compliance/nist-compliance" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/project/agentic-ai" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/user-manual/" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/architecture/" target="_blank" rel="noopener">System Architecture ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/cli-reference/" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/forensic-carving/" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/live-iso/" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/compliance/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/project/agentic-ai/" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
           </ul>
         </div>
 
-        <!-- Platform Column -->
+        <!-- Ecosystem Column -->
         <div class="footer-col">
-          <h5>Platform</h5>
+          <h5>Ecosystem</h5>
           <ul>
-            <li><a href="/install/">Install Guide</a></li>
-            <li><a href="/verify/">Verify Certificate</a></li>
+            <li><a href="/verify/">Verification Portal</a></li>
+            <li><a href="/install/">Installation Portal</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
-            <li><a href="https://sector0.gitbook.io/architecture/certificate-spec" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/architecture/canonical-json/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
           </ul>
         </div>
 
@@ -528,6 +507,8 @@
     </div>
   </div>
 </footer>
+
+<!-- Scripts -->
 <script src="js/home.js"></script>
 <script src="js/terminal.js"></script>
 </body>
