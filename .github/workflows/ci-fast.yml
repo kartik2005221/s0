@@ -1,0 +1,153 @@
+name: Branch CI
+
+# Runs on feature/fix branches during development.
+# Fast feedback loop: executes unit tests, linting, tool checks, and site integrity.
+# Full multi-OS matrix (Linux, macOS, Windows) and compliance checks run on PRs to master and pushes to master.
+on:
+  push:
+    branches:
+      - "**"
+      - "!master"
+
+concurrency:
+  group: branch-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_PYTHON_VERSION_WARNING: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  test:
+    name: Test (Python 3.12, ubuntu-latest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install system tools the suite probes for
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            ffmpeg \
+            zstd \
+            e2fsprogs \
+            exfatprogs \
+            shellcheck \
+            sqlite3
+
+      - name: Report which probed tools are present
+        shell: bash
+        run: |
+          missing=0
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              echo "  present: $tool"
+            else
+              echo "  MISSING: $tool"
+              missing=1
+            fi
+          done
+          echo "missing=$missing"
+
+      - name: Fail if a probed tool is absent
+        run: |
+          for tool in ffmpeg zstd mke2fs debugfs mkfs.exfat node shellcheck sqlite3; do
+            command -v "$tool" >/dev/null 2>&1 || {
+              echo "::error::required tool missing: $tool -- tests that need it would skip silently"
+              exit 1
+            }
+          done
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[web,test,dev]"
+
+      - name: Free scratch space
+        run: df -h /tmp || true
+
+      - name: Pytest
+        run: >-
+          pytest -q --tb=short
+          --cov=src/s0 --cov-report=term-missing:skip-covered --cov-report=xml
+          --cov-fail-under=70
+        env:
+          PYTHONHASHSEED: "0"
+
+      - name: Coverage floor is enforced
+        run: |
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          line = float(ET.parse("coverage.xml").getroot().get("line-rate")) * 100
+          print(f"measured line coverage: {line:.2f}%")
+          if line < 70.0:
+              raise SystemExit(f"Coverage {line:.2f}% is below 70% floor")
+          PY
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-xml-branch
+          path: coverage.xml
+
+      - name: Verify the wheel installs and runs standalone
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade build
+          python -m build --wheel --outdir dist/
+          python -m venv /tmp/wheeltest
+          /tmp/wheeltest/bin/pip install --quiet dist/*.whl
+          /tmp/wheeltest/bin/s0 --version
+          /tmp/wheeltest/bin/s0 carve --help > /dev/null
+          echo "wheel ok"
+
+  lint:
+    name: Lint & Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          pip install -e .
+      - name: Ruff (lint, whole tree, blocking)
+        run: ruff check --output-format=github .
+      - name: Documented help screens are current
+        run: python tools/gen_help_reference.py --check
+      - name: Documented carving reference is current
+        run: python tools/gen_carving_reference.py --check
+      - name: CSP inline hashes are in sync
+        run: python tools/sync_csp.py --check
+      - name: Design tokens are in sync
+        run: python tools/sync_tokens.py --check
+      - name: Website templates are in sync
+        run: python tools/build_site.py --check
+      - name: Ruff (format, blocking)
+        run: ruff format --check --diff .
+
+  site-integrity:
+    name: Site Links & Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Every local link in site/ resolves
+        run: python tools/check_site_links.py --root .

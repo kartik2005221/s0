@@ -4,25 +4,25 @@
 
 **Unified Forensic Data Sanitization, Bit-Stream Acquisition & Evidence Carving Suite**
 
-[![Release](https://img.shields.io/badge/Release-v3.0.0-blue.svg)](https://github.com/kartik2005221/s0/releases)
+[![Release](https://img.shields.io/github/v/release/kartik2005221/s0?color=blue&label=Release)](https://github.com/kartik2005221/s0/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/Website-s0--site.pages.dev-blueviolet.svg)](https://sector0.pages.dev/)
+[![Website](https://img.shields.io/badge/Website-sector0.pages.dev-blueviolet.svg)](https://sector0.pages.dev/)
 [![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88_Rev.2_aligned-green.svg)](https://sector0.gitbook.io/compliance/)
 [![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://sector0.gitbook.io/architecture/canonical-json/)
-[![Documentation](https://img.shields.io/badge/Docs-s0--docs.gitbook.io-orange.svg)](https://sector0.gitbook.io/)
+[![Documentation](https://img.shields.io/badge/Docs-sector0.gitbook.io-orange.svg)](https://sector0.gitbook.io/)
 
-*One unified toolchain. Disk sanitization, forensic acquisition, file carving, audit-ledger verification and offline certificate validation. Cryptographic chain of custody throughout.*
+*One unified toolchain. Disk sanitization, forensic acquisition, file carving & evidence recovery, audit-ledger verification, and offline certificate validation. Cryptographic chain of custody throughout.*
 
 ---
 
-### Official Portals & Live Deployment
+### Official Links & Deployments
 
 | Service | Live URL | Purpose |
 |---|---|---|
 | **Official Website** | [sector0.pages.dev](https://sector0.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
-| **Documentation Portal** | [sector0.gitbook.io](https://sector0.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
-| **Verification Portal** | [sector0.pages.dev/verify](https://sector0.pages.dev/verify/) | 100% client-side, air-gapped Ed25519 certificate verifier |
-| **Installation Portal** | [sector0.pages.dev](https://sector0.pages.dev/install/) | One-line installation scripts, checksums & release packages |
+| **Documentation** | [sector0.gitbook.io](https://sector0.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
+| **Certificate Verification** | [sector0.pages.dev/verify](https://sector0.pages.dev/verify/) | 100% client-side, air-gapped Ed25519 certificate verifier |
+| **Installation Guide** | [sector0.pages.dev/install](https://sector0.pages.dev/install/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
 
 </div>
@@ -31,14 +31,14 @@
 
 ## What is S0?
 
-**S0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and a zero-trust verification portal into a single multi-platform suite:
+**S0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and zero-trust verification into a single multi-platform suite:
 
 | Capability | Module | What S0 Does |
 |---|:---:|---|
 | **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
-| **Offensive Carving** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and USB drives across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
-| **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and ddrescue-style bad sector zero-filling. |
-| **Zero-Trust Verification** | Portal | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
+| **Offensive Carving & Recovery** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and corrupt media across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
+| **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and bad sector zero-filling. |
+| **Zero-Trust Verification** | Verifier | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
 
 Every operation is recorded in a supporting hash-chained audit ledger (`~/.s0/s0_audit.db`), providing a tamper-evident chain of custody verifiable offline in milliseconds.
 
@@ -61,7 +61,7 @@ Consult the [Documentation Legal FAQ](https://sector0.gitbook.io/getting-started
 
 ## Quick Installation
 
-Full installation instructions and verification guides are hosted at [sector0.pages.dev](https://sector0.pages.dev/install/).
+Full installation instructions and verification guides are hosted at [sector0.pages.dev/install](https://sector0.pages.dev/install/).
 
 ### Linux/MacOS
 ```bash
@@ -104,13 +104,8 @@ s0 list
 s0 plan --target /dev/sdb
 ```
 
-> **Redirecting output? Use `--json` or `--format csv`.** Human-readable output goes
-> to **stderr** and stdout is left empty, by design: stdout carries only
-> machine-readable output, so a script can pipe it somewhere without scraping
-> formatted text. `s0 list > devices.txt` therefore writes an **empty file** —
-> `s0 list --format csv > devices.csv` is what you want. Note that `--json` (or
-> `--format json`) is what you want for scripting even when you are only looking:
-> `s0 list --json | jq -r '.result[] | .path'`.
+> **Machine-Readable Output:** Human-readable progress goes to **stderr** while stdout carries clean machine-readable data. For scripting or automation, use `--json` or `--format csv`:
+> `s0 list --json | jq -r '.result[] | .path'`
 
 ### 2. NIST SP 800-88 Drive Sanitization
 ```bash
@@ -119,10 +114,10 @@ sudo s0 wipe --target /dev/sdb --yes --operator "analyst-01" --organization "For
 
 ### 3. File & Directory Secure Deletion
 ```bash
-s0 wipe --targets /path/to/file.pdf /path/to/sensitive_folder/ --passes 1
+s0 wipe --targets /path/to/file.pdf /path/to/sensitive_folder/ --yes
 ```
 
-### 4. Forensic File Carving & Recovery
+### 4. Forensic File Carving & Evidence Recovery
 ```bash
 s0 carve --target evidence.raw --out-dir ./recovered --extensions jpg,png,pdf,zip --min-confidence 50
 ```
@@ -140,7 +135,7 @@ s0 audit list --limit 25
 
 s0 audit verify
 
-s0 verify certificate_12345678.json --key src/s0/data/keys/demo_issuer_public.pem
+s0 verify certificate_12345678.json
 ```
 
 ### 7. Bootable Live Media & USB Station (`s0 live`)
@@ -157,43 +152,32 @@ sudo s0 live flash --target /dev/sdb -y
 ## Interfaces: CLI, Web Console & Bare-Metal ISO
 
 ### 1. Local Forensic Web Dashboard (`sudo s0 web`)
-Launch the air-gapped 5-tab browser console directly on loopback (`127.0.0.1:8669`):
+Launch the air-gapped browser console directly on loopback (`127.0.0.1:8669`):
 ```bash
 sudo s0 web
 ```
-> **Note on Root Privileges:** Direct block device sanitization and raw disk acquisition require root (`sudo`) privileges to access raw storage controllers. Without sudo, unprivileged file/folder wiping remains available, while direct drive wiping is disabled for safety.
->
-> This is a trade-off, not a free recommendation. The dashboard serves a destructive API (`/api/wipe`, `/api/erase-files`) and writes its session token under the invoking user's `~/.s0`, so running it as root means any caller holding that token has root over the machine and over the evidence on it. The bundled agent skill therefore tells an agent never to launch it with `sudo` itself, and to ask you to start it and hand over the token. If you do not need raw device access, `s0 web` without `sudo` is the safer choice.
-
-The Web Dashboard runs the identical cryptographic and carving engines as the CLI and shares the local SQLite audit ledger.
+> **Note on Privileges:** Direct block device sanitization and raw disk acquisition require root (`sudo`) privileges. Without sudo, unprivileged file/folder wiping and carving remain fully available. See [Web Console Guide](https://sector0.gitbook.io/guides/web-dashboard/) for details.
 
 ### 2. Bare-Metal Bootable Live ISO (Debian 12)
 When internal or system drives cannot be unmounted within a running host OS:
-1. Download verified hybrid ISO directly from CLI or GitHub Releases:
-   ```bash
-   s0 live download
-   ```
-2. Flash to USB pendrive:
-   ```bash
-   sudo s0 live flash --target /dev/sdb
-   ```
-3. Boot target system into the air-gapped Chromium kiosk wipe station. Consult the [Live ISO Build & Deployment Guide](https://sector0.gitbook.io/guides/live-iso/) for details.
+1. Download verified hybrid ISO directly from CLI: `s0 live download`
+2. Flash to USB pendrive: `sudo s0 live flash --target /dev/sdb`
+3. Boot target system into the air-gapped kiosk station. See [Live ISO Guide](https://sector0.gitbook.io/guides/live-iso/).
 
-### 3. Verification Portal ([sector0.pages.dev/verify](https://sector0.pages.dev/verify/))
-Every certificate issued embeds a QR code linking to the client-side portal. Built with pure WebCrypto:
-- Zero data ever leaves your browser.
-- Operates 100% offline — drag and drop `certificate.json` into `site/verify/index.html`.
-- Accredited authority public keys are pinned; untrusted keys trigger immediate visual warnings.
+### 3. Client-Side Verification ([sector0.pages.dev/verify](https://sector0.pages.dev/verify/))
+Every certificate issued embeds a verification QR code and SHA-256 fingerprint:
+- Operates 100% offline in browser via WebCrypto.
+- Zero case data leaves your local machine.
+- Immediate cryptographic signature and hash-chain validation.
 
 ---
 
 ## Agentic AI Skill (`skills/s0-forensics/`)
 
 `s0` includes a dedicated, high-assurance agentic skill conforming to the **Skill Creator** standard:
-- **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md) — the single source of truth. Some agent tools look for a skill under `.agents/skills/`; that copy is generated at packaging time and is **not** committed, so do not link to a path that is absent from a fresh clone.
-- **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience (no premature aborts during controller sanitization), and post-execution certificate verification.
-- **Reference Manuals:** Comprehensive technical guides covering NIST/IEEE method mappings, hardware safety rules, magic-byte signatures, and cryptographic audit specifications.
-- **Documentation Guide:** See [Agentic AI & High-Risk Safety Guide](https://sector0.gitbook.io/project/agentic-ai/) on the docs portal.
+- **Specification:** [`skills/s0-forensics/SKILL.md`](skills/s0-forensics/SKILL.md)
+- **Safety Directives:** Enforces mandatory pre-flight dry-runs (`s0 plan`), drive serial/model confirmation, operational patience, and post-execution certificate verification.
+- **Documentation Guide:** See [Agentic AI Guide](https://sector0.gitbook.io/project/agentic-ai/) on GitBook.
 
 ---
 
@@ -204,10 +188,10 @@ Every certificate issued embeds a QR code linking to the client-side portal. Bui
 | **NIST SP 800-88 Rev. 2** | Media Sanitization | Purge (NVMe Sanitize, ATA Secure Erase), Clear (1-pass zero overwrite, file cluster sanitization). |
 | **IEEE 2883-2022** | Storage Sanitization | Standardized classification of physical and logical block sanitization. |
 | **ISO/IEC 27037** | Digital Evidence Handling | Simultaneous SHA-256 & MD5 evidence hashing, non-repudiation via Ed25519 signing, append-only ledger. |
-| **RFC 8785** | Canonical JSON (JCS) | Deterministic certificate serialization and block hashing. **Compatible, not identical:** s0 Canonical JSON v1 sorts keys by Unicode code point where RFC 8785 sorts by UTF-16 code unit, and refuses floats where RFC 8785 emits them. For the fixed certificate schema, whose keys are ASCII and which has no float fields, the two produce identical bytes. Deviations: `docs/architecture/canonical-json.md`. |
+| **RFC 8785** | Canonical JSON (JCS) | Deterministic certificate serialization and block hashing. |
 | **RFC 8032** | Digital Signatures | High-performance Ed25519 public-key signature system. |
 
-Full compliance details: [docs/compliance/nist-compliance.md](https://sector0.gitbook.io/compliance/)
+Full compliance details: [NIST Compliance Matrix](https://sector0.gitbook.io/compliance/)
 
 ---
 
@@ -241,3 +225,4 @@ bash tools/build_all.sh
 ## License
 
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for full legal text.
+
