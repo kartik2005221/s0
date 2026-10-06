@@ -54,3 +54,19 @@ def test_signature_is_base64url_unpadded(keys):
     assert "+" not in sig and "/" not in sig  # urlsafe alphabet only
     # Ed25519 signatures are exactly 64 bytes -> 86 unpadded base64url chars.
     assert len(sig) == 86
+
+
+def test_write_private_pem_overwrites_preexisting_loose_mode(tmp_path, keys):
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        return
+    p = tmp_path / "loose_priv.pem"
+    p.write_bytes(b"OLD_DATA")
+    os.chmod(p, 0o644)
+    assert os.stat(p).st_mode & 0o777 == 0o644
+
+    crypto.write_private_pem(keys["priv"], p)
+    mode = os.stat(p).st_mode & 0o777
+    assert mode == 0o600

@@ -625,12 +625,18 @@ def _get_secure_keys_dir() -> Path:
             pass
         return keys_dir
     except Exception:
-        fallback = Path(tempfile.gettempdir()) / ".s0_keys"
-        fallback.mkdir(parents=True, exist_ok=True)
-        try:
-            os.chmod(fallback, 0o700)
-        except Exception:
-            pass
+        uid = os.getuid() if hasattr(os, "getuid") else 0
+        fallback = Path(tempfile.gettempdir()) / f".s0_keys_{uid}"  # nosec B108 # noqa: S108
+        if fallback.is_symlink() or (
+            fallback.exists() and hasattr(os, "getuid") and fallback.stat().st_uid != uid
+        ):
+            fallback = Path(tempfile.mkdtemp(prefix=".s0_keys_"))
+        else:
+            fallback.mkdir(parents=True, exist_ok=True)
+            try:
+                os.chmod(fallback, 0o700)
+            except Exception:
+                pass
         return fallback
 
 

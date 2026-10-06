@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import os
+import secrets
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -86,9 +87,23 @@ def write_private_pem(key: Ed25519PrivateKey, path: str | Path) -> Path:
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption(),
     )
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with open(fd, "wb") as f:
-        f.write(pem)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.parent / f".tmp_{path.name}_{secrets.token_hex(8)}"
+    try:
+        fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with open(fd, "wb") as f:
+            f.write(pem)
+        try:
+            os.chmod(tmp_path, 0o600)
+        except OSError:
+            pass
+        os.replace(str(tmp_path), str(path))
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
     try:
         os.chmod(path, 0o600)
     except OSError:

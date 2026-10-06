@@ -735,3 +735,43 @@ def test_terminate_active_procs_cleans_up():
             p.kill()
         with gui_app._active_procs_lock:
             gui_app._active_procs.discard(p)
+
+
+def test_get_secure_keys_dir_symlink_rejected(tmp_path, monkeypatch):
+    """Fallback in /tmp must reject existing symlinks and create a secure private dir instead."""
+    import tempfile
+
+    # Make Path.home() fail to force fallback
+    monkeypatch.setattr(gui_app.Path, "home", lambda: tmp_path / "nonexistent" / "home")
+
+    # Create a symlink at the fallback location
+    uid = os.getuid() if hasattr(os, "getuid") else 0
+    fallback_symlink = Path(tempfile.gettempdir()) / f".s0_keys_{uid}"  # nosec B108 # noqa: S108
+    target_dir = tmp_path / "attacker_controlled"
+    target_dir.mkdir()
+
+    if fallback_symlink.exists() or fallback_symlink.is_symlink():
+        try:
+            if fallback_symlink.is_dir() and not fallback_symlink.is_symlink():
+                pass
+            else:
+                fallback_symlink.unlink()
+        except OSError:
+            pass
+
+    try:
+        try:
+            fallback_symlink.symlink_to(target_dir)
+        except OSError:
+            pass
+
+        keys_dir = gui_app._get_secure_keys_dir()
+        assert keys_dir.is_dir()
+        assert not keys_dir.is_symlink()
+        assert keys_dir != target_dir
+    finally:
+        if fallback_symlink.is_symlink():
+            try:
+                fallback_symlink.unlink()
+            except OSError:
+                pass
