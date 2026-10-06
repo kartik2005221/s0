@@ -344,10 +344,20 @@ async function onDriveSelected() {
     const mb = (plan.target.capacity_bytes / (1024 * 1024)).toFixed(1);
     document.getElementById("driveCapVal").textContent = `${mb} MB (${plan.target.storage_type || "UNKNOWN"})`;
     document.getElementById("driveMethodVal").textContent = plan.method_id || "None";
+    const hpaEl = document.getElementById("driveHpaVal");
     if (plan.hpa_dco) {
-      document.getElementById("driveHpaVal").innerHTML = `<span class="badge badge-amber">${plan.hpa_dco.status || "Check required"}</span>`;
+      if (plan.hpa_dco.hpa_present || plan.hpa_dco.dco_present) {
+        const desc = plan.hpa_dco.note ? escapeHtml(plan.hpa_dco.note) : "Hidden sectors present";
+        hpaEl.innerHTML = `<span class="badge badge-amber">${desc}</span>`;
+      } else if (plan.hpa_dco.hpa_present === false && plan.hpa_dco.dco_present === false) {
+        hpaEl.textContent = "None detected (HPA: None, DCO: None)";
+      } else if (plan.hpa_dco.note) {
+        hpaEl.innerHTML = `<span class="badge badge-amber">${escapeHtml(plan.hpa_dco.note)}</span>`;
+      } else {
+        hpaEl.textContent = "Detection inconclusive";
+      }
     } else {
-      document.getElementById("driveHpaVal").textContent = "Normal (No HPA/DCO detected)";
+      hpaEl.textContent = "Detection not available";
     }
   } catch (e) {
     console.warn("Plan query note:", e);

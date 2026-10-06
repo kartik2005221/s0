@@ -714,3 +714,24 @@ def test_non_ascii_auth_token_returns_401():
     raw_client = TestClient(gui_app.app)
     r = raw_client.get("/api/devices?token=%C3%B6%C3%B1")
     assert r.status_code == 401
+
+
+def test_terminate_active_procs_cleans_up():
+    """Verify that _terminate_active_procs terminates all tracked running subprocesses."""
+    import subprocess
+    import sys
+
+    # Start a dummy sleep process
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"])
+    with gui_app._active_procs_lock:
+        gui_app._active_procs.add(p)
+
+    try:
+        assert p.poll() is None
+        gui_app._terminate_active_procs()
+        assert p.poll() is not None
+    finally:
+        if p.poll() is None:
+            p.kill()
+        with gui_app._active_procs_lock:
+            gui_app._active_procs.discard(p)

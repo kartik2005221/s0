@@ -21,6 +21,7 @@ import logging
 import os
 import secrets
 import shutil
+import signal
 import subprocess
 import sys as _sys
 import tempfile
@@ -215,14 +216,19 @@ app = FastAPI(
 
 # `*.local` matches any mDNS name, so `http://attacker.local` was an accepted Host
 # header -- a DNS-rebinding foothold. Only literal loopback names are needed;
-# `testserver` remains for TestClient.
+# `testserver` remains only during testing for TestClient.
 # NOTE: middleware added last runs first (Starlette prepends), so this has to be
 # registered *after* TrustedHostMiddleware below in order to wrap it. Registered
 # the other way round it would be inner, and TrustedHost would already have
 # rejected `Host: LOCALHOST` before this ever saw the request.
+_is_testing = ("pytest" in _sys.modules) or bool(os.environ.get("S0_TESTING"))
+_allowed_hosts = ["localhost", "127.0.0.1", "[::1]"]
+if _is_testing:
+    _allowed_hosts.append("testserver")
+
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "[::1]", "testserver"],
+    allowed_hosts=_allowed_hosts,
 )
 
 
@@ -318,6 +324,42 @@ def _record_job(job_id: str, record: dict) -> None:
 
 
 _lock = threading.Lock()
+_active_procs: set[subprocess.Popen] = set()
+_active_procs_lock = threading.Lock()
+
+
+def _terminate_active_procs(signum=None, frame=None):
+    with _active_procs_lock:
+        procs = list(_active_procs)
+    for p in procs:
+        try:
+            if p.poll() is None:
+                p.terminate()
+        except OSError:
+            pass
+    for p in procs:
+        try:
+            p.wait(timeout=2)
+        except (subprocess.TimeoutExpired, OSError):
+            try:
+                p.kill()
+            except OSError:
+                pass
+    if signum:
+        _sys.exit(128 + signum)
+
+
+try:
+    signal.signal(signal.SIGTERM, _terminate_active_procs)
+    if hasattr(signal, "SIGHUP"):
+        signal.signal(signal.SIGHUP, _terminate_active_procs)
+except (ValueError, OSError):
+    pass
+
+
+@app.on_event("shutdown")
+def _app_shutdown():
+    _terminate_active_procs()
 
 
 def _load_or_create_session_token() -> str:
@@ -690,7 +732,10 @@ def _reject_system_path(field: str, value: str | None) -> str | None:
     not a security control, it is a coincidence.
     """
     if value and value.strip():
-        p = Path(value.strip()).resolve()
+        val = value.strip()
+        if platform.is_windows_volume_path(val) or val.startswith(r"\\"):
+            return value
+        p = Path(val).resolve()
         for sp in _SYSTEM_PATHS:
             if sp == "/System" and (str(p) == "/System/Volumes" or str(p).startswith("/System/Volumes/")):
                 continue
@@ -1384,9 +1429,13 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
     )
 
     def run() -> None:
+        proc = None
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+            with _active_procs_lock:
+                _active_procs.add(proc)
             assert proc.stderr is not None
+            assert proc.stdout is not None
 
             def pump_stderr() -> None:
                 for line in proc.stderr:
@@ -1394,6 +1443,8 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                     if not clean:
                         continue
                     with _lock:
+                        if job_id not in _jobs:
+                            return
                         log = _jobs[job_id]["log"]
                         if clean.startswith("[s0 wipe]") and log and log[-1].startswith("[s0 wipe]"):
                             log[-1] = clean
@@ -1402,41 +1453,64 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                         elif log[-1] != "... log truncated":
                             log.append("... log truncated")
 
+            stdout_data: list[str] = []
+
+            def read_stdout() -> None:
+                assert proc.stdout is not None
+                stdout_data.append(proc.stdout.read())
+
             pumper = threading.Thread(target=pump_stderr, daemon=True)
             pumper.start()
+            stdout_reader = threading.Thread(target=read_stdout, daemon=True)
+            stdout_reader.start()
+
             try:
-                out, _ = proc.communicate(timeout=_JOB_TIMEOUT_SECONDS)
+                proc.wait(timeout=_JOB_TIMEOUT_SECONDS)
             except subprocess.TimeoutExpired:
                 proc.kill()
-                out, _ = proc.communicate()
+                proc.wait()
                 _LOG.error("job %s exceeded %ss; killed", job_id, _JOB_TIMEOUT_SECONDS)
                 with _lock:
-                    _jobs[job_id]["status"] = "error"
-                    _jobs[job_id]["result"] = {
-                        "returncode": -1,
-                        "error": "timeout",
-                        "error_id": uuid.uuid4().hex[:12],
-                    }
+                    if job_id in _jobs:
+                        _jobs[job_id]["status"] = "error"
+                        _jobs[job_id]["result"] = {
+                            "returncode": -1,
+                            "error": "timeout",
+                            "error_id": uuid.uuid4().hex[:12],
+                        }
                 return
+
             pumper.join(timeout=5)
+            stdout_reader.join(timeout=5)
+            out = stdout_data[0] if stdout_data else ""
 
             result: dict = {"returncode": proc.returncode}
             if proc.returncode == 0:
                 if out.strip():
-                    parsed = json.loads(out.strip())
+                    try:
+                        parsed = json.loads(out.strip())
+                    except (json.JSONDecodeError, ValueError):
+                        parsed = {"output": out.strip()}
                     # s0 CLI --json emits a versioned envelope
                     # (s0.<command>/1) with the payload under "result" and
                     # artifacts under "artifacts". Older builds emitted a flat
                     # object; both shapes are accepted so a mixed-version host
                     # still drives the dashboard.
                     body = parsed.get("result", parsed) if isinstance(parsed, dict) else parsed
-                    result.update(body)
+                    if isinstance(body, dict):
+                        result.update(body)
                     artifacts = parsed.get("artifacts", []) if isinstance(parsed, dict) else []
                     by_kind = {a.get("kind"): a.get("path") for a in artifacts if isinstance(a, dict)}
                     cert_p = (
-                        by_kind.get("certificate") or body.get("certificate") or body.get("certificate_path")
+                        by_kind.get("certificate")
+                        or (body.get("certificate") if isinstance(body, dict) else None)
+                        or (body.get("certificate_path") if isinstance(body, dict) else None)
                     )
-                    pdf_p = by_kind.get("pdf_certificate") or body.get("pdf") or body.get("pdf_path")
+                    pdf_p = (
+                        by_kind.get("pdf_certificate")
+                        or (body.get("pdf") if isinstance(body, dict) else None)
+                        or (body.get("pdf_path") if isinstance(body, dict) else None)
+                    )
                     qr_p = by_kind.get("qr_code")
                     # One name per value. Each of these used to be emitted twice
                     # under a second key (`certificate`/`certificate_path`,
@@ -1459,7 +1533,8 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
                 result["error"] = f"Wipe command exited with code {proc.returncode}"
             status = "done" if proc.returncode == 0 else "error"
             with _lock:
-                _jobs[job_id].update(status=status, result=result)
+                if job_id in _jobs:
+                    _jobs[job_id].update(status=status, result=result)
         except Exception:
             # The client gets a stable code plus a correlation id; the detail
             # (routinely absolute server paths from OSError and subprocess failures)
@@ -1467,10 +1542,15 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
             error_id = uuid.uuid4().hex[:12]
             _LOG.exception("job %s failed", job_id)
             with _lock:
-                _jobs[job_id].update(
-                    status="error",
-                    result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
-                )
+                if job_id in _jobs:
+                    _jobs[job_id].update(
+                        status="error",
+                        result={"returncode": -1, "error": "operation_failed", "error_id": error_id},
+                    )
+        finally:
+            if proc is not None:
+                with _active_procs_lock:
+                    _active_procs.discard(proc)
 
     threading.Thread(target=run, daemon=True).start()
     return JSONResponse({"job_id": job_id})
@@ -1486,7 +1566,9 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
             real_p = Path(os.path.realpath(t))
             if real_p.is_dir():
                 expected = t.strip()
-                if not req.confirm_text or (req.confirm_text.strip() != expected and req.confirm_text.strip() != "ERASE"):
+                if not req.confirm_text or (
+                    req.confirm_text.strip() != expected and req.confirm_text.strip() != "ERASE"
+                ):
                     raise HTTPException(
                         400,
                         f'erasing directory "{t}" requires confirmation: confirm_text must match path or "ERASE"',

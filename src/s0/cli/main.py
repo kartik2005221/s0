@@ -3500,8 +3500,8 @@ def cmd_web(args) -> int:
         )
         print(
             "[s0 web]            Authentication is still required and every /api route is "
-            "token-guarded, but the token is now the only thing between the network and a "
-            "destructive API."
+            "token-guarded, but note that TrustedHostMiddleware enforces loopback Host "
+            "headers (localhost/127.0.0.1/[::1]) by default."
         )
         print("[s0 web]            Use the default 127.0.0.1 unless you have a specific reason.")
     print("[s0 web]  Status   : Live — Press CTRL+C to stop")
@@ -3525,7 +3525,7 @@ def cmd_web(args) -> int:
     # package data through importlib, so it does not need to run from a
     # checkout, and pinning cwd there would re-create the layout coupling
     # this change just removed.
-    proc = subprocess.Popen(cmd, env=env)
+    proc = subprocess.Popen(cmd, env=env, start_new_session=True)
 
     if not getattr(args, "no_browser", False):
 
@@ -3538,16 +3538,38 @@ def cmd_web(args) -> int:
 
         threading.Thread(target=_open, daemon=True).start()
 
+    def _cleanup_proc(signum=None, frame=None):
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except (OSError, AttributeError):
+                proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except (OSError, AttributeError):
+                    proc.kill()
+        if signum:
+            sys.exit(128 + signum)
+
+    old_sigterm = signal.signal(signal.SIGTERM, _cleanup_proc)
+    old_sighup = signal.signal(signal.SIGHUP, _cleanup_proc) if hasattr(signal, "SIGHUP") else None
+
     try:
         proc.wait()
     except KeyboardInterrupt:
         print("\n[s0 web]  Stopping web dashboard...")
-        proc.terminate()
-        try:
-            proc.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            proc.kill()
+        _cleanup_proc()
         print("[s0 web]  Server terminated.")
+    finally:
+        try:
+            signal.signal(signal.SIGTERM, old_sigterm)
+            if old_sighup:
+                signal.signal(signal.SIGHUP, old_sighup)
+        except (ValueError, OSError):
+            pass
 
     return 0
 
