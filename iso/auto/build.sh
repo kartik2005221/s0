@@ -64,7 +64,8 @@ fi
     --mirror-chroot "http://deb.debian.org/debian" \
     --mirror-binary "http://deb.debian.org/debian" \
     --security true \
-    --security-mirror "http://security.debian.org/debian-security" \
+    --mirror-chroot-security "http://security.debian.org/debian-security" \
+    --mirror-binary-security "http://security.debian.org/debian-security" \
     --apt-indices false \
     --binary-images iso-hybrid \
     --bootappend-live "boot=live components quiet splash hostname=s0" \
