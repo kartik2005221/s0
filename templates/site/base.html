@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>{{ title }}</title>
+  <link rel="canonical" href="{{ canonical }}">
+  <meta name="description" content="{{ description }}">
+  <meta name="author" content="Kartik (@kartik2005221)">
+  
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:image" content="{{ rel_prefix }}assets/favicons/s0-dark/android-chrome-512x512.png">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ rel_prefix }}assets/favicons/s0-dark/android-chrome-512x512.png">
+
+  <!-- Instant Theme Bootstrapping -->
+  <script>
+    (function() {
+      var t = localStorage.getItem("s0_theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+
+  <!-- Typography & Fonts -->
+  <link rel="stylesheet" href="{{ rel_prefix }}fonts/fonts.css">
+
+  <!-- Favicons and App Icons -->
+  <link rel="icon" type="image/x-icon" href="{{ rel_prefix }}favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ rel_prefix }}assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ rel_prefix }}assets/favicons/s0-dark/apple-touch-icon.png">
+  <link rel="manifest" href="{{ rel_prefix }}assets/favicons/s0-dark/site.webmanifest">
+
+  {% block styles %}{% endblock %}
+</head>
+<body>
+
+{% block svg_sprite %}{% endblock %}
+
+{% include "header.html" %}
+
+{% block content %}{% endblock %}
+
+{% include "footer.html" %}
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

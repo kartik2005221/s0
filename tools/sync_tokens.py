@@ -21,6 +21,7 @@ REPO = Path(__file__).resolve().parents[1]
 SOURCE = REPO / "shared" / "tokens.css"
 
 TARGETS = [
+    REPO / "site/css" / "tokens.css",
     REPO / "site/install" / "css" / "tokens.css",
     REPO / "site/verify" / "css" / "tokens.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",

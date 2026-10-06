@@ -47,7 +47,7 @@
 # 'unsafe-inline' anywhere: nothing on it may execute script or evaluate style
 # that was not hashed here at build time.
 /install/*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-4deiL2HqY9CkQzMfv2OmjkFD5LAvnGHDhCcWMGzERww='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
 
 # The verification portal exists to prove a certificate is authentic. Shipping it
 # with 'unsafe-inline' in script-src would undercut the point: any injected inline
@@ -59,7 +59,7 @@
 # page, so its independence rests on the CSP above rather than on being a separate
 # domain. Do not loosen it to match the landing page.
 /verify/*
-  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-4deiL2HqY9CkQzMfv2OmjkFD5LAvnGHDhCcWMGzERww='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
 
 # ---------------------------------------------------------------------------
 # Installer scripts, at their real paths.

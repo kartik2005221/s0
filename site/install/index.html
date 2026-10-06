@@ -3,59 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s0 — Install & Deployment Portal</title>
+  
+  <title>s0 — Installation &amp; Deployment Guide</title>
   <link rel="canonical" href="https://sector0.pages.dev/install/">
-  <meta property="og:url" content="https://sector0.pages.dev/install/">
-  <meta property="og:title" content="s0 — Install &amp; Deployment Portal">
-  <meta property="og:description" content="Install, upgrade or uninstall s0 on Linux, macOS or Windows, or fetch the bare-metal live ISO.">
+  <meta name="description" content="Forensic-grade drive sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
+  <meta name="author" content="Kartik (@kartik2005221)">
+  
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://sector0.pages.dev/og-image.png">
+  <meta property="og:url" content="https://sector0.pages.dev/install/">
+  <meta property="og:title" content="s0 — Installation &amp; Deployment Guide">
+  <meta property="og:description" content="Forensic-grade drive sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
+  <meta property="og:image" content="assets/favicons/s0-dark/android-chrome-512x512.png">
+
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="s0 — Install &amp; Deployment Portal">
-  <meta name="twitter:image" content="https://sector0.pages.dev/og-image.png">
+  <meta name="twitter:title" content="s0 — Installation &amp; Deployment Guide">
+  <meta name="twitter:description" content="Forensic-grade drive sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.">
+  <meta name="twitter:image" content="assets/favicons/s0-dark/android-chrome-512x512.png">
+
+  <!-- Instant Theme Bootstrapping -->
   <script>
     (function() {
-      var t = localStorage.getItem("s0_theme") || "dark";
+      var t = localStorage.getItem("s0_theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
+
+  <!-- Typography & Fonts -->
   <link rel="stylesheet" href="fonts/fonts.css">
+
   <!-- Favicons and App Icons -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/favicons/s0-dark/apple-touch-icon.png">
   <link rel="manifest" href="assets/favicons/s0-dark/site.webmanifest">
+
   <link rel="stylesheet" href="css/install.css">
 </head>
 <body>
+
 
 <header class="site-header">
   <div class="site-header-inner">
     <a href="/" class="site-logo-link" title="s0 — Sector Zero Home">
       <img src="assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
-      <span class="site-logo-title">s0 — Sector Zero</span>
-      <span class="site-logo-badge">Install Portal</span>
+      <span class="site-logo-title"><span class="logo-name">s0</span><span class="logo-sub"> — Sector Zero</span></span>
     </a>
+
     <div class="site-header-right">
+      <a href="/install/" class="nav-btn active">Install</a>
+      <a href="/verify/" class="nav-btn ">Verify</a>
       <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
-      <a href="/verify/" class="nav-btn">Verifier ↗</a>
-      <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository">
+      <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-        <span>kartik2005221/s0</span>
+        <span class="github-repo-text">kartik2005221/s0</span>
       </a>
+
       <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" data-action="toggle-theme" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
       </button>
+
       <div class="sys-pill">
         <div class="dot-live"></div>
-        <span>OFFICIAL INSTALL PORTAL</span>
+        <span class="s0-release-version">v3.0.0</span>
       </div>
     </div>
   </div>
 </header>
-
 <!-- The outcome of a copy/flash operation is announced to assistive
      technology, not merely painted on screen (WCAG 2.2 SC 4.1.3). -->
 <p id="installStatus" role="status" aria-live="polite" class="sr-only"></p>
@@ -247,7 +262,6 @@
   </div>
 </main>
 
-<!-- Footer with Extended Documentation Links -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
@@ -277,12 +291,12 @@
           </ul>
         </div>
 
-        <!-- Ecosystem Column -->
+        <!-- Platform Column -->
         <div class="footer-col">
-          <h5>Ecosystem</h5>
+          <h5>Platform</h5>
           <ul>
-            <li><a href="/">Official Website ↗</a></li>
-            <li><a href="/verify/">Verification Portal</a></li>
+            <li><a href="/install/">Install Guide</a></li>
+            <li><a href="/verify/">Verify Certificate</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
             <li><a href="https://sector0.gitbook.io/architecture/certificate-spec" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
           </ul>
@@ -303,7 +317,7 @@
 
     <div class="footer-bottom">
       <div class="footer-legal-notice">
-        [!] <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+        <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
       </div>
       <div>
         Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License
@@ -311,7 +325,6 @@
     </div>
   </div>
 </footer>
-
 <script src="js/install.js"></script>
 </body>
 </html>

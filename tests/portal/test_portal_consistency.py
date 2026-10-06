@@ -31,6 +31,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SHARED_TOKENS = REPO / "shared" / "tokens.css"
 TOKEN_COPIES = [
+    REPO / "site/css" / "tokens.css",
     REPO / "site/install" / "css" / "tokens.css",
     REPO / "site/verify" / "css" / "tokens.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
@@ -681,3 +682,20 @@ def test_brand_colour_is_identical_on_every_surface():
     for css in SURFACE_CSS:
         text = css.read_text(encoding="utf-8")
         assert f"--brand: {brand.group(1)}" not in text, f"{css.relative_to(REPO)} redefines the brand colour"
+
+
+def test_site_pages_are_built_from_templates():
+    """`site/index.html`, `site/install/` and `site/verify/` must match their Jinja2 templates."""
+    import subprocess
+    import sys
+
+    proc = subprocess.run(
+        [sys.executable, str(REPO / "tools" / "build_site.py"), "--check"],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert proc.returncode == 0, (
+        f"site HTML pages are out of sync with templates/site/:\n{proc.stdout}{proc.stderr}\n"
+        "Run: python tools/build_site.py"
+    )
