@@ -37,7 +37,7 @@ jobs:
           # job could not run at all while releases were tested. Two hand-written
           # lists are two lists that drift, and a typo in either is a build that
           # fails in a way that points nowhere near the cause.
-          pip install -e ".[web,test]"
+          pip install -e ".[web,test,dev]"
 
       - name: Run Pytest Suite
         run: |
