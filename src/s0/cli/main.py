@@ -1013,12 +1013,12 @@ def cmd_wipe(args) -> int:
     passes_val = getattr(args, "passes", 1)
     if passes_val < 1 or passes_val > 100:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
-        return 2
+        return EX_USAGE
 
     samples_val = getattr(args, "verify_samples", 64)
     if samples_val < 1 or samples_val > 10000:
         print(f"error: --verify-samples must be between 1 and 10000 (got {samples_val}).", file=sys.stderr)
-        return 2
+        return EX_USAGE
 
     if is_file_mode:
         return cmd_erase_files(args)
@@ -1630,17 +1630,17 @@ def cmd_wipe(args) -> int:
 def cmd_erase_files(args) -> int:
     _print_legal_notice(getattr(args, "policy", None) or policy_from_args(args))
     if not _validate_cli_metadata(args):
-        return 2
+        return EX_USAGE
 
     pattern = getattr(args, "pattern", "zero")
     if pattern not in ("zero", "random"):
         print(f"error: invalid --pattern '{pattern}'. Supported patterns: zero, random", file=sys.stderr)
-        return 2
+        return EX_USAGE
 
     passes_val = getattr(args, "passes", 1)
     if passes_val < 1 or passes_val > 100:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
-        return 2
+        return EX_USAGE
 
     print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
 

@@ -106,11 +106,21 @@ def test_filesystem_root_is_refused():
 
 @pytest.mark.parametrize(
     "path",
-    ["/tmp", "/mnt", "/media/evidence.img", "/home/kartik/Documents"],
+    ["/tmp/evidence.img", "/mnt/data/evidence.img", "/media/evidence.img", "/home/kartik/Documents/file.txt"],
 )
 def test_ordinary_forensic_targets_are_still_allowed(path):
     """A guard that refuses legitimate work is worse than none."""
     assert check_path_is_destructive(path) == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/tmp", "/mnt", "/var/tmp", "/media", "/home", "/snap"],
+)
+def test_container_and_mount_roots_are_refused(path):
+    """Refuse wiping whole container roots or mount roots (S0-01)."""
+    with pytest.raises(ProtectedPathError):
+        check_path_is_destructive(path)
 
 
 def test_traversal_and_symlinks_cannot_evade_it(tmp_path):
@@ -139,7 +149,8 @@ def test_state_paths_are_discoverable():
 
 def test_boolean_helper_agrees():
     assert is_protected_path("/etc/hostname") is True
-    assert is_protected_path("/tmp") is False
+    assert is_protected_path("/tmp") is True
+    assert is_protected_path("/tmp/evidence.img") is False
 
 
 # --------------------------------------------------------------------------- #

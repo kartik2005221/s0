@@ -797,6 +797,7 @@ class FileEraseRequest(BaseModel):
             "to disk verbatim; a PEM is under 4 KiB."
         ),
     )
+    confirm_text: str | None = Field(default=None, max_length=4096)
     out_dir: str | None = Field(default=None, max_length=4096)
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
@@ -957,29 +958,43 @@ class ImageRequest(BaseModel):
 def _find_target(path: str):
     if not path or "\x00" in path or any(ord(c) < 32 for c in path):
         raise HTTPException(400, "invalid target path")
-    norm = os.path.normpath(path.strip())
-    parts = norm.replace("\\", "/").split("/")
-    if ".." in parts:
-        raise HTTPException(400, "directory traversal not allowed")
-    p = Path(norm)
-    if platform.is_block_device(p):
-        norm_real = os.path.realpath(norm)
-        for t in list_block_targets():
-            if os.path.realpath(t.path) == norm_real:
-                return t
-        size = get_block_device_size(norm)
-        if size > 0:
-            return Target(
-                path=norm, kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
-            )
+    try:
+        norm = os.path.normpath(path.strip())
+        parts = norm.replace("\\", "/").split("/")
+        if ".." in parts:
+            raise HTTPException(400, "directory traversal not allowed")
+        p = Path(norm)
+        is_blk = platform.is_block_device(p)
+    except OSError as oe:
+        raise HTTPException(400, f"invalid target path: {oe}") from None
+
+    if is_blk:
+        try:
+            norm_real = os.path.realpath(norm)
+            for t in list_block_targets():
+                if os.path.realpath(t.path) == norm_real:
+                    return t
+            size = get_block_device_size(norm)
+            if size > 0:
+                return Target(
+                    path=norm, kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
+                )
+        except OSError as oe:
+            raise HTTPException(400, f"unrecognised or invalid block device {path}: {oe}") from None
         raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
-    safe, reason = _is_safe_wipe_path(norm)
+
+    try:
+        safe, reason = _is_safe_wipe_path(norm)
+    except OSError as oe:
+        raise HTTPException(400, f"invalid target path: {oe}") from None
     if not safe:
         raise HTTPException(403, reason)
     try:
         return image_target(norm)
     except FileNotFoundError:
-        raise HTTPException(404, f"no such image file: {path}") from None
+        raise HTTPException(404, f"no such image file or directory: {path}") from None
+    except OSError as oe:
+        raise HTTPException(400, f"invalid target path: {oe}") from None
 
 
 @app.get("/healthz")
@@ -1465,6 +1480,19 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
 def start_erase_files(req: FileEraseRequest) -> JSONResponse:
     if not req.targets:
         raise HTTPException(400, "no file targets provided")
+
+    for t in req.targets:
+        try:
+            real_p = Path(os.path.realpath(t))
+            if real_p.is_dir():
+                expected = t.strip()
+                if not req.confirm_text or (req.confirm_text.strip() != expected and req.confirm_text.strip() != "ERASE"):
+                    raise HTTPException(
+                        400,
+                        f'erasing directory "{t}" requires confirmation: confirm_text must match path or "ERASE"',
+                    )
+        except OSError:
+            pass
 
     job_id = uuid.uuid4().hex[:12]
     out_dir = _prepare_job_out_dir(req.out_dir, "web-filewipe", job_id)

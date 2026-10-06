@@ -795,25 +795,28 @@ def erase_batch(
     # file. Checked before any target is touched, and the whole batch is refused if
     # any one target is protected: partially erasing a set the operator named is not
     # a useful outcome, and a half-erased batch is a worse one.
+    # Deduplicate targets while preserving order (S0-22)
+    seen_paths = set()
+    unique_targets = []
     for t in targets:
+        try:
+            real_t = os.path.realpath(t)
+        except Exception:
+            real_t = t
+        if real_t not in seen_paths:
+            seen_paths.add(real_t)
+            unique_targets.append(t)
+    targets = unique_targets
+
+    # Pre-validate all targets: existence, symlinks, and protected paths (fail-fast, S0-22)
+    for t in targets:
+        p = Path(t)
+        if not p.exists() and not p.is_symlink():
+            raise FileNotFoundError(f"target not found: {t}")
         try:
             check_path_is_destructive(t, force=force)
         except ProtectedPathError as exc:
             raise SafetyError(str(exc)) from exc
-    start_time = cert_mod.now_utc()
-    all_results: list[FileEraseResult] = []
-
-    for t in targets:
-        # Do NOT resolve() the top-level target before dispatch.
-        #
-        # `erase_single_file()` correctly refuses a symlink, but `.resolve()`
-        # followed the link first, so by the time the check ran it was looking at
-        # the real target. Confirmed: a top-level symlink passed to --targets had
-        # its *target* destroyed and was left dangling, with the certificate
-        # recording the resolved path as though that were what was asked for.
-        # Nested symlinks inside a folder were already refused -- only the
-        # top-level batch target had this gap.
-        p = Path(t)
         if p.is_symlink():
             raise SafetyError(
                 f"Refusing to follow symlink: {t} -> {os.readlink(p)}\n"
@@ -821,7 +824,11 @@ def erase_batch(
                 "Pass the real path,\n"
                 "       or pass --force if you genuinely mean to erase the link's target."
             )
-        p = p.resolve()
+    start_time = cert_mod.now_utc()
+    all_results: list[FileEraseResult] = []
+
+    for t in targets:
+        p = Path(t).resolve()
         if p.is_dir():
             dir_res = erase_folder(
                 p, passes=passes, pattern=pattern, progress_callback=progress_callback, force=force

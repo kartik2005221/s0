@@ -307,8 +307,19 @@ def image_target(path: str) -> Target:
     if ".." in norm.split(os.sep):
         raise ValueError(f"path traversal not permitted: {path}")
     p = Path(os.path.realpath(norm))
+    if p.is_dir():
+        files = [f for f in p.rglob("*") if f.is_file()]
+        total_size = sum(f.stat().st_size for f in files)
+        return Target(
+            path=str(p),
+            kind="directory",
+            capacity_bytes=total_size if total_size > 0 else 4096,
+            sector_size=512,
+            storage_type="DIRECTORY",
+            model=p.name,
+        )
     if not p.is_file():
-        raise FileNotFoundError(f"not a regular file: {path}")
+        raise FileNotFoundError(f"not a regular file or directory: {path}")
     return Target(
         path=str(p),
         kind="image",

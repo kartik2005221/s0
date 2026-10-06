@@ -71,11 +71,11 @@ def select_method(
             return nvme_capable_probe(t)
         return NvmeMethod("sanitize_crypto").crypto_erase_capable(t)
 
-    # ---- image files -------------------------------------------------------
-    if target.kind == "image":
+    # ---- image files and directories ---------------------------------------
+    if target.kind in ("image", "directory"):
         chosen = OverwriteMethod(passes=passes, pattern=pattern)
         alternatives.append(
-            Candidate(None, "firmware erase: no firmware behind an image file", available=False)
+            Candidate(None, "firmware erase: no firmware behind a file or directory", available=False)
         )
         return Candidate(chosen), alternatives
 

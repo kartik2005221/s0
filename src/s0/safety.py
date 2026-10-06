@@ -38,6 +38,8 @@ from pathlib import Path
 
 #: Critical system prefixes. Matched after resolution, so `/etc/../etc/passwd`
 #: and a symlink into `/etc` are both caught.
+#: Critical system prefixes. Matched after resolution, so `/etc/../etc/passwd`
+#: and a symlink into `/etc` are both caught.
 SYSTEM_PREFIXES: tuple[str, ...] = (
     "/etc",
     "/usr",
@@ -54,6 +56,7 @@ SYSTEM_PREFIXES: tuple[str, ...] = (
     "/run",
     "/srv",
     "/opt",
+    "/snap",
     # macOS resolved prefixes (symlinks in root resolve to /private/*)
     "/private/etc",
     "/private/var",
@@ -65,6 +68,17 @@ SYSTEM_PREFIXES: tuple[str, ...] = (
     "C:\\Program Files",
     "C:\\Program Files (x86)",
     "C:\\ProgramData",
+)
+
+#: Root directories and mount containers that must not be wiped entirely (S0-01).
+PROTECTED_CONTAINERS: tuple[str, ...] = (
+    "/home",
+    "/tmp",  # nosec B108  # noqa: S108
+    "/var/tmp",  # nosec B108  # noqa: S108
+    "/mnt",
+    "/media",
+    "/run/media",
+    "/snap",
 )
 
 #: Paths under system prefixes that are user/temporary space and allowed.
@@ -153,17 +167,6 @@ def evaluate_path_safety(
 
     warnings: list[str] = []
 
-    # Block devices are handled by the device-tier safety check (mounts, root
-    # filesystem, HPA). Refusing `/dev/sda` here would duplicate that logic and
-    # lose the better error messages.
-    try:
-        from s0 import platform
-
-        if platform.is_block_device(resolved):
-            return warnings, None
-    except OSError:
-        pass
-
     target = str(resolved)
 
     is_root = target == "/" or (
@@ -174,6 +177,18 @@ def evaluate_path_safety(
             return warnings, "Refusing to target the filesystem root '/'."
         warnings.append(f"proceeding AGAINST THE FILESYSTEM ROOT: {target}")
 
+    # Check root containers (/home, /tmp, /mnt, /media, /run/media, /snap - S0-01)
+    for c in PROTECTED_CONTAINERS:
+        try:
+            norm_c = str(Path(c).resolve())
+        except Exception:
+            norm_c = c
+        if target == norm_c or target == c:
+            if not force:
+                return warnings, f"Refusing to target mount root or container directory: {target}. Target a specific path inside it."
+            warnings.append(f"proceeding AGAINST CONTAINER/MOUNT ROOT: {target}")
+            break
+
     resolved_home = _resolve(Path.home())
     if resolved_home is not None and resolved == resolved_home:
         if not force:
@@ -181,6 +196,15 @@ def evaluate_path_safety(
                 f"Refusing to target the entire home directory ({target}). Target a specific path inside it."
             )
         warnings.append(f"proceeding AGAINST THE ENTIRE HOME DIRECTORY: {target}")
+
+    # Check if target is a direct user home directory under /home or /Users
+    try:
+        if resolved.parent in (Path("/home"), Path("/Users")):
+            if not force:
+                return warnings, f"Refusing to target user home directory: {target}. Target a specific path inside it."
+            warnings.append(f"proceeding AGAINST USER HOME DIRECTORY: {target}")
+    except Exception:
+        pass
 
     for prefix in SYSTEM_PREFIXES:
         if prefix == "/System" and (
@@ -194,6 +218,21 @@ def evaluate_path_safety(
                 return warnings, f"Refusing to target system path: {target}"
             warnings.append(f"proceeding AGAINST A SYSTEM PATH: {target}")
             break
+
+    # Block devices are handled by the device-tier safety check (mounts, root
+    # filesystem, HPA). Checked after system prefixes so inaccessible files (like
+    # /root/.bashrc for non-root) are caught by the prefix check without crashing - L5.
+    try:
+        from s0 import platform
+
+        if platform.is_block_device(resolved):
+            return warnings, None
+    except PermissionError:
+        if not force:
+            return warnings, f"Refusing to target protected or inaccessible path: {target}"
+        warnings.append(f"proceeding AGAINST INACCESSIBLE PATH: {target}")
+    except OSError:
+        pass
 
     if not allow_state:
         for state in s0_state_paths():
