@@ -244,7 +244,6 @@ def test_is_os_device_detection(monkeypatch):
 
 
 def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys, tmp_path):
-    from pathlib import Path
     from types import SimpleNamespace
 
     import s0.cli.main as main_mod
