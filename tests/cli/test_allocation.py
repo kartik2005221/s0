@@ -525,4 +525,3 @@ def test_fat32_non_zero_partition_offset_and_base(tmp_path):
     assert fsm.reliable
     assert fsm.free_bytes == (clusters - 1) * cluster_bytes
     assert all(start >= part_offset for start, _ in fsm.ranges)
-

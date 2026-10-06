@@ -119,6 +119,7 @@ testpaths = [
     "tests/cli",
     "tests/web",
     "tests/portal",
+    "tests/carve",
     "tests/platform_windows",
     "tests/platform_macos",
     # Was missing, so a bare `pytest` collected none of its 22 tests. They only

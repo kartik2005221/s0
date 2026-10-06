@@ -125,7 +125,9 @@ def acquire_image(
     # 1. Safety verification
     try:
         if dst_p.exists():
-            if os.path.samefile(src_path, str(dst_p)) or os.path.realpath(src_path) == os.path.realpath(str(dst_p)):
+            if os.path.samefile(src_path, str(dst_p)) or os.path.realpath(src_path) == os.path.realpath(
+                str(dst_p)
+            ):
                 raise SafetyError(f"Source and destination cannot be the same target ({src_path})!")
             dst_stat = dst_p.stat()
             if dst_stat.st_nlink > 1:

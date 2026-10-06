@@ -66,32 +66,21 @@ def help_for(command: str) -> str:
         else:
             entry = None
 
-    if entry is None or not entry.is_file():
-        sys.path.insert(0, str(REPO_ROOT / "src"))
-        try:
-            from s0.cli.main import build_parser
-        except ImportError as exc:  # pragma: no cover
-            return f"(could not import the parser: {exc})\n"
-        parser = build_parser()
-        try:
-            help_text = parser.parse_args([*command.split(), "--help"])
-        except SystemExit:
-            help_text = None
-        if help_text is None:
-            return f"(no --help for `{command}`)\n"
-        return _normalise(parser.format_help())
+    cmd_args = (
+        [str(entry), *command.split(), "--help"]
+        if entry is not None and entry.is_file()
+        else [sys.executable, "-m", "s0.cli.main", *command.split(), "--help"]
+    )
 
     # COLUMNS pins argparse's wrap width; without it the output depends on the
     # terminal, and a docs check that fails cosmetically gets ignored.
     proc = subprocess.run(
-        # `command` can name a nested command ("audit list"), so split it: passing
-        # it as one argv element asks s0 for a subcommand literally named
-        # "audit list", which does not exist.
-        [str(entry), *command.split(), "--help"],
+        cmd_args,
         capture_output=True,
         text=True,
         timeout=60,
-        env={**os.environ, "COLUMNS": "100"},
+        env={**os.environ, "COLUMNS": "100", "PYTHONPATH": str(REPO_ROOT / "src")},
+        cwd=str(REPO_ROOT),
     )
     if proc.returncode != 0:
         return f"(no --help for `{command}`)\n"

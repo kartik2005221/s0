@@ -185,7 +185,10 @@ def evaluate_path_safety(
             norm_c = c
         if target == norm_c or target == c:
             if not force:
-                return warnings, f"Refusing to target mount root or container directory: {target}. Target a specific path inside it."
+                return (
+                    warnings,
+                    f"Refusing to target mount root or container directory: {target}. Target a specific path inside it.",
+                )
             warnings.append(f"proceeding AGAINST CONTAINER/MOUNT ROOT: {target}")
             break
 
@@ -201,7 +204,10 @@ def evaluate_path_safety(
     try:
         if resolved.parent in (Path("/home"), Path("/Users")):
             if not force:
-                return warnings, f"Refusing to target user home directory: {target}. Target a specific path inside it."
+                return (
+                    warnings,
+                    f"Refusing to target user home directory: {target}. Target a specific path inside it.",
+                )
             warnings.append(f"proceeding AGAINST USER HOME DIRECTORY: {target}")
     except Exception:
         pass

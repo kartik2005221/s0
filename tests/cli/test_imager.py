@@ -367,4 +367,3 @@ def test_empty_exception_still_fails_properly(temp_workspace):
         assert res.success is False
         assert res.error != ""
         assert "MemoryError" in res.error
-

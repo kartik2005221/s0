@@ -105,7 +105,7 @@ withdrew Rev. 1 the same day) and **IEEE 2883-2022**. Two changes matter operati
 2. Rev. 2 splits **Verification** ("did the operation run and complete") from **Validation**
    ("was the chosen technique sufficient for this data"), and treats an operator selecting a
    technique the medium cannot support as a validation failure rather than a warning.
-   s0 therefore refuses to silently downgrade a requested tier; see `docs/project/industry-plan.md`.
+   s0 therefore refuses to silently downgrade a requested tier; see `docs/compliance/nist-compliance.md`.
 
 Rev. 1's per-media technique tables were replaced by IEEE 2883 in Rev. 2; the Rev. 1 Appendix A
 tables remain in this file as engineering reference only.

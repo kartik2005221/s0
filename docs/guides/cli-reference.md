@@ -529,8 +529,8 @@ options:
                         operator identifier for certificate
   --organization ORGANIZATION
                         organization name for certificate
-  --no-certificate      explicitly run without generating an Ed25519 compliance certificate
-  --no-pdf              skip generating human-readable PDF compliance certificate
+  --no-certificate      explicitly run without generating an Ed25519 certificate
+  --no-pdf              skip generating human-readable PDF certificate
   --verify-samples VERIFY_SAMPLES
                         blocks sampled for readback verification (default: 64). Sampling bounds
                         residual data rather than eliminating it: 64 clean blocks mean under
@@ -770,8 +770,7 @@ usage: s0 image [-h] --source SOURCE --destination DESTINATION [--block-size BLO
                 [--force] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
                 [--color {auto,always,never}] [--no-color] [--dry-run]
 
-Acquire a bit-stream image to a file (preserves evidence; the source is not modified). Both
-commands share the same options; only the destination kind differs.
+Acquire a bit-stream image to a file (preserves evidence; the source is not modified).
 
 options:
   -h, --help            show this help message and exit
@@ -1314,6 +1313,10 @@ s0 verify CERTIFICATE [--key PEM]
 usage: s0 verify [-h] [--key KEY] [--format {text,json,csv}] [--json] [--quiet] [--verbose]
                  [--color {auto,always,never}] [--no-color] [--yes] [--dry-run]
                  certificate
+
+Verify a signed certificate offline against trusted public keys. Exits 0 for valid signatures, 1
+for invalid or corrupted certificates, or 75 (EX_TEMPFAIL) if authentic but signed with the
+unaccredited demonstration key.
 
 positional arguments:
   certificate           path to certificate JSON

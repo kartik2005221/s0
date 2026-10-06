@@ -149,14 +149,30 @@ def verify_audit_ledger(
             f_hash = cp_data.get("tip_hash")
             f_updated = cp_data.get("updated_at")
             f_sig = cp_data.get("signature")
+            cp_fp = cp_data.get("signer_fingerprint")
             if f_sig and effective_keys and f_idx is not None and f_hash:
                 to_verify = f"{f_idx}:{f_hash}:{f_updated}".encode()
-                sig_valid = any(crypto.verify_payload(k, to_verify, f_sig) for k in effective_keys)
-                if not sig_valid:
-                    checkpoint_sig_error = (
-                        f"Checkpoint signature invalid or tampered in {cp_file.name}: "
-                        "signature does not match tip under trusted keys."
-                    )
+                if cp_fp:
+                    matching_cp_keys = [
+                        k for k in effective_keys if crypto.public_key_fingerprint(k) == cp_fp
+                    ]
+                    if not matching_cp_keys:
+                        checkpoint_sig_error = (
+                            f"Checkpoint in {cp_file.name} was signed with key fingerprint '{cp_fp}' "
+                            f"which is not in the trusted key set."
+                        )
+                    elif not any(crypto.verify_payload(k, to_verify, f_sig) for k in matching_cp_keys):
+                        checkpoint_sig_error = (
+                            f"Checkpoint signature invalid or tampered in {cp_file.name}: "
+                            "signature does not match tip under trusted keys."
+                        )
+                else:
+                    sig_valid = any(crypto.verify_payload(k, to_verify, f_sig) for k in effective_keys)
+                    if not sig_valid:
+                        checkpoint_sig_error = (
+                            f"Checkpoint in {cp_file.name} was signed with key that is not in the trusted key set "
+                            "or signature is invalid."
+                        )
             if f_idx is not None and (checkpoint_tip_index is None or f_idx > checkpoint_tip_index):
                 checkpoint_tip_index = f_idx
                 checkpoint_tip_hash = f_hash

@@ -161,6 +161,10 @@ def _write_checkpoint(
                 to_sign = f"{tip_index}:{tip_hash}:{updated_at}".encode()
                 sig = crypto.sign_payload(signing_key, to_sign)
                 cp_data["signature"] = sig
+                try:
+                    cp_data["signer_fingerprint"] = crypto.public_key_fingerprint(signing_key.public_key())
+                except Exception:
+                    pass
             except Exception:
                 pass
         fd = os.open(str(cp_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
