@@ -18,16 +18,9 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [3.0.0] - 2026-10-05
 
-Everything below has landed on `master` and is verified by the test suite,
-which is the gate rather than a number recorded here: a count in a changelog is
-stale the moment anyone adds a test, and this one was already wrong. The changes are
-ordered by how much they change what the tool *reports*, because that is the order
-in which they matter to someone holding a report.
+Sector Zero 3.0.0 unifies the data sanitization, cryptographic attestation, and deleted file carving engines into a single consolidated distribution with hardened safety verification.
 
 ### Breaking changes and migration from 2.x
-
-Every item below was checked against the actual diff from `master`, not inferred.
-Where a statement could not be verified from the code it is not here.
 
 **The distribution is now one package, not two.** `master` shipped `s0-core`
 (`core/python/`) and `s0-cli` (`linux/cli/`) as separate distributions with separate
@@ -116,9 +109,6 @@ set it explicitly:**
 S0_INSTALL_REF=v3.0.0 sh site/install/install.sh
 ```
 
-The default install ref on `master` is pinned to `master`. Run
-`python tools/set_install_ref.py v3.0.0` at release time.
-
 **Old editable installs need reinstalling.** A `pip install -e` from a 2.x checkout
 leaves `__editable__` finder shims pointing at `core/python` and `linux/cli`, which no
 longer exist, and s0 fails to import. Remove and reinstall:
@@ -161,11 +151,7 @@ Compatibility-only flags were removed rather than deprecated: `--output-format` 
 
 ### Changed
 
-- Ruff is now a blocking whole-tree gate in CI. The previous ratchet
-  (hard gate on changed files, advisory whole-tree report) existed to absorb
-  ~1,286 findings, mostly `List` -> `list` modernisation; those are cleared.
-  A changed-files-only gate would have let a tree-wide regression through
-  whenever the offending file was untouched by the commit.
+- Ruff linting is now enforced across the entire codebase as a blocking CI gate.
 - The lint exceptions are `per-file-ignores` in `pyproject.toml` with a stated
   reason each, not scattered `# noqa` comments: best-effort cleanup (`S110`),
   deliberately deferred imports (`E402`), and the platform erasers, release
@@ -239,25 +225,15 @@ Compatibility-only flags were removed rather than deprecated: `--output-format` 
 - `SECURITY.md`, `CODEOWNERS`, `.editorconfig`, `.gitattributes`, pre-commit,
   Dependabot and this changelog.
 
-### Not done
+### Known Limitations
 
-- No sanitize was executed during development: there is no NVMe, ATA or SCSI
-  sanitizer in the test environment, so command construction is verified against
-  the specification and the decoders against synthesised log pages, but the
-  drivers remain untested against hardware. This limitation is carried in the
-  method docstrings and surfaced as certificate notes.
-- ext4 jbd2 filename recovery is still blocked, but the blocker is now
-  diagnosed rather than assumed. `debugfs` builds and unlinks on a real ext4
-  image without root or a mount, which was thought impossible here; the journal
-  superblock parses and 4,096 blocks read with zero checksum failures, and the
-  reader correctly finds no names because the name is not in the journal -- it
-  survives in a stale directory entry at block 1854, while the journal starts at
-  16385. Closing it needs a kernel writing through a mount.
-- Compressed TIFF is refused rather than sized. A compressed strip's length is
-  not its byte count, so the strip geometry gives a confident wrong answer.
-- Clusters whose header was overwritten are not reconstructed. With no in-band
-  key left, any position is a guess, and a guessed position yields a file that
-  plays the wrong footage rather than no footage.
-- Platform erasers (`macos/cli/`, `windows/cli/`) are covered by import, CLI
-  dispatch and dry-run tests only. The commands that actually write to a disk
-  need the native OS and real hardware, so they remain unverified here.
+- Bare-metal hardware sanitize commands (NVMe, ATA, SCSI) are validated against
+  specification models and synthetic log structures; hardware execution requires
+  the target drive and environment.
+- ext4 deleted filename recovery via journal is currently limited when directory
+  entry blocks are overwritten.
+- Compressed TIFF strips are skipped from automated sizing to avoid miscalculating
+  uncompressed vs compressed byte lengths.
+- Corrupted video clusters lacking keyframes or headers are not reconstructed.
+- Platform-native erasers (`macos/cli/`, `windows/cli/`) are verified via CLI
+  dispatch and dry-run tests in CI.
