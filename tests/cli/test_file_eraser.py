@@ -225,3 +225,93 @@ def test_file_wipe_as_file_and_as_image_flags(tmp_path):
     sub_dir.mkdir()
     rc = s0_main(["wipe", "--target", str(sub_dir), "--as-image"])
     assert rc == 64
+
+
+def test_erase_folder_with_dir_symlink_removed(tmp_path):
+    """Verify that erase_folder unlinks directory symlinks and cleans up the folder."""
+    target_dir = tmp_path / "test_folder"
+    target_dir.mkdir()
+    real_sub = tmp_path / "outside_dir"
+    real_sub.mkdir()
+    outside_file = real_sub / "outside.txt"
+    outside_file.write_bytes(b"OUTSIDE_DATA")
+
+    normal_file = target_dir / "normal.txt"
+    normal_file.write_bytes(b"NORMAL_DATA")
+
+    sym_dir = target_dir / "sym_dir"
+    sym_dir.symlink_to(real_sub)
+
+    results = erase_folder(target_dir, passes=1, pattern="zero")
+    assert outside_file.exists()
+    assert real_sub.exists()
+    assert outside_file.read_bytes() == b"OUTSIDE_DATA"
+    assert not target_dir.exists()
+    assert all(r.status == "success" for r in results)
+
+
+def test_erase_folder_with_file_symlink_leaves_surviving_dir(tmp_path):
+    """Verify that erase_folder refuses file symlinks and preserves target directory rather than orphaning."""
+    target_dir = tmp_path / "test_folder_symlink"
+    target_dir.mkdir()
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_bytes(b"OUTSIDE_DATA")
+
+    sym_file = target_dir / "sym_file.txt"
+    sym_file.symlink_to(outside_file)
+
+    results = erase_folder(target_dir, passes=1, pattern="zero")
+    # Outside file is safe
+    assert outside_file.exists()
+    # Directory survives and is restored to its proper name
+    assert target_dir.exists()
+    # Symlink failure recorded
+    failures = [r for r in results if r.status == "failure"]
+    assert any("symbolic link" in (r.error or "").lower() for r in failures)
+    assert any("could not be completely removed" in (r.error or "").lower() for r in failures)
+
+
+def test_erase_folder_undeletable_restored(tmp_path, monkeypatch):
+    """Verify that if top-level rmdir fails, the folder is restored to its original name and reported as failure."""
+    target_dir = tmp_path / "undeletable_dir"
+    target_dir.mkdir()
+    inner = target_dir / "inner.txt"
+    inner.write_bytes(b"DATA")
+
+    orig_rmdir = os.rmdir
+
+    def mock_rmdir(p):
+        if ".tw_root_" in str(p) or str(p) == str(target_dir):
+            raise OSError("Permission denied")
+        orig_rmdir(p)
+
+    monkeypatch.setattr(os, "rmdir", mock_rmdir)
+
+    results = erase_folder(target_dir, passes=1, pattern="zero")
+    # It must not be left orphaned as .tw_root_<hex>
+    assert target_dir.exists()
+    failures = [r for r in results if r.status == "failure"]
+    assert any("could not be completely removed" in (r.error or "") for r in failures)
+
+
+def test_cmd_erase_files_json_errors_reported(tmp_path, capsys):
+    import json
+
+    from s0.cli.main import main as s0_main
+
+    real_file = tmp_path / "real.txt"
+    real_file.write_bytes(b"DATA")
+    hardlink_file = tmp_path / "hardlink.txt"
+    os.link(real_file, hardlink_file)
+
+    # Wiping hardlinked file without --force fails in erase_single_file with status="failure"
+    rc = s0_main(["wipe", "--yes", "--json", "--targets", str(real_file), "--out-dir", str(tmp_path)])
+    assert rc == 1
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["status"] == "failure"
+    assert payload["failed_files"] >= 1
+    assert "errors" in payload
+    assert len(payload["errors"]) >= 1
+    assert "reason" in payload["errors"][0]
+    assert "hard links" in payload["errors"][0]["reason"]

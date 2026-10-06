@@ -389,24 +389,52 @@ def erase_folder_macos(
         for d in dirs:
             dir_p = Path(root) / d
             try:
-                rnd = Path(root) / f".tw_d_{secrets.token_hex(16)}"
-                os.rename(dir_p, rnd)
-                os.rmdir(rnd)
+                if dir_p.is_symlink():
+                    os.unlink(dir_p)
+                else:
+                    rnd = Path(root) / f".tw_d_{secrets.token_hex(16)}"
+                    os.rename(dir_p, rnd)
+                    os.rmdir(rnd)
             except Exception:
                 try:
-                    os.rmdir(dir_p)
+                    if dir_p.is_symlink():
+                        os.unlink(dir_p)
+                    else:
+                        os.rmdir(dir_p)
                 except Exception:
                     pass
 
+    target_to_remove = root_dir
     try:
         rnd_root = root_dir.parent / f".tw_root_{secrets.token_hex(16)}"
         os.rename(root_dir, rnd_root)
+        target_to_remove = rnd_root
         os.rmdir(rnd_root)
     except Exception:
+        if target_to_remove != root_dir and target_to_remove.exists():
+            try:
+                os.rename(target_to_remove, root_dir)
+                target_to_remove = root_dir
+            except Exception:
+                pass
         try:
-            os.rmdir(root_dir)
+            os.rmdir(target_to_remove)
         except Exception:
             pass
+
+    surviving = target_to_remove if target_to_remove.exists() else (root_dir if root_dir.exists() else None)
+    if surviving is not None:
+        results.append(
+            MacFileEraseResult(
+                path=str(surviving),
+                original_size=0,
+                bytes_overwritten=0,
+                passes=passes,
+                pattern=pattern,
+                status="failure",
+                error=f"Directory {surviving} could not be completely removed",
+            )
+        )
 
     return results
 

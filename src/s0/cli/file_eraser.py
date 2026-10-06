@@ -701,6 +701,19 @@ def erase_folder(
                     )
                 )
                 continue
+            if stat.S_ISLNK(st.st_mode):
+                results.append(
+                    FileEraseResult(
+                        path=file_p,
+                        original_size=0,
+                        bytes_overwritten=0,
+                        passes=passes,
+                        pattern=pattern,
+                        status="failure",
+                        error=f"Refusing to overwrite symbolic link: {file_p}",
+                    )
+                )
+                continue
             if not stat.S_ISREG(st.st_mode):
                 skipped_special.append(file_p)
                 continue
@@ -713,36 +726,51 @@ def erase_folder(
         for d in dirs:
             dir_p = Path(root) / d
             try:
-                rnd_dir = Path(root) / f".tw_d_{secrets.token_hex(16)}"
-                os.rename(dir_p, rnd_dir)
-                os.rmdir(rnd_dir)
+                if dir_p.is_symlink():
+                    os.unlink(dir_p)
+                else:
+                    rnd_dir = Path(root) / f".tw_d_{secrets.token_hex(16)}"
+                    os.rename(dir_p, rnd_dir)
+                    os.rmdir(rnd_dir)
             except Exception:
                 try:
-                    os.rmdir(dir_p)
+                    if dir_p.is_symlink():
+                        os.unlink(dir_p)
+                    else:
+                        os.rmdir(dir_p)
                 except Exception:
                     pass
 
-    # Finally remove top-level directory
+    # Finally remove top-level directory (M2/S0-02)
+    target_to_remove = root_dir
     try:
         rnd_root = root_dir.parent / f".tw_root_{secrets.token_hex(16)}"
         os.rename(root_dir, rnd_root)
+        target_to_remove = rnd_root
         os.rmdir(rnd_root)
     except Exception:
+        if target_to_remove != root_dir and target_to_remove.exists():
+            try:
+                os.rename(target_to_remove, root_dir)
+                target_to_remove = root_dir
+            except Exception:
+                pass
         try:
-            os.rmdir(root_dir)
+            os.rmdir(target_to_remove)
         except Exception:
             pass
 
-    if root_dir.exists():
+    surviving = target_to_remove if target_to_remove.exists() else (root_dir if root_dir.exists() else None)
+    if surviving is not None:
         results.append(
             FileEraseResult(
-                path=str(root_dir),
+                path=str(surviving),
                 original_size=0,
                 bytes_overwritten=0,
                 passes=passes,
                 pattern=pattern,
                 status="failure",
-                error=f"Directory {root_dir} could not be completely removed",
+                error=f"Directory {surviving} could not be completely removed",
             )
         )
 

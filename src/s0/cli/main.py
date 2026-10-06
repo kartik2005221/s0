@@ -1743,6 +1743,13 @@ def cmd_erase_files(args) -> int:
     print(f"[s0 erase-file]  Failed          : {summary.failed_files}", file=sys.stderr)
     print(f"[s0 erase-file]  Bytes Sanitized : {summary.total_bytes_processed} bytes", file=sys.stderr)
 
+    if summary.failed_files > 0:
+        print("\n[s0 erase-file]  Failures:", file=sys.stderr)
+        for r in summary.results:
+            if r.status == "failure":
+                print(f"  ✗ {r.path}: {r.error or 'erasure failed'}", file=sys.stderr)
+
+    cert_p = None
     if summary.certificate:
         try:
             blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key_path)
@@ -1776,20 +1783,6 @@ def cmd_erase_files(args) -> int:
                 print(f"[s0 erase-file]  PDF Certificate : {pdf_p}", file=sys.stderr)
             except Exception:
                 pass
-        if getattr(args, "json", False):
-            print(
-                json.dumps(
-                    {
-                        "status": "success" if summary.failed_files == 0 else "failure",
-                        "successful_files": summary.successful_files,
-                        "failed_files": summary.failed_files,
-                        "bytes_overwritten": summary.total_bytes_processed,
-                        "certificate": str(cert_p) if summary.certificate else None,
-                        "cert_uuid": summary.certificate.get("cert_uuid") if summary.certificate else None,
-                    },
-                    indent=2,
-                )
-            )
     elif summary.total_files == 0:
         # Not a failure, and not a signing problem: there was nothing to erase, so
         # there is nothing to certify. Saying "certificate generation failed" here
@@ -1803,6 +1796,31 @@ def cmd_erase_files(args) -> int:
         print(
             "WARNING: Sanitization completed, but certificate generation failed (see warnings).",
             file=sys.stderr,
+        )
+
+    if getattr(args, "json", False):
+        if getattr(args, "ui", None) is not None:
+            args.ui._finished = True
+        elif ui_obj is not None:
+            ui_obj._finished = True
+        errors = [
+            {"path": r.path, "reason": r.error or "erasure failed"}
+            for r in summary.results
+            if r.status == "failure"
+        ]
+        print(
+            json.dumps(
+                {
+                    "status": "success" if summary.failed_files == 0 else "failure",
+                    "successful_files": summary.successful_files,
+                    "failed_files": summary.failed_files,
+                    "bytes_overwritten": summary.total_bytes_processed,
+                    "certificate": str(cert_p) if cert_p else None,
+                    "cert_uuid": summary.certificate.get("cert_uuid") if summary.certificate else None,
+                    "errors": errors,
+                },
+                indent=2,
+            )
         )
 
     return 0 if summary.failed_files == 0 else 1
