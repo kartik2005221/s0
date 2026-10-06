@@ -73,6 +73,8 @@ def parse_ext4_superblock(
             inodes_count = struct.unpack_from("<I", sb_data, 0)[0]
             blocks_count = struct.unpack_from("<I", sb_data, 4)[0]
             log_block_size = struct.unpack_from("<I", sb_data, 24)[0]
+            if log_block_size > 6:
+                return None
             block_size = 1024 << log_block_size
             blocks_per_group = struct.unpack_from("<I", sb_data, 32)[0]
             inodes_per_group = struct.unpack_from("<I", sb_data, 40)[0]

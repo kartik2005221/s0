@@ -67,6 +67,8 @@ def qr_module_count(data: str, *, ec_level: str = QR_ECC) -> int:
     Raises ValueError when the payload exceeds QR version 40 (2953 bytes at ECC L),
     which is the hard capacity ceiling of the symbol.
     """
+    if len(data.encode("utf-8")) > 2953:
+        raise ValueError(f"Data length ({len(data.encode('utf-8'))} bytes) exceeds QR version 40 capacity (2953 bytes)")
     img = qrcode.QRCode(
         error_correction=getattr(qrcode.constants, f"ERROR_CORRECT_{ec_level}"),
         border=3,

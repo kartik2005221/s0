@@ -776,23 +776,30 @@ def _scan_signatures(
         while True:
             block = f.read(chunk)
             if not block:
-                break
-            at_eof = len(block) < chunk
-            scanned += len(block)
-            data = carry + block
-            data_start = carry_offset
-
-            # Reserve the trailing `window_needed` bytes so a signature
-            # straddling a window boundary is still seen. At end-of-file there
-            # is no next window to re-read them from, so search everything.
-            keep_from = 0 if at_eof else max(0, len(data) - max(overlap, window_needed))
-            if keep_from > 0:
-                carry = data[keep_from:]
-                carry_offset = data_start + keep_from
-                data = data[:keep_from]
-            else:
+                if not carry:
+                    break
+                # H4: Process remaining trailing carry at EOF
+                data = carry
+                data_start = carry_offset
                 carry = b""
-                carry_offset = data_start + len(data)
+                at_eof = True
+            else:
+                scanned += len(block)
+                at_eof = (len(block) < chunk) or (total_size > 0 and scanned >= total_size)
+                data = carry + block
+                data_start = carry_offset
+
+                # Reserve the trailing `window_needed` bytes so a signature
+                # straddling a window boundary is still seen. At end-of-file there
+                # is no next window to re-read them from, so search everything.
+                keep_from = 0 if at_eof else max(0, len(data) - max(overlap, window_needed))
+                if keep_from > 0:
+                    carry = data[keep_from:]
+                    carry_offset = data_start + keep_from
+                    data = data[:keep_from]
+                else:
+                    carry = b""
+                    carry_offset = data_start + len(data)
 
             # When an allocation map is available, a window that contains no free
             # space at all cannot hold a deleted file. Skipping the signature
@@ -1476,7 +1483,8 @@ def carve_image(
                         f"Forensic Carving Session: scanned {scanned} bytes of {target_p.name}.",
                         f"Source filesystem: {fs_type.upper() if fs_type != 'raw' else 'UNALLOCATED / RAW'}.",
                         f"Recovered {len(all_files)} file(s), {counters['bytes_recovered']} bytes.",
-                        f"Candidates evaluated: {counters['candidates']}; accepted: {counters['accepted']}; "
+                        f"Candidates evaluated: {counters['candidates']}; "
+                        f"accepted: {counters['accepted'] + counters.get('structure_accepted', 0)}; "
                         f"rejected: {counters['rejected']}; duplicates suppressed: {counters['duplicate']}.",
                         "By recovery method: "
                         + ", ".join(f"{k}={v}" for k, v in sorted(by_method.items()))

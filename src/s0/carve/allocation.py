@@ -136,6 +136,19 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
     # Group 0's descriptor table follows the superblock.
     desc_table_block = (first_data_block + 1) if sb.block_size == 1024 else first_data_block + 1
     num_groups = (sb.blocks_count - first_data_block + blocks_per_group - 1) // blocks_per_group
+    # Bound num_groups by media capacity to prevent DoS from crafted s_blocks_count (M3/S0-10)
+    max_groups = max(1, (rdr.size - part + sb.block_size - 1) // (blocks_per_group * sb.block_size))
+    num_groups = min(num_groups, max_groups)
+
+    MAX_NOTES = 50
+    suppressed_notes = 0
+
+    def add_note(msg: str) -> None:
+        nonlocal suppressed_notes
+        if len(fsm.notes) < MAX_NOTES:
+            fsm.notes.append(msg)
+        else:
+            suppressed_notes += 1
 
     for group in range(num_groups):
         g_first = first_data_block + group * blocks_per_group
@@ -144,19 +157,15 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
             break
         desc = rdr.read(part + desc_table_block * sb.block_size + group * desc_size, desc_size)
         if len(desc) < 12:
-            fsm.notes.append(
-                f"block group {group}: group descriptor unreadable; that group's space is excluded"
-            )
+            add_note(f"block group {group}: group descriptor unreadable; that group's space is excluded")
             continue
         bitmap_block = struct.unpack_from("<I", desc, 0)[0]
         if bitmap_block == 0 or bitmap_block >= sb.blocks_count:
-            fsm.notes.append(
-                f"block group {group}: descriptor points at block {bitmap_block}, outside the volume"
-            )
+            add_note(f"block group {group}: descriptor points at block {bitmap_block}, outside the volume")
             continue
         bitmap = rdr.read(part + bitmap_block * sb.block_size, sb.block_size)
         if len(bitmap) < (g_blocks + 7) // 8:
-            fsm.notes.append(f"block group {group}: bitmap unreadable; that group's space is excluded")
+            add_note(f"block group {group}: bitmap unreadable; that group's space is excluded")
             continue
         for b in range(g_blocks):
             # A set bit means the block is *in use*. Skip those; the clear bits
@@ -165,6 +174,9 @@ def _ext4_free_space(rdr: BitmapReader, part: int, sb) -> FreeSpaceMap:
                 continue
             blk = g_first + b
             fsm.ranges.append((blk * sb.block_size, (blk + 1) * sb.block_size))
+
+    if suppressed_notes > 0:
+        fsm.notes.append(f"... and {suppressed_notes} additional block group error(s) suppressed")
 
     fsm.ranges = _merge(fsm.ranges)
     fsm.reliable = bool(fsm.ranges) and not fsm.notes
@@ -204,6 +216,8 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
     root_sectors = (root_entries * 32 + bps - 1) // bps
     first_data_sector = reserved + num_fats * fat_size + root_sectors
     data_sectors = total_sectors - first_data_sector
+    present_sectors = max(0, rdr.size - (part + first_data_sector * bps)) // bps
+    data_sectors = min(data_sectors, present_sectors)
     fsm = FreeSpaceMap(
         partition_offset=part,
         volume_bytes=data_sectors * bps if data_sectors > 0 else 0,
@@ -216,11 +230,13 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
         )
         return fsm
 
-    data_clusters = data_sectors // spc
     fat = rdr.read(part + reserved * bps, fat_size * bps)
     if len(fat) < 8:
         fsm.notes.append("FAT unreadable")
         return fsm
+
+    max_fat_clusters = max(0, len(fat) // 4 - 2)
+    data_clusters = min(data_sectors // spc, max_fat_clusters)
 
     def next_cluster(c: int) -> int:
         """Return the raw FAT entry for `c`, masked to 28 bits."""
