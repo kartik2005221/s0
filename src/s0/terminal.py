@@ -44,7 +44,7 @@ EX_UNAVAILABLE = 69  # a required program or service is unavailable
 EX_SOFTWARE = 70  # internal error
 EX_CANTCREAT = 73  # output file cannot be created
 EX_IOERR = 74  # I/O error during the operation
-EX_TEMPFAIL = 75  # temporary failure, retryable (device busy)
+EX_TEMPFAIL = 75  # temporary failure, retryable (device busy), or unaccredited demo key
 EX_NOPERM = 77  # permission denied
 EX_CONFIG = 78  # configuration error
 EX_INTERRUPTED = 130  # SIGINT
@@ -59,7 +59,7 @@ EXIT_MEANINGS = {
     EX_SOFTWARE: "internal error",
     EX_CANTCREAT: "cannot create output",
     EX_IOERR: "I/O error",
-    EX_TEMPFAIL: "temporary failure, safe to retry",
+    EX_TEMPFAIL: "temporary failure or unaccredited demo key",
     EX_NOPERM: "permission denied",
     EX_CONFIG: "configuration error",
     EX_INTERRUPTED: "interrupted by the operator",

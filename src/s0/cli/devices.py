@@ -162,7 +162,7 @@ def get_block_device_size(device_path: str | Path) -> int:
         f"Could not determine size of block device {clean_p} — all detection methods "
         f"failed; falling back to 0 bytes"
     )
-    logger.warning(message)
+    logger.debug(message)
     # Also recorded for the machine-readable envelope. A warning that only reaches
     # stderr means `s0 list --json` reports `"warnings": []` while the operator's
     # terminal scrolls three complaints about the same device -- so the one output

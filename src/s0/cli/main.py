@@ -169,6 +169,8 @@ def _warn_if_demo_key(key_path: Path | None, policy=None) -> None:
     `--no-color`, `--color never` and `NO_COLOR=1`. It goes through the policy now,
     like every other coloured string.
     """
+    if policy is not None and getattr(policy, "quiet", False):
+        return
     if key_path is None or not is_demo_key(key_path):
         return
     out = policy.err_stream if policy is not None else sys.stderr
@@ -389,6 +391,8 @@ def _c(text: str, code: str, policy=None) -> str:
 
 def _print_legal_notice(policy=None) -> None:
     """Print the legal notice once per process, to stderr, never into piped data."""
+    if policy is not None and getattr(policy, "quiet", False):
+        return
     if os.environ.get("S0_LEGAL_NOTICE_SHOWN"):
         return
     os.environ["S0_LEGAL_NOTICE_SHOWN"] = "1"
@@ -641,6 +645,11 @@ def cmd_plan(args) -> int:
     """
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "plan")
     if not getattr(args, "target", None):
+        parser = getattr(args, "_parser", None)
+        if parser is not None:
+            parser.print_usage(sys.stderr)
+        else:
+            print("usage: s0 plan [-h] --target TARGET", file=sys.stderr)
         ui.error("the following arguments are required: --target")
         return EX_USAGE
 
@@ -1090,7 +1099,6 @@ def cmd_wipe(args) -> int:
             sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
-        _warn_if_demo_key(key_path, _ui_policy(args))
         res_win, cert = wipe_drive_or_partition_windows(
             target=target.path,
             passes=getattr(args, "passes", 1),
@@ -1185,7 +1193,6 @@ def cmd_wipe(args) -> int:
             sys.stderr.write(f"[s0 wipe plan] target={target.path} method=OVERWRITE_ZERO_1PASS tier=Clear\n")
 
         key_path = default_issuer_key(args.key)
-        _warn_if_demo_key(key_path, _ui_policy(args))
         res_mac, cert = wipe_drive_or_partition_macos(
             target=target.path,
             passes=getattr(args, "passes", 1),
@@ -1350,17 +1357,14 @@ def cmd_wipe(args) -> int:
                 flush=True,
             )
             answer = input()
-        except (EOFError, KeyboardInterrupt):
+        except KeyboardInterrupt:
             # An interrupt is not a success. Previously a Ctrl-C here was
             # swallowed into answer="" and then exited 0, so
             # `s0 wipe --yes-less && next_step` ran the next step.
             ui.note("Aborted by interrupt - nothing was written.")
             return EX_TEMPFAIL
-        except RuntimeError:
-            # `input()` raises RuntimeError("lost sys.stdin") when fd 0 is closed,
-            # which is what happens under `s0 wipe --target X <&-`. It was not
-            # caught, so that produced a raw traceback.
-            ui.note("Cannot confirm: standard input is closed. Refusing to write.")
+        except (EOFError, RuntimeError):
+            ui.note("Aborted (no input) - nothing was written.")
             return EX_TEMPFAIL
         if answer.strip() != str(target.path):
             # Non-zero: an operator abort is not a completed operation.
@@ -1471,7 +1475,6 @@ def cmd_wipe(args) -> int:
         result.errors.append("post-wipe verification FAILED — sampled sectors did not match expected pattern")
 
     key_path = default_issuer_key(args.key)
-    _warn_if_demo_key(key_path, _ui_policy(args))
     if key_path is None:
         ui.error("no issuer signing key found")
         return EX_CONFIG
@@ -1628,7 +1631,9 @@ def cmd_wipe(args) -> int:
 
 
 def cmd_erase_files(args) -> int:
-    _print_legal_notice(getattr(args, "policy", None) or policy_from_args(args))
+    policy = getattr(args, "policy", None) or policy_from_args(args)
+    quiet = bool(getattr(policy, "quiet", False))
+    _print_legal_notice(policy)
     if not _validate_cli_metadata(args):
         return EX_USAGE
 
@@ -1642,7 +1647,8 @@ def cmd_erase_files(args) -> int:
         print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
         return EX_USAGE
 
-    print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
+    if not quiet:
+        print("==> S0: Secure File & Folder Sanitization", file=sys.stderr)
 
     # Everything that can make the *evidence* unwritable is resolved before the first
     # byte is erased. Three separate inputs used to fail after the erase instead:
@@ -1664,13 +1670,15 @@ def cmd_erase_files(args) -> int:
         return EX_USAGE
 
     if getattr(args, "no_certificate", False):
-        print(
-            "WARNING: --no-certificate specified. No compliance certificate or audit log will be generated.",
-            file=sys.stderr,
-        )
+        if not quiet:
+            print(
+                "WARNING: --no-certificate specified. No certificate or audit log will be generated.",
+                file=sys.stderr,
+            )
 
     targets = [Path(t) for t in args.targets]
-    print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
+    if not quiet:
+        print(f"==> Target items ({len(targets)}): {[str(t) for t in targets]}", file=sys.stderr)
 
     ui_obj = getattr(args, "ui", None) or UI(_ui_policy(args) or OutputPolicy(), "wipe")
 
@@ -1692,9 +1700,12 @@ def cmd_erase_files(args) -> int:
                 flush=True,
             )
             answer = input()
-        except (EOFError, KeyboardInterrupt, OSError):
+        except KeyboardInterrupt:
             ui_obj.note("Aborted by interrupt - nothing was written")
             return EX_INTERRUPTED
+        except (EOFError, OSError):
+            ui_obj.note("Aborted (no input) - nothing was written")
+            return EX_TEMPFAIL
         expected_answers = {"WIPE", str(targets[0])} if len(targets) == 1 else {"WIPE"}
         if answer.strip() not in expected_answers:
             ui_obj.note(f"Confirmation failed (got '{answer.strip()}', expected 'WIPE'). Aborting.")
@@ -1738,25 +1749,27 @@ def cmd_erase_files(args) -> int:
         )
         return 130
 
-    print(f"\n[s0 erase-file]  Files Processed : {summary.total_files}", file=sys.stderr)
-    print(f"[s0 erase-file]  Successful      : {summary.successful_files}", file=sys.stderr)
-    print(f"[s0 erase-file]  Failed          : {summary.failed_files}", file=sys.stderr)
-    print(f"[s0 erase-file]  Bytes Sanitized : {summary.total_bytes_processed} bytes", file=sys.stderr)
+    if not quiet:
+        print(f"\n[s0 wipe]  Files Processed : {summary.total_files}", file=sys.stderr)
+        print(f"[s0 wipe]  Successful      : {summary.successful_files}", file=sys.stderr)
+        print(f"[s0 wipe]  Failed          : {summary.failed_files}", file=sys.stderr)
+        print(f"[s0 wipe]  Bytes Sanitized : {summary.total_bytes_processed} bytes", file=sys.stderr)
 
-    if summary.failed_files > 0:
-        print("\n[s0 erase-file]  Failures:", file=sys.stderr)
-        for r in summary.results:
-            if r.status == "failure":
-                print(f"  ✗ {r.path}: {r.error or 'erasure failed'}", file=sys.stderr)
+        if summary.failed_files > 0:
+            print("\n[s0 wipe]  Failures:", file=sys.stderr)
+            for r in summary.results:
+                if r.status == "failure":
+                    print(f"  ✗ {r.path}: {r.error or 'erasure failed'}", file=sys.stderr)
 
     cert_p = None
     if summary.certificate:
         try:
             blk = record_audit_event(summary.certificate, operation_type="FILE_ERASE", private_key=key_path)
-            print(
-                f"[s0 erase-file]  Audit Ledger    : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)",
-                file=sys.stderr,
-            )
+            if not quiet:
+                print(
+                    f"[s0 wipe]  Audit Ledger    : recorded block #{blk.block_index} ({blk.block_hash[:16]}...)",
+                    file=sys.stderr,
+                )
         except Exception as exc:
             print(f"WARNING: failed to record event into audit ledger: {exc}", file=sys.stderr)
 
@@ -1764,7 +1777,8 @@ def cmd_erase_files(args) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         cert_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.json"
         cert_p.write_text(json.dumps(summary.certificate, indent=2) + "\n")
-        print(f"[s0 erase-file]  Certificate     : {cert_p}", file=sys.stderr)
+        if not quiet:
+            print(f"[s0 wipe]  Certificate     : {cert_p}", file=sys.stderr)
 
         if not getattr(args, "no_pdf", False):
             try:
@@ -1780,7 +1794,8 @@ def cmd_erase_files(args) -> int:
                 qr_p = out_dir / f"file_wipe_certificate_{summary.certificate['cert_uuid'][:8]}.qr.png"
                 pdfgen.generate_pdf(summary.certificate, pdf_p, qr_url_template=qr_url_tpl)
                 pdfgen.write_qr_file(summary.certificate, qr_p)
-                print(f"[s0 erase-file]  PDF Certificate : {pdf_p}", file=sys.stderr)
+                if not quiet:
+                    print(f"[s0 wipe]  PDF Certificate : {pdf_p}", file=sys.stderr)
             except Exception:
                 pass
     elif summary.total_files == 0:
@@ -1867,10 +1882,22 @@ def _confidence_0_100(raw: str) -> int:
 def cmd_carve(args) -> int:
     """Recover deleted and unallocated files from an image, image file or device."""
     ui = getattr(args, "ui", None) or UI(OutputPolicy(), "carve")
-    _print_legal_notice(_ui_policy(args))
+
+    target_path = Path(args.target)
+    # Refuse a target that is not there, with a clean exit, before any work starts.
+    # Without this the size probe below quietly yields 0, the engine later opens a
+    # path that does not exist, and the operator saw a two-page Python traceback
+    # for the ordinary mistake of a typo in a filename.
+    if not target_path.exists() and not str(args.target).startswith("/dev/"):
+        ui.error(f"target not found: {args.target}")
+        return EX_NOINPUT
+
+    policy = getattr(args, "policy", None) or _ui_policy(args)
+    _print_legal_notice(policy)
     if not _validate_cli_metadata(args):
         return EX_USAGE
-    ui.note("S0 - Forensic File Carving & Recovery")
+    if policy is None or not getattr(policy, "quiet", False):
+        ui.note("S0 - Forensic File Carving & Recovery")
 
     # Both resolved before the scan. `carve` on an unwritable --out-dir used to run the
     # whole carve and then die in the write, so the operator paid for a full pass over a
@@ -1889,15 +1916,6 @@ def cmd_carve(args) -> int:
 
     ui.key("Target media", str(args.target))
     ui.key("Output directory", str(args.out_dir))
-
-    target_path = Path(args.target)
-    # Refuse a target that is not there, with a clean exit, before any work starts.
-    # Without this the size probe below quietly yields 0, the engine later opens a
-    # path that does not exist, and the operator saw a two-page Python traceback
-    # for the ordinary mistake of a typo in a filename.
-    if not target_path.exists() and not str(args.target).startswith("/dev/"):
-        ui.error(f"target not found: {args.target}")
-        return EX_NOINPUT
 
     target_size = 0
     if target_path.is_block_device():
@@ -1944,6 +1962,11 @@ def cmd_carve(args) -> int:
                 raw_data = json.loads(sig_arg)
             if isinstance(raw_data, dict):
                 raw_data = [raw_data]
+            elif not isinstance(raw_data, list):
+                raise ValueError("custom signature JSON must be an object or a list of objects")
+            for item in raw_data:
+                if not isinstance(item, dict):
+                    raise ValueError(f"expected custom signature object, got {type(item).__name__}")
             custom_sigs = [signature_from_dict(d) for d in raw_data]
             print(
                 f"Loaded {len(custom_sigs)} custom forensic signature(s): {', '.join(s.name for s in custom_sigs)}"
@@ -2677,9 +2700,6 @@ def cmd_verify(args) -> int:
     ui.key("Device", cert_data.get("device", {}).get("device_id", "-"))
     ui.key("Result", cert_data.get("result", {}).get("status", "-"))
     ui.key("Key fingerprint", _signature_object(cert_data).get("public_key_fingerprint", "-"))
-    if not ok:
-        ui.note("")
-        ui.key("Reason", reason)
     return _verify_exit
 
 
@@ -2989,7 +3009,6 @@ def cmd_uninstall(args) -> int:
         ui.note("  # Inspect s0-uninstall.sh before running, then:")
         ui.note("  bash s0-uninstall.sh")
         return EX_NOINPUT
-        return 1
 
     ui.key("Target directory", str(repo_dir))
     audit_db = Path.home() / ".s0" / "s0_audit.db"
@@ -3023,10 +3042,14 @@ def cmd_uninstall(args) -> int:
         )
         try:
             confirm = input("Are you sure you want to uninstall s0? [y/N]: ").strip().lower()
-        except (KeyboardInterrupt, EOFError):
+        except KeyboardInterrupt:
             ui.note("")
-            ui.note("Aborted.")
+            ui.note("Aborted by interrupt.")
             return EX_INTERRUPTED
+        except (EOFError, OSError):
+            ui.note("")
+            ui.note("Aborted (no input).")
+            return EX_TEMPFAIL
         if confirm != "y":
             ui.note("Uninstallation cancelled.")
             return EX_OK
@@ -3115,11 +3138,15 @@ def cmd_image(args) -> int:
         )
         try:
             conf = input(f"Type '{args.destination}' to confirm clone to {args.destination}: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            conf = ""
+        except KeyboardInterrupt:
+            ui.note("Aborted by interrupt.")
+            return EX_INTERRUPTED
+        except (EOFError, OSError):
+            ui.note("Aborted (no input).")
+            return EX_TEMPFAIL
         if conf != str(args.destination):
             ui.note("Aborted by the operator.")
-            return EX_OK
+            return EX_TEMPFAIL
 
     # Created on the first real progress report, sized from what the imager
     # measured. It used to be created up front with a placeholder total of 1 byte
@@ -3638,7 +3665,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="shortcut for --require-tier Purge: only firmware-mediated Purge methods satisfy this request",
     )
-    pln.set_defaults(func=cmd_plan)
+    pln.set_defaults(func=cmd_plan, _parser=pln)
 
     wp = sub.add_parser(
         "wipe", parents=[common], help="wipe drive, file(s), or folder(s), verify, issue signed certificate"
@@ -3695,11 +3722,9 @@ def build_parser() -> argparse.ArgumentParser:
     wp.add_argument(
         "--no-certificate",
         action="store_true",
-        help="explicitly run without generating an Ed25519 compliance certificate",
+        help="explicitly run without generating an Ed25519 certificate",
     )
-    wp.add_argument(
-        "--no-pdf", action="store_true", help="skip generating human-readable PDF compliance certificate"
-    )
+    wp.add_argument("--no-pdf", action="store_true", help="skip generating human-readable PDF certificate")
     wp.add_argument(
         "--verify-samples",
         type=int,
@@ -3857,7 +3882,15 @@ def build_parser() -> argparse.ArgumentParser:
     aud.set_defaults(func=cmd_audit)
 
     # 4. Offline Verification Subcommand
-    vr = sub.add_parser("verify", help="verify a signed certificate offline against trusted public keys")
+    vr = sub.add_parser(
+        "verify",
+        help="verify a signed certificate offline against trusted public keys",
+        description=(
+            "Verify a signed certificate offline against trusted public keys. "
+            "Exits 0 for valid signatures, 1 for invalid or corrupted certificates, "
+            "or 75 (EX_TEMPFAIL) if authentic but signed with the unaccredited demonstration key."
+        ),
+    )
     vr.add_argument("certificate", help="path to certificate JSON")
     vr.add_argument("--key", help="path to trusted public key PEM")
     vr.set_defaults(func=cmd_verify)
@@ -3908,10 +3941,7 @@ def build_parser() -> argparse.ArgumentParser:
     }
     for img_cmd in ("image", "clone"):
         img = sub.add_parser(img_cmd, help=_ACQUISITION_HELP[img_cmd])
-        img.description = (
-            _ACQUISITION_HELP[img_cmd].capitalize()
-            + ". Both commands share the same options; only the destination kind differs."
-        )
+        img.description = _ACQUISITION_HELP[img_cmd].capitalize() + "."
         img.add_argument("--source", required=True, help="path to source block device or raw image file")
         img.add_argument(
             "--destination",
@@ -4106,6 +4136,15 @@ def _dry_run_guard(args) -> int | None:
         value = getattr(args, flag, None)
         if value:
             ui.note(f"{label}: {value}")
+    if command == "uninstall":
+        home_s0 = (Path.home() / ".s0").resolve()
+        repo_dir = Path(os.environ.get("S0_INSTALL_DIR") or home_s0)
+        purge_all = getattr(args, "purge_all", False) or getattr(args, "purge", False)
+        ui.note(f"target:      {repo_dir}")
+        ui.note("symlinks:    ~/.local/bin/s0, ~/bin/s0, /usr/local/bin/s0")
+        ui.note(f"ledger:      {'purge audit ledger' if purge_all else 'preserve audit ledger backup'}")
+    elif command == "upgrade":
+        ui.note("action:      fetch latest git commits and update pinned dependencies")
     label = command
     if command == "live":
         sub = str(getattr(args, "live_action", "") or "")

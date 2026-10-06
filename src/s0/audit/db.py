@@ -326,6 +326,7 @@ def record_audit_event(
 
         block_signature = ""
         unsigned_reason = ""
+        priv_obj = None
         key_to_use = private_key
         if key_to_use is None:
             # Fall back to the packaged demo key if available.

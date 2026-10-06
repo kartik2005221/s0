@@ -107,7 +107,9 @@ class ProgressBar:
         if extra:
             self._extra = extra
         self._finished = True
-        if not self._drew_final or extra:
+        if not self._drew_final:
+            self._draw()
+        elif extra and self.is_tty:
             self._draw()
         self._newline()
 
