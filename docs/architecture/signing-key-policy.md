@@ -41,7 +41,7 @@ recorded, and every subsequent certificate from that install is signed by it.
 
 ### B. Require `--key`, refuse to sign otherwise
 
-`s0` becomes useless out of the box: `pip install s0` and immediately wipe a drive with no
+`s0` becomes useless out of the box: fresh install (`pip install .`) and immediately wipe a drive with no
 certificate at all. Every user has to run a key ceremony before their first operation.
 
 Correct for a tool whose only purpose is producing defensible evidence. Wrong as a default

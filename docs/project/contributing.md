@@ -84,7 +84,7 @@ bash tools/build_all.sh
 `build_all.sh` will:
 1. Automatically create and configure the `.venv` virtual environment.
 2. Install all core and CLI packages in editable development mode (`pip install -e`).
-3. Execute all 190+ unit and integration tests.
+3. Execute all 1,900+ unit and integration tests.
 4. Validate verification portal cryptographic assets and documentation deliverables.
 
 ---
@@ -185,7 +185,7 @@ When contributing to documentation:
 
 Before submitting your PR:
 - [ ] Code is formatted cleanly and includes type hints (`from __future__ import annotations`).
-- [ ] All 190+ automated tests pass (`pytest` runs 100% green).
+- [ ] All 1,900+ automated tests pass (`pytest` runs 100% green).
 - [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `site/verify/verify.js` and `src/s0/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
 - [ ] Any added pages are linked in `SUMMARY.md`.

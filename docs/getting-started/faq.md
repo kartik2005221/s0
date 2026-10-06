@@ -1,5 +1,7 @@
 # Frequently Asked Questions (FAQ)
 
+<a id="0-legal-ethical-use"></a>
+<a id="legal-ethical-use"></a>
 ## 0. Legal & Ethical Use
 
 ### Am I legally allowed to wipe or recover data from any device with s0?

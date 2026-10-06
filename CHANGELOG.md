@@ -18,7 +18,7 @@ console script. If you had both installed, uninstall both before installing v3:
 
 ```bash
 pip uninstall -y s0-core s0-cli
-pip install s0
+pip install .  # or pip install git+https://github.com/kartik2005221/s0.git
 ```
 
 The importable names moved with it. `s0_core.*` and `s0_cli.*` no longer exist:

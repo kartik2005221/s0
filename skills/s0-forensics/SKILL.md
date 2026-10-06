@@ -473,7 +473,7 @@ Also in this directory:
 
 ### 7.2 Where the skill is installed
 
-This skill ships **inside the distribution**, so a `pip install s0` user has it
+This skill ships **inside the distribution**, so a package install (`pip install .` or built wheel) has it
 as well as a git clone:
 
 ```bash

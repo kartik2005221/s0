@@ -1,7 +1,7 @@
 """s0: Secure Sanitization Platform (macOS Native).
 
 Backward-compatible launcher. The implementation now ships inside the package as
-``s0.platform.macos.s0_eraser`` so that ``pip install s0`` includes it; this
+``s0.platform.macos.s0_eraser`` so that package installations include it; this
 module remains so the repository-root launcher (``s0.sh``) and any existing
 checkout keep working.
 """

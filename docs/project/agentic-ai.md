@@ -95,7 +95,7 @@ skills/s0-forensics/
 `skills/` is packaged as data inside the `s0` distribution, so the skill is
 present for every install path, not just a clone:
 
-- `pip install s0` / wheel: `<site-packages>/skills/s0-forensics/SKILL.md`
+- package install (`pip install .`) / wheel: `<site-packages>/skills/s0-forensics/SKILL.md`
 - git clone, and the one-line installer (which clones to `~/.s0` and
   editable-installs from it): `~/.s0/skills/s0-forensics/SKILL.md`
 

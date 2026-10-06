@@ -100,8 +100,8 @@ namespaces = true
     "static/js/*",
     "static/assets/**/*",
 ]
-# The agent skill ships with the distribution, not only with the git clone. A
-# `pip install s0` user and a curl-one-liner user both need SKILL.md, its
+# The agent skill ships with the distribution, not only with the git clone. An
+# installed package user (wheel or git) and a curl-one-liner user both need SKILL.md, its
 # references, its eval prompts and the standalone certificate verifier, and
 # without this a wheel carries `s0` alone and the skill simply does not exist for
 # them. `skills/` is found as a top-level namespace package (`where = ["src",

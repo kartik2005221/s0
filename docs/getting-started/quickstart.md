@@ -401,7 +401,8 @@ You have three independent ways to verify any s0 certificate, all of which work 
 {% tab title="CLI" %}
 
 ```bash
-s0 verify certificate_a3f19c22.json --key src/s0/data/keys/demo_issuer_public.pem
+# Offline verification against the built-in demo key or specify --key <public.pem>
+s0 verify certificate_a3f19c22.json
 ```
 
 Expected output on a valid certificate:

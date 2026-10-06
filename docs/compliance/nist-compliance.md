@@ -393,6 +393,8 @@ The Ed25519 signature covers **every byte** of the canonical JSON payload. There
 
 ---
 
+<a id="compliance-checklist-purge-tier-certification"></a>
+<a id="compliance-checklist"></a>
 ## Compliance Checklist — Purge-Tier Certification
 
 Use this checklist to ensure every step required for a **NIST SP 800-88 Purge-tier** certificate is completed. Each item maps to a field in the signed certificate.

@@ -144,5 +144,5 @@ def safe_home() -> Path:
 # in site-packages would also collide with any other distribution using those
 # names.
 #
-# They live under this package so ``pip install s0`` carries them, and the import
+# They live under this package so package installations carry them, and the import
 # is ``s0.platform.windows.s0_eraser``.

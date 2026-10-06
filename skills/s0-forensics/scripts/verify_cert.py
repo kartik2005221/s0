@@ -354,7 +354,7 @@ def verify_certificate_file(cert_path: Path, key_path: Path | None = None) -> in
 
     print("  ⚠️  STATUS: NOT VERIFIED — neither the `s0` package nor the `s0` CLI is")
     print("     available, so the signature could not be checked. This is neither a")
-    print("     pass nor a fail: install s0 (`pip install s0`) or verify manually with")
+    print("     pass nor a fail: install s0 (`pip install -e .` or built wheel) or verify manually with")
     print(f"       s0 verify {cert_path} --key {resolved_key}")
     return 1
 

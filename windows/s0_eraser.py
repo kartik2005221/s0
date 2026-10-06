@@ -1,7 +1,7 @@
 """s0: Secure Sanitization Platform (Windows Native).
 
 Backward-compatible launcher. The implementation now ships inside the package as
-``s0.platform.windows.s0_eraser`` so that ``pip install s0`` includes it; this
+``s0.platform.windows.s0_eraser`` so that package installations include it; this
 module remains so the repository-root launchers (``s0.ps1``, ``s0.bat``) and any
 existing checkout keep working.
 """

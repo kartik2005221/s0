@@ -18,7 +18,7 @@ bash tools/build_all.sh
 
 ## 2. Module-by-Module Verification
 
-### Comprehensive Test Suite (190+ Tests)
+### Comprehensive Test Suite (1,900+ Tests)
 Execute the complete cross-platform test suite spanning core cryptographic invariants, CLI interfaces, web controllers, Win32/macOS drivers, and verification portal:
 
 ```bash

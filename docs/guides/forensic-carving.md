@@ -79,7 +79,7 @@ s0 recognizes the following file types by their binary signatures:
 {% hint style="warning" %}
 **`skills/s0-forensics/…` is a repository path, not an installed file**
 
-`s0 carve --help` points you at `skills/s0-forensics/references/carving-signatures.md`. That file ships in the git checkout, **not** in the wheel: if you installed s0 with `pip install s0`, the path does not exist on your machine and `s0 carve --help` cannot be taken literally. Use the table above — it is generated from the same registry — or clone the repository to read the per-format matrix.
+`s0 carve --help` points you at `skills/s0-forensics/references/carving-signatures.md`. That file ships in the git checkout, **not** in the wheel: if you installed s0 from a standalone wheel without a repository checkout, the path does not exist on your machine and `s0 carve --help` cannot be taken literally. Use the table above — it is generated from the same registry — or clone the repository to read the per-format matrix.
 {% endhint %}
 
 {% hint style="info" %}

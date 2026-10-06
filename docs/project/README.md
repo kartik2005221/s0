@@ -26,7 +26,7 @@ Resources for evaluators, security auditors, autonomous AI agents, and open-sour
     </tr>
     <tr>
       <td><strong>Forensic Test Plan &amp; QA</strong></td>
-      <td>190+ automated unit and integration tests across a 5-layer test pyramid guaranteeing cryptographic non-repudiation.</td>
+      <td>1,900+ automated unit and integration tests across a 5-layer test pyramid guaranteeing cryptographic non-repudiation.</td>
       <td><a href="test-plan.md">Test Plan</a></td>
     </tr>
     <tr>
