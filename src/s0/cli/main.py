@@ -3193,17 +3193,24 @@ def cmd_image(args) -> int:
         ui.error(f"I/O error: {exc}")
         return EX_IOERR
 
-    if result.error:
+    if not result.success:
         _end_acquisition("FAILED")
-        ui.error(f"acquisition failed: {result.error}")
+        err_msg = result.error or "unknown acquisition error"
+        ui.error(f"acquisition failed: {err_msg}")
         # Reading a whole block device needs privilege, and that is the single most
         # common reason this fails on a laptop. The device open error alone does not
         # say so, so the operator is left guessing between a bad cable and sudo.
-        if _looks_like_privilege_problem(result.error):
-            ui.error(
-                "reading a block device usually needs root: re-run with "
-                "`sudo s0 image ...` (see docs/guides/cli-reference.md)"
-            )
+        if _looks_like_privilege_problem(err_msg):
+            dest_str = str(args.destination)
+            if dest_str in err_msg or "cannot create" in err_msg.lower() or "write" in err_msg.lower():
+                ui.error(
+                    f"writing to destination {dest_str!r} failed due to permissions: check destination path and permissions"
+                )
+            else:
+                ui.error(
+                    "reading a block device usually needs root: re-run with "
+                    "`sudo s0 image ...` (see docs/guides/cli-reference.md)"
+                )
         return EX_IOERR
 
     hash_label = "Image SHA-256" if result.bad_sectors_count > 0 else "Source SHA-256"

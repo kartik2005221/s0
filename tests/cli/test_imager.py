@@ -308,3 +308,63 @@ def test_image_destination_guards(temp_workspace):
     )
     with pytest.raises(SafetyError, match="symbolic link"):
         acquire_image(opt_sym)
+
+    # 4. Refuse destination if it is a hardlink to source (H1)
+    hl_dst = temp_workspace / "hardlink_to_src.raw"
+    os.link(src, hl_dst)
+    opt_hl = ImagingOptions(
+        source=str(src),
+        destination=str(hl_dst),
+        out_dir=str(temp_workspace),
+        no_certificate=True,
+        force=True,
+    )
+    with pytest.raises(SafetyError, match="same target|multiple hard links"):
+        acquire_image(opt_hl)
+
+    # 5. Refuse destination with multiple hard links even if not source
+    other_file = temp_workspace / "other_file.raw"
+    other_file.write_bytes(b"OTHER")
+    multi_hl_dst = temp_workspace / "multi_hl_dst.raw"
+    os.link(other_file, multi_hl_dst)
+    opt_multi_hl = ImagingOptions(
+        source=str(src),
+        destination=str(multi_hl_dst),
+        out_dir=str(temp_workspace),
+        no_certificate=True,
+        force=True,
+    )
+    with pytest.raises(SafetyError, match="multiple hard links"):
+        acquire_image(opt_multi_hl)
+
+    # 6. Refuse destination targeting s0 state (M4)
+    s0_db_dst = Path.home() / ".s0" / "s0_audit.db"
+    opt_state = ImagingOptions(
+        source=str(src),
+        destination=str(s0_db_dst),
+        out_dir=str(temp_workspace),
+        no_certificate=True,
+        force=True,
+    )
+    with pytest.raises(SafetyError, match="s0's own state"):
+        acquire_image(opt_state)
+
+
+def test_empty_exception_still_fails_properly(temp_workspace):
+    src = temp_workspace / "dummy_src.raw"
+    src.write_bytes(b"X" * 1024)
+    dst = temp_workspace / "dummy_dst.raw"
+
+    opt = ImagingOptions(
+        source=str(src),
+        destination=str(dst),
+        out_dir=str(temp_workspace),
+        no_certificate=True,
+    )
+
+    with patch("builtins.open", side_effect=MemoryError()):
+        res = acquire_image(opt)
+        assert res.success is False
+        assert res.error != ""
+        assert "MemoryError" in res.error
+

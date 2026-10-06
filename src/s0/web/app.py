@@ -57,6 +57,7 @@ from s0.safety import (
     ProtectedPathError,
     _under,
     check_path_is_destructive,
+    s0_state_paths,
 )
 from s0.temperature import read_temperature
 from s0.validation import validate_metadata_str
@@ -697,6 +698,9 @@ def _reject_system_path(field: str, value: str | None) -> str | None:
                 continue
             if _under(p, Path(sp)):
                 raise ValueError(f"{field} cannot be in system path: {sp}")
+        for state in s0_state_paths():
+            if _under(p, state):
+                raise ValueError(f"{field} cannot target s0 state or audit ledger/keys: {p}")
     return value
 
 

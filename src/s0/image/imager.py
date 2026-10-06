@@ -120,12 +120,31 @@ def acquire_image(
     src_path, src_capacity, src_kind = _resolve_source_target(options.source)
     dst_p = Path(options.destination)
 
+    from s0.safety import _under, s0_state_paths
+
     # 1. Safety verification
     try:
-        if dst_p.exists() and os.path.realpath(src_path) == os.path.realpath(str(dst_p)):
-            raise SafetyError(f"Source and destination cannot be the same target ({src_path})!")
-    except OSError:
-        pass
+        if dst_p.exists():
+            if os.path.samefile(src_path, str(dst_p)) or os.path.realpath(src_path) == os.path.realpath(str(dst_p)):
+                raise SafetyError(f"Source and destination cannot be the same target ({src_path})!")
+            dst_stat = dst_p.stat()
+            if dst_stat.st_nlink > 1:
+                raise SafetyError(
+                    f"Refusing to overwrite destination with multiple hard links ({dst_p}, nlink={dst_stat.st_nlink}). "
+                    "Overwriting a hardlinked destination would corrupt or truncate shared files."
+                )
+    except OSError as err:
+        if isinstance(err, SafetyError):
+            raise
+
+    # Guard against overwriting s0 state (audit ledger, keys)
+    for state in s0_state_paths():
+        dest_check = dst_p.resolve() if dst_p.exists() else dst_p.parent.resolve() / dst_p.name
+        if _under(dest_check, state):
+            raise SafetyError(
+                f"Refusing to write image onto s0's own state ({dst_p}). "
+                "This would overwrite the audit ledger or signing keys."
+            )
 
     # Determine if destination is a physical block device (cloning mode) or image file
     is_clone = False
@@ -280,7 +299,7 @@ def acquire_image(
             bad_sector_ranges=bad_ranges,
             source_sha256=sha256_hasher.hexdigest(),
             source_md5=md5_hasher.hexdigest(),
-            error=str(exc),
+            error=str(exc) or repr(exc) or f"{type(exc).__name__}",
         )
     finally:
         if src_f:
