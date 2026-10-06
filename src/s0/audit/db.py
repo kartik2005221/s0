@@ -131,22 +131,41 @@ def get_db_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
     return conn
 
 
-def _write_checkpoint(db_path: str | Path, tip_index: int, tip_hash: str, updated_at: str) -> None:
+def _write_checkpoint(
+    db_path: str | Path,
+    tip_index: int,
+    tip_hash: str,
+    updated_at: str,
+    signing_key: Any = None,
+) -> None:
     """Write the chain checkpoint beside the ledger, 0600.
 
     This sidecar carries the same chain state as the ledger -- the tip index and
-    hash -- so it gets the same mode. It was created with the process umask (0664
-    on a typical system) while the database next to it was 0600, which meant
-    tightening the ledger left a readable copy of its state beside it.
+    hash -- so it gets the same mode. If a signing key is provided, the checkpoint
+    state is signed with Ed25519 to prevent undetectable tail truncation attacks.
 
     Best-effort by design: a checkpoint that cannot be written must not fail an
     erase that has already happened. The ledger itself remains authoritative.
     """
     cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
     try:
+        cp_data: dict[str, Any] = {
+            "tip_index": tip_index,
+            "tip_hash": tip_hash,
+            "updated_at": updated_at,
+        }
+        if signing_key is not None:
+            try:
+                from s0 import crypto
+
+                to_sign = f"{tip_index}:{tip_hash}:{updated_at}".encode()
+                sig = crypto.sign_payload(signing_key, to_sign)
+                cp_data["signature"] = sig
+            except Exception:
+                pass
         fd = os.open(str(cp_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
         with open(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps({"tip_index": tip_index, "tip_hash": tip_hash, "updated_at": updated_at}))
+            fh.write(json.dumps(cp_data))
         os.chmod(cp_file, 0o600)  # mode is ignored for an existing file
     except OSError:
         pass
@@ -391,7 +410,7 @@ def record_audit_event(
 
     conn.close()
 
-    _write_checkpoint(db_path, new_index, block_hash, timestamp)
+    _write_checkpoint(db_path, new_index, block_hash, timestamp, signing_key=priv_obj)
 
     return AuditBlock(
         block_index=new_index,

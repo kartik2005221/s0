@@ -245,3 +245,55 @@ def test_nonexistent_db_fails_verification(tmp_path):
     assert rep.is_valid is False
     assert "not found" in rep.reason.lower()
     assert not missing.exists()
+
+
+def test_checkpoint_signature_tampering_detected(test_audit_db, sample_cert):
+    """Tampering with the checkpoint file or its signature must be caught during verification."""
+    import json
+    from pathlib import Path
+
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    cp_file = Path(test_audit_db).parent / (Path(test_audit_db).stem + ".checkpoint.json")
+    assert cp_file.exists()
+
+    cp_data = json.loads(cp_file.read_text(encoding="utf-8"))
+    assert "signature" in cp_data
+    # Tamper with the tip_hash while keeping signature, or corrupt the signature
+    cp_data["signature"] = "tampered_signature"
+    cp_file.write_text(json.dumps(cp_data), encoding="utf-8")
+
+    rep = verify_audit_ledger(test_audit_db)
+    assert rep.is_valid is False
+    assert "checkpoint signature invalid" in rep.reason.lower()
+
+
+def test_ledger_row_certificate_mismatch_detected(test_audit_db, sample_cert):
+    """Mismatches between the database row columns and embedded certificate must be detected."""
+    import json
+
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+
+    # Maliciously change operator_id in certificate_json without changing row columns or block_hash
+    conn = sqlite3.connect(str(test_audit_db))
+    cur = conn.execute("SELECT certificate_json FROM audit_blocks WHERE block_index = 1")
+    cert_dict = json.loads(cur.fetchone()[0])
+    cert_dict["issuer"]["operator_id"] = "attacker"
+    conn.execute(
+        "UPDATE audit_blocks SET certificate_json = ? WHERE block_index = 1", (json.dumps(cert_dict),)
+    )
+    conn.commit()
+    conn.close()
+
+    rep = verify_audit_ledger(test_audit_db)
+    assert rep.is_valid is False
+    assert "mismatch in block #1" in rep.reason.lower()
+
+
+def test_corrupt_db_file_fails_gracefully(tmp_path):
+    """A corrupt sqlite file must return is_valid=False with a clear message rather than crashing."""
+    corrupt = tmp_path / "corrupt.db"
+    corrupt.write_bytes(b"NOT A SQLITE FILE HEADER 1234567890")
+
+    rep = verify_audit_ledger(corrupt)
+    assert rep.is_valid is False
+    assert "corrupt or tampered" in rep.reason.lower()

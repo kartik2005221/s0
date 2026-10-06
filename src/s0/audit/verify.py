@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -95,41 +96,41 @@ def verify_audit_ledger(
             details=["Database file does not exist."],
         )
 
-    conn = get_db_connection(db_path)
-    cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_blocks'")
-    if not cur.fetchone():
+    effective_keys = (
+        list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
+    )
+
+    try:
+        conn = get_db_connection(db_path)
+        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_blocks'")
+        if not cur.fetchone():
+            conn.close()
+            return ChainAuditReport(
+                is_valid=False,
+                total_blocks_verified=0,
+                reason="Audit ledger is empty (no genesis block found).",
+                details=["Database missing audit_blocks table."],
+            )
+
+        checkpoint_tip_index = None
+        checkpoint_tip_hash = None
+        cur_cp = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chain_checkpoint'")
+        if cur_cp.fetchone():
+            cp_row = conn.execute("SELECT * FROM chain_checkpoint WHERE id = 1").fetchone()
+            if cp_row:
+                checkpoint_tip_index = cp_row["tip_index"]
+                checkpoint_tip_hash = cp_row["tip_hash"]
+
+        cur = conn.execute("SELECT * FROM audit_blocks ORDER BY block_index ASC")
+        blocks = cur.fetchall()
         conn.close()
+    except (sqlite3.DatabaseError, OSError) as e:
         return ChainAuditReport(
             is_valid=False,
             total_blocks_verified=0,
-            reason="Audit ledger is empty (no genesis block found).",
-            details=["Database missing audit_blocks table."],
+            reason=f"Audit database file corrupt or tampered: {e}",
+            details=[f"SQLite database error: {e}"],
         )
-
-    checkpoint_tip_index = None
-    checkpoint_tip_hash = None
-    cur_cp = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chain_checkpoint'")
-    if cur_cp.fetchone():
-        cp_row = conn.execute("SELECT * FROM chain_checkpoint WHERE id = 1").fetchone()
-        if cp_row:
-            checkpoint_tip_index = cp_row["tip_index"]
-            checkpoint_tip_hash = cp_row["tip_hash"]
-
-    cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
-    if cp_file.is_file():
-        try:
-            cp_data = json.loads(cp_file.read_text(encoding="utf-8"))
-            f_idx = cp_data.get("tip_index")
-            f_hash = cp_data.get("tip_hash")
-            if f_idx is not None and (checkpoint_tip_index is None or f_idx > checkpoint_tip_index):
-                checkpoint_tip_index = f_idx
-                checkpoint_tip_hash = f_hash
-        except Exception:
-            pass
-
-    cur = conn.execute("SELECT * FROM audit_blocks ORDER BY block_index ASC")
-    blocks = cur.fetchall()
-    conn.close()
 
     if not blocks:
         return ChainAuditReport(
@@ -139,9 +140,37 @@ def verify_audit_ledger(
             details=["Database contains 0 records."],
         )
 
-    effective_keys = (
-        list(trusted_public_keys) if trusted_public_keys is not None else get_default_trusted_keys()
-    )
+    checkpoint_sig_error = None
+    cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
+    if cp_file.is_file():
+        try:
+            cp_data = json.loads(cp_file.read_text(encoding="utf-8"))
+            f_idx = cp_data.get("tip_index")
+            f_hash = cp_data.get("tip_hash")
+            f_updated = cp_data.get("updated_at")
+            f_sig = cp_data.get("signature")
+            if f_sig and effective_keys and f_idx is not None and f_hash:
+                to_verify = f"{f_idx}:{f_hash}:{f_updated}".encode()
+                sig_valid = any(crypto.verify_payload(k, to_verify, f_sig) for k in effective_keys)
+                if not sig_valid:
+                    checkpoint_sig_error = (
+                        f"Checkpoint signature invalid or tampered in {cp_file.name}: "
+                        "signature does not match tip under trusted keys."
+                    )
+            if f_idx is not None and (checkpoint_tip_index is None or f_idx > checkpoint_tip_index):
+                checkpoint_tip_index = f_idx
+                checkpoint_tip_hash = f_hash
+        except Exception:
+            pass
+
+    if checkpoint_sig_error:
+        return ChainAuditReport(
+            is_valid=False,
+            total_blocks_verified=0,
+            broken_block_index=checkpoint_tip_index,
+            reason=checkpoint_sig_error,
+            details=["Checkpoint sidecar signature verification failed."],
+        )
 
     # Fail closed. The block hash is plain SHA-256 over fields anyone can
     # recompute, so the per-block and per-certificate signatures are the *only*
@@ -304,6 +333,59 @@ def verify_audit_ledger(
         if b["certificate_json"] and b["operation_type"] != "GENESIS":
             try:
                 cert_data = json.loads(b["certificate_json"])
+
+                # L3: Cross-check certificate metadata against ledger row columns
+                if isinstance(cert_data, dict):
+                    c_issuer = cert_data.get("issuer")
+                    if isinstance(c_issuer, dict):
+                        c_op = c_issuer.get("operator_id")
+                        c_org = c_issuer.get("organization")
+                        if c_op is not None and b["operator_id"] != c_op:
+                            return ChainAuditReport(
+                                is_valid=False,
+                                total_blocks_verified=idx,
+                                broken_block_index=block_idx,
+                                reason=f"Ledger row and certificate mismatch in block #{block_idx}: operator_id '{b['operator_id']}' != certificate '{c_op}'.",
+                                details=details,
+                            )
+                        if c_org is not None and b["organization"] != c_org:
+                            return ChainAuditReport(
+                                is_valid=False,
+                                total_blocks_verified=idx,
+                                broken_block_index=block_idx,
+                                reason=f"Ledger row and certificate mismatch in block #{block_idx}: organization '{b['organization']}' != certificate '{c_org}'.",
+                                details=details,
+                            )
+                    c_dev = cert_data.get("device")
+                    if isinstance(c_dev, dict):
+                        c_target = c_dev.get("device_id")
+                        if c_target is not None and b["target_id"] != c_target:
+                            return ChainAuditReport(
+                                is_valid=False,
+                                total_blocks_verified=idx,
+                                broken_block_index=block_idx,
+                                reason=f"Ledger row and certificate mismatch in block #{block_idx}: target_id '{b['target_id']}' != certificate '{c_target}'.",
+                                details=details,
+                            )
+                    c_uuid = cert_data.get("cert_uuid")
+                    if c_uuid is not None and b["cert_uuid"] != c_uuid:
+                        return ChainAuditReport(
+                            is_valid=False,
+                            total_blocks_verified=idx,
+                            broken_block_index=block_idx,
+                            reason=f"Ledger row and certificate mismatch in block #{block_idx}: cert_uuid '{b['cert_uuid']}' != certificate '{c_uuid}'.",
+                            details=details,
+                        )
+                    c_time = cert_data.get("issued_at")
+                    if c_time is not None and b["timestamp"] != c_time:
+                        return ChainAuditReport(
+                            is_valid=False,
+                            total_blocks_verified=idx,
+                            broken_block_index=block_idx,
+                            reason=f"Ledger row and certificate mismatch in block #{block_idx}: timestamp '{b['timestamp']}' != certificate '{c_time}'.",
+                            details=details,
+                        )
+
                 problems = validate(cert_data, require_signature=True)
                 if problems:
                     return ChainAuditReport(
