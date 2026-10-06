@@ -220,9 +220,8 @@ def _fat32_image(
     put(0x1FE, "<H", 0xAA55)
     img[0x36:0x3A] = b"\x00\x00\x00\x00"  # no FSInfo sector
 
-    # FAT #1 starts after the reserved sectors plus one FAT's worth of slack for
-    # sector 0, matching the layout the parser assumes.
-    fat_off = (reserved + spc) * bps
+    # FAT #1 starts after the reserved sectors.
+    fat_off = reserved * bps
     for c in allocated:
         struct.pack_into("<I", img, fat_off + c * 4, 0x0FFFFFFF)
     path.write_bytes(bytes(img))
@@ -314,18 +313,19 @@ def _exfat_image(
     root[0] = 0x83  # volume label
     struct.pack_into("<I", root, 32 + 0x00, 0x81)  # bitmap entry type
     struct.pack_into("<I", root, 32 + 0x14, 2)  # FirstClusterOfBitmap
-    struct.pack_into("<I", root, 32 + 0x18, clusters // 8 + 4)
+    struct.pack_into("<I", root, 32 + 0x18, (clusters + 7) // 8)
     root[64] = 0x82  # upcase table
     struct.pack_into("<I", root, 64 + 0x14, 3)
     struct.pack_into("<I", root, 64 + 0x18, cluster_bytes)  # spans 1 cluster
     img[cluster_off(5) : cluster_off(5) + cluster_bytes] = root
 
-    # The allocation bitmap itself.
-    bitmap = bytearray(clusters // 8 + 4)
-    struct.pack_into("<I", bitmap, 0, clusters)
+    # The allocation bitmap itself (bit 0 is cluster 2).
+    bitmap = bytearray((clusters + 7) // 8)
     if not blank_bitmap:
         for c in allocated:
-            bitmap[4 + (c >> 3)] |= 1 << (c & 7)
+            bit = c - 2
+            if 0 <= bit < clusters:
+                bitmap[bit >> 3] |= 1 << (bit & 7)
     img[cluster_off(2) : cluster_off(2) + len(bitmap)] = bitmap
 
     # Upcase table body, so the 0x82 entry is honest about its length.
@@ -511,3 +511,18 @@ def test_truncated_image_does_not_raise(tmp_path):
     fsm = build_free_space(str(img), "ntfs", 0, 108)
     assert fsm.free_bytes == 0
     assert not fsm.reliable
+
+
+def test_fat32_non_zero_partition_offset_and_base(tmp_path):
+    """Regression test for H2/T5: partition offset and data area base."""
+    spc, cluster_bytes = 8, 4096
+    part_offset = 1048576  # 1 MiB partition offset
+    raw_img, clusters = _fat32_image(tmp_path / "f_raw.img", clusters=128, allocated=(0, 1), spc=spc)
+    padded_img = tmp_path / "f_part.img"
+    padded_img.write_bytes(b"\x00" * part_offset + raw_img.read_bytes())
+
+    fsm = build_free_space(str(padded_img), "fat32", part_offset, padded_img.stat().st_size - part_offset)
+    assert fsm.reliable
+    assert fsm.free_bytes == (clusters - 1) * cluster_bytes
+    assert all(start >= part_offset for start, _ in fsm.ranges)
+

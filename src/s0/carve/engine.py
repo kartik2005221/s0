@@ -52,9 +52,15 @@ from s0.config import CONFIG
 
 from . import bodyfile, boundary, provenance, session, suppression
 from .allocation import FreeSpaceMap, build_free_space
-from .exfat_carver import scan_exfat_deleted_files
+from .exfat_carver import parse_exfat_boot_sector, scan_exfat_deleted_files
 from .ext4_carver import scan_ext4_deleted_inodes
-from .fat_carver import scan_fat32_deleted_files
+from .fat_carver import (
+    cluster_to_byte_offset as fat_cluster_to_byte_offset,
+)
+from .fat_carver import (
+    parse_fat32_boot_sector,
+    scan_fat32_deleted_files,
+)
 from .ntfs_carver import read_usn_journal, scan_ntfs_deleted_records
 from .policy import CarveBudget, CarvePolicy
 from .scoring import score_carved_candidate
@@ -378,26 +384,32 @@ def _recover_from_filesystem(
                     for i in scan_ext4_deleted_inodes(target_p, partition_offset=part_offset)
                 ]
             elif part_fs == "fat32":
+                fat_boot = parse_fat32_boot_sector(target_p, partition_offset=part_offset)
                 found = [
                     (
                         ff.first_cluster,
                         ff.filename,
                         ff.data,
                         1,
-                        part_offset + ff.first_cluster * 4096,
+                        fat_cluster_to_byte_offset(fat_boot, ff.first_cluster)
+                        if fat_boot
+                        else (part_offset + ff.first_cluster * 4096),
                         None,
                         None,
                     )
                     for ff in scan_fat32_deleted_files(target_p, partition_offset=part_offset)
                 ]
             elif part_fs == "exfat":
+                ex_boot = parse_exfat_boot_sector(target_p, partition_offset=part_offset)
                 found = [
                     (
                         ef.first_cluster,
                         ef.filename,
                         ef.data,
                         ef.fragment_count,
-                        part_offset + ef.first_cluster * 4096,
+                        (ex_boot.cluster_heap_offset_bytes + (ef.first_cluster - 2) * ex_boot.cluster_size)
+                        if ex_boot
+                        else (part_offset + ef.first_cluster * 4096),
                         None,
                         None,
                     )

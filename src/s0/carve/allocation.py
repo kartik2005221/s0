@@ -217,7 +217,7 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
         return fsm
 
     data_clusters = data_sectors // spc
-    fat = rdr.read(part + (reserved + spc) * bps, fat_size * bps)
+    fat = rdr.read(part + reserved * bps, fat_size * bps)
     if len(fat) < 8:
         fsm.notes.append("FAT unreadable")
         return fsm
@@ -235,15 +235,16 @@ def _fat32_free_space(rdr: BitmapReader, part: int, vbr: dict) -> FreeSpaceMap:
     # Cluster 2 is the fixed-size root directory and is never free space. Its FAT
     # entry is sometimes left as 0 by format tools, so it is excluded explicitly
     # rather than trusted to the FAT.
+    base = part + first_data_sector * bps
     for c in range(2, 2 + data_clusters):
         if c == 2 or next_cluster(c) != 0:
             if run_start is not None:
-                fsm.ranges.append(((run_start - 2) * cluster_bytes, (c - 2) * cluster_bytes))
+                fsm.ranges.append((base + (run_start - 2) * cluster_bytes, base + (c - 2) * cluster_bytes))
                 run_start = None
         elif run_start is None:
             run_start = c
     if run_start is not None:
-        fsm.ranges.append(((run_start - 2) * cluster_bytes, data_clusters * cluster_bytes))
+        fsm.ranges.append((base + (run_start - 2) * cluster_bytes, base + data_clusters * cluster_bytes))
     fsm.ranges = _merge(fsm.ranges)
     fsm.reliable = bool(fsm.ranges)
 
@@ -376,7 +377,6 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
     # bitmap entry therefore left it at the declared four billion, and the run-length
     # loop below ran to that. The DoS did not require a bitmap at all.
     covered = min(cluster_count, present)
-    declared = None
     for off in range(0, len(root) - 31, 32):
         entry = root[off : off + 32]
         if entry[0] == 0x00:
@@ -385,16 +385,15 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
             continue
         bmp_cluster = struct.unpack_from("<I", entry, 0x14)[0]
         size = struct.unpack_from("<I", entry, 0x18)[0]
-        if bmp_cluster < 2 or size < 8:
+        if bmp_cluster < 2 or size < 1:
             fsm.notes.append("allocation bitmap entry has an implausible cluster or length")
             break
         data = rdr.read(heap_offset + (bmp_cluster - 2) * cluster_bytes, size)
-        if len(data) < 8:
+        if len(data) < 1:
             fsm.notes.append("allocation bitmap contents unreadable")
             break
-        body = data[4:]
+        body = data
         covered = min(8 * len(body), cluster_count)
-        declared = struct.unpack_from("<I", data, 0)[0] & 0xFFFFFFFF
         for bit in range(covered):
             if body[bit >> 3] & (1 << (bit & 7)):
                 allocated.add(bit + 2)  # bit n is cluster n + 2
@@ -446,8 +445,6 @@ def _exfat_free_space(rdr: BitmapReader, part: int, boot: dict) -> FreeSpaceMap:
             f"the allocation bitmap; the remainder is UNKNOWN and was not treated as free"
         )
 
-    if declared is not None and declared not in (0, 0xFFFFFFFF) and declared < cluster_count:
-        fsm.notes.append(f"bitmap header declares {declared} covered clusters but only {covered} are present")
     fsm.ranges = _merge(fsm.ranges)
     fsm.reliable = True
     fsm.notes.append(
