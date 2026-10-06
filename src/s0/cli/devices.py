@@ -98,32 +98,38 @@ def _storage_type(name: str, rotational: int | None) -> str:
 
 def get_block_device_size(device_path: str | Path) -> int:
     """Determine capacity in bytes of any Linux block special device using ioctl, sysfs, or blockdev."""
-    p = Path(device_path)
+    norm_dev = os.path.normpath(str(device_path).strip())
+    if "\x00" in norm_dev or ".." in norm_dev.split(os.sep):
+        return 0
+    p = Path(norm_dev)
     dev_name = p.name
 
     # 1. Try ioctl BLKGETSIZE64
-    try:
-        import fcntl
-        import struct
+    if norm_dev.startswith("/dev/"):
+        try:
+            import fcntl
+            import struct
 
-        BLKGETSIZE64 = 0x80081272
-        with open(p, "rb") as f:
-            buf = fcntl.ioctl(f.fileno(), BLKGETSIZE64, struct.pack("Q", 0))
-            sz = struct.unpack("Q", buf)[0]
-            if sz > 0:
-                return sz
-    except Exception:
-        pass
+            BLKGETSIZE64 = 0x80081272
+            with open(norm_dev, "rb") as f:
+                buf = fcntl.ioctl(f.fileno(), BLKGETSIZE64, struct.pack("Q", 0))
+                sz = struct.unpack("Q", buf)[0]
+                if sz > 0:
+                    return sz
+        except Exception:
+            pass
 
     # 2. Try sysfs /sys/class/block/<dev>/size (sectors * 512)
     try:
         safe_dev = os.path.basename(dev_name)
-        if safe_dev and re.match(r"^[A-Za-z0-9_.-]+$", safe_dev):
-            sys_size = Path("/sys/class/block") / safe_dev / "size"
-            if sys_size.exists():
-                sectors = int(sys_size.read_text().strip())
-                if sectors > 0:
-                    return sectors * 512
+        if safe_dev and ".." not in safe_dev and re.match(r"^[A-Za-z0-9_.-]+$", safe_dev):
+            norm_sys = os.path.normpath(f"/sys/class/block/{safe_dev}/size")
+            if norm_sys.startswith("/sys/class/block/"):
+                sys_size = Path(norm_sys)
+                if sys_size.exists():
+                    sectors = int(sys_size.read_text().strip())
+                    if sectors > 0:
+                        return sectors * 512
     except Exception:
         pass
 
@@ -294,7 +300,13 @@ def list_block_targets() -> list[Target]:
 
 def image_target(path: str) -> Target:
     """Wrap a regular file as a wipe target (the root-free test medium)."""
-    p = Path(path).resolve()
+    s_path = str(path).strip()
+    if not s_path or "\x00" in s_path:
+        raise ValueError(f"invalid image path: {path}")
+    norm = os.path.normpath(s_path)
+    if ".." in norm.split(os.sep):
+        raise ValueError(f"path traversal not permitted: {path}")
+    p = Path(os.path.realpath(norm))
     if not p.is_file():
         raise FileNotFoundError(f"not a regular file: {path}")
     return Target(
@@ -349,42 +361,27 @@ def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     return bool(re.match(pattern, cand_real))
 
 
-def check_safety(target: Target, force: bool = False, *, force_honoured: bool = True) -> list[str]:
-    """Refuse system-critical targets unless --force. Returns warnings.
+def evaluate_safety(
+    target: Target, force: bool = False, *, force_honoured: bool = True
+) -> tuple[list[str], str | None]:
+    """Evaluate system-critical target safety without raising an exception.
 
-    `force_honoured` says whether the caller will actually act on a `--force`.
-    `wipe` does; `clone` does not, because its `--force` means "overwrite an existing
-    image file" and nothing more. It only changes the wording of the refusal, never
-    whether the refusal happens.
+    Returns (warnings, refusal_reason).
     """
     warnings: list[str] = []
 
-    # Path guard first, and for every target kind. It used to `return` early for
-    # images and never run at all for files and folders, so the CLI had no
-    # system-path protection at all outside the block-device tier -- while the web
-    # tier refused the same paths. `s0 wipe --targets ~/.s0/s0_audit.db --yes`
-    # destroyed the audit ledger; `s0 wipe --targets /etc/hostname --yes` deleted
-    # a system file. Block devices return from the guard so the richer checks
-    # below (mounts, root filesystem, HPA) keep ownership of them.
     try:
         warnings.extend(check_path_is_destructive(target.path, force=force))
     except ProtectedPathError as exc:
-        raise SafetyError(str(exc)) from exc
+        return warnings, str(exc)
 
     if target.kind == "image":
-        return warnings
+        return warnings, None
 
     mounted = _mounted_paths()
     hits = sorted(m for m in mounted if _is_dev_or_subpartition(target.path, m))
     if hits:
         if not force:
-            # Only offer `--force` when the caller actually honours it.
-            #
-            # `clone` calls this with no force path -- cloning onto a mounted
-            # filesystem corrupts the mounted data, and `--force` there only means
-            # "overwrite an existing image *file*". Telling that operator to pass
-            # `--force` pointed them at an escape hatch that does not exist, and they
-            # would only find that out by re-running the command.
             hint = (
                 "Unmount them first, or pass --force if you truly mean it."
                 if force_honoured
@@ -394,7 +391,7 @@ def check_safety(target: Target, force: bool = False, *, force_honoured: bool = 
                     "choose a different destination."
                 )
             )
-            raise SafetyError(f"{target.path} has mounted filesystems ({', '.join(hits)}). {hint}")
+            return warnings, f"{target.path} has mounted filesystems ({', '.join(hits)}). {hint}"
         warnings.append(f"proceeding WITH MOUNTED FILESYSTEMS: {', '.join(hits)}")
 
     root_src = _get_root_mount_source()
@@ -402,7 +399,7 @@ def check_safety(target: Target, force: bool = False, *, force_honoured: bool = 
         target_real = os.path.realpath(target.path)
         if is_os_device(target_real):
             if not force:
-                raise SafetyError(
+                return warnings, (
                     f"{target.path} hosts the running ROOT filesystem. The tool refuses "
                     f"this without --force; if you mean it, boot the s0 ISO instead."
                 )
@@ -411,13 +408,27 @@ def check_safety(target: Target, force: bool = False, *, force_honoured: bool = 
             )
     else:
         if not force:
-            raise SafetyError(
+            return warnings, (
                 f"Cannot verify whether {target.path} hosts the running ROOT filesystem "
                 f"(findmnt unavailable and /proc/mounts could not be verified). "
                 f"Refusing to proceed without --force."
             )
         warnings.append("WARNING: could not verify whether target hosts the root filesystem")
 
+    return warnings, None
+
+
+def check_safety(target: Target, force: bool = False, *, force_honoured: bool = True) -> list[str]:
+    """Refuse system-critical targets unless --force. Returns warnings.
+
+    `force_honoured` says whether the caller will actually act on a `--force`.
+    `wipe` does; `clone` does not, because its `--force` means "overwrite an existing
+    image file" and nothing more. It only changes the wording of the refusal, never
+    whether the refusal happens.
+    """
+    warnings, refusal = evaluate_safety(target, force=force, force_honoured=force_honoured)
+    if refusal is not None:
+        raise SafetyError(refusal)
     return warnings
 
 

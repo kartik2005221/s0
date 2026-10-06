@@ -42,9 +42,8 @@ from s0.audit import list_audit_blocks, record_audit_event, verify_audit_ledger
 from s0.audit.verify import get_default_trusted_keys
 from s0.carve import carve_image
 from s0.cli.devices import (
-    SafetyError,
     Target,
-    check_safety,
+    evaluate_safety,
     get_block_device_size,
     image_target,
     list_block_targets,
@@ -96,10 +95,19 @@ def _prepare_job_out_dir(req_out_dir: str | None, prefix: str, job_id: str) -> P
         raw_str = req_out_dir.strip()
         if "\x00" in raw_str or any(ord(c) < 32 for c in raw_str):
             raise HTTPException(400, "invalid output directory path")
-        out_dir = Path(raw_str).resolve()
+        norm_str = os.path.normpath(raw_str)
+        if ".." in norm_str.split(os.sep):
+            raise HTTPException(400, "invalid output directory path")
         for sp in SYSTEM_PREFIXES:
-            if _under(out_dir, Path(sp)):
+            norm_sp = os.path.normpath(sp)
+            if norm_str == norm_sp or norm_str.startswith(norm_sp.rstrip(os.sep) + os.sep):
                 raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
+        real_str = os.path.realpath(norm_str)
+        for sp in SYSTEM_PREFIXES:
+            real_sp = os.path.realpath(sp)
+            if real_str == real_sp or real_str.startswith(real_sp.rstrip(os.sep) + os.sep):
+                raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
+        out_dir = Path(real_str)
     else:
         out_dir = platform.safe_home() / ".s0" / "out" / f"{prefix}-{job_id}"
     try:
@@ -138,10 +146,15 @@ def _is_safe_wipe_path(target_path: str) -> tuple[bool, str]:
     refused nothing, and `~/.s0` was not on either list. One module owns the rules
     now (`s0.safety`), so a change applies to both.
     """
+    if not target_path or "\x00" in target_path:
+        return False, "Invalid target path"
+    norm = os.path.normpath(target_path.strip())
+    if ".." in norm.split(os.sep):
+        return False, "Path traversal not permitted"
     try:
-        if Path(target_path).resolve().is_block_device():
+        if platform.is_block_device(Path(norm)):
             return True, ""
-        check_path_is_destructive(target_path, force=False)
+        check_path_is_destructive(norm, force=False)
         return True, ""
     except ProtectedPathError as exc:
         return False, str(exc)
@@ -565,13 +578,22 @@ def _resolve_key(
         raw = key_path.strip()
         if "\x00" in raw or any(ord(c) < 32 for c in raw):
             raise HTTPException(400, "invalid key path")
-        kp = Path(raw)
-        if not kp.is_absolute():
-            kp = REPO / kp
-        kp = kp.resolve()
+        norm = os.path.normpath(str(REPO / raw) if not os.path.isabs(raw) else raw)
+        parts = norm.replace("\\", "/").split("/")
+        if ".." in parts:
+            raise HTTPException(400, "directory traversal not allowed")
+        real_str = os.path.realpath(norm)
         for sp in _SYSTEM_PATHS:
-            if _under(kp, Path(sp)):
+            norm_sp = os.path.normpath(sp)
+            real_sp = os.path.realpath(sp)
+            if (
+                norm == norm_sp
+                or norm.startswith(norm_sp + os.sep)
+                or real_str == real_sp
+                or real_str.startswith(real_sp + os.sep)
+            ):
                 raise HTTPException(403, f"Access to system key path is forbidden: {raw}")
+        kp = Path(real_str)
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {raw}")
         return kp, is_demo_key(kp)
@@ -873,8 +895,14 @@ class ImageRequest(BaseModel):
 
 
 def _find_target(path: str):
-    p = Path(path)
-    if p.is_block_device():
+    if not path or "\x00" in path or any(ord(c) < 32 for c in path):
+        raise HTTPException(400, "invalid target path")
+    norm = os.path.normpath(path.strip())
+    parts = norm.replace("\\", "/").split("/")
+    if ".." in parts:
+        raise HTTPException(400, "directory traversal not allowed")
+    p = Path(norm)
+    if platform.is_block_device(p):
         for t in list_block_targets():
             if Path(t.path).resolve() == p.resolve():
                 return t
@@ -884,11 +912,11 @@ def _find_target(path: str):
                 path=str(p), kind="block", capacity_bytes=size, sector_size=512, storage_type="UNKNOWN"
             )
         raise HTTPException(400, f"unrecognised or 0-byte block device {path}")
-    safe, reason = _is_safe_wipe_path(path)
+    safe, reason = _is_safe_wipe_path(norm)
     if not safe:
         raise HTTPException(403, reason)
     try:
-        return image_target(path)
+        return image_target(norm)
     except FileNotFoundError:
         raise HTTPException(404, f"no such image file: {path}") from None
 
@@ -1004,12 +1032,7 @@ def devices() -> JSONResponse:
 
 def plan_payload(target_path: str) -> dict:
     target = _find_target(target_path)
-    warnings: list[str] = []
-    refusal = None
-    try:
-        warnings = check_safety(target)
-    except SafetyError as exc:
-        refusal = str(exc)
+    warnings, refusal = evaluate_safety(target)
     candidate, alternatives = select_method(target)
     hpa_dco = None
     if target.kind == "block" and not target.path.startswith("/dev/nvme") and shutil.which("hdparm"):
@@ -1067,16 +1090,13 @@ ALLOWED_BROWSE_ROOTS = [
 ]
 
 
-def _is_safe_browse_path(target: Path) -> bool:
+def _is_safe_browse_path(target: Path | str) -> bool:
     try:
-        resolved = target.resolve()
+        real_target = os.path.realpath(str(target))
         for root in ALLOWED_BROWSE_ROOTS:
-            if root.exists():
-                try:
-                    resolved.relative_to(root)
-                    return True
-                except ValueError:
-                    continue
+            real_root = os.path.realpath(str(root))
+            if real_target == real_root or real_target.startswith(real_root + os.sep):
+                return True
         return False
     except Exception:
         return False
@@ -1084,25 +1104,33 @@ def _is_safe_browse_path(target: Path) -> bool:
 
 @app.get("/api/browse", dependencies=[Depends(verify_auth_token)])
 def api_browse(path: str = ".") -> JSONResponse:
-    if "\x00" in path or any(ord(c) < 32 for c in path):
+    if not path or "\x00" in path or any(ord(c) < 32 for c in path):
         return JSONResponse(
             {"error": "invalid path parameter", "path": path, "items": []},
             status_code=400,
         )
-    requested = Path(path).expanduser().resolve()
-
-    # A rejected path used to be silently replaced with REPO. That is a lie the
-    # caller cannot detect: the dashboard asked to list /tmp and received the
-    # repository, with HTTP 200 and a plausible-looking listing. Silence here reads
-    # as "this directory is empty" or "that is what was there", and an operator
-    # picking an output directory would be choosing from the wrong tree entirely.
-    #
-    # So the refusal is explicit, and it says which condition failed.
-    if any(_under(requested, Path(sp)) for sp in SYSTEM_PREFIXES):
+    norm = os.path.normpath(os.path.expanduser(path.strip()))
+    parts = norm.replace("\\", "/").split("/")
+    if ".." in parts:
         return JSONResponse(
-            {"error": "path is outside the permitted roots", "path": str(requested), "items": []},
-            status_code=403,
+            {"error": "directory traversal not allowed", "path": path, "items": []},
+            status_code=400,
         )
+    real_target_str = os.path.realpath(norm)
+    for sp in SYSTEM_PREFIXES:
+        norm_sp = os.path.normpath(sp)
+        real_sp = os.path.realpath(sp)
+        if (
+            norm == norm_sp
+            or norm.startswith(norm_sp + os.sep)
+            or real_target_str == real_sp
+            or real_target_str.startswith(real_sp + os.sep)
+        ):
+            return JSONResponse(
+                {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
+                status_code=403,
+            )
+    requested = Path(real_target_str)
     if not requested.exists():
         return JSONResponse(
             {"error": "no such directory", "path": str(requested), "items": []}, status_code=404
@@ -1111,9 +1139,9 @@ def api_browse(path: str = ".") -> JSONResponse:
         return JSONResponse(
             {"error": "not a directory", "path": str(requested), "items": []}, status_code=400
         )
-    if not _is_safe_browse_path(requested):
+    if not _is_safe_browse_path(real_target_str):
         return JSONResponse(
-            {"error": "path is outside the permitted roots", "path": str(requested), "items": []},
+            {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
             status_code=403,
         )
 
@@ -1237,7 +1265,7 @@ def start_wipe(req: WipeRequest) -> JSONResponse:
         str(out_dir),
         "--json",
     ]
-    if key and key.exists():
+    if key:
         cmd += ["--key", str(key)]
     if req.no_pdf:
         cmd += ["--no-pdf"]
@@ -1500,7 +1528,29 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
 
 @app.post("/api/carve", dependencies=[Depends(verify_auth_token)])
 def start_carve(req: CarveRequest) -> JSONResponse:
-    target_p = Path(req.target)
+    if not req.target or "\x00" in req.target or any(ord(c) < 32 for c in req.target):
+        raise HTTPException(400, "invalid target media path")
+    norm_target = os.path.normpath(req.target.strip())
+    if ".." in norm_target.replace("\\", "/").split("/"):
+        raise HTTPException(400, "directory traversal not allowed in target media path")
+    real_target_str = os.path.realpath(norm_target)
+    for sp in SYSTEM_PREFIXES:
+        if any(
+            norm_target == at or norm_target.startswith(at.rstrip(os.sep) + os.sep)
+            for at in ALLOWED_TEMP_PREFIXES
+        ):
+            break
+        norm_sp = os.path.normpath(sp)
+        real_sp = os.path.realpath(sp)
+        if (
+            norm_target == norm_sp
+            or norm_target.startswith(norm_sp + os.sep)
+            or real_target_str == real_sp
+            or real_target_str.startswith(real_sp + os.sep)
+        ):
+            if not platform.is_block_device(Path(real_target_str)):
+                raise HTTPException(403, f"Access to system path is forbidden: {req.target}")
+    target_p = Path(real_target_str)
     if not target_p.exists():
         raise HTTPException(404, "target media does not exist")
 
@@ -1674,18 +1724,27 @@ def start_carve(req: CarveRequest) -> JSONResponse:
 
 @app.post("/api/image", dependencies=[Depends(verify_auth_token)])
 def start_image(req: ImageRequest) -> JSONResponse:
-    if not req.source or "\x00" in req.source:
+    if not req.source or "\x00" in req.source or any(ord(c) < 32 for c in req.source):
         raise HTTPException(400, "source path required")
-    if not req.destination or "\x00" in req.destination:
+    if not req.destination or "\x00" in req.destination or any(ord(c) < 32 for c in req.destination):
         raise HTTPException(400, "destination path required")
-    if req.source == req.destination:
+    norm_src = os.path.normpath(req.source.strip())
+    if ".." in norm_src.replace("\\", "/").split("/"):
+        raise HTTPException(400, "directory traversal not allowed in source")
+    norm_dst = os.path.normpath(req.destination.strip())
+    if ".." in norm_dst.replace("\\", "/").split("/"):
+        raise HTTPException(400, "directory traversal not allowed in destination")
+
+    if norm_src == norm_dst:
         raise HTTPException(400, "source and destination cannot be the same path")
 
-    src_p = Path(req.source).resolve()
+    real_src_str = os.path.realpath(norm_src)
+    src_p = Path(real_src_str)
     if not src_p.exists():
         raise HTTPException(404, f"source does not exist: {req.source}")
 
-    dst_p = Path(req.destination).resolve()
+    real_dst_str = os.path.realpath(norm_dst)
+    dst_p = Path(real_dst_str)
     is_blk = False
     try:
         is_blk = platform.is_block_device(dst_p)
@@ -1742,7 +1801,7 @@ def start_image(req: ImageRequest) -> JSONResponse:
                 error_recovery=not req.no_recovery,
                 operator=req.operator_id,
                 organization=req.organization,
-                key_path=key if key and key.exists() else None,
+                key_path=key if key else None,
                 no_certificate=False,
                 out_dir=str(out_dir),
                 force=req.force,
@@ -1887,12 +1946,11 @@ def download(job_id: str, filename: str) -> FileResponse:
     safe_name = os.path.basename(filename)
     if safe_name != filename or safe_name in (".", ".."):
         raise HTTPException(400, "invalid artifact name")
-    out_dir_path = Path(job["out_dir"]).resolve()
-    path = (out_dir_path / safe_name).resolve()
-    try:
-        path.relative_to(out_dir_path)
-    except ValueError:
-        raise HTTPException(404, "no such artifact") from None
+    out_dir_str = os.path.realpath(str(job["out_dir"]))
+    file_path_str = os.path.realpath(os.path.join(out_dir_str, safe_name))
+    if not (file_path_str == out_dir_str or file_path_str.startswith(out_dir_str + os.sep)):
+        raise HTTPException(404, "no such artifact")
+    path = Path(file_path_str)
     if not path.is_file():
         raise HTTPException(404, "no such artifact")
     return FileResponse(path, filename=path.name)

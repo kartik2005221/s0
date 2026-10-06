@@ -303,6 +303,13 @@ def _no_real_block_devices(monkeypatch, request):
         _subprocess.check_output,
     )
 
+    def _inject_env(kw):
+        if "env" in kw and kw["env"] is not None:
+            if "PYTHONPATH" not in kw["env"]:
+                env_copy = dict(kw["env"])
+                env_copy["PYTHONPATH"] = os.environ.get("PYTHONPATH", _src)
+                kw["env"] = env_copy
+
     class GuardedPopen(real_popen):  # type: ignore[misc, valid-type]
         """A real Popen, so the context-manager and iterator protocols still work.
 
@@ -312,6 +319,7 @@ def _no_real_block_devices(monkeypatch, request):
 
         def __init__(self, argv, *a, **kw):
             check(argv)
+            _inject_env(kw)
             super().__init__(argv, *a, **kw)
 
     monkeypatch.setattr(_subprocess, "Popen", GuardedPopen)
@@ -319,6 +327,7 @@ def _no_real_block_devices(monkeypatch, request):
     def guard_run(fn):
         def wrapper(argv, *a, **kw):
             check(argv)
+            _inject_env(kw)
             return fn(argv, *a, **kw)
 
         return wrapper

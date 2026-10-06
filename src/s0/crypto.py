@@ -41,11 +41,18 @@ def is_demo_key(key: Ed25519PrivateKey | Ed25519PublicKey | str | Path | None) -
     if key is None:
         return True
     if isinstance(key, (str, Path)):
-        p = Path(key)
-        if "demo" in p.name.lower():
+        s_key = str(key).strip()
+        if not s_key or "\x00" in s_key:
+            return False
+        norm = os.path.normpath(s_key)
+        if ".." in norm.split(os.sep):
+            return False
+        if "demo" in os.path.basename(norm).lower():
             return True
+        real = os.path.realpath(norm)
+        p = Path(real)
         if not p.exists():
-            return "demo" in str(p).lower()
+            return "demo" in norm.lower()
         try:
             priv = load_private_pem(p)
             return public_key_fingerprint(priv.public_key()) == DEMO_KEY_FINGERPRINT
@@ -54,7 +61,7 @@ def is_demo_key(key: Ed25519PrivateKey | Ed25519PublicKey | str | Path | None) -
                 pub = load_public_pem(p)
                 return public_key_fingerprint(pub) == DEMO_KEY_FINGERPRINT
             except Exception:
-                return "demo" in str(p).lower()
+                return "demo" in norm.lower()
     if isinstance(key, Ed25519PrivateKey):
         return public_key_fingerprint(key.public_key()) == DEMO_KEY_FINGERPRINT
     if isinstance(key, Ed25519PublicKey):
@@ -101,7 +108,13 @@ def write_public_pem(key: Ed25519PublicKey, path: str | Path) -> Path:
 
 
 def load_private_pem(path: str | Path) -> Ed25519PrivateKey:
-    resolved = Path(path).resolve()
+    s_path = str(path).strip()
+    if not s_path or "\x00" in s_path:
+        raise ValueError(f"invalid key path: {path}")
+    norm = os.path.normpath(s_path)
+    if ".." in norm.split(os.sep):
+        raise ValueError(f"path traversal not permitted: {path}")
+    resolved = Path(os.path.realpath(norm))
     data = resolved.read_bytes()
     key = serialization.load_pem_private_key(data, password=None)
     if not isinstance(key, Ed25519PrivateKey):
@@ -110,7 +123,13 @@ def load_private_pem(path: str | Path) -> Ed25519PrivateKey:
 
 
 def load_public_pem(path: str | Path) -> Ed25519PublicKey:
-    resolved = Path(path).resolve()
+    s_path = str(path).strip()
+    if not s_path or "\x00" in s_path:
+        raise ValueError(f"invalid key path: {path}")
+    norm = os.path.normpath(s_path)
+    if ".." in norm.split(os.sep):
+        raise ValueError(f"path traversal not permitted: {path}")
+    resolved = Path(os.path.realpath(norm))
     data = resolved.read_bytes()
     key = serialization.load_pem_public_key(data)
     if not isinstance(key, Ed25519PublicKey):

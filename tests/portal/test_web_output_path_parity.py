@@ -95,7 +95,8 @@ class TestTheBindingLabelIsTrue:
         )
 
     def test_it_reports_both_ways(self, tmp_path):
-        entry = shutil.which("s0") or str(Path(sys.executable).parent / "s0")
+        candidate = Path(sys.executable).parent / "s0"
+        entry = str(candidate) if candidate.is_file() else (shutil.which("s0") or str(candidate))
         if not Path(entry).is_file():
             pytest.skip("s0 entry point not available")
         if not shutil.which("script") or sys.platform != "linux":

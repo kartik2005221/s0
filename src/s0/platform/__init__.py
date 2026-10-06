@@ -88,17 +88,33 @@ def is_block_device(path: Path) -> bool:
     Windows additionally needs the raw-path spellings, which do not exist on
     disk at all.
     """
-    try:
-        if path.is_block_device():
+    s_path = str(path).strip()
+    if not s_path or "\x00" in s_path:
+        return False
+    if sys.platform == "win32":
+        if is_windows_volume_path(s_path):
             return True
-        if sys.platform == "darwin" and path.is_char_device():
+        if s_path.startswith(("\\\\.\\", "\\\\?\\")):
+            try:
+                return path.is_block_device()
+            except OSError:
+                return False
+        return False
+
+    norm = os.path.normpath(s_path)
+    if ".." in norm.split(os.sep) or not norm.startswith("/dev/"):
+        return False
+
+    try:
+        dev_p = Path(norm)
+        if dev_p.is_block_device():
+            return True
+        if sys.platform == "darwin" and dev_p.is_char_device():
             return True
     except OSError:
         # Permission and I/O errors mean "not something we can open", not
         # "definitely not a device". Callers surface their own error.
         return False
-    if sys.platform == "win32" and is_windows_volume_path(str(path)):
-        return True
     return False
 
 

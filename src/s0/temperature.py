@@ -78,13 +78,19 @@ def _read_linux_temp(device_path: str) -> int | None:
 
 def _try_linux_hwmon(dev_name: str) -> int | None:
     clean_name = os.path.basename(dev_name.strip())
-    if not clean_name or not re.match(r"^[A-Za-z0-9_.-]+$", clean_name):
+    if not clean_name or ".." in clean_name or not re.match(r"^[A-Za-z0-9_.-]+$", clean_name):
         return None
-    base = Path(f"/sys/class/block/{clean_name}/device")
+    norm_base = os.path.normpath(f"/sys/class/block/{clean_name}/device")
+    if not norm_base.startswith("/sys/class/block/"):
+        return None
+    base = Path(norm_base)
     if not base.exists():
         parent = clean_name.rstrip("0123456789")
         if parent and parent != clean_name:
-            base = Path(f"/sys/class/block/{parent}/device")
+            norm_parent = os.path.normpath(f"/sys/class/block/{parent}/device")
+            if not norm_parent.startswith("/sys/class/block/"):
+                return None
+            base = Path(norm_parent)
         if not base.exists():
             return None
 

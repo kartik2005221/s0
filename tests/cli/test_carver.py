@@ -761,7 +761,7 @@ def test_custom_signature_is_honoured(tmp_path):
     blob = b"\x93S0MARKER\x00" + b"payload-" * 500
     payload = blob + os.urandom(4096)
     path = tmp_path / "custom.raw"
-    path.write_bytes(os.urandom(1 << 20) + payload + os.urandom(1 << 20))
+    path.write_bytes(b"\x00" * 4096 + os.urandom((1 << 20) - 4096) + payload + os.urandom(1 << 20))
     sigs = [
         signatures.signature_from_dict(
             {
