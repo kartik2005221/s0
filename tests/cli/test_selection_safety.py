@@ -258,7 +258,7 @@ def test_cmd_wipe_rejects_block_device_in_targets(monkeypatch, capsys, tmp_path)
         operator="test",
         organization="test",
     )
-    monkeypatch.setattr(Path, "is_block_device", lambda self: True)
+    monkeypatch.setattr(main_mod.platform, "is_block_device", lambda self: True)
     rc = main_mod.cmd_wipe(args)
     # sysexits: passing a block device to --targets is a usage error (64),
     # not a generic failure (1) or argparse's 2.
