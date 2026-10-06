@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     S0 (Sector Zero) -- Resilient One-Line Installer for Windows (PowerShell)
-    Usage: irm https://sector-zero.pages.dev/ps1 | iex
+    Usage: irm https://sector0.pages.dev/ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 $Repo = "https://github.com/kartik2005221/s0.git"
@@ -234,5 +234,5 @@ Write-Host "   Web UI  : s0 web" -ForegroundColor Green
 Write-Host ""
 Write-Host "[i]  LEGAL NOTICE: Only operate on storage devices and files you legally own" -ForegroundColor Yellow
 Write-Host "   or have explicit written authorization to process." -ForegroundColor Yellow
-Write-Host "   Legal FAQ: https://sector-zero.gitbook.io/getting-started/faq" -ForegroundColor Gray
+Write-Host "   Legal FAQ: https://sector0.gitbook.io/getting-started/faq" -ForegroundColor Gray
 Write-Host ""

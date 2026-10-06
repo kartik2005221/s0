@@ -2,7 +2,7 @@
 # ==============================================================================
 # S0 (Sector Zero) — Download Pre-Built Live ISO for Linux/MacOS
 # Usage:
-#   curl -fsSL https://sector-zero.pages.dev/download-iso-sh | bash
+#   curl -fsSL https://sector0.pages.dev/download-iso-sh | bash
 # ==============================================================================
 set -euo pipefail
 

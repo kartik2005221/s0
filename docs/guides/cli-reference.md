@@ -470,7 +470,7 @@ s0 wipe --target PATH \
 | `--require-tier` | `Clear` \| `Purge` \| `Destroy` | — | no | Refuse to run unless the device can achieve this tier. s0 will not silently downgrade: without this flag the selected method is always reported, whatever it is. |
 | `--force` | flag | off | no | Override safety refusals for mounted or root devices. |
 | `--json` | flag | off | no | Emit structured JSON to stdout throughout execution (for CI/CD pipelines). |
-| `--portal-url` | URL | `https://sector-zero.pages.dev/verify/` | no | Base URL embedded in the certificate QR code for online verification. |
+| `--portal-url` | URL | `https://sector0.pages.dev/verify/` | no | Base URL embedded in the certificate QR code for online verification. |
 | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. Overrides `--portal-url` when set. |
 | `--plant-markers` | flag | off | no | Write known marker patterns before wiping, then assert zero hits after. Intended for demo/test validation. |
 | `--discard-purge-justification` | string | — | no | Evidence text that lets `BLKDISCARD` be classified as NIST *Purge* rather than *Clear*. |
@@ -539,8 +539,7 @@ options:
                         is recorded in the certificate.
   --plant-markers       plant recoverable markers first, then require 0 grep hits afterwards
   --portal-url PORTAL_URL
-                        verification portal base URL (default: https://sector-
-                        zero.pages.dev/verify/)
+                        verification portal base URL (default: https://sector0.pages.dev/verify/)
   --qr-url-template QR_URL_TEMPLATE
                         URL template for encoded verification QR code
 
@@ -672,7 +671,7 @@ s0 wipe --targets PATH... \
 | `--key` | path | auto | no, but recommended | Signing key PEM path. |
 | `--no-certificate` | flag | off | no | Skip certificate generation entirely. |
 | `--no-pdf` | flag | off | no | Skip PDF rendering; produce JSON certificate only. |
-| `--portal-url` | URL | `https://sector-zero.pages.dev/verify/` | no | Portal URL embedded in QR code. |
+| `--portal-url` | URL | `https://sector0.pages.dev/verify/` | no | Portal URL embedded in QR code. |
 | `--qr-url-template` | string | — | no | Full URL template with `{cert_uuid}` placeholder. |
 {% endtab %}
 {% tab title="Recommendations" %}

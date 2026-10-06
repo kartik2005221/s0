@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     S0 (Sector Zero) -- Uninstaller for Windows (PowerShell)
-    Usage: irm https://sector-zero.pages.dev/uninstall-ps1 | iex
+    Usage: irm https://sector0.pages.dev/uninstall-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 $InstallDir = if ($env:S0_INSTALL_DIR) { $env:S0_INSTALL_DIR } else { "$env:USERPROFILE\.s0" }

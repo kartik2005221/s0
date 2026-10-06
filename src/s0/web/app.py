@@ -1554,7 +1554,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                 if not req.no_pdf:
                     try:
                         qr_url_tpl = CONFIG.get(
-                            "qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+                            "qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"
                         )
                         if req.portal_url and req.portal_url.strip():
                             p_url = req.portal_url.strip()

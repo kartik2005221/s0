@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # S0 (Sector Zero) — Resilient Upgrader for Linux/MacOS
-# Usage: curl -fsSL https://sector-zero.pages.dev/upgrade-sh | bash
+# Usage: curl -fsSL https://sector0.pages.dev/upgrade-sh | bash
 set -euo pipefail
 
 # Must match install.sh. If the two resolve different refs, an upgrade can move an
@@ -48,7 +48,7 @@ step "Checking existing installation"
 if [ ! -d "$INSTALL_DIR" ]; then
     printf "\n${_yellow}WARNING: S0 is not installed at ${INSTALL_DIR}.${_reset}\n"
     printf "To install S0 from scratch, run:\n"
-    printf "  curl -fsSL https://sector-zero.pages.dev/sh | bash\n\n"
+    printf "  curl -fsSL https://sector0.pages.dev/sh | bash\n\n"
     exit 1
 fi
 if [ ! -d "$INSTALL_DIR/.git" ]; then

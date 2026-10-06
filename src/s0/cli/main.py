@@ -1764,7 +1764,7 @@ def cmd_erase_files(args) -> int:
                 from s0 import pdfgen
 
                 qr_url_tpl = getattr(
-                    args, "qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+                    args, "qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"
                 )
                 portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
                 if portal_url_val and "{cert_uuid}" not in portal_url_val:
@@ -2337,7 +2337,7 @@ def cmd_carve(args) -> int:
                 from s0 import pdfgen
 
                 qr_url_tpl = getattr(
-                    args, "qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+                    args, "qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"
                 )
                 portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
                 if portal_url_val and "{cert_uuid}" not in portal_url_val:
@@ -2858,11 +2858,11 @@ def cmd_upgrade(args) -> int:
         ui.error("could not locate the s0 installation repository")
         ui.note("To install or upgrade s0, run:")
         if sys.platform == "win32":
-            ui.note("  irm https://sector-zero.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
+            ui.note("  irm https://sector0.pages.dev/upgrade-ps1 -OutFile s0-upgrade.ps1")
             ui.note("  # Inspect s0-upgrade.ps1 before running, then:")
             ui.note("  powershell -ExecutionPolicy Bypass -File .\\s0-upgrade.ps1")
         else:
-            ui.note("  curl -fsSL https://sector-zero.pages.dev/upgrade-sh -o s0-upgrade.sh")
+            ui.note("  curl -fsSL https://sector0.pages.dev/upgrade-sh -o s0-upgrade.sh")
             ui.note("  # Inspect s0-upgrade.sh before running, then:")
             ui.note("  bash s0-upgrade.sh")
         return 1
@@ -2944,7 +2944,7 @@ def cmd_uninstall(args) -> int:
 
     if sys.platform == "win32":
         ui.heading("On Windows, use the official uninstallation script")
-        ui.note("    curl -fsSL https://sector-zero.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
+        ui.note("    curl -fsSL https://sector0.pages.dev/uninstall-ps1 -o s0-uninstall.ps1")
         ui.note("    # Inspect s0-uninstall.ps1 before running, then:")
         ui.note("    powershell -ExecutionPolicy Bypass -File .\\s0-uninstall.ps1")
         return EX_OK
@@ -2967,7 +2967,7 @@ def cmd_uninstall(args) -> int:
     if not repo_dir:
         ui.error("could not locate the s0 installation directory")
         ui.note("To uninstall s0 manually, download and run the script:")
-        ui.note("  curl -fsSL https://sector-zero.pages.dev/uninstall-sh -o s0-uninstall.sh")
+        ui.note("  curl -fsSL https://sector0.pages.dev/uninstall-sh -o s0-uninstall.sh")
         ui.note("  # Inspect s0-uninstall.sh before running, then:")
         ui.note("  bash s0-uninstall.sh")
         return EX_NOINPUT
@@ -3290,7 +3290,7 @@ def cmd_image(args) -> int:
 
                 out_dir_p = Path(args.out_dir)
                 qr_url_tpl = getattr(
-                    args, "qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+                    args, "qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"
                 )
                 portal_url_val = _validate_portal_url(getattr(args, "portal_url", None))
                 if portal_url_val and "{cert_uuid}" not in portal_url_val:
@@ -3672,13 +3672,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     wp.add_argument(
         "--portal-url",
-        default=CONFIG.get("verification_portal_url", "https://sector-zero.pages.dev/verify/"),
-        help="verification portal base URL (default: https://sector-zero.pages.dev/verify/)",
+        default=CONFIG.get("verification_portal_url", "https://sector0.pages.dev/verify/"),
+        help="verification portal base URL (default: https://sector0.pages.dev/verify/)",
     )
     wp.add_argument(
         "--qr-url-template",
         dest="qr_url_template",
-        default=CONFIG.get("qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"),
+        default=CONFIG.get("qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"),
         help="URL template for encoded verification QR code",
     )
     wp.set_defaults(func=cmd_wipe)

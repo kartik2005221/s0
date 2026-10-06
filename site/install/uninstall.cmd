@@ -1,6 +1,6 @@
 @echo off
 REM S0 (Sector Zero) — Uninstaller for Windows (CMD)
-REM Usage: curl -fsSL https://sector-zero.pages.dev/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
+REM Usage: curl -fsSL https://sector0.pages.dev/uninstall-cmd -o s0-uninstall.cmd && s0-uninstall.cmd && del s0-uninstall.cmd
 set "INSTALL_DIR=%USERPROFILE%\.s0"
 set "BIN_DIR=%USERPROFILE%\.s0\bin"
 

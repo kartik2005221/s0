@@ -127,7 +127,7 @@ Sanitization methods inherit from `Method` in `src/s0/wipe/methods/base.py`:
 
 ## 7. Documentation Contributions
 
-All documentation is maintained in `docs/` and published to [https://sector-zero.gitbook.io](https://sector-zero.gitbook.io).
+All documentation is maintained in `docs/` and published to [https://sector0.gitbook.io](https://sector0.gitbook.io).
 
 When contributing to documentation:
 - Add or edit markdown files inside `docs/` under their logical section (`getting-started/`, `guides/`, `architecture/`, `compliance/`, or `project/`).

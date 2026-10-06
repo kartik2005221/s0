@@ -1,8 +1,8 @@
-# Cloudflare Pages redirects and rewrites for sector-zero.pages.dev.
+# Cloudflare Pages redirects and rewrites for sector0.pages.dev.
 #
 # The short installer URLs are the product's front door:
 #
-#     curl -fsSL https://sector-zero.pages.dev/sh | sudo bash
+#     curl -fsSL https://sector0.pages.dev/sh | sudo bash
 #
 # They are internal 200 rewrites, not redirects: the response is the script
 # itself, so the browser never sees a hop. Every target moved under /install/
@@ -38,4 +38,4 @@
 /iso/ps1 /install/download_iso.ps1 200
 
 # The documentation suite stays on GitBook, which renders it from docs/.
-/docs https://sector-zero.gitbook.io/ 302
+/docs https://sector0.gitbook.io/ 302

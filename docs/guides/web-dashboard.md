@@ -77,7 +77,7 @@ The dashboard has **five tabs**, matching the `nav-tab` buttons in `src/s0/web/s
 | 4 | Forensic Imager & Cloner | `tab-image` |
 | 5 | Audit Chain Ledger | `tab-audit` |
 
-There is **no Certificate Portal tab in the dashboard.** Offline certificate verification — dropping a `.json` or `.pdf` certificate, optical QR decoding, custom SPKI PEM / 64-character Ed25519 key entry — is the separate Verification Portal at `https://sector-zero.pages.dev/verify/`, not a tab of `s0 web`.
+There is **no Certificate Portal tab in the dashboard.** Offline certificate verification — dropping a `.json` or `.pdf` certificate, optical QR decoding, custom SPKI PEM / 64-character Ed25519 key entry — is the separate Verification Portal at `https://sector0.pages.dev/verify/`, not a tab of `s0 web`.
 
 ### Tab 1: Secure Drive Eraser
 

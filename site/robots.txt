@@ -1,4 +1,4 @@
-# sector-zero.pages.dev
+# sector0.pages.dev
 #
 # /verify/ is excluded because it is the only page reached with a query string:
 # a shared verification link carries the certificate in ?cert=, and indexing
@@ -9,4 +9,4 @@ User-agent: *
 Allow: /
 Disallow: /verify/
 
-Sitemap: https://sector-zero.pages.dev/sitemap.xml
+Sitemap: https://sector0.pages.dev/sitemap.xml

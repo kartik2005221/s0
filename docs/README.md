@@ -101,7 +101,7 @@ identity is ever sent anywhere.
 Every sanitization certificate carries an **Ed25519 digital signature** (RFC 8032) computed over **s0 Canonical JSON v1**. The canonicalization engine eliminates JSON whitespace, key ordering, and floating-point divergences. The certificate content and its signature are mathematically inseparable: if the operation data is modified by even one bit, the signature check fails.
 
 #### Air-Gapped Verification
-The [Verification Portal](https://sector-zero.pages.dev/verify/) runs **100% in browser memory**. It downloads zero external CDN scripts and makes zero server requests. The portal can be saved to a thumb drive and executed via `file:///` on an isolated air-gapped machine in a secure facility or courtroom.
+The [Verification Portal](https://sector0.pages.dev/verify/) runs **100% in browser memory**. It downloads zero external CDN scripts and makes zero server requests. The portal can be saved to a thumb drive and executed via `file:///` on an isolated air-gapped machine in a secure facility or courtroom.
 
 ---
 
@@ -115,7 +115,7 @@ The installer runs on Linux, macOS, and Windows. No root is required for install
 {% tabs %}
 {% tab title="Linux/MacOS" %}
 ```bash
-curl -fsSL https://sector-zero.pages.dev/sh | bash
+curl -fsSL https://sector0.pages.dev/sh | bash
 
 s0 list
 
@@ -127,7 +127,7 @@ sudo s0 wipe --target /dev/sdb --operator "analyst-01" --organization "Forensics
 
 {% tab title="Windows (PowerShell)" %}
 ```powershell
-irm https://sector-zero.pages.dev/ps1 | iex
+irm https://sector0.pages.dev/ps1 | iex
 
 s0 list
 
@@ -139,7 +139,7 @@ s0 wipe --target \\.\PhysicalDrive1 --operator "analyst-01" --organization "Fore
 
 {% tab title="Windows (CMD)" %}
 ```cmd
-curl -fsSL https://sector-zero.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 
 s0 list
 

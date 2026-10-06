@@ -1,4 +1,4 @@
-# Cloudflare Pages response headers for sector-zero.pages.dev.
+# Cloudflare Pages response headers for sector0.pages.dev.
 #
 # One deployment serves three surfaces: the landing page at /, the installer at
 # /install/ and the certificate verifier at /verify/. Pages reads _headers from

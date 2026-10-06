@@ -94,4 +94,4 @@ def test_pdf_sanitizes_malicious_verify_url(signed_cert, tmp_path):
     )
     pdf_bytes = out.read_bytes()
     assert b"evil-phish-domain.attacker.example" not in pdf_bytes
-    assert b"sector-zero.pages.dev/verify" in pdf_bytes
+    assert b"sector0.pages.dev/verify" in pdf_bytes

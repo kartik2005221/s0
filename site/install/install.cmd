@@ -1,6 +1,6 @@
 @echo off
 REM S0 (Sector Zero) — Resilient One-Line Installer for Windows (CMD)
-REM Usage: curl -fsSL https://sector-zero.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
+REM Usage: curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 set "REPO=https://github.com/kartik2005221/s0.git"
 set "INSTALL_DIR=%USERPROFILE%\.s0"
 set "STEP=0"

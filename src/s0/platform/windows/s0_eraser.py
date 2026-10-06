@@ -59,8 +59,8 @@ except ImportError:
     CONFIG = {
         "default_operator": "op-forensic-01",
         "default_organization": "Digital Forensics & Data Sanitization Lab",
-        "qr_url_template": "https://sector-zero.pages.dev/verify/?cert={cert_uuid}",
-        "verification_portal_url": "https://sector-zero.pages.dev/verify/",
+        "qr_url_template": "https://sector0.pages.dev/verify/?cert={cert_uuid}",
+        "verification_portal_url": "https://sector0.pages.dev/verify/",
     }
 
 # Win32 Constants
@@ -1098,12 +1098,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-pdf", action="store_true", help="Skip rendering PDF certificate")
     parser.add_argument(
         "--portal-url",
-        default=CONFIG.get("verification_portal_url", "https://sector-zero.pages.dev/verify/"),
+        default=CONFIG.get("verification_portal_url", "https://sector0.pages.dev/verify/"),
         help="Verification portal base URL",
     )
     parser.add_argument(
         "--qr-url-template",
-        default=CONFIG.get("qr_url_template", "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"),
+        default=CONFIG.get("qr_url_template", "https://sector0.pages.dev/verify/?cert={cert_uuid}"),
         help="URL template for verification QR",
     )
     parser.add_argument(

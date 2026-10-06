@@ -582,7 +582,7 @@ def test_every_surface_declares_font_weight_ranges(d):
 # paths rather than hostnames. Docs stays on GitBook and the repository stays on
 # GitHub, so those two remain absolute.
 EXPECTED_NAV = {
-    "docs": "sector-zero.gitbook.io",
+    "docs": "sector0.gitbook.io",
     "install": "/install/",
     "verify": "/verify/",
     "github": "github.com/kartik2005221/s0",

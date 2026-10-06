@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     S0 (Sector Zero) -- Download Pre-Built Live ISO for Windows
-    Usage: irm https://sector-zero.pages.dev/download-iso-ps1 | iex
+    Usage: irm https://sector0.pages.dev/download-iso-ps1 | iex
 #>
 $ErrorActionPreference = 'Stop'
 

@@ -6,7 +6,7 @@
   const scenarios = [
     // 1. One-Line Installation
     {
-      command: "curl -fsSL https://sector-zero.pages.dev/sh | bash",
+      command: "curl -fsSL https://sector0.pages.dev/sh | bash",
       postCommandDelay: 500,
       outputs: [
         { text: "[1/6] Checking prerequisites... ✓ done", delay: 450, cls: "term-dim" },

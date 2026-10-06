@@ -3,9 +3,9 @@
 **Title:** Integrated Secure Data Erasure, Bit-Stream Imaging, File Recovery, and Cryptographic Ledger Suite for Digital Forensics and Media Sanitization  
 **Status:** v3.0.0 release candidate — 3.0 work has landed on `master`, pending hardening and release. Breaking changes and the 2.x migration path are in `CHANGELOG.md` under *Breaking changes and migration from 2.x*.  
 **Repository:** [github.com/kartik2005221/s0](https://github.com/kartik2005221/s0)  
-**Documentation:** [sector-zero.gitbook.io](https://sector-zero.gitbook.io)  
-**Install Portal:** [sector-zero.pages.dev](https://sector-zero.pages.dev)  
-**Verification Portal:** [sector-zero.pages.dev/verify](https://sector-zero.pages.dev/verify)  
+**Documentation:** [sector0.gitbook.io](https://sector0.gitbook.io)  
+**Install Portal:** [sector0.pages.dev](https://sector0.pages.dev)  
+**Verification Portal:** [sector0.pages.dev/verify](https://sector0.pages.dev/verify)  
 
 ---
 
@@ -65,9 +65,9 @@ s0/
 ├── iso/                          # Bare-metal Debian 12 Live bootable ISO recipe
 │   ├── config/                         # live-build chroot hooks, packages & systemd units
 │   └── auto/build.sh                   # ISO compilation script
-├── site/verify/                # 100% client-side WebCrypto verifier (sector-zero.pages.dev/verify)
-├── site/install/                     # Resilient web installer portal (sector-zero.pages.dev)
-├── docs/                       # Production documentation suite (sector-zero.gitbook.io)
+├── site/verify/                # 100% client-side WebCrypto verifier (sector0.pages.dev/verify)
+├── site/install/                     # Resilient web installer portal (sector0.pages.dev)
+├── docs/                       # Production documentation suite (sector0.gitbook.io)
 ├── skills/s0-forensics/                # Agentic AI Skill specification & reference manuals
 └── tools/                            # Master build, test, install & release orchestrators
 ```

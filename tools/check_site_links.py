@@ -59,7 +59,7 @@ def resolve(base: Path, url: str, site_root: Path) -> Path | None:
     """The filesystem path *url* refers to, or None if it is not a local file reference.
 
     A leading `/` means the *deployed site root*, not the filesystem root. `/verify/` in
-    site/install/index.html is https://sector-zero.pages.dev/verify/, which is
+    site/install/index.html is https://sector0.pages.dev/verify/, which is
     site/verify/ -- resolving it against `/` reported eleven dead links on the first run
     against a perfectly good site, which is the fastest way to get a link checker ignored.
     """

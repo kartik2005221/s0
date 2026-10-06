@@ -25,7 +25,7 @@ from .canonical import canonicalize_str
 __all__ = ["generate_pdf", "QR_URL_TEMPLATE_DEFAULT"]
 
 # Canonical deployment verification portal URL; informational only.
-QR_URL_TEMPLATE_DEFAULT = "https://sector-zero.pages.dev/verify/?cert={cert_uuid}"
+QR_URL_TEMPLATE_DEFAULT = "https://sector0.pages.dev/verify/?cert={cert_uuid}"
 
 
 _STATUS_COLORS = {
@@ -416,7 +416,7 @@ def generate_pdf(
         Paragraph(
             '<font size="6.5" color="#64748b">LEGAL NOTICE: s0 is a digital forensic sanitization and recovery tool. '
             "Issued solely for authorized media operations and legal chain of custody. "
-            "Verify authenticity at https://sector-zero.pages.dev/verify/ or via `s0 verify`.</font>",
+            "Verify authenticity at https://sector0.pages.dev/verify/ or via `s0 verify`.</font>",
             styles["Normal"],
         )
     )

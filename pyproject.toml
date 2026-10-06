@@ -55,9 +55,9 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/kartik2005221/s0"
-Documentation = "https://sector-zero.gitbook.io/"
-"Verification Portal" = "https://sector-zero.pages.dev/verify/"
-"Install Portal" = "https://sector-zero.pages.dev/install/"
+Documentation = "https://sector0.gitbook.io/"
+"Certificate Verification" = "https://sector0.pages.dev/verify/"
+"Installation Guide" = "https://sector0.pages.dev/install/"
 
 [project.scripts]
 # The operator-facing entry point.

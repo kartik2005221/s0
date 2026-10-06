@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # S0 (Sector Zero) — Resilient One-Line Installer for Linux/MacOS
-# Usage: curl -fsSL https://sector-zero.pages.dev/sh | bash
+# Usage: curl -fsSL https://sector0.pages.dev/sh | bash
 set -euo pipefail
 
 REPO="${S0_INSTALL_REPO:-https://github.com/kartik2005221/s0.git}"
@@ -49,9 +49,9 @@ if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]
     printf "S0 installs into your user home directory (%s/.s0) and does not need root privileges.\n" "$HOME" >&2
     printf "With sudo, files would belong to root and the 's0' command would not work in your regular shell.\n\n" >&2
     printf "Please re-run without sudo, e.g.:\n" >&2
-    printf "    curl -fsSL https://sector-zero.pages.dev/sh | bash\n\n" >&2
+    printf "    curl -fsSL https://sector0.pages.dev/sh | bash\n\n" >&2
     printf "If you intentionally wish to install for the root user, set S0_INSTALL_ALLOW_SUDO=1, e.g.:\n" >&2
-    printf "    curl -fsSL https://sector-zero.pages.dev/sh | sudo S0_INSTALL_ALLOW_SUDO=1 bash\n" >&2
+    printf "    curl -fsSL https://sector0.pages.dev/sh | sudo S0_INSTALL_ALLOW_SUDO=1 bash\n" >&2
     exit 1
 fi
 
@@ -268,7 +268,7 @@ printf "   s0 is a digital forensic sanitization and recovery tool.\n"
 printf "   Only operate on storage devices and files you legally own or have explicit\n"
 printf "   documented authorization to process. Unauthorized use may violate computer\n"
 printf "   crime laws (e.g., CFAA, Computer Misuse Act, IT Act 2000).\n"
-printf "   Documentation & Legal FAQ: https://sector-zero.gitbook.io/getting-started/faq\n\n"
+printf "   Documentation & Legal FAQ: https://sector0.gitbook.io/getting-started/faq\n\n"
 
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     printf "${_yellow}NOTE:${_reset} Add ~/.local/bin to your PATH by adding this to ~/.bashrc or ~/.zshrc:\n"

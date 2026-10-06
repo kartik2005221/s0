@@ -57,7 +57,7 @@
         "style": "link",
         "to": {
           "kind": "url",
-          "url": "https://sector-zero.pages.dev/"
+          "url": "https://sector0.pages.dev/"
         },
         "links": [],
         "localizedTitle": {}
@@ -67,7 +67,7 @@
         "style": "link",
         "to": {
           "kind": "url",
-          "url": "https://sector-zero.pages.dev/verify/"
+          "url": "https://sector0.pages.dev/verify/"
         },
         "links": [],
         "localizedTitle": {}
@@ -77,7 +77,7 @@
         "style": "link",
         "to": {
           "kind": "url",
-          "url": "https://sector-zero.pages.dev/install/"
+          "url": "https://sector0.pages.dev/install/"
         },
         "links": [],
         "localizedTitle": {}

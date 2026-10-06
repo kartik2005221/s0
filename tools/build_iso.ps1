@@ -97,5 +97,5 @@ Write-Host "    Option B: Enable WSL2: Open PowerShell as Administrator and run:
 Write-Host "              wsl --install -d Debian"
 Write-Host "              Then re-run: .\tools\build_iso.ps1"
 Write-Host "    Option C: Download the pre-built, verified ISO directly:" -ForegroundColor Cyan
-Write-Host "              irm https://sector-zero.pages.dev/download-iso-ps1 | iex"
+Write-Host "              irm https://sector0.pages.dev/download-iso-ps1 | iex"
 Write-Host ""
