@@ -68,7 +68,7 @@ s0/
 ## 3. Development Setup
 
 ### Prerequisites
-- Python 3.10+ (Python 3.12 or 3.14 recommended)
+- Python 3.11+ (Python 3.12 or 3.14 recommended)
 - Git
 - OpenSSL / libsodium (standard on modern Linux/MacOS)
 

@@ -305,6 +305,7 @@ declared field or footer where the format has one.
 | `--gaps-bodyfile <path>` | Write the ranges that were **searched and found nothing**. For fragmented work this is usually the more useful of the two — the holes are the finding. |
 | `--session <file>` | Resume an interrupted carve. Refused if the image has changed since the session was written. |
 | `--write-session <file>` | Record this run's recovered extents so it can be resumed. |
+| `--all-space` | Scan entire volume (allocated and unallocated blocks) instead of unallocated only. |
 
 **Agent Protocol:**
 - Check whether filesystem-aware carving (ext4 inode table, NTFS $MFT, FAT32
@@ -334,10 +335,13 @@ s0 wipe \
     --targets /tmp/staging/keys.pem /tmp/confidential/ \
     --passes 1 \
     --operator "analyst-01" \
-    --out-dir /evidence/certs/
+    --out-dir /evidence/certs/ \
+    --yes
 ```
 
 **Agent Protocol:**
+- **Headless Confirmation**: In non-TTY/headless automation, `--yes` is mandatory to avoid exit 75 refusal. Interactive prompt expects `WIPE`.
+- **Target Disambiguation**: Use `--as-file` to force shred/unlink on large targets (>64 MiB), or `--as-image` to preserve/overwrite small disk images (≤64 MiB).
 - Check target filesystem. If on a Copy-on-Write filesystem (Btrfs, ZFS, APFS, ReFS), warn the user that host overwriting allocates new blocks while prior blocks linger in snapshots. Advise whole-disk wiping (`s0 wipe`) for high-assurance destruction on CoW volumes.
 
 ---

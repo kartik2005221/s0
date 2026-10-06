@@ -39,7 +39,7 @@ Before installing, confirm that the following are present on your system.
 
 | Requirement | Minimum Version | Notes |
 |---|---|---|
-| **Python** | 3.10+ | Checked automatically by the install script |
+| **Python** | 3.11+ | Checked automatically by the install script |
 | **Git** | Any recent | Required to clone the repository during install |
 | **curl** | Any | Pre-installed on all modern Linux/MacOS/Windows 10+ |
 
@@ -75,7 +75,7 @@ curl -fsSL https://sector-zero.pages.dev/sh | bash
 
 {% hint style="success" %}
 **Apple Silicon & Intel support**
-On macOS, the installer automatically detects Apple Silicon (M1–M4) and Intel architectures. Ensure Python 3.10+ is installed (e.g. via Homebrew: `brew install python3`).
+On macOS, the installer automatically detects Apple Silicon (M1–M4) and Intel architectures. Ensure Python 3.11+ is installed (e.g. via Homebrew: `brew install python3`).
 {% endhint %}
 {% endtab %}
 {% tab title="Windows (PowerShell)" %}

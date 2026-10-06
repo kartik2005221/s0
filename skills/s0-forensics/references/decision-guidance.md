@@ -64,8 +64,32 @@ When configuring parameters for `s0`, follow these engineering rules:
 - **Recommendation**: Use `1048576` (1MB, default) for general acquisition; use `4194304` (4MB) when capturing PCIe Gen4/Gen5 NVMe targets.
 - **Rationale**: Optimizes kernel buffer efficiency and hardware queue depth without thrashing memory.
 
-### F. Fault-Tolerant Sector Recovery (`--no-recovery`)
-- **Recommendation**: Omit `--no-recovery` when imaging suspect media.
-- **Rationale**: Faulty drives frequently have bad sectors. `s0 image` replaces unreadable sectors with zeros (ddrescue-style) and logs the bad sector offsets into the manifest, capturing all surviving sectors. Only use `--no-recovery` when evaluating pristine master drives.
+### G. Target Type Disambiguation (`--as-file` vs `--as-image`)
+- **Recommendation**: Specify `--as-file` or `--as-image` when `--target` is ambiguous.
+- **Rationale**: When `--target` points to a regular file, s0 defaults to a 64 MiB heuristic: files ≤ 64 MiB are treated as individual files (overwritten, metadata scrubbed, and unlinked), while files > 64 MiB are treated as raw disk images (overwritten in-place without unlinking). Use `--as-file` to force shredding and unlinking on large files (> 64 MiB). Use `--as-image` to preserve and overwrite in-place small disk images (≤ 64 MiB).
+
+### H. Carving Scope & Custom Signatures (`--all-space`, `--custom-sig`, `--limit`)
+- **Recommendation**: Use `--all-space` when volume filesystem tables are corrupted or when searching for embedded artifacts within live files.
+- **Rationale**: On structured filesystems (FAT, exFAT, NTFS, ext4), `s0 carve` by default scans unallocated cluster blocks. Passing `--all-space` forces scanning across the entire partition volume.
+- **Custom Signatures (`--custom-sig`)**: Add user-defined magic bytes at runtime formatted as `ext:magic_hex:max_size` (e.g. `dmp:50414745:10485760`).
+- **Recovery Limit (`--limit`)**: Restrict maximum number of carved artifacts recovered to prevent disk exhaustion.
+
+### I. Attestation Output & Verification Controls (`--no-pdf`, `--plant-markers`, `--portal-url`, `--qr-url-template`)
+- **`--no-pdf`**: Suppresses generating ReportLab PDF certificates, outputting only the canonical JSON attestation (`certificate_*.json`).
+- **`--plant-markers`**: Plants deterministic cryptographic markers across sectors prior to wipe to verify post-sanitization non-readability.
+- **`--portal-url` / `--qr-url-template`**: Customizes the online verification URL encoded in the certificate QR code.
+
+### J. Cryptographic Identity & Metadata (`--key` / `--signing-key`, `--operator`, `--operator-id`, `--organization`, `--hash-algorithms`)
+- **`--key` / `--signing-key`**: Specifies the Ed25519 private key PEM file for signing certificates and ledger blocks, or public key PEM for `s0 verify` / `s0 audit verify`.
+- **`--operator` / `--operator-id`**: Operator identity recorded in certificate attestations.
+- **`--organization`**: Organization name recorded in signed certificates and audit logs.
+- **`--hash-algorithms`**: Selected hashing suites during acquisition (e.g. `sha256,md5`).
+
+### K. Environment & Maintenance (`--host`, `--port`, `--branch`, `--firmware`, `--version`)
+- **`--host`, `--port`**: Binds the `s0 web` operator console (defaults to loopback `127.0.0.1:8669`).
+- **`--branch`**: Specifies git ref for `s0 upgrade` (e.g. `master` or a release tag).
+- **`--firmware`**: Enables firmware-mediated erasure probing (the default; invert with `--no-firmware`).
+- **`--version`**: Emits installed version string and commit hash.
 
 ---
+

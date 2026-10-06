@@ -1,7 +1,7 @@
 # Web Dashboard Operator Guide
 
 > **Interface Type:** Local Forensics Operator Console  
-> **Backend Architecture:** FastAPI (Python 3.10+) asynchronous server  
+> **Backend Architecture:** FastAPI (Python 3.11+) asynchronous server  
 > **Frontend Stack:** Vanilla HTML5, CSS3 (Forensic Dark Theme `#070D18`), JavaScript (Zero external framework dependencies)  
 > **Default Bind Address:** `127.0.0.1:8669` (Strict loopback isolation)
 

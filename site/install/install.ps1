@@ -65,8 +65,8 @@ Write-Host "|      S0 (Sector Zero) -- Digital Forensic & Sanitization Suite   |
 Write-Host "+==================================================================+" -ForegroundColor Cyan
 Write-Host ""
 
-# Step 1: Detect / Install Python 3.10+
-Write-Step "Detecting Python 3.10+"
+# Step 1: Detect / Install Python 3.11+
+Write-Step "Detecting Python 3.11+"
 $PythonCmd = $null; $PythonArgs = @()
 foreach ($c in @(
     @{ Cmd = 'python';  Args = @() },
@@ -75,7 +75,7 @@ foreach ($c in @(
 )) {
     if (Get-Command $c.Cmd -ErrorAction SilentlyContinue) {
         try {
-            $testArgs = $c.Args + @('-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)')
+            $testArgs = $c.Args + @('-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)')
             & $c.Cmd $testArgs 2>$null
             if ($LASTEXITCODE -eq 0) { $PythonCmd = $c.Cmd; $PythonArgs = $c.Args; break }
         } catch {}
@@ -83,7 +83,7 @@ foreach ($c in @(
 }
 if (-not $PythonCmd) {
     if (Get-Command winget -ErrorAction SilentlyContinue) {
-        Write-Host "`n[!] Python 3.10+ was not found." -ForegroundColor Yellow
+        Write-Host "`n[!] Python 3.11+ was not found." -ForegroundColor Yellow
         $resp = Read-Host "Would you like s0 to install Python 3.12 via Windows Package Manager (winget)? [Y/n]"
         if ($resp -eq '' -or $resp -match '^(y|yes)$') {
             Write-Host "Installing Python via winget..." -ForegroundColor Cyan
@@ -95,7 +95,7 @@ if (-not $PythonCmd) {
         }
     }
     if (-not $PythonCmd) {
-        Write-Host "`n[ERROR] Python 3.10+ is required." -ForegroundColor Red
+        Write-Host "`n[ERROR] Python 3.11+ is required." -ForegroundColor Red
         Write-Host "        Please install Python from: https://www.python.org/downloads/" -ForegroundColor Yellow
         Write-Host "        Be sure to check 'Add python.exe to PATH' during setup." -ForegroundColor Yellow
         return

@@ -34,7 +34,7 @@ If you discover a vulnerability affecting data destruction guarantees, signature
 ## 3. Development Setup
 
 ### Prerequisites
-- Python 3.10+ (tested through Python 3.14)
+- Python 3.11+ (tested through Python 3.14)
 - Git
 - `gcc`, `make`, and standard POSIX utilities (Linux/MacOS)
 - Platform-specific build tools:

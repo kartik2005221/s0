@@ -22,17 +22,17 @@ echo   S0 (Sector Zero) -- Digital Forensic ^& Sanitization Suite
 echo ==================================================================
 echo.
 
-REM ── Step 1: Detect Python 3.10+ ────────────────────────────────────
+REM ── Step 1: Detect Python 3.11+ ────────────────────────────────────
 set /a STEP=STEP+1
-echo [%STEP%/%TOTAL%] Detecting Python 3.10+...
+echo [%STEP%/%TOTAL%] Detecting Python 3.11+...
 set "PYTHON_BIN="
 set "PYTHON_ARGS="
 
-python -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+python -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
 if %ERRORLEVEL% equ 0 set "PYTHON_BIN=python"
 
 if not defined PYTHON_BIN (
-    py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+    py -3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
     if %ERRORLEVEL% equ 0 (
         set "PYTHON_BIN=py"
         set "PYTHON_ARGS=-3"
@@ -40,12 +40,12 @@ if not defined PYTHON_BIN (
 )
 
 if not defined PYTHON_BIN (
-    python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
+    python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
     if %ERRORLEVEL% equ 0 set "PYTHON_BIN=python3"
 )
 
 if not defined PYTHON_BIN (
-    echo   [!] Python 3.10+ was not found. Trying winget...
+    echo   [!] Python 3.11+ was not found. Trying winget...
     winget --version >nul 2>&1
     if %ERRORLEVEL% equ 0 (
         echo   Installing Python 3.12 via winget...
@@ -55,7 +55,7 @@ if not defined PYTHON_BIN (
 )
 
 if not defined PYTHON_BIN (
-    echo   [ERROR] Python 3.10+ was not found.
+    echo   [ERROR] Python 3.11+ was not found.
     echo   Install from: https://www.python.org/downloads/
     echo   Check "Add python.exe to PATH" during installation.
     exit /b 1
