@@ -94,19 +94,17 @@ def is_block_device(path: Path) -> bool:
     if sys.platform == "win32":
         return is_windows_volume_path(s_path)
 
-    norm = os.path.normpath(s_path)
-    if ".." in norm.split(os.sep) or not norm.startswith("/dev/"):
+    posix_path = s_path.replace("\\", "/")
+    if not posix_path.startswith("/dev/") or ".." in posix_path.split("/"):
         return False
 
     try:
-        dev_p = Path(norm)
+        dev_p = Path(s_path)
         if dev_p.is_block_device():
             return True
         if sys.platform == "darwin" and dev_p.is_char_device():
             return True
     except OSError:
-        # Permission and I/O errors mean "not something we can open", not
-        # "definitely not a device". Callers surface their own error.
         return False
     return False
 

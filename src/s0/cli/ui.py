@@ -236,6 +236,8 @@ class UI:
         self._argv = list(argv or [])
         self._started_monotonic = time.monotonic()
         self._started_at = _utc_now()
+        self._errors: list[str] = []
+        self._finished: bool = False
 
     # -- data (stdout) ----------------------------------------------------
     def line(self, text: str = "") -> None:
@@ -266,6 +268,7 @@ class UI:
         self.policy.warn(text)
 
     def error(self, text: str) -> None:
+        self._errors.append(text)
         self.policy.error(text)
 
     def status(self, state: str, label: str = "") -> str:
@@ -317,6 +320,7 @@ class UI:
         produced a zero-byte file and exited 0. A flag that is accepted, does
         nothing, and reports success is worse than a flag that is absent.
         """
+        self._finished = True
         if self.policy.fmt == "json":
             finished_at = _utc_now()
             kwargs.setdefault("args", _redact_argv(self._argv))

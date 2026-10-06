@@ -607,9 +607,15 @@ def _resolve_key(
         custom_key_file = keys_dir / f"custom_issuer_{key_id}.pem"
         custom_key_file.write_text(key_data.strip() + "\n", encoding="utf-8")
         try:
-            os.chmod(custom_key_file, 0o600)
-        except Exception:
-            pass
+            from s0.crypto import load_private_pem
+
+            load_private_pem(custom_key_file)
+        except Exception as exc:
+            try:
+                custom_key_file.unlink(missing_ok=True)
+            except Exception:
+                pass
+            raise HTTPException(400, f"Invalid signing key content: {exc}") from exc
         return custom_key_file, is_demo_key(custom_key_file)
 
     if key_path and key_path.strip():
@@ -642,6 +648,12 @@ def _resolve_key(
         kp = Path(real_str)
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {raw}")
+        try:
+            from s0.crypto import load_private_pem
+
+            load_private_pem(kp)
+        except Exception as exc:
+            raise HTTPException(400, f"Invalid signing key file: {exc}") from exc
         return kp, is_demo_key(kp)
 
     default_key_rel = CONFIG.get("default_key_path", "src/s0/data/keys/demo_issuer_private.pem")
@@ -689,14 +701,14 @@ def _reject_system_path(field: str, value: str | None) -> str | None:
 
 
 class PlanRequest(BaseModel):
-    target: str
+    target: str = Field(..., max_length=4096)
 
 
 class WipeRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    target: str
-    confirm_text: str
+    target: str = Field(..., max_length=4096)
+    confirm_text: str = Field(..., max_length=4096)
     pattern: str = "zero"
     passes: int = Field(default=1, ge=1, le=100)
     operator_id: str = Field(
@@ -707,7 +719,7 @@ class WipeRequest(BaseModel):
             "default_organization", "Digital Forensics & Data Sanitization Lab"
         )
     )
-    key_path: str | None = None
+    key_path: str | None = Field(default=None, max_length=4096)
     key_data: str | None = Field(
         default=None,
         max_length=16_384,
@@ -716,10 +728,10 @@ class WipeRequest(BaseModel):
             "to disk verbatim; a PEM is under 4 KiB."
         ),
     )
-    out_dir: str | None = None
+    out_dir: str | None = Field(default=None, max_length=4096)
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
-    portal_url: str | None = None
+    portal_url: str | None = Field(default=None, max_length=4096)
 
     @field_validator("target")
     @classmethod
@@ -772,7 +784,7 @@ class FileEraseRequest(BaseModel):
             "default_organization", "Digital Forensics & Data Sanitization Lab"
         )
     )
-    key_path: str | None = None
+    key_path: str | None = Field(default=None, max_length=4096)
     key_data: str | None = Field(
         default=None,
         max_length=16_384,
@@ -781,10 +793,10 @@ class FileEraseRequest(BaseModel):
             "to disk verbatim; a PEM is under 4 KiB."
         ),
     )
-    out_dir: str | None = None
+    out_dir: str | None = Field(default=None, max_length=4096)
     no_pdf: bool = False
     verify_samples: int = Field(default=64, ge=1, le=10000)
-    portal_url: str | None = None
+    portal_url: str | None = Field(default=None, max_length=4096)
 
     @field_validator("targets")
     @classmethod
@@ -792,6 +804,8 @@ class FileEraseRequest(BaseModel):
         if not v:
             raise ValueError("targets list cannot be empty")
         for t in v:
+            if len(t) > 4096:
+                raise ValueError("target path exceeds maximum length of 4096")
             safe, reason = _is_safe_wipe_path(t)
             if not safe:
                 raise ValueError(reason)
@@ -831,12 +845,8 @@ class FileEraseRequest(BaseModel):
 
 
 class CarveRequest(BaseModel):
-    target: str
+    target: str = Field(..., max_length=4096)
     extensions: list[str] | None = None
-    # The CLI documents 0-100 and its own parser rejects out-of-range values, so the
-    # web tier did too. It accepted min_confidence=999, which is a confidence
-    # nobody can express: the request succeeded and carved nothing, and the only
-    # way to tell that from "nothing was recoverable" was to read the report.
     min_confidence: int = Field(default=50, ge=0, le=100)
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(
@@ -844,8 +854,8 @@ class CarveRequest(BaseModel):
             "default_organization", "Digital Forensics & Data Sanitization Lab"
         )
     )
-    out_dir: str | None = None
-    key_path: str | None = None
+    out_dir: str | None = Field(default=None, max_length=4096)
+    key_path: str | None = Field(default=None, max_length=4096)
     key_data: str | None = Field(
         default=None,
         max_length=16_384,
@@ -887,21 +897,21 @@ class CarveRequest(BaseModel):
 
 
 class ImageRequest(BaseModel):
-    source: str
-    destination: str
-    block_size: int = 1024 * 1024
+    source: str = Field(..., max_length=4096)
+    destination: str = Field(..., max_length=4096)
+    block_size: int = Field(default=1024 * 1024, ge=512, le=64 * 1024 * 1024)
     no_recovery: bool = False
     is_clone: bool = False
     force: bool = False
-    confirm_text: str = ""
+    confirm_text: str = Field(default="", max_length=4096)
     operator_id: str = Field(default_factory=lambda: CONFIG.get("default_operator", "op-forensic"))
     organization: str = Field(
         default_factory=lambda: CONFIG.get(
             "default_organization", "Digital Forensics & Data Sanitization Lab"
         )
     )
-    out_dir: str | None = None
-    key_path: str | None = None
+    out_dir: str | None = Field(default=None, max_length=4096)
+    key_path: str | None = Field(default=None, max_length=4096)
     key_data: str | None = Field(
         default=None,
         max_length=16_384,
@@ -1136,7 +1146,15 @@ ALLOWED_BROWSE_ROOTS = [
     Path("/mnt").resolve(),
     Path(tempfile.gettempdir()).resolve(),
     Path("/tmp").resolve(),  # nosec B108  # noqa: S108
-    *([Path("/").resolve()] if _sys.platform != "win32" else [Path("C:\\")]),
+    *(
+        [Path("/").resolve()]
+        if _sys.platform != "win32"
+        else [
+            Path("C:\\"),
+            Path(REPO.resolve().anchor),
+            Path(Path(tempfile.gettempdir()).resolve().anchor),
+        ]
+    ),
 ]
 
 
@@ -1558,10 +1576,11 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         pass
 
             with _lock:
+                success = summary.failed_files == 0 and summary.certificate is not None
                 _jobs[job_id].update(
-                    status="done" if summary.failed_files == 0 else "error",
+                    status="done" if success else "error",
                     result={
-                        "returncode": 0 if summary.failed_files == 0 else 1,
+                        "returncode": 0 if success else 1,
                         "total_files": summary.total_files,
                         "successful_files": summary.successful_files,
                         "failed_files": summary.failed_files,

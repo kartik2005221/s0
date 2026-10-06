@@ -181,7 +181,12 @@ def acquire_image(
     bad_bytes_count = 0
     bad_ranges: list[BadSectorRange] = []
 
-    block_size = max(512, options.block_size)
+    if options.block_size < 512 or options.block_size > 64 * 1024 * 1024 or options.block_size % 512 != 0:
+        raise ValueError(
+            f"invalid block_size {options.block_size}: must be a multiple of 512 between 512 and 67108864 (64 MiB)"
+        )
+
+    block_size = options.block_size
     sector_size = max(512, options.sector_size)
 
     # 2. Bit-stream streaming acquisition
@@ -294,6 +299,24 @@ def acquire_image(
     source_sha256 = sha256_hasher.hexdigest()
     source_md5 = md5_hasher.hexdigest()
     now_iso_end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    if src_capacity > 0 and bytes_copied != src_capacity:
+        return ImagingResult(
+            success=False,
+            source=src_path,
+            destination=str(dst_p),
+            is_clone=is_clone,
+            source_capacity_bytes=src_capacity,
+            bytes_copied=bytes_copied,
+            duration_seconds=duration,
+            speed_mbps=speed,
+            bad_sectors_count=bad_sectors_count,
+            bad_bytes_count=bad_bytes_count,
+            bad_sector_ranges=bad_ranges,
+            source_sha256=source_sha256,
+            source_md5=source_md5,
+            error=f"acquisition size mismatch: copied {bytes_copied} bytes but source is {src_capacity} bytes",
+        )
 
     # 3. Create Acquisition Manifest
     out_dir_p = Path(options.out_dir)

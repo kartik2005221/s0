@@ -680,8 +680,8 @@ def cmd_plan(args) -> int:
 
     candidate, alternatives = select_method(
         target,
-        passes=args.passes,
-        pattern=args.pattern,
+        passes=getattr(args, "passes", 1),
+        pattern=getattr(args, "pattern", "zero"),
         prefer_firmware=not args.no_firmware,
         discard_justification=args.discard_purge_justification,
     )
@@ -1010,6 +1010,16 @@ def cmd_wipe(args) -> int:
             ui.note("Re-run without --dry-run to erase these files.")
         return 0
 
+    passes_val = getattr(args, "passes", 1)
+    if passes_val < 1 or passes_val > 100:
+        print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
+        return 2
+
+    samples_val = getattr(args, "verify_samples", 64)
+    if samples_val < 1 or samples_val > 10000:
+        print(f"error: --verify-samples must be between 1 and 10000 (got {samples_val}).", file=sys.stderr)
+        return 2
+
     if is_file_mode:
         return cmd_erase_files(args)
 
@@ -1033,16 +1043,6 @@ def cmd_wipe(args) -> int:
     out_dir = _prepare_out_dir(args, ui=ui)
     if out_dir is None:
         return EX_CANTCREAT
-
-    passes_val = getattr(args, "passes", 1)
-    if passes_val < 1 or passes_val > 100:
-        print(f"error: --passes must be between 1 and 100 (got {passes_val}).", file=sys.stderr)
-        return 2
-
-    samples_val = getattr(args, "verify_samples", 64)
-    if samples_val < 1 or samples_val > 10000:
-        print(f"error: --verify-samples must be between 1 and 10000 (got {samples_val}).", file=sys.stderr)
-        return 2
 
     t_start = time.monotonic()
     start_time = _now()
@@ -1093,8 +1093,8 @@ def cmd_wipe(args) -> int:
         _warn_if_demo_key(key_path, _ui_policy(args))
         res_win, cert = wipe_drive_or_partition_windows(
             target=target.path,
-            passes=args.passes,
-            pattern=args.pattern,
+            passes=getattr(args, "passes", 1),
+            pattern=getattr(args, "pattern", "zero"),
             operator_id=getattr(args, "operator", getattr(args, "operator_id", "op-forensic")),
             organization=args.organization,
             signing_key_path=key_path,
@@ -1188,8 +1188,8 @@ def cmd_wipe(args) -> int:
         _warn_if_demo_key(key_path, _ui_policy(args))
         res_mac, cert = wipe_drive_or_partition_macos(
             target=target.path,
-            passes=args.passes,
-            pattern=args.pattern,
+            passes=getattr(args, "passes", 1),
+            pattern=getattr(args, "pattern", "zero"),
             operator_id=getattr(args, "operator", getattr(args, "operator_id", "op-forensic")),
             organization=args.organization,
             signing_key_path=key_path,
@@ -1259,8 +1259,8 @@ def cmd_wipe(args) -> int:
 
     candidate, alternatives = select_method(
         target,
-        passes=args.passes,
-        pattern=args.pattern,
+        passes=getattr(args, "passes", 1),
+        pattern=getattr(args, "pattern", "zero"),
         prefer_firmware=not args.no_firmware,
         discard_justification=args.discard_purge_justification,
     )
@@ -1715,8 +1715,8 @@ def cmd_erase_files(args) -> int:
     try:
         summary = erase_batch(
             targets,
-            passes=args.passes,
-            pattern=args.pattern,
+            passes=getattr(args, "passes", 1),
+            pattern=getattr(args, "pattern", "zero"),
             operator_id=args.operator,
             organization=args.organization,
             signing_key_path=key_path,
@@ -2458,12 +2458,21 @@ def cmd_audit(args) -> int:
             state, label = "warn", "VALID & CONTINUOUS - SIGNED WITH UNACCREDITED DEMO KEY"
         elif report.is_valid:
             state, label = "ok", "VALID & CONTINUOUS"
+        elif "empty" in reason.lower() or "not found" in reason.lower():
+            state, label = "warn", "EMPTY LEDGER - NO OPERATIONS RECORDED YET"
         elif "not in the trusted key set" in reason or "unknown issuer key" in reason:
             state, label = "warn", "UNVERIFIABLE - SIGNING KEY NOT IN THE TRUST SET"
         else:
             state, label = "error", "CHAIN INTEGRITY FAILURE"
 
         if ui.policy.fmt in ("json", "csv"):
+            if report.is_valid and getattr(report, "is_demo_signed", False):
+                machine_status = "unverified_issuer"
+            elif report.is_valid:
+                machine_status = "success"
+            else:
+                machine_status = "failure"
+
             ui.finish(
                 result={
                     "is_valid": report.is_valid,
@@ -2473,7 +2482,7 @@ def cmd_audit(args) -> int:
                     "reason": reason,
                     "demo_key_warning": getattr(report, "demo_key_warning", None),
                 },
-                status="success" if report.is_valid else "failure",
+                status=machine_status,
             )
             if report.is_valid and getattr(report, "is_demo_signed", False):
                 return EX_TEMPFAIL
@@ -2536,7 +2545,11 @@ def cmd_verify(args) -> int:
         if not key_path.is_file():
             ui.error(f"public key file {args.key} does not exist")
             return EX_NOINPUT
-        pub_keys.append(load_public_pem(key_path))
+        try:
+            pub_keys.append(load_public_pem(key_path))
+        except Exception as exc:
+            ui.error(f"invalid public key file '{args.key}': {exc}")
+            return EX_DATAERR
     else:
         try:
             pub_keys.append(load_public_pem(resources.demo_public_key()))
@@ -3123,6 +3136,11 @@ def cmd_image(args) -> int:
         return EX_CONFIG
     if _prepare_out_dir(args, ui=ui) is None:
         return EX_CANTCREAT
+    if args.block_size < 512 or args.block_size > 64 * 1024 * 1024 or args.block_size % 512 != 0:
+        ui.error(
+            f"invalid --block-size {args.block_size}: must be a multiple of 512 between 512 and 67108864 (64 MiB)"
+        )
+        return EX_USAGE
 
     options = ImagingOptions(
         source=args.source,
@@ -4080,7 +4098,24 @@ def main(argv=None) -> int:
             return guard
 
         code = args.func(args)
-        return int(code) if code is not None else EX_OK
+        ret_code = int(code) if code is not None else EX_OK
+        ui = getattr(args, "ui", None)
+        if (
+            ret_code != EX_OK
+            and ui is not None
+            and getattr(ui, "policy", None) is not None
+            and ui.policy.fmt == "json"
+            and not getattr(ui, "_finished", False)
+        ):
+            err_list = [{"message": err} for err in getattr(ui, "_errors", [])]
+            if not err_list:
+                err_list = [{"message": f"command failed with exit code {ret_code}"}]
+            ui.finish(
+                result=None,
+                status="error",
+                errors=err_list,
+            )
+        return ret_code
     except KeyboardInterrupt:
         sys.stderr.write("\n\n!  Operation cancelled by the operator (Ctrl+C).\n")
         return EX_INTERRUPTED
