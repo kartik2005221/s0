@@ -306,6 +306,12 @@ if PORTAL_DIR.is_dir():
 STATIC_DIR = STATIC_ROOT / "static"
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+    if (STATIC_DIR / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+    if (STATIC_DIR / "css").is_dir():
+        app.mount("/css", StaticFiles(directory=str(STATIC_DIR / "css")), name="css")
+    if (STATIC_DIR / "js").is_dir():
+        app.mount("/js", StaticFiles(directory=str(STATIC_DIR / "js")), name="js")
 #: Job records are held for the process lifetime. Unbounded growth matters most
 #: on the live-ISO kiosk, which runs for the whole session, so the store is a
 #: capped LRU: oldest job is evicted once the cap is reached. Capped at a size

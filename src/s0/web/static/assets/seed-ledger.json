@@ -1,0 +1,54 @@
+[
+  {
+    "block_index": 0,
+    "timestamp": "2026-10-01T08:00:00Z",
+    "operation_type": "GENESIS",
+    "target_id": "s0-system",
+    "operator_id": "system-init",
+    "organization": "Sector Zero Forensics",
+    "cert_uuid": "00000000-0000-0000-0000-000000000000",
+    "payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "block_hash": "6d46e6adba619ef9bea1015f234b68b977b7cfda982d4566316069dd105373ca"
+  },
+  {
+    "block_index": 1,
+    "timestamp": "2026-10-01T09:15:30Z",
+    "operation_type": "DRIVE_ERASE",
+    "target_id": "/dev/nvme0n1",
+    "operator_id": "op-carter-712",
+    "organization": "Sector Zero Forensics",
+    "cert_uuid": "4a1b8c2d-9e3f-4011-8234-56789abcdef0",
+    "payload_hash": "a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0",
+    "signature": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "prev_hash": "6d46e6adba619ef9bea1015f234b68b977b7cfda982d4566316069dd105373ca",
+    "block_hash": "5be04ed6001164ac969aae2a660dc82e9e4a37beb6ffc41eed633a45bd7968f9"
+  },
+  {
+    "block_index": 2,
+    "timestamp": "2026-10-01T11:42:15Z",
+    "operation_type": "FILE_CARVE",
+    "target_id": "/dev/sdb2",
+    "operator_id": "op-elena-409",
+    "organization": "Sector Zero Forensics",
+    "cert_uuid": "7f8e9d0a-1b2c-4345-9678-0123456789ab",
+    "payload_hash": "b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef01a",
+    "signature": "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef",
+    "prev_hash": "5be04ed6001164ac969aae2a660dc82e9e4a37beb6ffc41eed633a45bd7968f9",
+    "block_hash": "9561da6f0f9269d904766353fb30915fa2b52b67c0ef903df593c0711763f5f9"
+  },
+  {
+    "block_index": 3,
+    "timestamp": "2026-10-01T14:05:00Z",
+    "operation_type": "VERIFICATION",
+    "target_id": "cert-4a1b8c2d",
+    "operator_id": "op-auditor-01",
+    "organization": "National Forensic Lab",
+    "cert_uuid": "9a0b1c2d-3e4f-4567-8901-23456789abcd",
+    "payload_hash": "c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef01ab2",
+    "signature": "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef",
+    "prev_hash": "9561da6f0f9269d904766353fb30915fa2b52b67c0ef903df593c0711763f5f9",
+    "block_hash": "62bf288dbf95ad3e5eb9f7c5cb9b0c6eac8cd137264c0fed8b1704bcaaee7e4c"
+  }
+]

@@ -63,8 +63,8 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, "Liberation Mono", Menlo, monospace;
 
   /* ---- layout & geometry ----------------------------------------------- */
-  --container-max: 1200px;
-  --header-height: 56px;
+  --container-max: 1280px;
+  --header-height: 53px;
   --radius-sm:     6px;
   --radius-md:     10px;
   --radius-full:   9999px;
