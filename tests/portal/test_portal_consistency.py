@@ -82,11 +82,8 @@ def csp_for_block(text: str, pattern: str) -> str:
 
 ALL_CSP_BLOCKS = [(html, block) for html, blocks in CSP_BLOCKS.items() for block in blocks]
 
-# Every public page. The loopback dashboard is deliberately absent: its policy
-# allows 'unsafe-inline' by design and its inline handlers are tracked in
-# docs/compliance/limitations.md, so asserting otherwise here would report a
-# decision the project has already made as if it were an oversight.
-ALL_PAGES = PUBLIC_HTML
+# Every web surface, including the dashboard (which now has zero inline handlers).
+ALL_PAGES = PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"]
 
 
 @pytest.mark.parametrize("html", ALL_PAGES, ids=lambda p: p.parent.name)
@@ -722,3 +719,90 @@ def test_brand_colour_is_identical_on_every_surface():
     for css in SURFACE_CSS:
         text = css.read_text(encoding="utf-8")
         assert f"--brand: {brand.group(1)}" not in text, f"{css.relative_to(REPO)} redefines the brand colour"
+
+
+# --------------------------------------------------------------------------- #
+# s0 design system & typography acceptance tests
+# --------------------------------------------------------------------------- #
+
+
+def test_font_family_tokens_declare_rubik_and_jetbrains_mono():
+    """Display font must start with Rubik; code font with JetBrains Mono."""
+    tokens = SHARED_TOKENS.read_text(encoding="utf-8")
+    sans_match = re.search(r"--font-sans:\s*([^;]+);", tokens)
+    mono_match = re.search(r"--font-mono:\s*([^;]+);", tokens)
+    assert sans_match, "tokens.css must define --font-sans"
+    assert mono_match, "tokens.css must define --font-mono"
+
+    sans = sans_match.group(1).strip()
+    mono = mono_match.group(1).strip()
+
+    assert sans.startswith('"Rubik"') or sans.startswith("'Rubik'"), (
+        f"--font-sans must start with Rubik, got: {sans}"
+    )
+    assert mono.startswith('"JetBrains Mono"') or mono.startswith("'JetBrains Mono'"), (
+        f"--font-mono must start with JetBrains Mono, got: {mono}"
+    )
+
+    # Fallbacks must never be serif
+    assert not re.search(r"(?<!sans-)\bserif\b", sans), (
+        f"--font-sans fallback cannot be serif: {sans}"
+    )
+    assert "sans-serif" in sans, f"--font-sans fallback must include sans-serif: {sans}"
+    assert "monospace" in mono, f"--font-mono fallback must include monospace: {mono}"
+
+
+def test_no_stylesheet_has_serif_fallback():
+    """No CSS file in design/, site/, or dashboard static assets may fallback to serif."""
+    all_css = (
+        list((REPO / "design").glob("**/*.css"))
+        + list((REPO / "site").glob("**/*.css"))
+        + list((REPO / "src" / "s0" / "web" / "static").glob("**/*.css"))
+    )
+    for css in all_css:
+        text = css.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            if "font-family" in line or "--font-" in line:
+                cleaned = re.sub(r"sans-serif", "", line)
+                assert not re.search(r"\bserif\b", cleaned), (
+                    f"{css.relative_to(REPO)} declares fallback to serif in: {line}"
+                )
+
+
+def test_every_surface_loads_s0_design_system_core_sheets():
+    """All 4 surfaces (home, get, verify, dashboard) must load the design system tokens."""
+    surfaces = PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"]
+    for html in surfaces:
+        text = html.read_text(encoding="utf-8")
+        # Check either directly linked in HTML or imported by the page's primary stylesheet
+        has_tokens = "tokens.css" in text
+        if not has_tokens:
+            css_links = re.findall(r'<link\b[^>]*\bhref="([^"]+\.css)"', text)
+            for css_rel in css_links:
+                clean_rel = css_rel.lstrip("/")
+                if clean_rel.startswith("static/"):
+                    clean_rel = clean_rel[len("static/"):]
+                css_file = (html.parent / clean_rel).resolve()
+                if css_file.is_file() and "tokens.css" in css_file.read_text(encoding="utf-8"):
+                    has_tokens = True
+                    break
+        assert has_tokens, f"{html.relative_to(REPO)} does not load design system tokens"
+
+
+def test_verifier_has_zero_external_fetch_or_runtime_dependencies():
+    """Offline invariant: the verifier page and its scripts must not fetch external resources."""
+    verifier_html = (REPO / "site" / "verify" / "index.html").read_text(encoding="utf-8")
+    verifier_js = (REPO / "site" / "verify" / "js" / "portal.js").read_text(encoding="utf-8")
+
+    src_matches = re.findall(r'<(?:script|img)\b[^>]*\bsrc="([^"]*)"', verifier_html)
+    stylesheet_matches = re.findall(r'<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]*)"', verifier_html)
+    for res in src_matches + stylesheet_matches:
+        assert not res.startswith(("http://", "https://", "//")), (
+            f"Verifier HTML loads external runtime resource: {res}"
+        )
+
+    fetches = re.findall(r'\bfetch\s*\(\s*["\']([^"\']+)["\']', verifier_js)
+    for target in fetches:
+        assert not target.startswith(("http://", "https://", "//")), (
+            f"Verifier JS attempts network fetch to: {target}"
+        )

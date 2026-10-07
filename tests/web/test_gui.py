@@ -295,7 +295,34 @@ def test_portal_serves(client):
     r = client.get("/portal/")
     assert r.status_code == 200
     assert b"s0" in r.content.lower()
-    assert b"Verification" in r.content
+    assert b"Verification" in r.content or b"Verify" in r.content
+
+
+def test_verifier_serves_directly_at_verify(client):
+    r = client.get("/verify/")
+    assert r.status_code == 200
+    assert b"s0" in r.content.lower()
+    assert b"Verification" in r.content or b"Verify" in r.content
+
+
+def test_portal_redirects_to_verify(client):
+    r = client.get("/portal", follow_redirects=False)
+    assert r.status_code == 302
+    assert r.headers["location"] == "/verify/"
+
+    r_slash = client.get("/portal/", follow_redirects=False)
+    assert r_slash.status_code == 302
+    assert r_slash.headers["location"] == "/verify/"
+
+
+def test_dashboard_csp_script_src_is_strict(client):
+    import re
+    r = client.get("/")
+    csp = r.headers.get("content-security-policy", "")
+    assert "script-src 'self'" in csp
+    script_policy = re.search(r"script-src [^;]+", csp)
+    assert script_policy is not None
+    assert "'unsafe-inline'" not in script_policy.group(0)
 
 
 def test_operator_id_xss_injection_rejected(client, tmp_path):
