@@ -82,18 +82,26 @@ var SAMPLE_VALID_CERT = {
 var SAMPLE_TAMPERED_CERT = JSON.parse(JSON.stringify(SAMPLE_VALID_CERT));
 SAMPLE_TAMPERED_CERT.device.capacity_bytes = 999999999;
 
-// Try loading keys.json dynamically if accessible
-fetch("keys.json")
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data && data.trusted_keys && data.trusted_keys.length) {
-      PINNED_KEYS = data.trusted_keys;
-    }
-    renderPinnedKeys();
-  })
-  .catch(function() {
-    renderPinnedKeys();
-  });
+if (window.S0_TRUSTED_KEYS && window.S0_TRUSTED_KEYS.length) {
+  PINNED_KEYS = window.S0_TRUSTED_KEYS;
+}
+
+// Try loading keys.json dynamically if accessible over HTTP
+if (window.location && window.location.protocol !== "file:") {
+  fetch("keys.json")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && data.trusted_keys && data.trusted_keys.length) {
+        PINNED_KEYS = data.trusted_keys;
+      }
+      renderPinnedKeys();
+    })
+    .catch(function() {
+      renderPinnedKeys();
+    });
+} else {
+  renderPinnedKeys();
+}
 
 function renderPinnedKeys() {
   var el = document.getElementById("pinnedKeysList");
@@ -517,29 +525,39 @@ document.getElementById("btnClear").addEventListener("click", function() {
 
 // Scenario loading
 document.getElementById("btnLoadValid").addEventListener("click", function() {
-  fetch("tests/sample_valid_cert.json")
-    .then(function(r) { return r.json(); })
-    .then(function(cert) {
-      jsonInput.value = JSON.stringify(cert, null, 2);
-      runVerification();
-    })
-    .catch(function() {
-      jsonInput.value = JSON.stringify(SAMPLE_VALID_CERT, null, 2);
-      runVerification();
-    });
+  if (window.location && window.location.protocol !== "file:") {
+    fetch("tests/sample_valid_cert.json")
+      .then(function(r) { return r.json(); })
+      .then(function(cert) {
+        jsonInput.value = JSON.stringify(cert, null, 2);
+        runVerification();
+      })
+      .catch(function() {
+        jsonInput.value = JSON.stringify(SAMPLE_VALID_CERT, null, 2);
+        runVerification();
+      });
+  } else {
+    jsonInput.value = JSON.stringify(SAMPLE_VALID_CERT, null, 2);
+    runVerification();
+  }
 });
 
 document.getElementById("btnLoadTampered").addEventListener("click", function() {
-  fetch("tests/sample_tampered_cert.json")
-    .then(function(r) { return r.json(); })
-    .then(function(cert) {
-      jsonInput.value = JSON.stringify(cert, null, 2);
-      runVerification();
-    })
-    .catch(function() {
-      jsonInput.value = JSON.stringify(SAMPLE_TAMPERED_CERT, null, 2);
-      runVerification();
-    });
+  if (window.location && window.location.protocol !== "file:") {
+    fetch("tests/sample_tampered_cert.json")
+      .then(function(r) { return r.json(); })
+      .then(function(cert) {
+        jsonInput.value = JSON.stringify(cert, null, 2);
+        runVerification();
+      })
+      .catch(function() {
+        jsonInput.value = JSON.stringify(SAMPLE_TAMPERED_CERT, null, 2);
+        runVerification();
+      });
+  } else {
+    jsonInput.value = JSON.stringify(SAMPLE_TAMPERED_CERT, null, 2);
+    runVerification();
+  }
 });
 
 function runVerification() {
