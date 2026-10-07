@@ -4,12 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>s0 Dashboard</title>
-  <script>
-    (function() {
-      var t = localStorage.getItem("s0_theme") || "dark";
-      document.documentElement.setAttribute("data-theme", t);
-    })();
-  </script>
+  <script src="/static/assets/theme.js"></script>
   <!-- Favicons and App Icons -->
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
@@ -34,7 +29,7 @@
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span>kartik2005221/s0</span>
       </a>
-      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
         <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <span id="themeToggleLabel">Light</span>
@@ -45,6 +40,7 @@
       </div>
     </div>
   </div>
+  <div class="header-scroll-progress" id="scrollProgress"></div>
 </header>
 
 <div class="app-container">
@@ -57,28 +53,28 @@
         <strong>Limited User Mode:</strong> s0 web was launched without root/administrator privileges. Direct block device wiping and physical disk acquisition are disabled. For full forensic operations, run: <span class="warning-cmd">sudo s0 web</span>
       </div>
     </div>
-    <button class="btn-close-warning" onclick="document.getElementById('sudoWarningBanner').style.display='none'" title="Dismiss">×</button>
+    <button class="btn-close-warning" id="btnCloseSudoWarning" title="Dismiss">×</button>
   </div>
 
   <!-- Module Navigation Tabs -->
   <nav class="nav-bar">
-    <button class="nav-tab active" data-tab="drive" onclick="switchNav('drive', this)">
+    <button class="nav-tab active" data-tab="drive">
       <span class="tab-num">[ 01 ]</span>
       <span>Drive Sanitizer</span>
     </button>
-    <button class="nav-tab" data-tab="file" onclick="switchNav('file', this)">
+    <button class="nav-tab" data-tab="file">
       <span class="tab-num">[ 02 ]</span>
       <span>File &amp; Folder Sanitizer</span>
     </button>
-    <button class="nav-tab" data-tab="carve" onclick="switchNav('carve', this)">
+    <button class="nav-tab" data-tab="carve">
       <span class="tab-num">[ 03 ]</span>
       <span>Forensic File Carver</span>
     </button>
-    <button class="nav-tab" data-tab="image" onclick="switchNav('image', this)">
+    <button class="nav-tab" data-tab="image">
       <span class="tab-num">[ 04 ]</span>
       <span>Forensic Imager &amp; Cloner</span>
     </button>
-    <button class="nav-tab" data-tab="audit" onclick="switchNav('audit', this)">
+    <button class="nav-tab" data-tab="audit">
       <span class="tab-num">[ 05 ]</span>
       <span>Audit Chain Ledger</span>
     </button>
@@ -93,7 +89,7 @@
       <section class="panel">
         <div class="panel-header">
           <h2 class="panel-title">Target Media &amp; Sanitization Policy</h2>
-          <button class="btn btn-secondary btn-sm" onclick="loadDevices()">
+          <button class="btn btn-secondary btn-sm" id="btnRefreshMedia">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
             <span>Refresh Media</span>
           </button>
@@ -104,7 +100,7 @@
             <label for="driveSelect" style="margin-bottom: 0;">Target Storage Media:</label>
             <span class="temp-badge normal" id="driveTempBadge" style="display: none;">[T] --°C</span>
           </div>
-          <select id="driveSelect" onchange="onDriveSelected()">
+          <select id="driveSelect">
             <option value="">Scanning devices...</option>
           </select>
         </div>
@@ -139,11 +135,11 @@
         <div class="form-row">
           <div class="form-group" style="margin-bottom: 0;">
             <label for="driveOperator">Operator Identifier:</label>
-            <input type="text" id="driveOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+            <input type="text" id="driveOperator" placeholder="e.g. op-forensic-01">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="driveOrganization">Organization / Laboratory:</label>
-            <input type="text" id="driveOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
+            <input type="text" id="driveOrganization" placeholder="e.g. Digital Forensics Lab">
           </div>
         </div>
 
@@ -179,8 +175,8 @@
               <label for="driveKeyPath">Custom Ed25519 Signing Key (Optional):</label>
               <div class="input-with-button">
                 <input type="text" id="driveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
-                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('driveKeyUpload').click()">Upload Key</button>
-                <input type="file" id="driveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('driveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the drive wipe">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" id="btnDriveKeyUpload">Upload Key</button>
+                <input type="file" id="driveKeyUpload" accept=".pem,.key" style="display:none" aria-label="Upload a signing key for the drive wipe">
               </div>
             </div>
           </div>
@@ -198,7 +194,7 @@
           <input type="text" id="driveConfirm" placeholder="Type target device path to confirm" class="safety-guard-input" aria-label="Type the target device path to confirm the wipe">
         </div>
 
-        <button class="btn btn-danger" onclick="startDriveWipe()">
+        <button class="btn btn-danger" id="btnStartDriveWipe">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           <span>Execute Secure Drive Wipe</span>
         </button>
@@ -212,7 +208,7 @@
             <span class="badge badge-dim" id="driveStatusBadge"
                   role="status" aria-live="polite">STATUS: IDLE</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="clearLog('driveLog')">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btnClearDriveLog">Clear</button>
         </div>
 
         <!-- Drive Progress Panel -->
@@ -260,15 +256,15 @@
         <div class="panel-header">
           <h2 class="panel-title">Selective File &amp; Folder Sanitization</h2>
           <div style="display: flex; gap: 6px;">
-            <button class="btn btn-secondary btn-sm" onclick="triggerFileBrowser()">Browse Files...</button>
-            <button class="btn btn-secondary btn-sm" onclick="addSampleFileTarget()">+ Sample Target</button>
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileTargets').value=''">Clear</button>
+            <button class="btn btn-secondary btn-sm" id="btnBrowseFiles">Browse Files...</button>
+            <button class="btn btn-secondary btn-sm" id="btnAddSampleFile">+ Sample Target</button>
+            <button class="btn btn-secondary btn-sm" id="btnClearFileTargets">Clear</button>
           </div>
         </div>
         <p class="panel-subtitle">Overwrites allocated clusters, zeros inode timestamps to epoch 0, and scrambles directory entries.</p>
 
         <!-- Hidden browser file input -->
-        <input type="file" multiple id="fileBrowseInput" style="display:none" onchange="handleFileBrowseSelect(event)" aria-label="Choose files or folders to erase">
+        <input type="file" multiple id="fileBrowseInput" style="display:none" aria-label="Choose files or folders to erase">
 
         <div class="form-group">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
@@ -289,13 +285,13 @@
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="fileOperator">Operator Identifier:</label>
-            <input type="text" id="fileOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+            <input type="text" id="fileOperator" placeholder="e.g. op-forensic-01">
           </div>
         </div>
 
         <div class="form-group" style="margin-top: 14px;">
           <label for="fileOrganization">Organization / Laboratory:</label>
-          <input type="text" id="fileOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
+          <input type="text" id="fileOrganization" placeholder="e.g. Digital Forensics Lab">
         </div>
 
         <!-- Advanced Options Collapsible -->
@@ -330,14 +326,14 @@
               <label for="fileKeyPath">Custom Ed25519 Signing Key (Optional):</label>
               <div class="input-with-button">
                 <input type="text" id="fileKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
-                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('fileKeyUpload').click()">Upload Key</button>
-                <input type="file" id="fileKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('fileKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the file erasure">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" id="btnFileKeyUpload">Upload Key</button>
+                <input type="file" id="fileKeyUpload" accept=".pem,.key" style="display:none" aria-label="Upload a signing key for the file erasure">
               </div>
             </div>
           </div>
         </details>
 
-        <button class="btn btn-primary" style="margin-top: 10px;" onclick="startFileErase()">
+        <button class="btn btn-primary" id="btnStartFileErase" style="margin-top: 10px;">
           Scrub Allocated Clusters &amp; Metadata
         </button>
       </section>
@@ -348,7 +344,7 @@
             <h2 class="panel-title">Batch Erasure Status &amp; Attestation Record</h2>
             <span class="badge badge-dim" id="fileStatusBadge">STATUS: IDLE</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="clearLog('fileLog')">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btnClearFileLog">Clear</button>
         </div>
 
         <!-- File Progress Panel -->
@@ -407,12 +403,12 @@
         <div class="form-group">
           <label>File Format Presets:</label>
           <div class="chip-group">
-            <span class="chip active" onclick="setCarvePreset('all', this)">All Formats</span>
-            <span class="chip" onclick="setCarvePreset('images', this)">Images</span>
-            <span class="chip" onclick="setCarvePreset('docs', this)">Documents</span>
-            <span class="chip" onclick="setCarvePreset('archives', this)">Archives</span>
-            <span class="chip" onclick="setCarvePreset('audio', this)">Audio</span>
-            <span class="chip" onclick="setCarvePreset('none', this)">Clear Selection</span>
+            <span class="chip active" data-carve-preset="all">All Formats</span>
+            <span class="chip" data-carve-preset="images">Images</span>
+            <span class="chip" data-carve-preset="docs">Documents</span>
+            <span class="chip" data-carve-preset="archives">Archives</span>
+            <span class="chip" data-carve-preset="audio">Audio</span>
+            <span class="chip" data-carve-preset="none">Clear Selection</span>
           </div>
 
           <label style="font-size: 0.72rem; color: var(--text-dim); margin-top: 6px; margin-bottom: 2px;">Supported Signatures (Check to Toggle):</label>
@@ -422,19 +418,19 @@
 
           <div style="margin-top: 6px;">
             <label for="carveExts" style="font-size: 0.72rem; color: var(--text-dim); margin-bottom: 4px;">Active Extension Filter (Comma-separated, custom extensions allowed):</label>
-            <input type="text" id="carveExts" value="jpg,png,gif,bmp,pdf,sqlite,pcap,pcapng,zip,gz,7z,mp3,wav,flac,ogg,elf" oninput="syncInputToExtCheckboxes()">
+            <input type="text" id="carveExts" value="jpg,png,gif,bmp,pdf,sqlite,pcap,pcapng,zip,gz,7z,mp3,wav,flac,ogg,elf">
           </div>
         </div>
 
         <!-- Custom File Signatures Collapsible -->
         <details class="advanced-panel" id="customSigDetails" style="margin-top: 10px;">
-          <summary>[+] Custom File Signatures (Magic Bytes Header / Footer)</summary>
+          <summary>[*] Custom File Signatures (Magic Bytes Header / Footer)</summary>
           <div class="advanced-content">
             <p style="font-size: 0.75rem; color: var(--text-dim); margin-bottom: 8px;">
               Carve proprietary or unsupported file formats by defining raw hexadecimal magic bytes (e.g. Header: <code>FF D8 FF</code>, Footer: <code>FF D9</code>).
             </p>
             <div id="customSigList"></div>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomSigRow()" style="margin-top: 4px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAddCustomSig" style="margin-top: 4px;">
               + Add Custom Signature
             </button>
           </div>
@@ -445,7 +441,7 @@
             <label for="carveMinConf" style="margin-bottom: 0;">Minimum Confidence Threshold:</label>
             <strong id="confVal" style="color: var(--accent-cyan); font-family: var(--font-mono); font-size: 0.88rem;">50%</strong>
           </div>
-          <input type="range" id="carveMinConf" min="10" max="95" value="50" oninput="document.getElementById('confVal').textContent = this.value + '%'">
+          <input type="range" id="carveMinConf" min="10" max="95" value="50">
           <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); font-family: var(--font-mono);">
             <span>10% (Permissive)</span>
             <span>50% (Balanced)</span>
@@ -463,11 +459,11 @@
         <div class="form-row">
           <div class="form-group" style="margin-bottom: 0;">
             <label for="carveOperator">Operator Identifier:</label>
-            <input type="text" id="carveOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+            <input type="text" id="carveOperator" placeholder="e.g. op-forensic-01">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="carveOrganization">Organization / Laboratory:</label>
-            <input type="text" id="carveOrganization" value="Digital Forensics & Data Sanitization Lab" placeholder="Lab Name">
+            <input type="text" id="carveOrganization" placeholder="e.g. Digital Forensics Lab">
           </div>
         </div>
 
@@ -479,14 +475,14 @@
               <label for="carveKeyPath">Custom Ed25519 Signing Key (Optional):</label>
               <div class="input-with-button">
                 <input type="text" id="carveKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
-                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('carveKeyUpload').click()">Upload Key</button>
-                <input type="file" id="carveKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('carveKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the carving manifest">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" id="btnCarveKeyUpload">Upload Key</button>
+                <input type="file" id="carveKeyUpload" accept=".pem,.key" style="display:none" aria-label="Upload a signing key for the carving manifest">
               </div>
             </div>
           </div>
         </details>
 
-        <button class="btn btn-primary" style="margin-top: 8px;" onclick="startCarve()">
+        <button class="btn btn-primary" id="btnStartCarve" style="margin-top: 8px;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>Start Forensic Carving Scan</span>
         </button>
@@ -498,7 +494,7 @@
             <h2 class="panel-title">Carving Execution &amp; Evidence Manifest</h2>
             <span class="badge badge-dim" id="carveStatusBadge">STATUS: IDLE</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="clearLog('carveLog')">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btnClearCarveLog">Clear</button>
         </div>
 
         <!-- Carve Progress Panel -->
@@ -570,7 +566,7 @@
 
         <div class="form-group">
           <label for="imageDestInput">Destination Image File or Target Block Device:</label>
-          <input type="text" id="imageDestInput" placeholder="/path/to/evidence.raw or /dev/sdX" oninput="updateClonePrompt()">
+          <input type="text" id="imageDestInput" placeholder="/path/to/evidence.raw or /dev/sdX">
         </div>
 
         <div class="form-group">
@@ -593,7 +589,7 @@
             </div>
           </label>
           <label class="toggle-card">
-            <input type="checkbox" id="imageIsClone" onchange="toggleCloneWarning()">
+            <input type="checkbox" id="imageIsClone">
             <div class="toggle-info">
               <span class="toggle-title">Physical Drive-to-Drive Bit-Stream Clone Mode</span>
               <span class="toggle-desc">Direct bit-for-bit duplication from source device to destination block media</span>
@@ -616,11 +612,11 @@
         <div class="form-row">
           <div class="form-group" style="margin-bottom: 0;">
             <label for="imageOperator">Operator Identifier:</label>
-            <input type="text" id="imageOperator" value="op-forensic" placeholder="e.g. op-forensic-01">
+            <input type="text" id="imageOperator" placeholder="e.g. op-forensic-01">
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="imageOrganization">Organization / Laboratory:</label>
-            <input type="text" id="imageOrganization" value="Digital Forensics & Incident Response Lab" placeholder="Lab Name">
+            <input type="text" id="imageOrganization" placeholder="e.g. Digital Forensics Lab">
           </div>
         </div>
 
@@ -637,14 +633,14 @@
               <label for="imageKeyPath">Custom Ed25519 Signing Key (Optional):</label>
               <div class="input-with-button">
                 <input type="text" id="imageKeyPath" placeholder="Path to private key PEM (default: demo issuer key)">
-                <button type="button" class="btn btn-secondary btn-sm btn-browse" onclick="document.getElementById('imageKeyUpload').click()">Upload Key</button>
-                <input type="file" id="imageKeyUpload" accept=".pem,.key" style="display:none" onchange="if(this.files[0]) document.getElementById('imageKeyPath').value='[Uploaded: ' + this.files[0].name + ']'" aria-label="Upload a signing key for the acquisition manifest">
+                <button type="button" class="btn btn-secondary btn-sm btn-browse" id="btnImageKeyUpload">Upload Key</button>
+                <input type="file" id="imageKeyUpload" accept=".pem,.key" style="display:none" aria-label="Upload a signing key for the acquisition manifest">
               </div>
             </div>
           </div>
         </details>
 
-        <button class="btn btn-primary" onclick="startImaging()">
+        <button class="btn btn-primary" id="btnStartImaging">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
           <span>Start Bit-Stream Acquisition</span>
         </button>
@@ -656,7 +652,7 @@
             <h2 class="panel-title">Acquisition Telemetry &amp; Evidence Manifest</h2>
             <span class="badge badge-dim" id="imageStatusBadge">STATUS: IDLE</span>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="clearLog('imageLog')">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btnClearImageLog">Clear</button>
         </div>
 
         <!-- Image Progress Panel -->
@@ -729,11 +725,11 @@
           </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-          <button class="btn btn-primary btn-sm" onclick="verifyLedger()">
+          <button class="btn btn-primary btn-sm" id="btnVerifyLedger">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             <span>Verify Chain Continuity</span>
           </button>
-          <button class="btn btn-secondary btn-sm" onclick="loadAuditBlocks()">
+          <button class="btn btn-secondary btn-sm" id="btnRefreshAuditBlocks">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
             <span>Refresh</span>
           </button>
@@ -745,7 +741,7 @@
 
       <!-- Filter & Search Controls Bar -->
       <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: center; flex-wrap: wrap;">
-        <select id="auditFilterOp" aria-label="Filter audit entries by operation type" onchange="applyAuditFilters()" style="max-width: 200px;">
+        <select id="auditFilterOp" aria-label="Filter audit entries by operation type" style="max-width: 200px;">
           <option value="ALL">All Operations</option>
           <option value="DRIVE_ERASE">DRIVE_ERASE</option>
           <option value="FILE_ERASE">FILE_ERASE</option>
@@ -753,7 +749,7 @@
           <option value="GENESIS">GENESIS</option>
         </select>
         <div style="flex: 1; min-width: 240px;">
-          <input type="text" id="auditSearch" placeholder="Filter by Target ID, Operator, or Block Hash..." oninput="applyAuditFilters()" aria-label="Search audit entries">
+          <input type="text" id="auditSearch" placeholder="Filter by Target ID, Operator, or Block Hash..." aria-label="Search audit entries">
         </div>
         <div class="sys-pill" id="auditStatsPill">
           <span>Blocks: <strong id="auditBlockCount" style="color: var(--accent-cyan);">0</strong></span>
@@ -790,7 +786,7 @@
     <div class="modal-card">
       <div class="modal-header">
         <h3 style="color: #fff; font-size: 1rem;" id="modalTitle">Block Inspector</h3>
-        <button class="close-btn" onclick="closeInspector()" aria-label="Close modal">
+        <button class="close-btn" id="btnCloseInspector" aria-label="Close modal">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
@@ -838,7 +834,7 @@
           <ul>
             <li><a href="https://sector0.pages.dev/" target="_blank" rel="noopener">Official Website ↗</a></li>
             <li><a href="https://sector0.pages.dev/verify/" target="_blank" rel="noopener">Verify Certificate ↗</a></li>
-            <li><a href="https://sector0.pages.dev/install/" target="_blank" rel="noopener">Installation Guide ↗</a></li>
+            <li><a href="https://sector0.pages.dev/get/" target="_blank" rel="noopener">Get s0 ↗</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
             <li><a href="https://sector0.gitbook.io/architecture/certificate-spec" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
           </ul>

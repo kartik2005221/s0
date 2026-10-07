@@ -1,9 +1,13 @@
 function copyText(id, btn) {
-  const text = document.getElementById(id).innerText;
-  navigator.clipboard.writeText(text).then(() => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.innerText || el.textContent;
+  navigator.clipboard.writeText(text.trim()).then(() => {
     const orig = btn.innerText;
     btn.innerText = 'Copied!';
     btn.classList.add('copied');
+    const status = document.getElementById('installStatus');
+    if (status) status.textContent = 'Command copied to clipboard.';
     setTimeout(() => {
       btn.innerText = orig;
       btn.classList.remove('copied');
@@ -14,15 +18,15 @@ function copyText(id, btn) {
 function updateFavicon(theme) {
   const fav = document.getElementById('dynamic-favicon');
   if (fav) {
-    fav.href = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
+    fav.href = theme === 'dark' ? '../assets/favicons/s0-dark/favicon-32x32.png' : '../assets/favicons/s0-light/favicon-32x32.png';
   }
   const logo = document.getElementById('headerLogo');
   if (logo) {
-    logo.src = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
+    logo.src = theme === 'dark' ? '../assets/favicons/s0-dark/favicon-32x32.png' : '../assets/favicons/s0-light/favicon-32x32.png';
   }
   const footerLogo = document.getElementById('footerLogo');
   if (footerLogo) {
-    footerLogo.src = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
+    footerLogo.src = theme === 'dark' ? '../assets/favicons/s0-dark/favicon-32x32.png' : '../assets/favicons/s0-light/favicon-32x32.png';
   }
 }
 
@@ -42,13 +46,29 @@ function toggleTheme() {
   updateFavicon(next);
 }
 
-/* Interaction wiring.
- *
- * These controls used to carry inline onclick attributes. This page's policy is
- * script-src 'self' with no 'unsafe-inline' -- inline handlers need
- * 'unsafe-inline', so every one of them was blocked by the browser and the
- * copy buttons did nothing. Binding here is what makes them work at all.
- */
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const active = btn.dataset.tab === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === tabId);
+  });
+}
+
+function initScrollProgress() {
+  const progressBar = document.getElementById('scrollProgress');
+  if (!progressBar) return;
+
+  window.addEventListener('scroll', () => {
+    const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+    progressBar.style.width = `${scrolled}%`;
+  }, { passive: true });
+}
+
 function wireInteractions() {
   document.addEventListener('click', function(event) {
     const btn = event.target.closest('button');
@@ -58,6 +78,10 @@ function wireInteractions() {
       copyText(btn.dataset.copyTarget, btn);
       return;
     }
+    if (btn.dataset.tab) {
+      switchTab(btn.dataset.tab);
+      return;
+    }
     if (btn.dataset.action === 'toggle-theme') {
       toggleTheme();
     }
@@ -65,9 +89,10 @@ function wireInteractions() {
 }
 
 (function() {
-  const saved = localStorage.getItem('s0_theme') || 'dark';
+  const saved = localStorage.getItem('s0_theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
   document.documentElement.setAttribute('data-theme', saved);
   updateThemeBtn(saved);
   updateFavicon(saved);
+  initScrollProgress();
   wireInteractions();
 })();

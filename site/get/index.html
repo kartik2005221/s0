@@ -57,6 +57,7 @@
       </div>
     </div>
   </div>
+  <div class="header-scroll-progress" id="scrollProgress"></div>
 </header>
 
 <!-- The outcome of a copy/flash operation is announced to assistive
@@ -64,8 +65,8 @@
 <p id="installStatus" role="status" aria-live="polite" class="sr-only"></p>
 <main id="main-content">
   <div class="hero">
-    <h1>Install s0</h1>
-    <p>Forensic-grade drive sanitization, deleted-file recovery, and Ed25519-signed verification. Deploy across Linux, macOS, and Windows.</p>
+    <h1>Get <span class="highlight">s0</span></h1>
+    <p>Forensic media sanitization, deleted-file recovery, bit-stream acquisition &amp; cryptographic audit suite for Linux, macOS, and Windows.</p>
   </div>
 
   <div class="legal-card">
@@ -79,172 +80,275 @@
       </svg>
     </div>
     <div>
-      <strong>Authorized Use Only:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented authorization to process.
+      <strong>Authorized Use Only:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process.
     </div>
   </div>
 
-  <div class="section-title">[+] Installation Commands</div>
-  <div class="grid">
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Linux &amp; macOS</h3>
-        <span class="platform-tag">Bash / Zsh</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-install-sh">curl -fsSL https://sector0.pages.dev/sh | bash</span>
-        <button class="copy-btn" data-copy-target="cmd-install-sh">Copy</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">PowerShell</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-install-ps1">irm https://sector0.pages.dev/ps1 | iex</span>
-        <button class="copy-btn" data-copy-target="cmd-install-ps1">Copy</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">Command Prompt</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-install-cmd">curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
-        <button class="copy-btn" data-copy-target="cmd-install-cmd">Copy</button>
-      </div>
-    </div>
+  <!-- Navigation Tabs -->
+  <div class="tabs-nav" role="tablist" aria-label="Installation and distribution options">
+    <button class="tab-btn active" data-tab="tab-install" role="tab" aria-selected="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Install</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-upgrade" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+      <span>Upgrade</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-uninstall" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <span>Uninstall</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-iso" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Bare-Metal Live ISO</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-verify" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      <span>Release Checksums</span>
+    </button>
   </div>
 
-  <div class="section-title">[^] Upgrade Suite</div>
-  <div class="grid">
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Linux &amp; macOS</h3>
-        <span class="platform-tag">Bash / Zsh</span>
+  <!-- TAB 1: INSTALL -->
+  <div class="tab-panel active" id="tab-install" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <p class="card-desc">One command creates an isolated virtualenv in <code>~/.s0/</code> and adds <code>s0</code> to your PATH.</p>
+        <div class="code-box">
+          <span id="cmd-install-sh">curl -fsSL https://sector0.pages.dev/sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-install-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-upg-sh">curl -fsSL https://sector0.pages.dev/upgrade-sh | bash</span>
-        <button class="copy-btn" data-copy-target="cmd-upg-sh">Copy</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">PowerShell</span>
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <p class="card-desc">Bootstraps s0 in <code>%USERPROFILE%\.s0\</code> and registers User PATH environment variable.</p>
+        <div class="code-box">
+          <span id="cmd-install-ps1">irm https://sector0.pages.dev/ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-install-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-upg-ps1">irm https://sector0.pages.dev/upgrade-ps1 | iex</span>
-        <button class="copy-btn" data-copy-target="cmd-upg-ps1">Copy</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">Command Prompt</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-upg-cmd">curl -fsSL https://sector0.pages.dev/upgrade-cmd -o s0-upgrade.cmd &amp;&amp; s0-upgrade.cmd &amp;&amp; del s0-upgrade.cmd</span>
-        <button class="copy-btn" data-copy-target="cmd-upg-cmd">Copy</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header-row">
-        <h3>CLI In-Place</h3>
-        <span class="platform-tag">Terminal</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-upg-cli">s0 upgrade</span>
-        <button class="copy-btn" data-copy-target="cmd-upg-cli">Copy</button>
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <p class="card-desc">Native batch installer for legacy shells and enterprise deployment scripts.</p>
+        <div class="code-box">
+          <span id="cmd-install-cmd">curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-install-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="section-title">[-] Uninstallation</div>
-  <div class="grid">
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Linux &amp; macOS</h3>
-        <span class="platform-tag">Bash / Zsh</span>
+  <!-- TAB 2: UPGRADE -->
+  <div class="tab-panel" id="tab-upgrade" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-sh">curl -fsSL https://sector0.pages.dev/upgrade-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-un-sh">curl -fsSL https://sector0.pages.dev/uninstall-sh | bash</span>
-        <button class="copy-btn" data-copy-target="cmd-un-sh">Copy</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">PowerShell</span>
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-ps1">irm https://sector0.pages.dev/upgrade-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-un-ps1">irm https://sector0.pages.dev/uninstall-ps1 | iex</span>
-        <button class="copy-btn" data-copy-target="cmd-un-ps1">Copy</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">Command Prompt</span>
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-cmd">curl -fsSL https://sector0.pages.dev/upgrade-cmd -o s0-upgrade.cmd &amp;&amp; s0-upgrade.cmd &amp;&amp; del s0-upgrade.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-un-cmd">curl -fsSL https://sector0.pages.dev/uninstall-cmd -o s0-uninstall.cmd &amp;&amp; s0-uninstall.cmd &amp;&amp; del s0-uninstall.cmd</span>
-        <button class="copy-btn" data-copy-target="cmd-un-cmd">Copy</button>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>CLI In-Place</h3>
-        <span class="platform-tag">Terminal</span>
-      </div>
-      <div class="code-box">
-        <span id="cmd-un-cli">s0 uninstall</span>
-        <button class="copy-btn" data-copy-target="cmd-un-cli">Copy</button>
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-cli">s0 upgrade</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-cli">Copy</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="section-title">[o] Bare-Metal Live ISO</div>
-  <div class="grid">
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Linux &amp; macOS</h3>
-        <span class="platform-tag">Bash / Zsh</span>
+  <!-- TAB 3: UNINSTALL -->
+  <div class="tab-panel" id="tab-uninstall" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-sh">curl -fsSL https://sector0.pages.dev/uninstall-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-un-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-iso-sh">curl -fsSL https://sector0.pages.dev/download-iso-sh | bash</span>
-        <button class="copy-btn" data-copy-target="cmd-iso-sh">Copy</button>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-ps1">irm https://sector0.pages.dev/uninstall-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-un-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-cmd">curl -fsSL https://sector0.pages.dev/uninstall-cmd -o s0-uninstall.cmd &amp;&amp; s0-uninstall.cmd &amp;&amp; del s0-uninstall.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-un-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-cli">s0 uninstall</span>
+          <button class="copy-btn" data-copy-target="cmd-un-cli">Copy</button>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>Windows</h3>
-        <span class="platform-tag">PowerShell</span>
+  <!-- TAB 4: LIVE ISO -->
+  <div class="tab-panel" id="tab-iso" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <p class="card-desc">Downloads the bare-metal Debian 12 Live ISO and verifies its cryptographic hash.</p>
+        <div class="code-box">
+          <span id="cmd-iso-sh">curl -fsSL https://sector0.pages.dev/download-iso-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/download_iso.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-iso-ps1">irm https://sector0.pages.dev/download-iso-ps1 | iex</span>
-        <button class="copy-btn" data-copy-target="cmd-iso-ps1">Copy</button>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <p class="card-desc">PowerShell automated downloader and SHA-256 validation for the bootable ISO.</p>
+        <div class="code-box">
+          <span id="cmd-iso-ps1">irm https://sector0.pages.dev/download-iso-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/download_iso.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <p class="card-desc">Download and flash directly from an existing s0 installation.</p>
+        <div class="code-box">
+          <span id="cmd-iso-cli">s0 live download</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-cli">Copy</button>
+        </div>
       </div>
     </div>
+  </div>
 
-    <div class="card">
-      <div class="card-header-row">
-        <h3>CLI In-Place</h3>
-        <span class="platform-tag">Terminal</span>
+  <!-- TAB 5: CHECKSUMS -->
+  <div class="tab-panel" id="tab-verify" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Installer Script Integrity</h3>
+          <span class="platform-tag">SHA-256</span>
+        </div>
+        <p class="card-desc">Verify that the installer script matches the repository commit prior to piped execution:</p>
+        <div class="code-box">
+          <span id="cmd-sha-install">curl -fsSL https://sector0.pages.dev/sh | sha256sum</span>
+          <button class="copy-btn" data-copy-target="cmd-sha-install">Copy</button>
+        </div>
       </div>
-      <div class="code-box">
-        <span id="cmd-iso-cli">s0 live download</span>
-        <button class="copy-btn" data-copy-target="cmd-iso-cli">Copy</button>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Release Bundle Verification</h3>
+          <span class="platform-tag">SHA256SUMS</span>
+        </div>
+        <p class="card-desc">Validate pre-built release packages and ISO archives against the signed release manifest:</p>
+        <div class="code-box">
+          <span id="cmd-sha-bundle">curl -sSL https://github.com/kartik2005221/s0/releases/latest/download/SHA256SUMS | sha256sum --check</span>
+          <button class="copy-btn" data-copy-target="cmd-sha-bundle">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener" class="inspect-script-link">GitHub Releases ↗</a>
+        </div>
       </div>
     </div>
   </div>

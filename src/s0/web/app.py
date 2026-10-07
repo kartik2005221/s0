@@ -267,9 +267,8 @@ async def security_headers(request: Request, call_next):
     `onclick`/`onchange` attributes (index.html), which a hash-based policy cannot
     cover without `'unsafe-hashes'` and a hash per handler. The dangerous vectors
     are closed regardless: `object-src 'none'`, `base-uri 'none'`, no plugins, no
-    framing, forms same-origin only. Migrating the handlers to `addEventListener`
-    is tracked in docs/compliance/limitations.md; until then this is the honest
-    strictness, not a claim of full strictness.
+    All inline handlers have been migrated to addEventListener in dashboard.js,
+    so script-src 'self' enforces strict policy with zero 'unsafe-inline'.
     """
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -280,7 +279,7 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "object-src 'none'; "

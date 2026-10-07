@@ -787,21 +787,33 @@ function applyTheme(theme) {
   }
   var fav = document.getElementById("dynamic-favicon");
   if (fav) {
-    fav.href = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+    fav.href = theme === "light" ? "../assets/favicons/s0-light/favicon-32x32.png" : "../assets/favicons/s0-dark/favicon-32x32.png";
   }
   var logo = document.getElementById("headerLogo");
   if (logo) {
-    logo.src = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+    logo.src = theme === "light" ? "../assets/favicons/s0-light/favicon-32x32.png" : "../assets/favicons/s0-dark/favicon-32x32.png";
   }
   var footerLogo = document.getElementById("footerLogo");
   if (footerLogo) {
-    footerLogo.src = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+    footerLogo.src = theme === "light" ? "../assets/favicons/s0-light/favicon-32x32.png" : "../assets/favicons/s0-dark/favicon-32x32.png";
   }
 }
 
 function toggleTheme() {
   var current = document.documentElement.getAttribute("data-theme") || "dark";
   applyTheme(current === "dark" ? "light" : "dark");
+}
+
+function initScrollProgress() {
+  var progressBar = document.getElementById("scrollProgress");
+  if (!progressBar) return;
+
+  window.addEventListener("scroll", function () {
+    var winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+    var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    var scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+    progressBar.style.width = scrolled + "%";
+  }, { passive: true });
 }
 
 /* Interaction wiring.
@@ -832,5 +844,6 @@ function wireInteractions() {
 }
 
 document.addEventListener("DOMContentLoaded", initTheme);
+document.addEventListener("DOMContentLoaded", initScrollProgress);
 document.addEventListener("DOMContentLoaded", wireInteractions);
 

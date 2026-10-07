@@ -951,3 +951,14 @@ footer.site-footer,
     font-size: 16px;
   }
 }
+
+.header-scroll-progress {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand);
+  width: 0%;
+  transition: width 50ms linear;
+  z-index: 1001;
+}

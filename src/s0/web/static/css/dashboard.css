@@ -1348,3 +1348,14 @@ details.advanced-panel[open] summary {
   outline: 3px solid var(--accent-red, #ef4444);
   outline-offset: 2px;
 }
+
+.header-scroll-progress {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand);
+  width: 0%;
+  transition: width 50ms linear;
+  z-index: 1001;
+}
