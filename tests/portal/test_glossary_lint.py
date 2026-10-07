@@ -39,11 +39,11 @@ def test_user_facing_html_contains_no_retired_terms(html_file: Path):
     assert html_file.is_file(), f"File missing: {html_file}"
     # Strip HTML comments to test user-visible markup
     text = re.sub(r"<!--.*?-->", "", html_file.read_text(encoding="utf-8"), flags=re.S)
-    
+
     violations = []
     for pattern, preferred in RETIRED_TERMS:
         matches = re.findall(pattern, text, flags=re.IGNORECASE)
         if matches:
             violations.append(f"Found '{matches[0]}' (replace with '{preferred}')")
-            
+
     assert not violations, f"{html_file.relative_to(REPO)} contains retired terms: {violations}"

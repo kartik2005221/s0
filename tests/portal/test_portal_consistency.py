@@ -137,9 +137,11 @@ def test_token_copies_are_identical_to_the_source():
 def test_design_assets_do_not_drift():
     """Assets in site/assets and src/s0/web/static/assets must match design/ byte-for-byte."""
     import sys
+
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
     from tools.sync_assets import check_drift
+
     problems = check_drift()
     assert not problems, f"design assets have drifted; run: python tools/sync_assets.py: {problems}"
 
@@ -197,7 +199,9 @@ def test_no_undefined_css_variables(css):
         fallback = m.group(2)
         if not fallback and var_name not in declared:
             undefined.append(var_name)
-    assert not undefined, f"{rel} uses undefined CSS custom properties without fallbacks: {sorted(set(undefined))}"
+    assert not undefined, (
+        f"{rel} uses undefined CSS custom properties without fallbacks: {sorted(set(undefined))}"
+    )
 
 
 def test_shared_tokens_cover_the_full_surface_area():
@@ -745,9 +749,7 @@ def test_font_family_tokens_declare_rubik_and_jetbrains_mono():
     )
 
     # Fallbacks must never be serif
-    assert not re.search(r"(?<!sans-)\bserif\b", sans), (
-        f"--font-sans fallback cannot be serif: {sans}"
-    )
+    assert not re.search(r"(?<!sans-)\bserif\b", sans), f"--font-sans fallback cannot be serif: {sans}"
     assert "sans-serif" in sans, f"--font-sans fallback must include sans-serif: {sans}"
     assert "monospace" in mono, f"--font-mono fallback must include monospace: {mono}"
 
@@ -781,7 +783,7 @@ def test_every_surface_loads_s0_design_system_core_sheets():
             for css_rel in css_links:
                 clean_rel = css_rel.lstrip("/")
                 if clean_rel.startswith("static/"):
-                    clean_rel = clean_rel[len("static/"):]
+                    clean_rel = clean_rel[len("static/") :]
                 css_file = (html.parent / clean_rel).resolve()
                 if css_file.is_file() and "tokens.css" in css_file.read_text(encoding="utf-8"):
                     has_tokens = True

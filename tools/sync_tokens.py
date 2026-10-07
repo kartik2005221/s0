@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Compatibility wrapper for sync_assets.py."""
+
 import subprocess
 import sys
 from pathlib import Path
