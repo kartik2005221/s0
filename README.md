@@ -1,15 +1,19 @@
 <div align="center">
 
-# S0 — Sector Zero
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg">
+  <img alt="s0 — Sector Zero" src="docs/assets/banner-dark.svg" width="100%">
+</picture>
 
-**Unified Forensic Data Sanitization, Bit-Stream Acquisition & Evidence Carving Suite**
+<br><br>
 
-[![Release](https://img.shields.io/github/v/release/kartik2005221/s0?color=blue&label=Release)](https://github.com/kartik2005221/s0/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/Website-sector0.pages.dev-blueviolet.svg)](https://sector0.pages.dev/)
-[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88_Rev.2_aligned-green.svg)](https://sector0.gitbook.io/compliance/)
-[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-blueviolet.svg)](https://sector0.gitbook.io/architecture/canonical-json/)
-[![Documentation](https://img.shields.io/badge/Docs-sector0.gitbook.io-orange.svg)](https://sector0.gitbook.io/)
+[![Release](https://img.shields.io/github/v/release/kartik2005221/s0?color=FF6500&labelColor=0B192C&label=Release)](https://github.com/kartik2005221/s0/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-FF6500.svg?labelColor=0B192C)](LICENSE)
+[![Website](https://img.shields.io/badge/Website-sector0.pages.dev-FF6500.svg?labelColor=0B192C)](https://sector0.pages.dev/)
+[![NIST SP 800-88](https://img.shields.io/badge/NIST_SP_800--88_Rev.2_aligned-FF6500.svg?labelColor=0B192C)](https://sector0.gitbook.io/compliance/)
+[![Ed25519](https://img.shields.io/badge/Signatures-Ed25519_RFC_8032-FF6500.svg?labelColor=0B192C)](https://sector0.gitbook.io/architecture/canonical-json/)
+[![Documentation](https://img.shields.io/badge/Docs-sector0.gitbook.io-FF6500.svg?labelColor=0B192C)](https://sector0.gitbook.io/)
 
 *One unified toolchain. Disk sanitization, forensic acquisition, file carving & evidence recovery, audit-ledger verification, and offline certificate validation. Cryptographic chain of custody throughout.*
 
@@ -22,21 +26,21 @@
 | **Official Website** | [sector0.pages.dev](https://sector0.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
 | **Documentation** | [sector0.gitbook.io](https://sector0.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
 | **Certificate Verification** | [sector0.pages.dev/verify/](https://sector0.pages.dev/verify/) | 100% client-side, offline Ed25519 certificate verifier |
-| **Get s0** | [sector0.pages.dev/get/](https://sector0.pages.dev/get/) | One-line installation scripts, checksums & release packages |
+| **Install s0** | [sector0.pages.dev/get/](https://sector0.pages.dev/get/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
 
 </div>
 
 ---
 
-## What is S0?
+## What is s0?
 
-**S0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and independent cryptographic verification into a single multi-platform suite:
+**s0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and independent cryptographic verification into a single multi-platform suite:
 
-| Capability | Module | What S0 Does |
+| Capability | Module | What s0 Does |
 |---|:---:|---|
-| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON sanitization certificates. |
-| **Offensive Carving & Recovery** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and corrupt media across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
+| **Sanitization & Erasure** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON sanitization certificates. |
+| **Evidence Carving & Recovery** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and corrupt media across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
 | **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and bad sector zero-filling. |
 | **Cryptographic Verification** | Verifier | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
 

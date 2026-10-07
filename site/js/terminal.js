@@ -34,12 +34,12 @@
       pauseAfter: 2200
     },
 
-    // 3. Offensive Evidence Carving / Deleted Artifact Recovery
+    // 3. Forensic Evidence Carving / Deleted Artifact Recovery
     {
       command: "s0 carve --target /dev/sdb --out-dir /cases/evidence_01 --operator \"analyst-01\"",
       postCommandDelay: 500,
       outputs: [
-        { text: "==> S0 Module 2: Advanced Forensic Evidence Carving & Reconstruction", delay: 400, cls: "term-orange" },
+        { text: "==> s0 Module 2: Advanced Forensic Evidence Carving & Reconstruction", delay: 400, cls: "term-orange" },
         { text: "Target Media   : /dev/sdb (32.0 GiB, unallocated file system sectors)", delay: 320 },
         { text: "Carving Modes  : Inode allocation table + MFT runlist + Shannon entropy evaluation", delay: 350 },
         {
@@ -69,12 +69,12 @@
       pauseAfter: 2400
     },
 
-    // 4. Defensive Media Sanitization / Erasing (NIST SP 800-88 Purge)
+    // 4. Media Sanitization / Erasing (NIST SP 800-88 Purge)
     {
       command: "sudo s0 wipe --target /dev/sdb --yes --operator \"analyst-01\"",
       postCommandDelay: 550,
       outputs: [
-        { text: "==> S0 Module 1: NIST SP 800-88 Rev. 2 Media Sanitization", delay: 400, cls: "term-orange" },
+        { text: "==> s0 Module 1: NIST SP 800-88 Rev. 2 Media Sanitization", delay: 400, cls: "term-orange" },
         { text: "Target Media   : /dev/sdb [SanDisk Ultra, 32.0 GiB]", delay: 320 },
         { text: "Sanitize Action: Purge (Block Erase + CSPRNG Overwrite & Verification)", delay: 350 },
         { text: "[*] Erasing drive sectors & overwriting cryptographic pattern...", delay: 450, cls: "term-dim" },

@@ -26,11 +26,16 @@ USER_FACING_HTML = [
 ]
 
 RETIRED_TERMS = [
-    (r"\bcompliance certificate\b", "erasure certificate"),
-    (r"\bForensic Workstation\b", "Dashboard"),
-    (r"\bInstall(?:ation)? Portal\b", "Get s0 / Get"),
-    (r"\bVerification Portal\b", "Verifier"),
-    (r"\bzero-trust\b", "offline client-side verification"),
+    (r"\bcompliance certificate\b", "erasure certificate", False),
+    (r"\bForensic Workstation\b", "Dashboard", False),
+    (r"\bInstall(?:ation)? Portal\b", "Install s0", False),
+    (r"\bVerification Portal\b", "Verifier", False),
+    (r"\bzero-trust\b", "offline client-side verification", False),
+    (r"\bair-gapped\b", "offline / client-side", False),
+    (r"\bGet s0\b", "Install s0", False),
+    (r"\boffensive evidence carving\b", "forensic evidence carving", False),
+    (r"\b0[12] · (?:DEFENSIVE|OFFENSIVE)\b", "01 · WIPE / 02 · RECOVER", False),
+    (r"\bSee S0 in Action\b", "See s0 in Action", True),
 ]
 
 
@@ -41,8 +46,9 @@ def test_user_facing_html_contains_no_retired_terms(html_file: Path):
     text = re.sub(r"<!--.*?-->", "", html_file.read_text(encoding="utf-8"), flags=re.S)
 
     violations = []
-    for pattern, preferred in RETIRED_TERMS:
-        matches = re.findall(pattern, text, flags=re.IGNORECASE)
+    for pattern, preferred, case_sensitive in RETIRED_TERMS:
+        flags = 0 if case_sensitive else re.IGNORECASE
+        matches = re.findall(pattern, text, flags=flags)
         if matches:
             violations.append(f"Found '{matches[0]}' (replace with '{preferred}')")
 
