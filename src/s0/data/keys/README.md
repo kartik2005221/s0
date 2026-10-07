@@ -19,7 +19,7 @@ opposite and was wrong.
 | Where | `demo_issuer_private.pem` present? |
 |---|---|
 | Git repository | **Yes.** Tracked at `src/s0/data/keys/demo_issuer_private.pem`, opted back in with `!src/s0/data/keys/demo_issuer_private.pem` in `.gitignore`. |
-| Built wheel / package install | **Yes.** `pyproject.toml` has `"s0.data" = ["*.json", "*.pem", "keys/*.pem"]`, so it is package data. Verified present in a built `s0-3.0.0-py3-none-any.whl`. |
+| Built wheel / package install | **Yes.** `pyproject.toml` has `"s0.data" = ["*.json", "*.pem", "keys/*.pem"]`, so it is package data. Verified present in a built `s0-3.1.0-py3-none-any.whl`. |
 | Editable install (`pip install -e .`) | **Yes** — it is the file in the checkout. |
 | The bootable Live ISO | **No.** `iso/auto/build.sh` stages `src/` and then runs `find "$STAGING_DIR/src" -type f \( -name '*private*.pem' -o -name '*private*.key' \) -delete`. |
 | Windows and macOS installers | They install from source or the wheel, so **yes** — see the previous row. |

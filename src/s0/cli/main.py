@@ -2853,10 +2853,11 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
                 return cur
         except (OSError, subprocess.SubprocessError):
             pass
-        # Default fallback for s0 upgrade: master branch. This
-        # installer pins a ref precisely so that standalone upgrades
-        # track the default branch 'master'.
-        return "master"
+        # Pinned to the released tag, not to the remote's default branch: this
+        # installer pins a ref precisely so a fresh install is reproducible, and
+        # "v3.1.0" is the artefact it was verified against. Falling back to whatever
+        # the remote points at would re-introduce the bug this removed.
+        return "v3.1.0"
 
     try:
         cur = subprocess.check_output(
@@ -2869,7 +2870,7 @@ def get_upgrade_branch(args, repo_dir: str | Path | None = None) -> str:
             return cur
     except (OSError, subprocess.SubprocessError):
         pass
-    return "master"
+    return "v3.1.0"
 
 
 def cmd_upgrade(args) -> int:

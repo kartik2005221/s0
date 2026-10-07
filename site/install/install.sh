@@ -12,8 +12,8 @@ INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 # branch means "the installer" is not a fixed artefact you can reason about.
 #
 # Override with S0_INSTALL_REF. Pin a release tag for a reproducible install:
-#   S0_INSTALL_REF=v3.0.0 sh
-S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-master}}"
+#   S0_INSTALL_REF=v3.1.0 sh
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-v3.1.0}}"
 TOTAL_STEPS=6
 STEP=0
 
@@ -188,7 +188,7 @@ cd "$INSTALL_DIR" || die "could not enter ${INSTALL_DIR}"
 if [ ! -f "pyproject.toml" ] && [ ! -f "setup.py" ]; then
     die "'${S0_REF}' has no pyproject.toml or setup.py, so it cannot be pip-installed.
     This checkout predates the src/ package layout. Set S0_INSTALL_REF to a
-    release tag, e.g. S0_INSTALL_REF=v3.0.0 sh"
+    release tag, e.g. S0_INSTALL_REF=v3.1.0 sh"
 fi
 
 # ── step 3: virtual environment ────────────────────────────────────────────

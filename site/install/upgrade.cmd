@@ -1,6 +1,6 @@
 @echo off
 REM Must match install.sh. Override with S0_INSTALL_REF.
-if "%S0_INSTALL_REF%"=="" (set "S0_REF=master") else (set "S0_REF=%S0_INSTALL_REF%")
+if "%S0_INSTALL_REF%"=="" (set "S0_REF=v3.1.0") else (set "S0_REF=%S0_INSTALL_REF%")
 REM S0 (Sector Zero) — Resilient Upgrader for Windows (CMD)
 REM Usage: curl -fsSL https://sector0.pages.dev/upgrade-cmd -o s0-upgrade.cmd && s0-upgrade.cmd && del s0-upgrade.cmd
 setlocal EnableDelayedExpansion

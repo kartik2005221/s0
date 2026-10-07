@@ -452,9 +452,10 @@ class TestTheRefHasOneSetter:
         after_main = module.MAIN_PY.read_text(encoding="utf-8")
         assert 'return "v9.9.9-rc.1"' in after_main
         # The tag comment is one line longer than the branch comment; nothing else.
-        assert len(after_main.split("\n")) == len(before_main.split("\n")) + 1, (
+        expected_diff = 1 if _sandbox_ref(module) == "master" else 0
+        assert len(after_main.split("\n")) == len(before_main.split("\n")) + expected_diff, (
             f"line count went {len(before_main.splitlines())} -> "
-            f"{len(after_main.splitlines())}; expected exactly +1 for the tag comment"
+            f"{len(after_main.splitlines())}; expected diff {expected_diff} for the tag comment"
         )
         for marker in ("def cmd_upgrade(", "def cmd_uninstall(", "def build_parser("):
             assert after_main.count(marker) == before_main.count(marker), (

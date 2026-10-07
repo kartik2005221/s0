@@ -101,7 +101,7 @@ class TestGetUpgradeBranchAsksAboutTheCheckout:
 
         with tempfile.TemporaryDirectory() as not_a_repo:
             got = get_upgrade_branch(Namespace(branch=None), not_a_repo)
-        assert got in ("master", "v3.0.0", "v3.0.0-rc.1"), (
+        assert got in ("master", "v3.0.0", "v3.0.0-rc.1", "v3.1.0"), (
             f"the fallback {got!r} is not an acceptable default ref"
         )
 
