@@ -94,12 +94,12 @@ def is_block_device(path: Path) -> bool:
     if sys.platform == "win32":
         return is_windows_volume_path(s_path)
 
-    posix_path = s_path.replace("\\", "/")
-    if not posix_path.startswith("/dev/") or ".." in posix_path.split("/"):
+    norm = os.path.realpath(os.path.normpath(s_path))
+    if not norm.startswith("/dev/") or ".." in norm.split(os.sep):
         return False
 
     try:
-        dev_p = Path(s_path)
+        dev_p = Path(norm)
         if dev_p.is_block_device():
             return True
         if sys.platform == "darwin" and dev_p.is_char_device():

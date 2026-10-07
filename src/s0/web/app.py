@@ -145,15 +145,19 @@ def _prepare_job_out_dir(req_out_dir: str | None, prefix: str, job_id: str) -> P
                     for at in ALLOWED_TEMP_PREFIXES
                 ):
                     raise HTTPException(400, f"output directory cannot be a system directory: {raw_str}")
-        is_safe = False
+        matched_out_root: str | None = None
         for root in ALLOWED_OUT_DIR_ROOTS:
-            r_str = str(root)
-            if real_str == r_str or real_str.startswith(r_str.rstrip(os.sep) + os.sep):
-                is_safe = True
-                break
-        if not is_safe:
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_str]) == r_str:
+                    matched_out_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_out_root:
             raise HTTPException(400, f"output directory is outside permitted roots: {raw_str}")
-        out_dir = Path(real_str)
+        rel_out = os.path.relpath(real_str, matched_out_root)
+        out_dir = (Path(matched_out_root) / rel_out).resolve()
     else:
         out_dir = platform.safe_home() / ".s0" / "out" / f"{prefix}-{job_id}"
     try:
@@ -686,15 +690,19 @@ def _resolve_key(
                 or real_str.startswith(real_sp + os.sep)
             ):
                 raise HTTPException(403, f"Access to system key path is forbidden: {raw}")
-        is_safe = False
+        matched_key_root: str | None = None
         for root in ALLOWED_KEY_ROOTS:
-            r_str = str(root)
-            if real_str == r_str or real_str.startswith(r_str.rstrip(os.sep) + os.sep):
-                is_safe = True
-                break
-        if not is_safe:
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_str]) == r_str:
+                    matched_key_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_key_root:
             raise HTTPException(403, f"Specified signing key is outside permitted roots: {raw}")
-        kp = Path(real_str)
+        rel_key = os.path.relpath(real_str, matched_key_root)
+        kp = (Path(matched_key_root) / rel_key).resolve()
         if not kp.is_file():
             raise HTTPException(400, f"Specified signing key not found: {raw}")
         try:
@@ -1040,8 +1048,23 @@ def _find_target(path: str):
         raise HTTPException(400, f"invalid target path: {oe}") from None
     if not safe:
         raise HTTPException(403, reason)
+    if not p.exists():
+        raise HTTPException(404, f"no such image file or directory: {path}")
+    real_norm = os.path.realpath(norm)
+    matched_target_root: str | None = None
+    for root in ALLOWED_TARGET_ROOTS:
+        r_str = str(root.resolve())
+        try:
+            if os.path.commonpath([r_str, real_norm]) == r_str:
+                matched_target_root = r_str
+                break
+        except ValueError:
+            continue
+    if not matched_target_root:
+        raise HTTPException(403, f"Image target is outside permitted roots: {path}")
+    safe_target = str((Path(matched_target_root) / os.path.relpath(real_norm, matched_target_root)).resolve())
     try:
-        return image_target(norm)
+        return image_target(safe_target)
     except FileNotFoundError:
         raise HTTPException(404, f"no such image file or directory: {path}") from None
     except OSError as oe:
@@ -1281,12 +1304,22 @@ def api_browse(path: str = ".") -> JSONResponse:
                 {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
                 status_code=403,
             )
-    if not _is_safe_browse_path(real_target_str):
+    matched_browse_root: str | None = None
+    for root in ALLOWED_BROWSE_ROOTS:
+        real_root = os.path.realpath(str(root))
+        try:
+            if os.path.commonpath([real_root, real_target_str]) == real_root:
+                matched_browse_root = real_root
+                break
+        except ValueError:
+            continue
+    if not matched_browse_root:
         return JSONResponse(
             {"error": "path is outside the permitted roots", "path": str(real_target_str), "items": []},
             status_code=403,
         )
-    requested = Path(real_target_str)
+    rel_browse = os.path.relpath(real_target_str, matched_browse_root)
+    requested = (Path(matched_browse_root) / rel_browse).resolve()
     if not requested.exists():
         return JSONResponse(
             {"error": "no such directory", "path": str(requested), "items": []}, status_code=404
@@ -1567,20 +1600,45 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
     if not req.targets:
         raise HTTPException(400, "no file targets provided")
 
+    sanitized_targets: list[str] = []
     for t in req.targets:
-        try:
-            real_p = Path(os.path.realpath(t))
-            if real_p.is_dir():
-                expected = t.strip()
-                if not req.confirm_text or (
-                    req.confirm_text.strip() != expected and req.confirm_text.strip() != "ERASE"
+        if not t or "\x00" in t:
+            raise HTTPException(400, "invalid file target path")
+        norm = os.path.normpath(t.strip())
+        if ".." in norm.split(os.sep):
+            raise HTTPException(400, f"directory traversal not allowed: {t}")
+        real_t = os.path.realpath(norm)
+        for sp in SYSTEM_PREFIXES:
+            real_sp = os.path.realpath(sp)
+            if real_t == real_sp or real_t.startswith(real_sp.rstrip(os.sep) + os.sep):
+                if not any(
+                    real_t == at or real_t.startswith(at.rstrip(os.sep) + os.sep)
+                    for at in ALLOWED_TEMP_PREFIXES
                 ):
-                    raise HTTPException(
-                        400,
-                        f'erasing directory "{t}" requires confirmation: confirm_text must match path or "ERASE"',
-                    )
-        except OSError:
-            pass
+                    raise HTTPException(400, f"target cannot be a system directory: {t}")
+        matched_target_root: str | None = None
+        for root in ALLOWED_TARGET_ROOTS:
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_t]) == r_str:
+                    matched_target_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_target_root:
+            raise HTTPException(403, f"target is outside permitted roots: {t}")
+        safe_t = str((Path(matched_target_root) / os.path.relpath(real_t, matched_target_root)).resolve())
+        real_p = Path(safe_t)
+        if real_p.is_dir():
+            expected = t.strip()
+            if not req.confirm_text or (
+                req.confirm_text.strip() != expected and req.confirm_text.strip() != "ERASE"
+            ):
+                raise HTTPException(
+                    400,
+                    f'erasing directory "{t}" requires confirmation: confirm_text must match path or "ERASE"',
+                )
+        sanitized_targets.append(safe_t)
 
     job_id = uuid.uuid4().hex[:12]
     out_dir = _prepare_job_out_dir(req.out_dir, "web-filewipe", job_id)
@@ -1638,7 +1696,7 @@ def start_erase_files(req: FileEraseRequest) -> JSONResponse:
                         _jobs[job_id]["log"][-1] = msg
 
             summary = erase_batch(
-                req.targets,
+                sanitized_targets,
                 passes=req.passes,
                 pattern=req.pattern,
                 operator_id=req.operator_id,
@@ -1752,18 +1810,22 @@ def start_carve(req: CarveRequest) -> JSONResponse:
         ):
             if not platform.is_block_device(Path(real_target_str)):
                 raise HTTPException(403, f"Access to system path is forbidden: {req.target}")
-    is_safe = False
     if platform.is_block_device(Path(norm_target)):
-        is_safe = True
+        target_p = Path(norm_target)
     else:
+        matched_carve_root: str | None = None
         for root in ALLOWED_TARGET_ROOTS:
-            r_str = str(root)
-            if real_target_str == r_str or real_target_str.startswith(r_str.rstrip(os.sep) + os.sep):
-                is_safe = True
-                break
-    if not is_safe:
-        raise HTTPException(403, f"Target media is outside permitted roots: {req.target}")
-    target_p = Path(real_target_str)
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_target_str]) == r_str:
+                    matched_carve_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_carve_root:
+            raise HTTPException(403, f"Target media is outside permitted roots: {req.target}")
+        rel_carve = os.path.relpath(real_target_str, matched_carve_root)
+        target_p = (Path(matched_carve_root) / rel_carve).resolve()
     if not target_p.exists():
         raise HTTPException(404, "target media does not exist")
 
@@ -1952,41 +2014,51 @@ def start_image(req: ImageRequest) -> JSONResponse:
         raise HTTPException(400, "source and destination cannot be the same path")
 
     real_src_str = os.path.realpath(norm_src)
-    is_src_safe = False
     if platform.is_block_device(Path(norm_src)):
-        is_src_safe = True
+        src_p = Path(norm_src)
     else:
+        matched_src_root: str | None = None
         for root in ALLOWED_TARGET_ROOTS:
-            r_str = str(root)
-            if real_src_str == r_str or real_src_str.startswith(r_str.rstrip(os.sep) + os.sep):
-                is_src_safe = True
-                break
-    if not is_src_safe:
-        raise HTTPException(403, f"source path is outside permitted roots: {req.source}")
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_src_str]) == r_str:
+                    matched_src_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_src_root:
+            raise HTTPException(403, f"source path is outside permitted roots: {req.source}")
+        rel_src = os.path.relpath(real_src_str, matched_src_root)
+        src_p = (Path(matched_src_root) / rel_src).resolve()
 
-    src_p = Path(real_src_str)
     if not src_p.exists():
         raise HTTPException(404, f"source does not exist: {req.source}")
 
     real_dst_str = os.path.realpath(norm_dst)
-    dst_p = Path(real_dst_str)
     is_blk = False
     try:
-        is_blk = platform.is_block_device(dst_p)
+        is_blk = platform.is_block_device(Path(norm_dst))
     except Exception:
         pass
     if _sys.platform == "win32" and platform.is_windows_volume_path(req.destination):
         is_blk = True
 
-    is_dst_safe = is_blk
-    if not is_dst_safe:
+    if is_blk:
+        dst_p = Path(norm_dst)
+    else:
+        matched_dst_root: str | None = None
         for root in ALLOWED_TARGET_ROOTS:
-            r_str = str(root)
-            if real_dst_str == r_str or real_dst_str.startswith(r_str.rstrip(os.sep) + os.sep):
-                is_dst_safe = True
-                break
-    if not is_dst_safe:
-        raise HTTPException(403, f"destination path is outside permitted roots: {req.destination}")
+            r_str = str(root.resolve())
+            try:
+                if os.path.commonpath([r_str, real_dst_str]) == r_str:
+                    matched_dst_root = r_str
+                    break
+            except ValueError:
+                continue
+        if not matched_dst_root:
+            raise HTTPException(403, f"destination path is outside permitted roots: {req.destination}")
+        rel_dst = os.path.relpath(real_dst_str, matched_dst_root)
+        dst_p = (Path(matched_dst_root) / rel_dst).resolve()
 
     if (is_blk or req.is_clone) and req.confirm_text.strip() != req.destination.strip():
         raise HTTPException(
@@ -2182,18 +2254,26 @@ def download(job_id: str, filename: str) -> FileResponse:
     if safe_name != filename or safe_name in (".", ".."):
         raise HTTPException(400, "invalid artifact name")
     out_dir_str = os.path.realpath(str(job["out_dir"]))
-    is_out_safe = False
+    matched_root: str | None = None
     for root in ALLOWED_OUT_DIR_ROOTS:
-        r_str = str(root)
-        if out_dir_str == r_str or out_dir_str.startswith(r_str.rstrip(os.sep) + os.sep):
-            is_out_safe = True
-            break
-    if not is_out_safe:
+        r_str = str(root.resolve())
+        try:
+            if os.path.commonpath([r_str, out_dir_str]) == r_str:
+                matched_root = r_str
+                break
+        except ValueError:
+            continue
+    if not matched_root:
         raise HTTPException(404, "no such artifact")
-    file_path_str = os.path.realpath(os.path.join(out_dir_str, safe_name))
-    if not (file_path_str == out_dir_str or file_path_str.startswith(out_dir_str + os.sep)):
+
+    target_file = (Path(out_dir_str) / safe_name).resolve()
+    target_file_str = str(target_file)
+    try:
+        if os.path.commonpath([out_dir_str, target_file_str]) != out_dir_str:
+            raise HTTPException(404, "no such artifact")
+    except ValueError:
+        raise HTTPException(404, "no such artifact") from None
+
+    if not target_file.is_file():
         raise HTTPException(404, "no such artifact")
-    path = Path(file_path_str)
-    if not path.is_file():
-        raise HTTPException(404, "no such artifact")
-    return FileResponse(path, filename=path.name)
+    return FileResponse(target_file, filename=target_file.name)

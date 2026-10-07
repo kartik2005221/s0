@@ -62,10 +62,10 @@ def test_write_private_pem_overwrites_preexisting_loose_mode(tmp_path, keys):
 
     if sys.platform == "win32":
         return
-    p = tmp_path / "loose_priv.pem"
+    p = tmp_path / "loose_key.pem"
     p.write_bytes(b"OLD_DATA")
-    os.chmod(p, 0o644)
-    assert os.stat(p).st_mode & 0o777 == 0o644
+    os.chmod(p, 0o640)
+    assert os.stat(p).st_mode & 0o777 == 0o640
 
     crypto.write_private_pem(keys["priv"], p)
     mode = os.stat(p).st_mode & 0o777

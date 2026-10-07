@@ -306,7 +306,10 @@ def image_target(path: str) -> Target:
     norm = os.path.normpath(s_path)
     if ".." in norm.split(os.sep):
         raise ValueError(f"path traversal not permitted: {path}")
-    p = Path(os.path.realpath(norm))
+    real_str = os.path.realpath(norm)
+    if real_str == "/" or (sys.platform == "win32" and real_str.endswith(":\\")):
+        raise ValueError(f"root path cannot be an image target: {path}")
+    p = Path(real_str)
     if p.is_dir():
         files = [f for f in p.rglob("*") if f.is_file()]
         total_size = sum(f.stat().st_size for f in files)

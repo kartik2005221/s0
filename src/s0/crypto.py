@@ -12,6 +12,7 @@ import base64
 import hashlib
 import os
 import secrets
+import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -51,6 +52,8 @@ def is_demo_key(key: Ed25519PrivateKey | Ed25519PublicKey | str | Path | None) -
         if "demo" in os.path.basename(norm).lower():
             return True
         real = os.path.realpath(norm)
+        if real == "/" or (sys.platform == "win32" and real.endswith(":\\")):
+            return False
         p = Path(real)
         if not p.exists():
             return "demo" in norm.lower()
@@ -129,7 +132,10 @@ def load_private_pem(path: str | Path) -> Ed25519PrivateKey:
     norm = os.path.normpath(s_path)
     if ".." in norm.split(os.sep):
         raise ValueError(f"path traversal not permitted: {path}")
-    resolved = Path(os.path.realpath(norm))
+    real = os.path.realpath(norm)
+    if real == "/" or (sys.platform == "win32" and real.endswith(":\\")):
+        raise ValueError(f"invalid key path: {path}")
+    resolved = Path(real)
     data = resolved.read_bytes()
     key = serialization.load_pem_private_key(data, password=None)
     if not isinstance(key, Ed25519PrivateKey):
@@ -144,7 +150,10 @@ def load_public_pem(path: str | Path) -> Ed25519PublicKey:
     norm = os.path.normpath(s_path)
     if ".." in norm.split(os.sep):
         raise ValueError(f"path traversal not permitted: {path}")
-    resolved = Path(os.path.realpath(norm))
+    real = os.path.realpath(norm)
+    if real == "/" or (sys.platform == "win32" and real.endswith(":\\")):
+        raise ValueError(f"invalid key path: {path}")
+    resolved = Path(real)
     data = resolved.read_bytes()
     key = serialization.load_pem_public_key(data)
     if not isinstance(key, Ed25519PublicKey):
