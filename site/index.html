@@ -86,7 +86,6 @@
     </a>
 
     <div class="site-header-right">
-      <a href="/get/" class="nav-btn">Get</a>
       <a href="/verify/" class="nav-btn">Verify</a>
       <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
       <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
@@ -104,25 +103,27 @@
         <div class="dot-live"></div>
         <span class="s0-release-version">v3.1.0</span>
       </div>
+
+      <a href="/get/" class="btn btn-primary nav-cta">Install s0</a>
     </div>
   </div>
   <div class="header-scroll-progress" id="scrollProgress"></div>
 </header>
 
-<main id="main-content">
+<main id="main-content" tabindex="-1">
   <!-- Hero Section — Fullscreen & Grand -->
   <section class="hero">
     <div class="container">
-      <h1>S0 — <span class="highlight">Sector Zero</span></h1>
+      <h1>s0 — <span class="highlight">Sector Zero</span></h1>
 
       <p class="hero-subtitle">
         Unified forensic data sanitization, bit-stream acquisition &amp; evidence carving suite with cryptographic chain-of-custody.
       </p>
 
       <div class="hero-actions">
-        <a href="#install" class="btn-cta btn-cta-primary">
+        <a href="/get/" class="btn-cta btn-cta-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Get Started &amp; Install</span>
+          <span>Install s0</span>
         </a>
         <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="btn-cta btn-cta-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
@@ -130,7 +131,7 @@
         </a>
         <a href="/verify/" class="btn-cta btn-cta-secondary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-          <span>Offline Verifier ↗</span>
+          <span>Verifier</span>
         </a>
       </div>
 
@@ -144,30 +145,6 @@
         <div class="code-box">
           <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://sector0.pages.dev/sh | bash</span>
           <button class="copy-btn" data-copy-target="hero-quick-cmd">Copy</button>
-        </div>
-      </div>
-
-      <!-- Proof Strip -->
-      <div class="proof-strip">
-        <div class="proof-item">
-          <span class="proof-dot"></span>
-          <span class="s0-release-version">v3.1.0</span>
-        </div>
-        <span class="proof-sep" aria-hidden="true">/</span>
-        <div class="proof-item">
-          <span>MIT License</span>
-        </div>
-        <span class="proof-sep" aria-hidden="true">/</span>
-        <div class="proof-item">
-          <span>Linux · macOS · Windows</span>
-        </div>
-        <span class="proof-sep" aria-hidden="true">/</span>
-        <div class="proof-item">
-          <span>Ext4 · NTFS · APFS · FAT32</span>
-        </div>
-        <span class="proof-sep" aria-hidden="true">/</span>
-        <div class="proof-item">
-          <span>Ed25519 · RFC 8785 JCS</span>
         </div>
       </div>
 

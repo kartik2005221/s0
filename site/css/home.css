@@ -1076,41 +1076,6 @@ footer.site-footer {
   z-index: 1001;
 }
 
-/* Proof strip */
-.proof-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 24px;
-  padding: 8px 18px;
-  background: var(--surface-inset);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--text-tertiary);
-}
-
-.proof-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.proof-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-ok);
-  box-shadow: 0 0 6px var(--status-ok);
-}
-
-.proof-sep {
-  color: var(--border-default);
-}
-
 /* Story section */
 .story-container {
   display: flex;
