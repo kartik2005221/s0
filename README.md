@@ -21,8 +21,8 @@
 |---|---|---|
 | **Official Website** | [sector0.pages.dev](https://sector0.pages.dev/) | Main product showcase, feature overview & ecosystem hub |
 | **Documentation** | [sector0.gitbook.io](https://sector0.gitbook.io/) | Complete engineering manuals, compliance matrices & guides |
-| **Certificate Verification** | [sector0.pages.dev/verify](https://sector0.pages.dev/verify/) | 100% client-side, air-gapped Ed25519 certificate verifier |
-| **Installation Guide** | [sector0.pages.dev/install](https://sector0.pages.dev/install/) | One-line installation scripts, checksums & release packages |
+| **Certificate Verification** | [sector0.pages.dev/verify/](https://sector0.pages.dev/verify/) | 100% client-side, offline Ed25519 certificate verifier |
+| **Get s0** | [sector0.pages.dev/get/](https://sector0.pages.dev/get/) | One-line installation scripts, checksums & release packages |
 | **GitHub Releases** | [github.com/kartik2005221/s0/releases](https://github.com/kartik2005221/s0/releases) | Pre-built hybrid Bootable Live ISOs, tarballs & checksums |
 
 </div>
@@ -31,14 +31,14 @@
 
 ## What is S0?
 
-**S0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and zero-trust verification into a single multi-platform suite:
+**S0** is an open-source digital forensic and media sanitization suite engineered for investigators, compliance auditors, and system administrators. It integrates three core modules and independent cryptographic verification into a single multi-platform suite:
 
 | Capability | Module | What S0 Does |
 |---|:---:|---|
-| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON compliance certificates. |
+| **Defensive Sanitization** | Module 1 | Irreversibly purges drives, files, and partitions per NIST SP 800-88 Rev. 2 & IEEE 2883-2022, emitting Ed25519-signed PDF/JSON sanitization certificates. |
 | **Offensive Carving & Recovery** | Module 2 | Reconstructs deleted evidence from raw images, formatted disks, and corrupt media across ext4, NTFS, FAT32, and exFAT with 4-factor Shannon entropy scoring. |
 | **Bit-Stream Imaging** | Module 3 | Fault-tolerant raw evidence acquisition (`s0 image`) and drive duplication (`s0 clone`) with simultaneous live SHA-256/MD5 hashing and bad sector zero-filling. |
-| **Zero-Trust Verification** | Verifier | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
+| **Cryptographic Verification** | Verifier | Instant client-side verification of emitted certificates via WebCrypto or CLI without uploading sensitive case data. |
 
 Every operation is recorded in a supporting hash-chained audit ledger (`~/.s0/s0_audit.db`), providing a tamper-evident chain of custody verifiable offline in milliseconds.
 
@@ -61,7 +61,7 @@ Consult the [Documentation Legal FAQ](https://sector0.gitbook.io/getting-started
 
 ## Quick Installation
 
-Full installation instructions and verification guides are hosted at [sector0.pages.dev/install](https://sector0.pages.dev/install/).
+Full installation instructions and verification guides are hosted at [sector0.pages.dev/get/](https://sector0.pages.dev/get/).
 
 ### Linux/MacOS
 ```bash
@@ -152,7 +152,7 @@ sudo s0 live flash --target /dev/sdb -y
 ## Interfaces: CLI, Web Console & Bare-Metal ISO
 
 ### 1. Local Forensic Web Dashboard (`sudo s0 web`)
-Launch the air-gapped browser console directly on loopback (`127.0.0.1:8669`):
+Launch the browser console directly on loopback (`127.0.0.1:8669`):
 ```bash
 sudo s0 web
 ```
@@ -164,7 +164,7 @@ When internal or system drives cannot be unmounted within a running host OS:
 2. Flash to USB pendrive: `sudo s0 live flash --target /dev/sdb`
 3. Boot target system into the air-gapped kiosk station. See [Live ISO Guide](https://sector0.gitbook.io/guides/live-iso/).
 
-### 3. Client-Side Verification ([sector0.pages.dev/verify](https://sector0.pages.dev/verify/))
+### 3. Client-Side Verification ([sector0.pages.dev/verify/](https://sector0.pages.dev/verify/))
 Every certificate issued embeds a verification QR code and SHA-256 fingerprint:
 - Operates 100% offline in browser via WebCrypto.
 - Zero case data leaves your local machine.
