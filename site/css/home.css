@@ -1274,34 +1274,37 @@ footer.site-footer {
 }
 
 .hash-chain-blocks {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .hash-chain-blocks {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
   .chain-connector {
     transform: rotate(90deg);
-    margin: 4px auto;
+    margin: 6px auto;
   }
 }
 
 .hash-block-card {
+  flex: 1 1 0;
+  min-width: 0;
   background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 18px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.hash-block-card.tampered {
+.hash-block-card.tampered,
+.hash-block-card.broken-link,
+.hash-block-card.invalid-sig {
   border-color: var(--status-danger);
   background: var(--status-danger-bg);
 }
@@ -1310,21 +1313,29 @@ footer.site-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .block-idx {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--brand);
+  white-space: nowrap;
 }
 
 .block-status {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .block-status.ok {
@@ -1345,7 +1356,7 @@ footer.site-footer {
 
 .field-lbl {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-tertiary);
 }
 
@@ -1355,15 +1366,101 @@ footer.site-footer {
   font-weight: 500;
 }
 
+.editable-field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  border-bottom: 1px dashed var(--border-default);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  max-width: 100%;
+}
+
+.editable-field:hover,
+.editable-field:focus-visible {
+  border-bottom-color: var(--brand);
+  background: rgba(255, 101, 0, 0.08);
+}
+
+.editable-field:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.editable-field .edit-icon {
+  font-size: 0.72rem;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.editable-field:hover .edit-icon {
+  opacity: 1;
+  color: var(--brand);
+}
+
+.field-edit-input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  outline: 2px solid var(--brand-glow, rgba(255, 101, 0, 0.25));
+  box-sizing: border-box;
+}
+
 .hash-text {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--text-secondary);
   word-break: break-all;
   background: var(--surface-sunken);
-  padding: 4px 6px;
+  padding: 3px 5px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
+  line-height: 1.35;
+}
+
+.canonical-disclosure {
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 4px;
+}
+
+.canonical-summary {
+  cursor: pointer;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.canonical-summary:hover {
+  color: var(--brand);
+}
+
+.canonical-pre {
+  margin-top: 4px;
+  background: var(--surface-sunken);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 110px;
+  overflow-y: auto;
 }
 
 .chain-connector {
@@ -1373,10 +1470,25 @@ footer.site-footer {
   color: var(--brand);
   user-select: none;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .chain-connector.broken {
   color: var(--status-danger);
+}
+
+.ledger-footnote {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  margin-top: 8px;
+}
+
+.ledger-footnote a {
+  color: var(--brand);
+  text-decoration: underline;
 }
 
 /* Limitations section */

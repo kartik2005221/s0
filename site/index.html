@@ -309,10 +309,10 @@
   <!-- Live WebCrypto Hash-Chain Tamper Demonstration -->
   <section class="container section-spacer reveal-on-scroll" id="tamper-demo">
     <div class="section-header">
-      <span class="section-label">[ Audit Ledger ]</span>
-      <h2 class="section-title">Tamper-Evident Hash-Chain</h2>
+      <span class="section-label">[ AUDIT LEDGER ]</span>
+      <h2 class="section-title">Edit a record. Watch the chain break.</h2>
       <p class="section-desc">
-        Live in-browser WebCrypto demonstration. Every operation binds cryptographically to the preceding block.
+        Change any field in any block. Your browser recomputes every SHA-256 hash using the same canonical-JSON formula as the real s0 ledger.
       </p>
     </div>
 
@@ -320,85 +320,31 @@
       <div class="hash-demo-controls">
         <div class="hash-status-banner" id="chainStatusBanner" role="status" aria-live="polite">
           <span class="status-indicator-dot" id="chainStatusDot"></span>
-          <span id="chainStatusText">Chain Intact: 3 of 3 blocks cryptographically valid.</span>
+          <span id="chainStatusText">Chain Intact: 4 of 4 blocks cryptographically valid.</span>
         </div>
         <div class="hash-demo-actions">
-          <button class="btn btn-secondary btn-sm" id="btnTamperChain" data-action="tamper-chain">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <span>Simulate Tamper on Block 1</span>
+          <button class="btn btn-secondary btn-sm" id="btnCoverTracks" style="display: none;" title="Rewrites stored hashes to force link checks to pass, exposing signature mismatch">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+            <span>Try to cover your tracks</span>
           </button>
-          <button class="btn btn-secondary btn-sm" id="btnResetChain" data-action="reset-chain">
+          <button class="btn btn-secondary btn-sm" id="btnAddBlock" title="Append an authentic new block to the ledger">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Add block</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btnResetLedger" title="Restore seed blocks">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-            <span>Restore Ledger</span>
+            <span>Reset chain</span>
           </button>
         </div>
       </div>
 
       <div class="hash-chain-blocks" id="chainBlocksContainer">
-        <!-- Block 0 -->
-        <div class="hash-block-card" id="blockCard0">
-          <div class="hash-block-head">
-            <span class="block-idx">Block #0 [GENESIS]</span>
-            <span class="block-status ok" id="blockStatus0">VALID</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Action:</span>
-            <span class="field-val" id="blockAction0">LAB_INITIALIZED</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Prev Hash:</span>
-            <span class="field-val hash-text">0000000000000000000000000000000000000000000000000000000000000000</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Block Hash:</span>
-            <span class="field-val hash-text" id="blockHash0">calculating...</span>
-          </div>
-        </div>
-
-        <div class="chain-connector" id="connector0_1" aria-hidden="true">&rarr;</div>
-
-        <!-- Block 1 -->
-        <div class="hash-block-card" id="blockCard1">
-          <div class="hash-block-head">
-            <span class="block-idx">Block #1 [WIPE]</span>
-            <span class="block-status ok" id="blockStatus1">VALID</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Action:</span>
-            <span class="field-val" id="blockAction1">MEDIA_SANITY_PURGE</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Prev Hash:</span>
-            <span class="field-val hash-text" id="blockPrevHash1">calculating...</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Block Hash:</span>
-            <span class="field-val hash-text" id="blockHash1">calculating...</span>
-          </div>
-        </div>
-
-        <div class="chain-connector" id="connector1_2" aria-hidden="true">&rarr;</div>
-
-        <!-- Block 2 -->
-        <div class="hash-block-card" id="blockCard2">
-          <div class="hash-block-head">
-            <span class="block-idx">Block #2 [ACQUIRE]</span>
-            <span class="block-status ok" id="blockStatus2">VALID</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Action:</span>
-            <span class="field-val" id="blockAction2">BITSTREAM_ACQUISITION</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Prev Hash:</span>
-            <span class="field-val hash-text" id="blockPrevHash2">calculating...</span>
-          </div>
-          <div class="hash-block-field">
-            <span class="field-lbl">Block Hash:</span>
-            <span class="field-val hash-text" id="blockHash2">calculating...</span>
-          </div>
-        </div>
+        <!-- Rendered live by ledger-demo.js -->
       </div>
+
+      <p class="ledger-footnote">
+        A local hash chain: no mining, no network. Why that is enough: <a href="https://sector0.gitbook.io/s0/architecture/limitations#9-tamper-evidence-vs-consensus" target="_blank" rel="noopener">limitations, section 9</a>.
+      </p>
     </div>
   </section>
 
@@ -718,6 +664,7 @@
 
 <!-- Scripts -->
 <script src="js/home.js"></script>
+<script src="js/ledger-demo.js"></script>
 <script src="js/terminal.js"></script>
 </body>
 </html>
