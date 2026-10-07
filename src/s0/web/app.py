@@ -302,6 +302,7 @@ if PORTAL_DIR.is_dir():
     def _redirect_portal_root():
         return RedirectResponse(url="/verify/", status_code=302)
 
+
 STATIC_DIR = STATIC_ROOT / "static"
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

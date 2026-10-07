@@ -317,6 +317,7 @@ def test_portal_redirects_to_verify(client):
 
 def test_dashboard_csp_script_src_is_strict(client):
     import re
+
     r = client.get("/")
     csp = r.headers.get("content-security-policy", "")
     assert "script-src 'self'" in csp
