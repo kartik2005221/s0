@@ -29,12 +29,10 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-SHARED_TOKENS = REPO / "shared" / "tokens.css"
+SHARED_TOKENS = REPO / "design" / "tokens.css"
 TOKEN_COPIES = [
-    REPO / "site" / "css" / "tokens.css",
-    REPO / "site/install" / "css" / "tokens.css",
-    REPO / "site/verify" / "css" / "tokens.css",
-    REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
+    REPO / "site" / "assets" / "tokens.css",
+    REPO / "src" / "s0" / "web" / "static" / "assets" / "tokens.css",
 ]
 SURFACE_CSS = [
     REPO / "site" / "css" / "home.css",
@@ -135,8 +133,18 @@ def test_token_copies_are_identical_to_the_source():
         assert copy.is_file(), f"missing generated token copy: {copy.relative_to(REPO)}"
         text = copy.read_text(encoding="utf-8")
         assert canonical.decode("utf-8") in text, (
-            f"{copy.relative_to(REPO)} has drifted from shared/tokens.css; run: python tools/sync_tokens.py"
+            f"{copy.relative_to(REPO)} has drifted from design/tokens.css; run: python tools/sync_assets.py"
         )
+
+
+def test_design_assets_do_not_drift():
+    """Assets in site/assets and src/s0/web/static/assets must match design/ byte-for-byte."""
+    import sys
+    if str(REPO) not in sys.path:
+        sys.path.insert(0, str(REPO))
+    from tools.sync_assets import check_drift
+    problems = check_drift()
+    assert not problems, f"design assets have drifted; run: python tools/sync_assets.py: {problems}"
 
 
 @pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
@@ -144,8 +152,8 @@ def test_surface_css_imports_the_shared_tokens(css):
     rel = css.relative_to(REPO)
     assert css.is_file(), f"missing stylesheet {rel}"
     text = css.read_text(encoding="utf-8")
-    assert '@import url("tokens.css")' in text, (
-        f"{rel} does not import the shared tokens; every colour must come from shared/tokens.css"
+    assert "tokens.css" in text, (
+        f"{rel} does not import tokens.css; every colour must come from design/tokens.css"
     )
     # @import must be the first rule or the whole sheet is ignored.
     first = next(line.strip() for line in text.splitlines() if line.strip())
@@ -565,10 +573,9 @@ def test_every_surface_self_hosts_its_fonts():
 
 
 FONT_DIRS = [
-    REPO / "site" / "fonts",
-    REPO / "site" / "install" / "fonts",
-    REPO / "site" / "verify" / "fonts",
-    REPO / "src" / "s0" / "web" / "static" / "fonts",
+    REPO / "design" / "fonts",
+    REPO / "site" / "assets" / "fonts",
+    REPO / "src" / "s0" / "web" / "static" / "assets" / "fonts",
 ]
 
 
