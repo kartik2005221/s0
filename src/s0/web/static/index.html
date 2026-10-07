@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s0 - Forensic Workstation</title>
+  <title>s0 Dashboard</title>
   <script>
     (function() {
       var t = localStorage.getItem("s0_theme") || "dark";
@@ -25,11 +25,11 @@
     <a href="/" class="site-logo-link" title="s0 — Sector Zero Home">
       <img src="/static/assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
       <span class="site-logo-title">s0 — Sector Zero</span>
-      <span class="site-logo-badge">Forensic Workstation</span>
+      <span class="site-logo-badge">Dashboard</span>
     </a>
     <div class="site-header-right">
       <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn" id="navDocLink">Documentation ↗</a>
-      <a href="/portal/" target="_blank" rel="noopener" class="nav-btn" id="navPortalLink">Verify ↗</a>
+      <a href="/verify/" target="_blank" rel="noopener" class="nav-btn" id="navPortalLink">Verify ↗</a>
       <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" id="navGithubLink" aria-label="GitHub Repository">
         <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
         <span>kartik2005221/s0</span>
@@ -155,7 +155,7 @@
               <input type="checkbox" id="drivePdfToggle" checked>
               <div class="toggle-info">
                 <span class="toggle-title">Generate PDF Certificate &amp; QR Code</span>
-                <span class="toggle-desc">Render print-ready A4 PDF compliance certificate with optical verification QR</span>
+                <span class="toggle-desc">Render print-ready A4 PDF erasure certificate with optical verification QR</span>
               </div>
             </label>
 
@@ -165,7 +165,7 @@
                 <input type="number" id="driveVerifySamples" value="64" min="8" max="512">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label for="drivePortalUrl">Verification Portal Base URL:</label>
+                <label for="drivePortalUrl">Verifier Base URL:</label>
                 <input type="text" id="drivePortalUrl" placeholder="https://sector0.pages.dev/verify/">
               </div>
             </div>
@@ -306,7 +306,7 @@
               <input type="checkbox" id="filePdfToggle" checked>
               <div class="toggle-info">
                 <span class="toggle-title">Generate PDF Certificate &amp; QR Code</span>
-                <span class="toggle-desc">Render print-ready A4 PDF compliance certificate with optical verification QR</span>
+                <span class="toggle-desc">Render print-ready A4 PDF erasure certificate with optical verification QR</span>
               </div>
             </label>
 
@@ -316,7 +316,7 @@
                 <input type="number" id="fileVerifySamples" value="64" min="8" max="512">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label for="filePortalUrl">Verification Portal Base URL:</label>
+                <label for="filePortalUrl">Verifier Base URL:</label>
                 <input type="text" id="filePortalUrl" placeholder="https://sector0.pages.dev/verify/">
               </div>
             </div>
@@ -345,7 +345,7 @@
       <section class="panel panel-console">
         <div class="panel-header">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <h2 class="panel-title">Batch Erasure Status &amp; Compliance Record</h2>
+            <h2 class="panel-title">Batch Erasure Status &amp; Attestation Record</h2>
             <span class="badge badge-dim" id="fileStatusBadge">STATUS: IDLE</span>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="clearLog('fileLog')">Clear</button>
@@ -373,10 +373,10 @@
             <div class="showcase-icon showcase-icon-success">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             </div>
-            <strong style="color: #34d399; font-size: 0.95rem;">FILE ERASURE COMPLIANCE ISSUED</strong>
+            <strong style="color: #34d399; font-size: 0.95rem;">FILE ERASURE CERTIFICATE ISSUED</strong>
           </div>
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;" id="fileResultDetails">
-            Files shredded and metadata zeroed. Ed25519 compliance certificate issued and anchored to hash-chained audit ledger.
+            Files shredded and metadata zeroed. Ed25519 erasure certificate issued and anchored to hash-chained audit ledger.
           </p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="fileActionButtons">
             <!-- Populated dynamically -->

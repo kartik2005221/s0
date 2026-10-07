@@ -43,13 +43,11 @@
 /index.html
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.github.com/; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
 
-# The install portal is the page a user pastes into a root shell. No
-# 'unsafe-inline' anywhere: nothing on it may execute script or evaluate style
-# that was not hashed here at build time.
-/install/*
+# Get s0 page.
+/get/*
   Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-n3QwYHxbbxqU/6vsh/8d7cHbQXOR/Z2mQTPGscxD8xQ='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
 
-# The verification portal exists to prove a certificate is authentic. Shipping it
+# The verifier exists to prove an erasure certificate is authentic. Shipping it
 # with 'unsafe-inline' in script-src would undercut the point: any injected inline
 # script could rewrite the verdict. The vendored libraries are additionally pinned
 # with Subresource Integrity in the HTML, and worker-src is required because
@@ -70,17 +68,17 @@
 # matched by the rules further down.
 # ---------------------------------------------------------------------------
 
-/install/*.sh
+/scripts/*.sh
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
 
-/install/*.ps1
+/scripts/*.ps1
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
 
-/install/*.cmd
+/scripts/*.cmd
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
@@ -122,32 +120,13 @@
 
 # ---------------------------------------------------------------------------
 # Caching.
-#
-# /assets/* is revalidated daily rather than immutable on purpose: the favicon
-# set is switched per theme at runtime, so a one-year immutable header on a
-# changed favicon leaves visitors holding the old one. Fonts are the content-
-# stable case and keep the long max-age.
 # ---------------------------------------------------------------------------
 
-# Vendored assets: the media type must be declared or browsers refuse to
-# execute them under a strict CSP.
 /verify/vendor/*
   Cache-Control: public, max-age=86400, immutable
 
-/fonts/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/install/fonts/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/verify/fonts/*
+/assets/fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
 /assets/*
-  Cache-Control: public, max-age=86400
-
-/install/assets/*
-  Cache-Control: public, max-age=86400
-
-/verify/assets/*
   Cache-Control: public, max-age=86400

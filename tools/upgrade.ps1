@@ -1,1 +1,0 @@
-../site/install/upgrade.ps1

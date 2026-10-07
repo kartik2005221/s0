@@ -1,1 +1,0 @@
-../site/install/download_iso.sh

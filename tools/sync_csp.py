@@ -59,9 +59,9 @@ SURFACES = (
         comment="landing page",
     ),
     Surface(
-        REPO / "site" / "install" / "index.html",
-        ("/install/*",),
-        comment="install portal",
+        REPO / "site" / "get" / "index.html",
+        ("/get/*",),
+        comment="get s0 page",
     ),
     Surface(
         REPO / "site" / "verify" / "index.html",

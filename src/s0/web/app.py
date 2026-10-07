@@ -293,7 +293,15 @@ async def security_headers(request: Request, call_next):
 
 PORTAL_DIR = REPO / "site/verify"
 if PORTAL_DIR.is_dir():
-    app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
+    app.mount("/verify", StaticFiles(directory=str(PORTAL_DIR), html=True), name="verify")
+
+    @app.get("/portal/{path:path}")
+    def _redirect_portal(path: str = ""):
+        return RedirectResponse(url=f"/verify/{path}", status_code=302)
+
+    @app.get("/portal")
+    def _redirect_portal_root():
+        return RedirectResponse(url="/verify/", status_code=302)
 
 STATIC_DIR = STATIC_ROOT / "static"
 if STATIC_DIR.is_dir():

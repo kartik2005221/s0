@@ -1,1 +1,0 @@
-../site/install/uninstall.ps1

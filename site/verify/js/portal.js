@@ -1,5 +1,5 @@
 /**
- * s0 Verification Portal — Pure Client-Side Verifier Controller
+ * s0 Verifier — Pure Client-Side Controller
  * Supports: JSON certificates, PDF certificate optical decoding, QR image decoding
  */
 
@@ -482,7 +482,7 @@ function handleCertLocator(uuid, sourceDesc) {
   box.style.fontSize = "0.85rem";
 
   var strong = document.createElement("strong");
-  strong.textContent = "Zero-Trust Offline Architecture Notice:";
+  strong.textContent = "Offline Architecture Notice:";
   box.appendChild(strong);
   box.appendChild(document.createElement("br"));
 

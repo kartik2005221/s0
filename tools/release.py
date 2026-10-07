@@ -51,7 +51,7 @@ FILES SYNCHRONIZED BY THIS SCRIPT
  9. src/s0/platform/macos/s0_eraser.py      (macOS CLI version string & tool_version)
 10. src/s0/platform/windows/s0_eraser.py    (Windows CLI version string & tool_version)
 11. tools/benchmark_perf.py                 (Benchmark tool_version)
-12. site/install/install.sh                 (Web/sh installer fallback echo)
+12. site/scripts/install.sh                 (Web/sh installer fallback echo)
 13. README.md                               (Release badge link)
 14. PLAN.md                                 (Roadmap status line)
 15. docs/project/evaluator-guide.md         (Software release metadata)
@@ -191,8 +191,8 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
                 p.write_text(c2, encoding="utf-8")
             modified_files.append(p)
 
-    # 13. site/install/install.sh (and tools/install.sh if not symlink)
-    p = REPO_ROOT / "site/install" / "install.sh"
+    # 13. site/scripts/install.sh
+    p = REPO_ROOT / "site/scripts" / "install.sh"
     if update_file_regex(p, r'(\|\|\s*echo\s*)"[^"]+"(\))', f'\\g<1>"{target_version}"\\g<2>', dry_run):
         modified_files.append(p)
 
@@ -220,7 +220,7 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
             "\\g<1>" + target_version + "\\g<2>",
         ),
         (
-            "site/install/index.html",
+            "site/get/index.html",
             r'(<span class="s0-release-version">v)[0-9]+\.[0-9]+\.[0-9]+[^<]*(</span>)',
             "\\g<1>" + target_version + "\\g<2>",
         ),

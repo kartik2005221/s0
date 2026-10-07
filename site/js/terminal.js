@@ -118,7 +118,7 @@
       pauseAfter: 2200
     },
 
-    // 6. Zero-Trust Air-Gapped Certificate Verification
+    // 6. Offline Attestation Verification
     {
       command: "s0 verify drive_wipe_certificate_a7f39b10.json",
       postCommandDelay: 450,

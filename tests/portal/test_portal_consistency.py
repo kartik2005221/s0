@@ -36,13 +36,13 @@ TOKEN_COPIES = [
 ]
 SURFACE_CSS = [
     REPO / "site" / "css" / "home.css",
-    REPO / "site/install" / "css" / "install.css",
+    REPO / "site/get" / "css" / "install.css",
     REPO / "site/verify" / "css" / "portal.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "dashboard.css",
 ]
 PUBLIC_HTML = [
     REPO / "site" / "index.html",
-    REPO / "site" / "install" / "index.html",
+    REPO / "site" / "get" / "index.html",
     REPO / "site" / "verify" / "index.html",
 ]
 
@@ -54,7 +54,7 @@ HEADERS = REPO / "site" / "_headers"
 
 CSP_BLOCKS = {
     REPO / "site" / "index.html": ("/", "/index.html"),
-    REPO / "site" / "install" / "index.html": ("/install/*",),
+    REPO / "site" / "get" / "index.html": ("/get/*",),
     REPO / "site" / "verify" / "index.html": ("/verify/*",),
 }
 
@@ -624,7 +624,7 @@ def test_every_surface_declares_font_weight_ranges(d):
 # GitHub, so those two remain absolute.
 EXPECTED_NAV = {
     "docs": "sector0.gitbook.io",
-    "install": "/install/",
+    "get": "/get/",
     "verify": "/verify/",
     "github": "github.com/kartik2005221/s0",
 }
@@ -636,7 +636,7 @@ EXPECTED_NAV = {
 # own host was neither possible nor meaningful.
 SELF_PATH = {
     REPO / "site" / "index.html": "/",
-    REPO / "site" / "install" / "index.html": "/install/",
+    REPO / "site" / "get" / "index.html": "/get/",
     REPO / "site" / "verify" / "index.html": "/verify/",
 }
 
