@@ -5,10 +5,6 @@
   --bg-card:      var(--surface-raised);
   --bg-card-hover:var(--surface-hover);
   --bg-elevated:  var(--surface-overlay);
-  --border-subtle:var(--border-subtle);
-  --border-focus: var(--border-focus);
-  --text-primary: var(--text-primary);
-  --text-secondary:var(--text-secondary);
   --text-muted:   var(--text-tertiary);
 
   --primary:      var(--brand);
@@ -21,14 +17,10 @@
   --warning:      var(--status-warn);
 
   --code-bg:      var(--surface-sunken);
-  --header-bg:    var(--header-bg);
   --btn-bg:       var(--surface-inset);
   --btn-bg-hover: var(--surface-hover);
   --btn-border:   var(--border-strong);
   --btn-text:     var(--text-primary);
-
-  --font-sans:    var(--font-sans);
-  --font-mono:    var(--font-mono);
 }
 
 /* Reset & Base */

@@ -16,11 +16,10 @@
   --bg-terminal:   var(--surface-sunken);
   --bg-code:       var(--surface-sunken);
   --border:        var(--border-default);
-  --border-subtle: var(--border-subtle);
-  --border-hover:  var(--border-hover);
   --text-muted:    var(--text-tertiary);
   --text-dim:      var(--text-tertiary);
   --text-bright:   var(--text-primary);
+  --text-main:     var(--text-primary);
   --accent-cyan:        var(--brand);
   --accent-cyan-hover:  var(--brand-hover);
   --accent-cyan-glow:   var(--brand-glow);

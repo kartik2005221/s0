@@ -163,6 +163,38 @@ def test_no_surface_redeclares_a_token_value(css):
     )
 
 
+SELF_REF_RE = re.compile(r"^\s*(--[a-zA-Z0-9_-]+)\s*:[^;]*var\(\s*\1(?![a-zA-Z0-9_-])", re.M)
+VAR_USAGE_RE = re.compile(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\)")
+PROP_DEF_RE = re.compile(r"(--[a-zA-Z0-9_-]+)\s*:")
+
+
+@pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
+def test_no_self_referencing_css_properties(css):
+    """A custom property that references itself (e.g. --x: var(--x)) is invalid
+    at computed-value time, dropping the property to unset/initial."""
+    rel = css.relative_to(REPO)
+    text = css.read_text(encoding="utf-8")
+    offenders = [m.group(0).strip() for m in SELF_REF_RE.finditer(text)]
+    assert not offenders, f"{rel} has self-referencing CSS custom properties: {offenders}"
+
+
+@pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
+def test_no_undefined_css_variables(css):
+    """Every var(--x) must have a fallback or resolve to a defined property."""
+    rel = css.relative_to(REPO)
+    tokens_text = SHARED_TOKENS.read_text(encoding="utf-8") if SHARED_TOKENS.exists() else ""
+    declared = set(PROP_DEF_RE.findall(tokens_text))
+    text = css.read_text(encoding="utf-8")
+    declared |= set(PROP_DEF_RE.findall(text))
+    undefined = []
+    for m in VAR_USAGE_RE.finditer(text):
+        var_name = m.group(1)
+        fallback = m.group(2)
+        if not fallback and var_name not in declared:
+            undefined.append(var_name)
+    assert not undefined, f"{rel} uses undefined CSS custom properties without fallbacks: {sorted(set(undefined))}"
+
+
 def test_shared_tokens_cover_the_full_surface_area():
     text = SHARED_TOKENS.read_text(encoding="utf-8")
     required = [
