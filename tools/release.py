@@ -220,6 +220,16 @@ def sync_all_files(target_version: str, dry_run: bool = False) -> list[Path]:
             "\\g<1>" + target_version + "\\g<2>",
         ),
         (
+            "site/install/index.html",
+            r'(<span class="s0-release-version">v)[0-9]+\.[0-9]+\.[0-9]+[^<]*(</span>)',
+            "\\g<1>" + target_version + "\\g<2>",
+        ),
+        (
+            "site/verify/index.html",
+            r'(<span class="s0-release-version">v)[0-9]+\.[0-9]+\.[0-9]+[^<]*(</span>)',
+            "\\g<1>" + target_version + "\\g<2>",
+        ),
+        (
             "site/js/home.js",
             r'(el\.textContent = ")v[0-9]+\.[0-9]+\.[0-9]+[^"]*(")',
             "\\g<1>v" + target_version + "\\g<2>",

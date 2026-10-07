@@ -1,7 +1,7 @@
 # Evaluator & Technical Demonstration Guide
 
 > **Target Audience:** Technical Evaluators, Digital Forensic Examiners, Hackathon Judges, and Core Maintainers.  
-> **Software Release:** v3.0.0  
+> **Software Release:** v3.1.0  
 > **Format:** Automated Verification Suite + 5-Minute Technical Pitch + 3-Minute Live Demonstration
 
 ---

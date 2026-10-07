@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "s0"
-version = "3.0.0"
+version = "3.1.0"
 description = "S0 (Sector Zero) — unified forensic sanitization, acquisition and file-recovery suite"
 readme = "README.md"
 requires-python = ">=3.11"

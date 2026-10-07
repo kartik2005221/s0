@@ -1457,7 +1457,7 @@ def carve_image(
                     organization=organization,
                     operator_id=operator_id,
                     tool_name="s0-carve",
-                    tool_version=CONFIG.get("version", "3.0.0"),
+                    tool_version=CONFIG.get("version", "3.1.0"),
                     platform="linux",
                     device_id=f"media-{hashlib.sha256(str(target_p).encode()).hexdigest()[:16]}",
                     device_type="image_file",
@@ -1561,7 +1561,7 @@ def carve_image(
 
     index_data = {
         "schema": "s0.recovery-index/1",
-        "generated_by": f"s0-carve {CONFIG.get('version', '3.0.0')}",
+        "generated_by": f"s0-carve {CONFIG.get('version', '3.1.0')}",
         "target_path": str(target_p),
         "source_filesystem": fs_type,
         "total_bytes_scanned": scanned,

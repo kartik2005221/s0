@@ -11,7 +11,7 @@ from typing import Any
 from . import platform, resources
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "version": "3.0.0",
+    "version": "3.1.0",
     "tool_name": "s0",
     "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
     "documentation_url": "https://sector0.gitbook.io/",

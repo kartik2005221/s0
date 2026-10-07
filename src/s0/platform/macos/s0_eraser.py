@@ -504,7 +504,7 @@ def erase_batch_macos(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-macos-eraser",
-                tool_version=CONFIG.get("version", "3.0.0"),
+                tool_version=CONFIG.get("version", "3.1.0"),
                 platform="macos",
                 device_id=f"mac-batch-{secrets.token_hex(8)}",
                 device_type="internal_disk",
@@ -936,7 +936,7 @@ def wipe_drive_or_partition_macos(
                 organization=organization,
                 operator_id=operator_id,
                 tool_name="s0-macos-eraser",
-                tool_version=CONFIG.get("version", "3.0.0"),
+                tool_version=CONFIG.get("version", "3.1.0"),
                 platform="macos",
                 device_id=f"mac-{target_type}-{secrets.token_hex(6)}",
                 device_type=schema_dev_type,
@@ -1002,7 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="s0 macOS Secure Sanitization Tool (Files, Partitions, Drives)"
     )
-    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '3.0.0')}")
+    parser.add_argument("--version", action="version", version=f"s0 {CONFIG.get('version', '3.1.0')}")
     parser.add_argument("--targets", "-t", nargs="*", default=None, help="Files or folders to erase")
     parser.add_argument(
         "--wipe-partition", help="Partition device path to wipe (e.g. /dev/rdisk2s1 or /Volumes/USB)"

@@ -1554,7 +1554,7 @@ s0 upgrade
 [s0 upgrade]  Refreshing dependencies...
 [s0 upgrade]  OK : Dependencies refreshed.
 
-[s0 upgrade]  OK : S0 upgraded successfully to 3.0.0 (4a9f12c)
+[s0 upgrade]  OK : S0 upgraded successfully to 3.1.0 (4a9f12c)
 ```
 
 **Force reinstall dependencies**
@@ -1909,7 +1909,7 @@ Fetch official release assets directly from GitHub with automatic SHA-256 integr
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `--version` | String | `latest` | Specific version tag to download (e.g., `v3.0.0`) |
+| `--version` | String | `latest` | Specific version tag to download (e.g., `v3.1.0`) |
 | `--out-dir` | Path | `.` | Directory to save downloaded ISO and `.sha256` checksum file |
 | `--allow-older` | Flag | `false` | Allow downloading the Live ISO from an older release if the target release has no ISO attached |
 

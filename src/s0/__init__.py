@@ -77,7 +77,7 @@ def _git_commit() -> str:
 
 
 #: Distribution version when installed, otherwise the packaged config's version.
-__version__ = _distribution_version() or str(CONFIG.get("version", "3.0.0"))
+__version__ = _distribution_version() or str(CONFIG.get("version", "3.1.0"))
 
 #: Short commit hash, or ``""`` when unavailable.
 __git_commit__ = _git_commit()

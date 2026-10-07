@@ -5,6 +5,56 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-10-07
+
+Sector Zero 3.1.0 is a major security remediation and forensic accuracy release following a comprehensive adversarial security audit across acquisition, carving, sanitization, cryptographic ledgers, and web operations, coupled with complete cross-surface design system unification.
+
+### Security Remediation
+
+- **Bit-Stream Acquisition Protection (H1, M4, S0-03, L9)**:
+  - Eliminated hardlinked destination truncation vulnerability across `s0 image`, `s0 clone`, and `POST /api/image`; destination identity is checked using `(st_dev, st_ino)` and files with `st_nlink > 1` are refused before opening or truncating.
+  - Added strict destination protection preventing acquisition images from overwriting the audit ledger database or authority private signing keys.
+  - Enforced `O_NOFOLLOW` and read-only file descriptor handling on acquisition sources.
+
+- **Forensic Carving Allocation Engine (H2, H3, M1, T5)**:
+  - **FAT32 (H2, M1)**: Corrected FAT table read offset to start at `reserved * bps` (eliminating improper `spc` sector offset) and added data-area base offset (`part + first_data_sector * bps`) to all free-space cluster runs and directory recovery manifests. Restores full recovery of deleted files in the volume tail and eliminates false-positive carves of allocated clusters.
+  - **exFAT (H3)**: Removed fictitious 4-byte header offset from the allocation bitmap parser; bit 0 correctly parses as cluster 2, restoring cluster alignment across all exFAT image carving.
+
+- **Scan Window & Resource Exhaustion Hardening (H4, M3, S0-10, S0-12)**:
+  - Fixed scan loop boundary condition so disk images whose byte length is an exact multiple of chunk size are scanned to the final byte rather than missing the trailing window.
+  - Implemented strict geometric bounds on ext4 `s_log_block_size` and FAT32 declared volumes to eliminate memory exhaustion and integer overflow DoS on crafted images.
+
+- **Sanitization Engine & Path Safety (M2, S0-01, S0-02, S0-05, S0-07, L5)**:
+  - Expanded safety path guards to block destruction of shell profiles and dotfiles (`.bashrc`, `.profile`), system mounts (`/proc`, `/sys`), and current working directories.
+  - Hardened folder erasure error handling to ensure unerased files are never orphaned under temporary randomized names during partial failures.
+  - Enforced strict symlink boundary verification to reject traversal outside target scopes.
+
+- **Cryptographic Audit Ledger & Integrity (M5, L1, L2, L3, L6)**:
+  - Implemented Ed25519-signed checkpoint sidecars for the audit ledger to detect and prevent tail-truncation attacks.
+  - Enforced restrictive `0600` file permissions on newly generated keys and removed fallback key material storage in shared `/tmp`.
+  - Added cryptographic field cross-checking and robust verification handling for untrusted or unknown signing authorities.
+
+- **Web Services & Dashboard Hardening (M6, M7, S0-06, S0-08, S0-21, L4, L8)**:
+  - Implemented concurrent background stderr reader threads in the web job runner to eliminate pipe-buffer deadlocks and prevent stderr truncation.
+  - Corrected Host header handling, CSRF token validation, and process termination signal propagation.
+  - Replaced misleading HPA/DCO indicator display with factual contract reporting.
+
+### Web Ecosystem & Design System Unification (F1–F20)
+
+- Synchronized design tokens across all 4 surfaces (`shared/tokens.css`, `site/css/tokens.css`, `site/install/css/tokens.css`, `site/verify/css/tokens.css`, and `web/static/css/tokens.css`).
+- Lowered default token specificity using `:where()` to guarantee clean stylesheet overrides across portals.
+- Unified the inline theme bootstrap script across the landing, install, and verification portals, generating synchronized Content-Security-Policy (CSP) sha256 hashes in `site/_headers`.
+- Standardized WCAG-compliant accessible button contrast (>4.5:1), responsive layout geometry, typography, and dynamic theme favicon/logo switching.
+- Removed superfluous `/api/config` requests on static deployments.
+
+### Tooling, Packaging & Build Verification
+
+- Hardened CLI help generator fallback invoking isolated subprocess execution to prevent unhandled `SystemExit` exceptions.
+- Synchronized dependency graphs across `pyproject.toml`, `requirements.in`, and `requirements.lock`.
+- Verified Debian live-build options and mirrors for bare-metal live ISO generation.
+
+---
+
 ## [3.0.0] - 2026-10-05
 
 Sector Zero 3.0.0 unifies the data sanitization, cryptographic attestation, and deleted file carving engines into a single consolidated distribution with hardened safety verification.
