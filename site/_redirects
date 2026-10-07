@@ -5,37 +5,41 @@
 #     curl -fsSL https://sector0.pages.dev/sh | sudo bash
 #
 # They are internal 200 rewrites, not redirects: the response is the script
-# itself, so the browser never sees a hop. Every target moved under /install/
-# when the landing page, the installer and the verifier became one deployment.
-# site/install/_headers matches the short paths as well as the real ones, so a
+# itself, so the browser never sees a hop. Every target lives under /scripts/.
+# site/_headers matches the short paths as well as the real ones, so a
 # rewritten request is still served as text/plain with nosniff.
-/sh /install/install.sh 200
-/ps1 /install/install.ps1 200
-/cmd /install/install.cmd 200
-/upgrade /install/upgrade.sh 200
-/upgrade-sh /install/upgrade.sh 200
-/upgrade/sh /install/upgrade.sh 200
-/upgrade-ps1 /install/upgrade.ps1 200
-/upgrade/ps1 /install/upgrade.ps1 200
-/upgrade-cmd /install/upgrade.cmd 200
-/upgrade/cmd /install/upgrade.cmd 200
-/uninstall /install/uninstall.sh 200
-/uninstall-sh /install/uninstall.sh 200
-/uninstall/sh /install/uninstall.sh 200
-/uninstall-ps1 /install/uninstall.ps1 200
-/uninstall/ps1 /install/uninstall.ps1 200
-/uninstall-cmd /install/uninstall.cmd 200
-/uninstall/cmd /install/uninstall.cmd 200
-/download-iso /install/download_iso.sh 200
-/download-iso-sh /install/download_iso.sh 200
-/download-iso/sh /install/download_iso.sh 200
-/download-iso-ps1 /install/download_iso.ps1 200
-/download-iso/ps1 /install/download_iso.ps1 200
-/iso /install/download_iso.sh 200
-/iso-sh /install/download_iso.sh 200
-/iso/sh /install/download_iso.sh 200
-/iso-ps1 /install/download_iso.ps1 200
-/iso/ps1 /install/download_iso.ps1 200
+/sh /scripts/install.sh 200
+/ps1 /scripts/install.ps1 200
+/cmd /scripts/install.cmd 200
+/upgrade /scripts/upgrade.sh 200
+/upgrade-sh /scripts/upgrade.sh 200
+/upgrade/sh /scripts/upgrade.sh 200
+/upgrade-ps1 /scripts/upgrade.ps1 200
+/upgrade/ps1 /scripts/upgrade.ps1 200
+/upgrade-cmd /scripts/upgrade.cmd 200
+/upgrade/cmd /scripts/upgrade.cmd 200
+/uninstall /scripts/uninstall.sh 200
+/uninstall-sh /scripts/uninstall.sh 200
+/uninstall/sh /scripts/uninstall.sh 200
+/uninstall-ps1 /scripts/uninstall.ps1 200
+/uninstall/ps1 /scripts/uninstall.ps1 200
+/uninstall-cmd /scripts/uninstall.cmd 200
+/uninstall/cmd /scripts/uninstall.cmd 200
+/download-iso /scripts/download_iso.sh 200
+/download-iso-sh /scripts/download_iso.sh 200
+/download-iso/sh /scripts/download_iso.sh 200
+/download-iso-ps1 /scripts/download_iso.ps1 200
+/download-iso/ps1 /scripts/download_iso.ps1 200
+/iso /scripts/download_iso.sh 200
+/iso-sh /scripts/download_iso.sh 200
+/iso/sh /scripts/download_iso.sh 200
+/iso-ps1 /scripts/download_iso.ps1 200
+/iso/ps1 /scripts/download_iso.ps1 200
+
+# Legacy route redirects
+/install /get/ 301
+/install/ /get/ 301
+/install/* /get/ 301
 
 # The documentation suite stays on GitBook, which renders it from docs/.
 /docs https://sector0.gitbook.io/ 302

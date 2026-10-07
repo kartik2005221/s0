@@ -502,7 +502,7 @@ To eliminate the need for passing repeated command-line arguments and ensure org
   "tool_title": "Sector Zero — Unified Forensic & Sanitization Workstation",
   "documentation_url": "https://sector0.gitbook.io/",
   "verification_portal_url": "https://sector0.pages.dev/verify/",
-  "install_portal_url": "https://sector0.pages.dev/install/",
+  "install_portal_url": "https://sector0.pages.dev/get/",
   "github_url": "https://github.com/kartik2005221/s0",
   "default_operator": "op-forensic",
   "default_organization": "Digital Forensics & Data Sanitization Lab",

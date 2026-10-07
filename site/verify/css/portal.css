@@ -1,4 +1,4 @@
-@import url("tokens.css");
+@import url("../../assets/tokens.css");
 
 /* ---------------------------------------------------------------------------
    MIGRATION SHIM. All colour, type, spacing, focus and motion values come from
@@ -950,4 +950,15 @@ footer.site-footer,
   textarea {
     font-size: 16px;
   }
+}
+
+.header-scroll-progress {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand);
+  width: 0%;
+  transition: width 50ms linear;
+  z-index: 1001;
 }

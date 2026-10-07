@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="6" fill="#0B192C" stroke="#1E3E62" stroke-width="1.5"/>
+  <text x="16" y="21" font-family="'Rubik', system-ui, sans-serif" font-weight="900" font-size="14" fill="#FF6500" text-anchor="middle" letter-spacing="-0.5">s0</text>
+</svg>

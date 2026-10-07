@@ -1,4 +1,4 @@
-@import url("tokens.css");
+@import url("../assets/tokens.css");
 
 /* ---------------------------------------------------------------------------
    MIGRATION SHIM. All colour, type, spacing, focus and motion values come from
@@ -16,11 +16,10 @@
   --bg-terminal:   var(--surface-sunken);
   --bg-code:       var(--surface-sunken);
   --border:        var(--border-default);
-  --border-subtle: var(--border-subtle);
-  --border-hover:  var(--border-hover);
   --text-muted:    var(--text-tertiary);
   --text-dim:      var(--text-tertiary);
   --text-bright:   var(--text-primary);
+  --text-main:     var(--text-primary);
   --accent-cyan:        var(--brand);
   --accent-cyan-hover:  var(--brand-hover);
   --accent-cyan-glow:   var(--brand-glow);
@@ -1348,4 +1347,15 @@ details.advanced-panel[open] summary {
 #cloneConfirmInput:focus-visible {
   outline: 3px solid var(--accent-red, #ef4444);
   outline-offset: 2px;
+}
+
+.header-scroll-progress {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--brand);
+  width: 0%;
+  transition: width 50ms linear;
+  z-index: 1001;
 }

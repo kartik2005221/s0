@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>s0 — Get s0 (Install, Upgrade &amp; Live ISO)</title>
+  <link rel="canonical" href="https://sector0.pages.dev/get/">
+  <meta property="og:url" content="https://sector0.pages.dev/get/">
+  <meta property="og:title" content="s0 — Get s0">
+  <meta property="og:description" content="Install, upgrade or uninstall s0 on Linux, macOS or Windows, or fetch the bare-metal live ISO.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://sector0.pages.dev/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="s0 — Get s0">
+  <meta name="twitter:image" content="https://sector0.pages.dev/og-image.png">
+  <script>
+    (function() {
+      var t = localStorage.getItem("s0_theme") || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css">
+  <!-- Favicons and App Icons -->
+  <link rel="icon" type="image/x-icon" href="../favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicons/s0-dark/favicon-32x32.png" id="dynamic-favicon">
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/favicons/s0-dark/apple-touch-icon.png">
+  <link rel="manifest" href="../assets/favicons/s0-dark/site.webmanifest">
+  <link rel="stylesheet" href="css/install.css">
+</head>
+<body>
+
+<a href="#main-content" class="sr-only skip-link">Skip to main content</a>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a href="/" class="site-logo-link" title="s0 — Sector Zero Home">
+      <img src="../assets/favicons/s0-dark/favicon-32x32.png" alt="s0" class="header-logo" id="headerLogo" width="24" height="24">
+      <span class="site-logo-title"><span class="logo-name">s0</span><span class="logo-sub"> — Sector Zero</span></span>
+      <span class="site-logo-badge">Get</span>
+    </a>
+    <div class="site-header-right">
+      <a href="/get/" class="nav-btn nav-btn-active" aria-current="page">Get</a>
+      <a href="/verify/" class="nav-btn">Verify</a>
+      <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
+      <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
+        <svg height="15" width="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="github-repo-text">kartik2005221/s0</span>
+      </a>
+      <button class="nav-btn theme-toggle-btn" id="themeToggleBtn" data-action="toggle-theme" aria-label="Toggle Dark / Light Theme" title="Toggle theme">
+        <svg class="theme-icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <span id="themeToggleLabel">Light</span>
+      </button>
+      <div class="sys-pill">
+        <div class="dot-live"></div>
+        <span class="s0-release-version">v3.1.0</span>
+      </div>
+    </div>
+  </div>
+  <div class="header-scroll-progress" id="scrollProgress"></div>
+</header>
+
+<!-- The outcome of a copy/flash operation is announced to assistive
+     technology, not merely painted on screen (WCAG 2.2 SC 4.1.3). -->
+<p id="installStatus" role="status" aria-live="polite" class="sr-only"></p>
+<main id="main-content">
+  <div class="hero">
+    <h1>Get <span class="highlight">s0</span></h1>
+    <p>Forensic media sanitization, deleted-file recovery, bit-stream acquisition &amp; cryptographic audit suite for Linux, macOS, and Windows.</p>
+  </div>
+
+  <div class="legal-card">
+    <div class="legal-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+        <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+        <path d="M7 21h10"/>
+        <path d="M12 3v18"/>
+        <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
+      </svg>
+    </div>
+    <div>
+      <strong>Authorized Use Only:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process.
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="tabs-nav" role="tablist" aria-label="Installation and distribution options">
+    <button class="tab-btn active" data-tab="tab-install" role="tab" aria-selected="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Install</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-upgrade" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+      <span>Upgrade</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-uninstall" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      <span>Uninstall</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-iso" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Bare-Metal Live ISO</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-verify" role="tab" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      <span>Release Checksums</span>
+    </button>
+  </div>
+
+  <!-- TAB 1: INSTALL -->
+  <div class="tab-panel active" id="tab-install" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <p class="card-desc">One command creates an isolated virtualenv in <code>~/.s0/</code> and adds <code>s0</code> to your PATH.</p>
+        <div class="code-box">
+          <span id="cmd-install-sh">curl -fsSL https://sector0.pages.dev/sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-install-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <p class="card-desc">Bootstraps s0 in <code>%USERPROFILE%\.s0\</code> and registers User PATH environment variable.</p>
+        <div class="code-box">
+          <span id="cmd-install-ps1">irm https://sector0.pages.dev/ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-install-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <p class="card-desc">Native batch installer for legacy shells and enterprise deployment scripts.</p>
+        <div class="code-box">
+          <span id="cmd-install-cmd">curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd &amp;&amp; s0-install.cmd &amp;&amp; del s0-install.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-install-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/install.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: UPGRADE -->
+  <div class="tab-panel" id="tab-upgrade" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-sh">curl -fsSL https://sector0.pages.dev/upgrade-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-ps1">irm https://sector0.pages.dev/upgrade-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-cmd">curl -fsSL https://sector0.pages.dev/upgrade-cmd -o s0-upgrade.cmd &amp;&amp; s0-upgrade.cmd &amp;&amp; del s0-upgrade.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/upgrade.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-upg-cli">s0 upgrade</span>
+          <button class="copy-btn" data-copy-target="cmd-upg-cli">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: UNINSTALL -->
+  <div class="tab-panel" id="tab-uninstall" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-sh">curl -fsSL https://sector0.pages.dev/uninstall-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-un-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-ps1">irm https://sector0.pages.dev/uninstall-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-un-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">Command Prompt</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-cmd">curl -fsSL https://sector0.pages.dev/uninstall-cmd -o s0-uninstall.cmd &amp;&amp; s0-uninstall.cmd &amp;&amp; del s0-uninstall.cmd</span>
+          <button class="copy-btn" data-copy-target="cmd-un-cmd">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/uninstall.cmd" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <div class="code-box">
+          <span id="cmd-un-cli">s0 uninstall</span>
+          <button class="copy-btn" data-copy-target="cmd-un-cli">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: LIVE ISO -->
+  <div class="tab-panel" id="tab-iso" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Linux &amp; macOS</h3>
+          <span class="platform-tag">Bash / Zsh</span>
+        </div>
+        <p class="card-desc">Downloads the bare-metal Debian 12 Live ISO and verifies its cryptographic hash.</p>
+        <div class="code-box">
+          <span id="cmd-iso-sh">curl -fsSL https://sector0.pages.dev/download-iso-sh | bash</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-sh">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/download_iso.sh" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Windows</h3>
+          <span class="platform-tag">PowerShell</span>
+        </div>
+        <p class="card-desc">PowerShell automated downloader and SHA-256 validation for the bootable ISO.</p>
+        <div class="code-box">
+          <span id="cmd-iso-ps1">irm https://sector0.pages.dev/download-iso-ps1 | iex</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-ps1">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="../scripts/download_iso.ps1" target="_blank" rel="noopener" class="inspect-script-link">Read script source ↗</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>CLI In-Place</h3>
+          <span class="platform-tag">Terminal</span>
+        </div>
+        <p class="card-desc">Download and flash directly from an existing s0 installation.</p>
+        <div class="code-box">
+          <span id="cmd-iso-cli">s0 live download</span>
+          <button class="copy-btn" data-copy-target="cmd-iso-cli">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: CHECKSUMS -->
+  <div class="tab-panel" id="tab-verify" role="tabpanel">
+    <div class="grid">
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Installer Script Integrity</h3>
+          <span class="platform-tag">SHA-256</span>
+        </div>
+        <p class="card-desc">Verify that the installer script matches the repository commit prior to piped execution:</p>
+        <div class="code-box">
+          <span id="cmd-sha-install">curl -fsSL https://sector0.pages.dev/sh | sha256sum</span>
+          <button class="copy-btn" data-copy-target="cmd-sha-install">Copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <h3>Release Bundle Verification</h3>
+          <span class="platform-tag">SHA256SUMS</span>
+        </div>
+        <p class="card-desc">Validate pre-built release packages and ISO archives against the signed release manifest:</p>
+        <div class="code-box">
+          <span id="cmd-sha-bundle">curl -sSL https://github.com/kartik2005221/s0/releases/latest/download/SHA256SUMS | sha256sum --check</span>
+          <button class="copy-btn" data-copy-target="cmd-sha-bundle">Copy</button>
+        </div>
+        <div class="card-footer-meta">
+          <a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener" class="inspect-script-link">GitHub Releases ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Footer with Extended Documentation Links -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-brand-title">
+          <img src="../assets/favicons/s0-dark/favicon-32x32.png" alt="s0" id="footerLogo" class="footer-logo" width="22" height="22">
+          <span>s0 — Sector Zero</span>
+        </div>
+        <p class="footer-brand-desc">
+          Unified digital forensic media sanitization, offensive evidence carving, bit-stream acquisition &amp; cryptographic audit suite.
+        </p>
+      </div>
+
+      <div class="footer-links-group">
+        <!-- Documentation Column -->
+        <div class="footer-col">
+          <h5>Documentation</h5>
+          <ul>
+            <li><a href="https://sector0.gitbook.io/" target="_blank" rel="noopener">Documentation Home ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/user-manual" target="_blank" rel="noopener">User &amp; Operator Manual ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/architecture/" target="_blank" rel="noopener">System Architecture ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/cli-reference" target="_blank" rel="noopener">CLI Complete Reference ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/forensic-carving" target="_blank" rel="noopener">Forensic Carving Guide ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/guides/live-iso" target="_blank" rel="noopener">Live ISO Build Guide ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/compliance/" target="_blank" rel="noopener">NIST SP 800-88 Compliance ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/project/agentic-ai" target="_blank" rel="noopener">Agentic AI Forensics Skill ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Ecosystem Column -->
+        <div class="footer-col">
+          <h5>Ecosystem</h5>
+          <ul>
+            <li><a href="/">Official Website</a></li>
+            <li><a href="/verify/">Verifier</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
+            <li><a href="https://sector0.gitbook.io/architecture/certificate-spec" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
+          </ul>
+        </div>
+
+        <!-- Repository Column -->
+        <div class="footer-col">
+          <h5>Repository</h5>
+          <ul>
+            <li><a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener">GitHub (kartik2005221/s0) ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Releases &amp; Changelogs ↗</a></li>
+            <li><a href="https://github.com/kartik2005221/s0/blob/master/LICENSE" target="_blank" rel="noopener">MIT License ↗</a></li>
+            <li><a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221 ↗</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-legal-notice">
+        <strong>Legal Advisory:</strong> s0 is a digital forensic sanitization and recovery tool. Only operate on storage media you legally own or have documented, written authorization to process per international cybercrime laws.
+      </div>
+      <div>
+        Made by <a href="https://github.com/kartik2005221" target="_blank" rel="noopener">@kartik2005221</a> · MIT License
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/install.js"></script>
+</body>
+</html>

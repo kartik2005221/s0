@@ -12,12 +12,12 @@
     "theme": "clean",
     "primaryColor": {
       "dark": "#FF6500",
-      "light": "#CC5200"
+      "light": "#C2410C"
     },
     "tint": {
       "color": {
-        "dark": "#000000",
-        "light": "#F8FAFC"
+        "dark": "#0B192C",
+        "light": "#F4F7FB"
       }
     },
     "infoColor": {
@@ -63,7 +63,7 @@
         "localizedTitle": {}
       },
       {
-        "title": "Verification Portal",
+        "title": "Verify Certificate",
         "style": "link",
         "to": {
           "kind": "url",
@@ -73,11 +73,11 @@
         "localizedTitle": {}
       },
       {
-        "title": "Install Portal",
+        "title": "Get s0",
         "style": "link",
         "to": {
           "kind": "url",
-          "url": "https://sector0.pages.dev/install/"
+          "url": "https://sector0.pages.dev/get/"
         },
         "links": [],
         "localizedTitle": {}

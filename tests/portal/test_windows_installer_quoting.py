@@ -31,7 +31,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-INSTALL_DIR = REPO_ROOT / "site" / "install"
+INSTALL_DIR = REPO_ROOT / "site" / "scripts"
 
 CMD_FILES = sorted(INSTALL_DIR.glob("*.cmd"))
 PS_FILES = sorted(INSTALL_DIR.glob("*.ps1"))

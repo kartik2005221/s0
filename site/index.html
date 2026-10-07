@@ -33,7 +33,7 @@
   </script>
 
   <!-- Typography & Fonts -->
-  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
 
   <!-- Favicons and App Icons -->
   <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -83,7 +83,7 @@
     </a>
 
     <div class="site-header-right">
-      <a href="/install/" class="nav-btn">Install</a>
+      <a href="/get/" class="nav-btn">Get</a>
       <a href="/verify/" class="nav-btn">Verify</a>
       <a href="https://sector0.gitbook.io/" target="_blank" rel="noopener" class="nav-btn">Documentation ↗</a>
       <a href="https://github.com/kartik2005221/s0" target="_blank" rel="noopener" class="nav-btn nav-github" aria-label="GitHub Repository" title="GitHub: kartik2005221/s0">
@@ -103,6 +103,7 @@
       </div>
     </div>
   </div>
+  <div class="header-scroll-progress" id="scrollProgress"></div>
 </header>
 
 <main id="main-content">
@@ -140,6 +141,30 @@
         <div class="code-box">
           <span class="code-box-content" id="hero-quick-cmd">curl -fsSL https://sector0.pages.dev/sh | bash</span>
           <button class="copy-btn" data-copy-target="hero-quick-cmd">Copy</button>
+        </div>
+      </div>
+
+      <!-- Proof Strip -->
+      <div class="proof-strip">
+        <div class="proof-item">
+          <span class="proof-dot"></span>
+          <span class="s0-release-version">v3.1.0</span>
+        </div>
+        <span class="proof-sep" aria-hidden="true">/</span>
+        <div class="proof-item">
+          <span>MIT License</span>
+        </div>
+        <span class="proof-sep" aria-hidden="true">/</span>
+        <div class="proof-item">
+          <span>Linux · macOS · Windows</span>
+        </div>
+        <span class="proof-sep" aria-hidden="true">/</span>
+        <div class="proof-item">
+          <span>Ext4 · NTFS · APFS · FAT32</span>
+        </div>
+        <span class="proof-sep" aria-hidden="true">/</span>
+        <div class="proof-item">
+          <span>Ed25519 · RFC 8785 JCS</span>
         </div>
       </div>
 
@@ -224,7 +249,7 @@
         </p>
       </div>
 
-      <!-- 05: Verification Portal -->
+      <!-- 05: Verifier -->
       <div class="feature-card feature-card-side">
         <div class="feature-card-header">
           <div class="feature-icon-badge">
@@ -232,10 +257,167 @@
             <span class="feature-tag">SUPPORTING FEATURE</span>
           </div>
         </div>
-        <h3>Zero-Trust Verification Portal</h3>
+        <h3>Offline Certificate Verifier</h3>
         <p>
           100% client-side WebCrypto validator at <a href="/verify/">sector0.pages.dev/verify</a>. Drag and drop JSON certificates, PDFs, or QR images with zero data leaving your machine.
         </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Chain-of-Custody Story -->
+  <section class="container section-spacer reveal-on-scroll" id="chain-story">
+    <div class="section-header">
+      <span class="section-label">[ Chain of Custody ]</span>
+      <h2 class="section-title">Cryptographic Forensic Lifecycle</h2>
+      <p class="section-desc">
+        Five connected phases from raw sector access to court-admissible verification.
+      </p>
+    </div>
+
+    <div class="story-container">
+      <div class="story-steps-nav" role="tablist" aria-label="Forensic Lifecycle Stages">
+        <button class="story-step-btn active" data-story-step="0" role="tab" aria-selected="true">
+          <span class="story-step-num">01</span>
+          <span class="story-step-name">Wipe</span>
+        </button>
+        <button class="story-step-btn" data-story-step="1" role="tab" aria-selected="false">
+          <span class="story-step-num">02</span>
+          <span class="story-step-name">Image</span>
+        </button>
+        <button class="story-step-btn" data-story-step="2" role="tab" aria-selected="false">
+          <span class="story-step-num">03</span>
+          <span class="story-step-name">Carve</span>
+        </button>
+        <button class="story-step-btn" data-story-step="3" role="tab" aria-selected="false">
+          <span class="story-step-num">04</span>
+          <span class="story-step-name">Audit</span>
+        </button>
+        <button class="story-step-btn" data-story-step="4" role="tab" aria-selected="false">
+          <span class="story-step-num">05</span>
+          <span class="story-step-name">Verify</span>
+        </button>
+      </div>
+
+      <div class="story-card" id="storyCard">
+        <div class="story-card-header">
+          <div class="story-card-badge" id="storyBadge">PHASE 01 · MEDIA SANITIZATION</div>
+          <div class="story-card-command"><code id="storyCmd">s0 wipe /dev/nvme0n1 --method crypto-erase --verify 100</code></div>
+        </div>
+        <div class="story-card-body">
+          <h3 id="storyTitle">Hardware-Level Media Sanitization</h3>
+          <p id="storyDesc">Executes cryptographic NVMe Sanitize or multi-pass CSPRNG overwrite aligned with NIST SP 800-88 Rev. 2. Automatically verifies zero residual Shannon entropy across sample sectors and signs an Ed25519 erasure certificate.</p>
+          <div class="story-specs">
+            <div class="story-spec-item">
+              <span class="spec-label">Standard Alignment</span>
+              <span class="spec-value" id="storySpecStandard">NIST SP 800-88 Rev. 2 &amp; IEEE 2883-2022</span>
+            </div>
+            <div class="story-spec-item">
+              <span class="spec-label">Cryptographic Artifact</span>
+              <span class="spec-value" id="storySpecArtifact">Ed25519 Erasure Certificate (JSON + PDF)</span>
+            </div>
+            <div class="story-spec-item">
+              <span class="spec-label">Integrity Invariant</span>
+              <span class="spec-value" id="storySpecInvariant">Zero residual data entropy (measured 0.000 bits/byte)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live WebCrypto Hash-Chain Tamper Demonstration -->
+  <section class="container section-spacer reveal-on-scroll" id="tamper-demo">
+    <div class="section-header">
+      <span class="section-label">[ Audit Ledger ]</span>
+      <h2 class="section-title">Tamper-Evident Hash-Chain</h2>
+      <p class="section-desc">
+        Live in-browser WebCrypto demonstration. Every operation binds cryptographically to the preceding block.
+      </p>
+    </div>
+
+    <div class="hash-demo-container">
+      <div class="hash-demo-controls">
+        <div class="hash-status-banner" id="chainStatusBanner" role="status" aria-live="polite">
+          <span class="status-indicator-dot" id="chainStatusDot"></span>
+          <span id="chainStatusText">Chain Intact: 3 of 3 blocks cryptographically valid.</span>
+        </div>
+        <div class="hash-demo-actions">
+          <button class="btn btn-secondary btn-sm" id="btnTamperChain" data-action="tamper-chain">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Simulate Tamper on Block 1</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" id="btnResetChain" data-action="reset-chain">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            <span>Restore Ledger</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="hash-chain-blocks" id="chainBlocksContainer">
+        <!-- Block 0 -->
+        <div class="hash-block-card" id="blockCard0">
+          <div class="hash-block-head">
+            <span class="block-idx">Block #0 [GENESIS]</span>
+            <span class="block-status ok" id="blockStatus0">VALID</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Action:</span>
+            <span class="field-val" id="blockAction0">LAB_INITIALIZED</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Prev Hash:</span>
+            <span class="field-val hash-text">0000000000000000000000000000000000000000000000000000000000000000</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Block Hash:</span>
+            <span class="field-val hash-text" id="blockHash0">calculating...</span>
+          </div>
+        </div>
+
+        <div class="chain-connector" id="connector0_1" aria-hidden="true">&rarr;</div>
+
+        <!-- Block 1 -->
+        <div class="hash-block-card" id="blockCard1">
+          <div class="hash-block-head">
+            <span class="block-idx">Block #1 [WIPE]</span>
+            <span class="block-status ok" id="blockStatus1">VALID</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Action:</span>
+            <span class="field-val" id="blockAction1">MEDIA_SANITY_PURGE</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Prev Hash:</span>
+            <span class="field-val hash-text" id="blockPrevHash1">calculating...</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Block Hash:</span>
+            <span class="field-val hash-text" id="blockHash1">calculating...</span>
+          </div>
+        </div>
+
+        <div class="chain-connector" id="connector1_2" aria-hidden="true">&rarr;</div>
+
+        <!-- Block 2 -->
+        <div class="hash-block-card" id="blockCard2">
+          <div class="hash-block-head">
+            <span class="block-idx">Block #2 [ACQUIRE]</span>
+            <span class="block-status ok" id="blockStatus2">VALID</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Action:</span>
+            <span class="field-val" id="blockAction2">BITSTREAM_ACQUISITION</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Prev Hash:</span>
+            <span class="field-val hash-text" id="blockPrevHash2">calculating...</span>
+          </div>
+          <div class="hash-block-field">
+            <span class="field-lbl">Block Hash:</span>
+            <span class="field-val hash-text" id="blockHash2">calculating...</span>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -331,8 +513,8 @@
     </div>
 
     <div class="install-cta">
-      <a class="install-cta-link" href="https://sector0.pages.dev/install/" target="_blank" rel="noopener">
-        Visit full Installation &amp; Upgrade Portal (sector0.pages.dev) →
+      <a class="install-cta-link" href="/get/">
+        Get s0 &mdash; Install, Upgrade &amp; Live ISO Guides &rarr;
       </a>
     </div>
   </section>
@@ -418,7 +600,7 @@
               <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> None</td>
             </tr>
             <tr>
-              <td>Zero-Trust Web Verifier</td>
+              <td>Offline Web Verifier</td>
               <td class="s0-col-cell"><svg class="check-icon" aria-hidden="true" focusable="false"><use href="#i-check-icon"></use></svg> Pure WebCrypto</td>
               <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
               <td><svg class="cross-icon" aria-hidden="true" focusable="false"><use href="#i-cross-icon"></use></svg> No</td>
@@ -443,6 +625,47 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scope & Forensic Boundaries -->
+  <section class="container section-spacer reveal-on-scroll" id="limitations">
+    <div class="section-header">
+      <span class="section-label">[ Scope &amp; Boundaries ]</span>
+      <h2 class="section-title">What s0 Does &amp; Does Not Do</h2>
+      <p class="section-desc">
+        Clarity on forensic capabilities, mathematical guarantees, and hardware physics.
+      </p>
+    </div>
+
+    <div class="limitations-grid">
+      <div class="limitations-card">
+        <div class="limitations-card-header ok">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <h3>What s0 Guarantees</h3>
+        </div>
+        <ul class="limitations-list">
+          <li><strong>Cryptographic Proof:</strong> Deterministic Ed25519 signatures over RFC 8785 canonical JSON attestations.</li>
+          <li><strong>Standards Alignment:</strong> Media sanitization operations aligned with NIST SP 800-88 Rev. 2 &amp; IEEE 2883-2022.</li>
+          <li><strong>Forensic Bit-Stream Integrity:</strong> Simultaneous real-time SHA-256 and MD5 hashing during raw imaging with zero bad-sector desync.</li>
+          <li><strong>Immutable Audit History:</strong> Append-only SHA-256 hash-chained SQLite ledger recording all operator parameters and target hardware serials.</li>
+          <li><strong>Complete Offline Operation:</strong> Zero network dependencies; verifier and CLI operate entirely offline.</li>
+        </ul>
+      </div>
+
+      <div class="limitations-card">
+        <div class="limitations-card-header warn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <h3>Forensic Boundaries</h3>
+        </div>
+        <ul class="limitations-list">
+          <li><strong>No Degaussing:</strong> Does not physically degauss magnetic platters. Mechanically failed HDDs requiring magnetic degaussing need physical degausser hardware.</li>
+          <li><strong>No Overwritten Flash Recovery:</strong> Cannot recover flash memory cells once NVMe Sanitize or controller TRIM has executed (NAND physics cannot be undone).</li>
+          <li><strong>Not a Live Memory Agent:</strong> s0 is a disk and media forensics suite, not an endpoint detection agent (EDR) or live RAM hook.</li>
+          <li><strong>No Firmware Lock Bypass:</strong> Does not bypass hardware-locked proprietary controller firmware without authorized credentials.</li>
+          <li><strong>Requires Device Authorization:</strong> Designed strictly for forensic laboratories and media you legally own or are formally authorized to examine.</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -482,8 +705,8 @@
         <div class="footer-col">
           <h5>Ecosystem</h5>
           <ul>
-            <li><a href="/verify/">Verification Portal</a></li>
-            <li><a href="/install/">Installation Portal</a></li>
+            <li><a href="/verify/">Verifier</a></li>
+            <li><a href="/get/">Get s0</a></li>
             <li><a href="https://github.com/kartik2005221/s0/releases" target="_blank" rel="noopener">Bare-Metal Live ISO ↗</a></li>
             <li><a href="https://sector0.gitbook.io/architecture/canonical-json/" target="_blank" rel="noopener">RFC 8785 Canonical JSON ↗</a></li>
           </ul>

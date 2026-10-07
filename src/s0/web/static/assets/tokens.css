@@ -1,0 +1,175 @@
+/* ==========================================================================
+   s0 design tokens — CANONICAL SOURCE OF TRUTH
+   ==========================================================================
+   Color Palette: #FF6500, #1E3E62, #0B192C, #000000
+   Generated into site/assets/ and src/s0/web/static/assets/ by tools/sync_assets.py
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- surfaces (Dark Theme) ------------------------------------------- */
+  --surface-canvas:  #000000;
+  --surface-raised:  #0B192C;
+  --surface-hover:   #10243E;
+  --surface-overlay: #152B47;
+  --surface-sunken:  #040810;
+  --surface-inset:   #071322;
+  --header-bg:       rgba(0, 0, 0, 0.85);
+
+  /* ---- text (Dark Theme) ----------------------------------------------- */
+  --text-primary:   #FFFFFF;
+  --text-secondary: #CBD5E1;
+  --text-tertiary:  #8496AC;
+  --text-inverse:   #0B192C;
+
+  /* ---- borders (Dark Theme) -------------------------------------------- */
+  --border-subtle:  #1E3E62;
+  --border-default: #2A4B74;
+  --border-strong:  #3B6293;
+  --border-control: #3E699B; /* 3.70:1 on black, 3.11:1 on navy; clears WCAG 3:1 */
+  --border-hover:   #FF8533;
+  --border-focus:   #FF6500;
+  --focus-ring:     0 0 0 2px rgba(255, 101, 0, 0.6);
+
+  /* ---- brand & action (Dark Theme) ------------------------------------- */
+  --brand:          #FF6500;
+  --brand-hover:    #FF8533;
+  --brand-active:   #E05500;
+  --brand-glow:     rgba(255, 101, 0, 0.25);
+  --brand-on:       #0A0A0A; /* 6.71:1 against #FF6500; clears WCAG 4.5:1 */
+
+  /* ---- status (Dark Theme) --------------------------------------------- */
+  --status-ok:        #10B981;
+  --status-ok-bg:     rgba(16, 185, 129, 0.12);
+  --status-warn:      #F59E0B;
+  --status-warn-bg:   rgba(245, 158, 11, 0.12);
+  --status-danger:    #EF4444;
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-info:      #38BDF8;
+  --status-info-bg:   rgba(56, 189, 248, 0.12);
+
+  /* ---- helper aliases -------------------------------------------------- */
+  --code-bg:              var(--surface-sunken);
+  --btn-bg:               var(--surface-raised);
+  --btn-text:             var(--text-primary);
+  --status-ok-border:     var(--status-ok);
+  --status-warn-border:   var(--status-warn);
+  --status-danger-border: var(--status-danger);
+  --status-info-border:   var(--status-info);
+
+  /* ---- typography ------------------------------------------------------ */
+  --font-sans: 'Rubik', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* ---- layout & geometry ----------------------------------------------- */
+  --container-max: 1200px;
+  --header-height: 56px;
+  --radius-sm:     6px;
+  --radius-md:     10px;
+  --radius-full:   9999px;
+
+  /* ---- transitions ----------------------------------------------------- */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-norm: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Light Theme (explicit data-theme="light")
+   ========================================================================== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --surface-canvas:  #F4F7FB;
+  --surface-raised:  #FFFFFF;
+  --surface-hover:   #E9F0F8;
+  --surface-overlay: #FFFFFF;
+  --surface-sunken:  #EAEFF6;
+  --surface-inset:   #FFFFFF;
+  --header-bg:       rgba(244, 247, 251, 0.90);
+
+  --text-primary:   #0B192C; /* 16.4:1 on canvas */
+  --text-secondary: #24364D;
+  --text-tertiary:  #3B4E66; /* 8.5:1 on white, 7.9:1 on canvas */
+  --text-inverse:   #FFFFFF;
+
+  --border-subtle:  #D1DCE8;
+  --border-default: #A8BFD6;
+  --border-strong:  #7393B5;
+  --border-control: #5A7D9F; /* 4.31:1 on white, 4.01:1 on canvas; clears WCAG 3:1 */
+  --border-hover:   #C2410C;
+  --border-focus:   #C2410C;
+  --focus-ring:     0 0 0 2px rgba(194, 65, 12, 0.5);
+
+  --brand:          #C2410C; /* 5.18:1 against white; clears WCAG 4.5:1 */
+  --brand-hover:    #9A3412;
+  --brand-active:   #7C2D12;
+  --brand-glow:     rgba(194, 65, 12, 0.20);
+  --brand-on:       #FFFFFF; /* 5.18:1 against #C2410C */
+
+  --status-ok:        #059669;
+  --status-ok-bg:     rgba(5, 150, 105, 0.12);
+  --status-warn:      #D97706;
+  --status-warn-bg:   rgba(217, 119, 6, 0.12);
+  --status-danger:    #DC2626;
+  --status-danger-bg: rgba(220, 38, 38, 0.12);
+  --status-info:      #0284C7;
+  --status-info-bg:   rgba(2, 132, 199, 0.12);
+}
+
+/* ==========================================================================
+   OS light preference when user has not made an explicit choice
+   ========================================================================== */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --surface-canvas:  #F4F7FB;
+    --surface-raised:  #FFFFFF;
+    --surface-hover:   #E9F0F8;
+    --surface-overlay: #FFFFFF;
+    --surface-sunken:  #EAEFF6;
+    --surface-inset:   #FFFFFF;
+    --header-bg:       rgba(244, 247, 251, 0.90);
+
+    --text-primary:   #0B192C;
+    --text-secondary: #24364D;
+    --text-tertiary:  #3B4E66;
+    --text-inverse:   #FFFFFF;
+
+    --border-subtle:  #D1DCE8;
+    --border-default: #A8BFD6;
+    --border-strong:  #7393B5;
+    --border-control: #5A7D9F;
+    --border-hover:   #C2410C;
+    --border-focus:   #C2410C;
+    --focus-ring:     0 0 0 2px rgba(194, 65, 12, 0.5);
+
+    --brand:          #C2410C;
+    --brand-hover:    #9A3412;
+    --brand-active:   #7C2D12;
+    --brand-glow:     rgba(194, 65, 12, 0.20);
+    --brand-on:       #FFFFFF;
+
+    --status-ok:        #059669;
+    --status-ok-bg:     rgba(5, 150, 105, 0.12);
+    --status-warn:      #D97706;
+    --status-warn-bg:   rgba(217, 119, 6, 0.12);
+    --status-danger:    #DC2626;
+    --status-danger-bg: rgba(220, 38, 38, 0.12);
+    --status-info:      #0284C7;
+    --status-info-bg:   rgba(2, 132, 199, 0.12);
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Accessibility (WCAG 2.2 SC 2.3.3)
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

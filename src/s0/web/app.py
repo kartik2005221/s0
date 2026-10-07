@@ -267,9 +267,8 @@ async def security_headers(request: Request, call_next):
     `onclick`/`onchange` attributes (index.html), which a hash-based policy cannot
     cover without `'unsafe-hashes'` and a hash per handler. The dangerous vectors
     are closed regardless: `object-src 'none'`, `base-uri 'none'`, no plugins, no
-    framing, forms same-origin only. Migrating the handlers to `addEventListener`
-    is tracked in docs/compliance/limitations.md; until then this is the honest
-    strictness, not a claim of full strictness.
+    All inline handlers have been migrated to addEventListener in dashboard.js,
+    so script-src 'self' enforces strict policy with zero 'unsafe-inline'.
     """
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -280,7 +279,7 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data:; "
         "object-src 'none'; "
@@ -293,7 +292,15 @@ async def security_headers(request: Request, call_next):
 
 PORTAL_DIR = REPO / "site/verify"
 if PORTAL_DIR.is_dir():
-    app.mount("/portal", StaticFiles(directory=str(PORTAL_DIR), html=True), name="portal")
+    app.mount("/verify", StaticFiles(directory=str(PORTAL_DIR), html=True), name="verify")
+
+    @app.get("/portal/{path:path}")
+    def _redirect_portal(path: str = ""):
+        return RedirectResponse(url=f"/verify/{path}", status_code=302)
+
+    @app.get("/portal")
+    def _redirect_portal_root():
+        return RedirectResponse(url="/verify/", status_code=302)
 
 STATIC_DIR = STATIC_ROOT / "static"
 if STATIC_DIR.is_dir():

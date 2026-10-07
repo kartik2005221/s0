@@ -57,11 +57,11 @@ PS1_PATTERN = re.compile(
 )
 
 SCRIPT_TARGETS: tuple[tuple[Path, re.Pattern[str]], ...] = (
-    (REPO_ROOT / "site" / "install" / "install.sh", SHELL_PATTERN),
-    (REPO_ROOT / "site" / "install" / "upgrade.sh", SHELL_PATTERN),
-    (REPO_ROOT / "site" / "install" / "upgrade.cmd", CMD_PATTERN),
-    (REPO_ROOT / "site" / "install" / "install.ps1", PS1_PATTERN),
-    (REPO_ROOT / "site" / "install" / "upgrade.ps1", PS1_PATTERN),
+    (REPO_ROOT / "site" / "scripts" / "install.sh", SHELL_PATTERN),
+    (REPO_ROOT / "site" / "scripts" / "upgrade.sh", SHELL_PATTERN),
+    (REPO_ROOT / "site" / "scripts" / "upgrade.cmd", CMD_PATTERN),
+    (REPO_ROOT / "site" / "scripts" / "install.ps1", PS1_PATTERN),
+    (REPO_ROOT / "site" / "scripts" / "upgrade.ps1", PS1_PATTERN),
 )
 
 VALID_TAG = re.compile(r"^v\d+\.\d+\.\d+(-rc\.\d+)?$")

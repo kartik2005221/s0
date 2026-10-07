@@ -32,7 +32,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-INSTALL_DIR = REPO_ROOT / "site" / "install"
+INSTALL_DIR = REPO_ROOT / "site" / "scripts"
 
 SCRIPTS = sorted(p for p in INSTALL_DIR.iterdir() if p.suffix in (".sh", ".ps1", ".cmd"))
 
@@ -367,7 +367,7 @@ class TestTheRefHasOneSetter:
         """
         import importlib.util
 
-        shutil.copytree(REPO_ROOT / "site" / "install", tmp_path / "install")
+        shutil.copytree(REPO_ROOT / "site" / "scripts", tmp_path / "scripts")
         (tmp_path / "src" / "s0" / "cli").mkdir(parents=True)
         shutil.copy2(
             REPO_ROOT / "src" / "s0" / "cli" / "main.py", tmp_path / "src" / "s0" / "cli" / "main.py"
@@ -381,7 +381,7 @@ class TestTheRefHasOneSetter:
         module.REPO_ROOT = tmp_path
         module.MAIN_PY = tmp_path / "src" / "s0" / "cli" / "main.py"
         module.SCRIPT_TARGETS = tuple(
-            (tmp_path / "install" / path.name, pattern) for path, pattern in module.SCRIPT_TARGETS
+            (tmp_path / "scripts" / path.name, pattern) for path, pattern in module.SCRIPT_TARGETS
         )
         return module, tmp_path
 
@@ -486,7 +486,7 @@ class TestTheRefHasOneSetter:
         module, tmp = sandbox
         current = _sandbox_ref(module)
         other = "master" if current != "master" else "v3.0.0"
-        install_sh = tmp / "install" / "install.sh"
+        install_sh = tmp / "scripts" / "install.sh"
         install_sh.write_text(
             install_sh.read_text(encoding="utf-8").replace(current, other), encoding="utf-8"
         )

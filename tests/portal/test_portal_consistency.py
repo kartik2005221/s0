@@ -29,22 +29,20 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-SHARED_TOKENS = REPO / "shared" / "tokens.css"
+SHARED_TOKENS = REPO / "design" / "tokens.css"
 TOKEN_COPIES = [
-    REPO / "site" / "css" / "tokens.css",
-    REPO / "site/install" / "css" / "tokens.css",
-    REPO / "site/verify" / "css" / "tokens.css",
-    REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
+    REPO / "site" / "assets" / "tokens.css",
+    REPO / "src" / "s0" / "web" / "static" / "assets" / "tokens.css",
 ]
 SURFACE_CSS = [
     REPO / "site" / "css" / "home.css",
-    REPO / "site/install" / "css" / "install.css",
+    REPO / "site/get" / "css" / "install.css",
     REPO / "site/verify" / "css" / "portal.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "dashboard.css",
 ]
 PUBLIC_HTML = [
     REPO / "site" / "index.html",
-    REPO / "site" / "install" / "index.html",
+    REPO / "site" / "get" / "index.html",
     REPO / "site" / "verify" / "index.html",
 ]
 
@@ -56,7 +54,7 @@ HEADERS = REPO / "site" / "_headers"
 
 CSP_BLOCKS = {
     REPO / "site" / "index.html": ("/", "/index.html"),
-    REPO / "site" / "install" / "index.html": ("/install/*",),
+    REPO / "site" / "get" / "index.html": ("/get/*",),
     REPO / "site" / "verify" / "index.html": ("/verify/*",),
 }
 
@@ -84,11 +82,8 @@ def csp_for_block(text: str, pattern: str) -> str:
 
 ALL_CSP_BLOCKS = [(html, block) for html, blocks in CSP_BLOCKS.items() for block in blocks]
 
-# Every public page. The loopback dashboard is deliberately absent: its policy
-# allows 'unsafe-inline' by design and its inline handlers are tracked in
-# docs/compliance/limitations.md, so asserting otherwise here would report a
-# decision the project has already made as if it were an oversight.
-ALL_PAGES = PUBLIC_HTML
+# Every web surface, including the dashboard (which now has zero inline handlers).
+ALL_PAGES = PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"]
 
 
 @pytest.mark.parametrize("html", ALL_PAGES, ids=lambda p: p.parent.name)
@@ -135,8 +130,18 @@ def test_token_copies_are_identical_to_the_source():
         assert copy.is_file(), f"missing generated token copy: {copy.relative_to(REPO)}"
         text = copy.read_text(encoding="utf-8")
         assert canonical.decode("utf-8") in text, (
-            f"{copy.relative_to(REPO)} has drifted from shared/tokens.css; run: python tools/sync_tokens.py"
+            f"{copy.relative_to(REPO)} has drifted from design/tokens.css; run: python tools/sync_assets.py"
         )
+
+
+def test_design_assets_do_not_drift():
+    """Assets in site/assets and src/s0/web/static/assets must match design/ byte-for-byte."""
+    import sys
+    if str(REPO) not in sys.path:
+        sys.path.insert(0, str(REPO))
+    from tools.sync_assets import check_drift
+    problems = check_drift()
+    assert not problems, f"design assets have drifted; run: python tools/sync_assets.py: {problems}"
 
 
 @pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
@@ -144,8 +149,8 @@ def test_surface_css_imports_the_shared_tokens(css):
     rel = css.relative_to(REPO)
     assert css.is_file(), f"missing stylesheet {rel}"
     text = css.read_text(encoding="utf-8")
-    assert '@import url("tokens.css")' in text, (
-        f"{rel} does not import the shared tokens; every colour must come from shared/tokens.css"
+    assert "tokens.css" in text, (
+        f"{rel} does not import tokens.css; every colour must come from design/tokens.css"
     )
     # @import must be the first rule or the whole sheet is ignored.
     first = next(line.strip() for line in text.splitlines() if line.strip())
@@ -161,6 +166,38 @@ def test_no_surface_redeclares_a_token_value(css):
         f"{rel} still declares literal token values, e.g. {offenders[:3]}. "
         f"Every colour must resolve through shared/tokens.css."
     )
+
+
+SELF_REF_RE = re.compile(r"^\s*(--[a-zA-Z0-9_-]+)\s*:[^;]*var\(\s*\1(?![a-zA-Z0-9_-])", re.M)
+VAR_USAGE_RE = re.compile(r"var\(\s*(--[a-zA-Z0-9_-]+)(?:\s*,\s*([^)]+))?\)")
+PROP_DEF_RE = re.compile(r"(--[a-zA-Z0-9_-]+)\s*:")
+
+
+@pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
+def test_no_self_referencing_css_properties(css):
+    """A custom property that references itself (e.g. --x: var(--x)) is invalid
+    at computed-value time, dropping the property to unset/initial."""
+    rel = css.relative_to(REPO)
+    text = css.read_text(encoding="utf-8")
+    offenders = [m.group(0).strip() for m in SELF_REF_RE.finditer(text)]
+    assert not offenders, f"{rel} has self-referencing CSS custom properties: {offenders}"
+
+
+@pytest.mark.parametrize("css", SURFACE_CSS, ids=lambda p: p.parent.parent.name)
+def test_no_undefined_css_variables(css):
+    """Every var(--x) must have a fallback or resolve to a defined property."""
+    rel = css.relative_to(REPO)
+    tokens_text = SHARED_TOKENS.read_text(encoding="utf-8") if SHARED_TOKENS.exists() else ""
+    declared = set(PROP_DEF_RE.findall(tokens_text))
+    text = css.read_text(encoding="utf-8")
+    declared |= set(PROP_DEF_RE.findall(text))
+    undefined = []
+    for m in VAR_USAGE_RE.finditer(text):
+        var_name = m.group(1)
+        fallback = m.group(2)
+        if not fallback and var_name not in declared:
+            undefined.append(var_name)
+    assert not undefined, f"{rel} uses undefined CSS custom properties without fallbacks: {sorted(set(undefined))}"
 
 
 def test_shared_tokens_cover_the_full_surface_area():
@@ -533,10 +570,9 @@ def test_every_surface_self_hosts_its_fonts():
 
 
 FONT_DIRS = [
-    REPO / "site" / "fonts",
-    REPO / "site" / "install" / "fonts",
-    REPO / "site" / "verify" / "fonts",
-    REPO / "src" / "s0" / "web" / "static" / "fonts",
+    REPO / "design" / "fonts",
+    REPO / "site" / "assets" / "fonts",
+    REPO / "src" / "s0" / "web" / "static" / "assets" / "fonts",
 ]
 
 
@@ -585,7 +621,7 @@ def test_every_surface_declares_font_weight_ranges(d):
 # GitHub, so those two remain absolute.
 EXPECTED_NAV = {
     "docs": "sector0.gitbook.io",
-    "install": "/install/",
+    "get": "/get/",
     "verify": "/verify/",
     "github": "github.com/kartik2005221/s0",
 }
@@ -597,7 +633,7 @@ EXPECTED_NAV = {
 # own host was neither possible nor meaningful.
 SELF_PATH = {
     REPO / "site" / "index.html": "/",
-    REPO / "site" / "install" / "index.html": "/install/",
+    REPO / "site" / "get" / "index.html": "/get/",
     REPO / "site" / "verify" / "index.html": "/verify/",
 }
 
@@ -683,3 +719,90 @@ def test_brand_colour_is_identical_on_every_surface():
     for css in SURFACE_CSS:
         text = css.read_text(encoding="utf-8")
         assert f"--brand: {brand.group(1)}" not in text, f"{css.relative_to(REPO)} redefines the brand colour"
+
+
+# --------------------------------------------------------------------------- #
+# s0 design system & typography acceptance tests
+# --------------------------------------------------------------------------- #
+
+
+def test_font_family_tokens_declare_rubik_and_jetbrains_mono():
+    """Display font must start with Rubik; code font with JetBrains Mono."""
+    tokens = SHARED_TOKENS.read_text(encoding="utf-8")
+    sans_match = re.search(r"--font-sans:\s*([^;]+);", tokens)
+    mono_match = re.search(r"--font-mono:\s*([^;]+);", tokens)
+    assert sans_match, "tokens.css must define --font-sans"
+    assert mono_match, "tokens.css must define --font-mono"
+
+    sans = sans_match.group(1).strip()
+    mono = mono_match.group(1).strip()
+
+    assert sans.startswith('"Rubik"') or sans.startswith("'Rubik'"), (
+        f"--font-sans must start with Rubik, got: {sans}"
+    )
+    assert mono.startswith('"JetBrains Mono"') or mono.startswith("'JetBrains Mono'"), (
+        f"--font-mono must start with JetBrains Mono, got: {mono}"
+    )
+
+    # Fallbacks must never be serif
+    assert not re.search(r"(?<!sans-)\bserif\b", sans), (
+        f"--font-sans fallback cannot be serif: {sans}"
+    )
+    assert "sans-serif" in sans, f"--font-sans fallback must include sans-serif: {sans}"
+    assert "monospace" in mono, f"--font-mono fallback must include monospace: {mono}"
+
+
+def test_no_stylesheet_has_serif_fallback():
+    """No CSS file in design/, site/, or dashboard static assets may fallback to serif."""
+    all_css = (
+        list((REPO / "design").glob("**/*.css"))
+        + list((REPO / "site").glob("**/*.css"))
+        + list((REPO / "src" / "s0" / "web" / "static").glob("**/*.css"))
+    )
+    for css in all_css:
+        text = css.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            if "font-family" in line or "--font-" in line:
+                cleaned = re.sub(r"sans-serif", "", line)
+                assert not re.search(r"\bserif\b", cleaned), (
+                    f"{css.relative_to(REPO)} declares fallback to serif in: {line}"
+                )
+
+
+def test_every_surface_loads_s0_design_system_core_sheets():
+    """All 4 surfaces (home, get, verify, dashboard) must load the design system tokens."""
+    surfaces = PUBLIC_HTML + [REPO / "src" / "s0" / "web" / "static" / "index.html"]
+    for html in surfaces:
+        text = html.read_text(encoding="utf-8")
+        # Check either directly linked in HTML or imported by the page's primary stylesheet
+        has_tokens = "tokens.css" in text
+        if not has_tokens:
+            css_links = re.findall(r'<link\b[^>]*\bhref="([^"]+\.css)"', text)
+            for css_rel in css_links:
+                clean_rel = css_rel.lstrip("/")
+                if clean_rel.startswith("static/"):
+                    clean_rel = clean_rel[len("static/"):]
+                css_file = (html.parent / clean_rel).resolve()
+                if css_file.is_file() and "tokens.css" in css_file.read_text(encoding="utf-8"):
+                    has_tokens = True
+                    break
+        assert has_tokens, f"{html.relative_to(REPO)} does not load design system tokens"
+
+
+def test_verifier_has_zero_external_fetch_or_runtime_dependencies():
+    """Offline invariant: the verifier page and its scripts must not fetch external resources."""
+    verifier_html = (REPO / "site" / "verify" / "index.html").read_text(encoding="utf-8")
+    verifier_js = (REPO / "site" / "verify" / "js" / "portal.js").read_text(encoding="utf-8")
+
+    src_matches = re.findall(r'<(?:script|img)\b[^>]*\bsrc="([^"]*)"', verifier_html)
+    stylesheet_matches = re.findall(r'<link\b[^>]*\brel="stylesheet"[^>]*\bhref="([^"]*)"', verifier_html)
+    for res in src_matches + stylesheet_matches:
+        assert not res.startswith(("http://", "https://", "//")), (
+            f"Verifier HTML loads external runtime resource: {res}"
+        )
+
+    fetches = re.findall(r'\bfetch\s*\(\s*["\']([^"\']+)["\']', verifier_js)
+    for target in fetches:
+        assert not target.startswith(("http://", "https://", "//")), (
+            f"Verifier JS attempts network fetch to: {target}"
+        )

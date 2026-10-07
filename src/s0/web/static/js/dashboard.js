@@ -43,8 +43,7 @@ function switchNav(tabId, el, updateHash = true) {
   document.querySelectorAll(".tab-content").forEach(p => p.classList.remove("active"));
 
   if (!el) {
-    el = document.querySelector(`.nav-tab[data-tab="${cleanId}"]`) ||
-         document.querySelector(`.nav-tab[onclick*="'${cleanId}'"]`);
+    el = document.querySelector(`.nav-tab[data-tab="${cleanId}"]`);
   }
   if (el) el.classList.add("active");
 
@@ -153,14 +152,12 @@ async function loadAppConfig() {
     const ghLink = document.getElementById("navGithubLink");
     if (ghLink && appConfig.github_url) ghLink.href = appConfig.github_url;
 
-    // Prefill default operator & organization
+    // Set placeholder for operator & organization instead of pre-filling values
     const opFields = ["driveOperator", "fileOperator", "carveOperator", "imageOperator"];
     opFields.forEach(id => {
       const el = document.getElementById(id);
       if (el && appConfig.default_operator) {
-        if (!el.value || el.value === "op-forensic") {
-          el.value = appConfig.default_operator;
-        }
+        el.placeholder = "e.g. " + appConfig.default_operator;
       }
     });
 
@@ -168,9 +165,7 @@ async function loadAppConfig() {
     orgFields.forEach(id => {
       const el = document.getElementById(id);
       if (el && appConfig.default_organization) {
-        if (!el.value || el.value.includes("Digital Forensics")) {
-          el.value = appConfig.default_organization;
-        }
+        el.placeholder = "e.g. " + appConfig.default_organization;
       }
     });
   } catch (e) {
@@ -702,7 +697,7 @@ function addCustomSigRow(name = "", ext = "", cat = "custom", headerHex = "", fo
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
         Signature #${customSigCounter}
       </span>
-      <button type="button" class="btn-remove-sig" onclick="removeCustomSigRow('${card.id}')" title="Remove Signature">&times; Remove</button>
+      <button type="button" class="btn-remove-sig" title="Remove Signature">&times; Remove</button>
     </div>
     <div class="custom-sig-grid">
       <div>
@@ -711,7 +706,7 @@ function addCustomSigRow(name = "", ext = "", cat = "custom", headerHex = "", fo
       </div>
       <div>
         <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Ext (no dot):</label>
-        <input type="text" class="sig-ext" placeholder="e.g. dat" value="${escapeHtml(ext)}" onchange="onCustomSigExtChange(this)">
+        <input type="text" class="sig-ext" placeholder="e.g. dat" value="${escapeHtml(ext)}">
       </div>
       <div>
         <label style="font-size: 0.68rem; color: var(--text-dim); display: block; margin-bottom: 2px;">Category:</label>
@@ -737,6 +732,14 @@ function addCustomSigRow(name = "", ext = "", cat = "custom", headerHex = "", fo
       </div>
     </div>
   `;
+  const removeBtn = card.querySelector(".btn-remove-sig");
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => removeCustomSigRow(card.id));
+  }
+  const extInput = card.querySelector(".sig-ext");
+  if (extInput) {
+    extInput.addEventListener("change", () => onCustomSigExtChange(extInput));
+  }
   list.appendChild(card);
 }
 
@@ -1263,7 +1266,7 @@ function renderAuditTable(blocks) {
     btnInspect.className = "btn btn-secondary btn-sm";
     btnInspect.style.cssText = "padding: 3px 8px; font-size: 0.72rem;";
     btnInspect.textContent = "Inspect";
-    btnInspect.onclick = () => inspectBlock(b.index);
+    btnInspect.addEventListener("click", () => inspectBlock(b.index));
     tdAction.appendChild(btnInspect);
 
     tr.appendChild(tdIdx);
@@ -1343,11 +1346,9 @@ function closeInspector() {
 
 // Light / Dark Mode Theme Controller
 function initTheme() {
-  let saved = "dark";
-  try {
-    saved = localStorage.getItem("s0_theme") || "dark";
-  } catch (_) {}
-  applyTheme(saved);
+  const current = document.documentElement.getAttribute("data-theme") ||
+    (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  applyTheme(current);
 }
 
 function applyTheme(theme) {
@@ -1374,6 +1375,178 @@ function toggleTheme() {
   applyTheme(current === "dark" ? "light" : "dark");
 }
 
+function bindEventHandlers() {
+  // Navigation tabs
+  document.querySelectorAll(".nav-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const tabName = tab.getAttribute("data-tab");
+      if (tabName) switchNav(tabName, tab);
+    });
+  });
+
+  // Header media refresh
+  const btnRefreshDevices = document.getElementById("btnRefreshDevices");
+  if (btnRefreshDevices) {
+    btnRefreshDevices.addEventListener("click", loadDevices);
+  }
+
+  // Header scroll progress
+  window.addEventListener("scroll", () => {
+    const bar = document.getElementById("headerScrollProgress");
+    if (!bar) return;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+    bar.style.width = Math.min(100, Math.max(0, pct)) + "%";
+  }, { passive: true });
+
+  // Tab 1: Drive
+  const btnRefreshMedia = document.getElementById("btnRefreshMedia");
+  if (btnRefreshMedia) btnRefreshMedia.addEventListener("click", loadDevices);
+
+  const driveSelect = document.getElementById("driveSelect");
+  if (driveSelect) driveSelect.addEventListener("change", onDriveSelected);
+
+  const btnDriveKeyUpload = document.getElementById("btnDriveKeyUpload");
+  const driveKeyUpload = document.getElementById("driveKeyUpload");
+  if (btnDriveKeyUpload && driveKeyUpload) {
+    btnDriveKeyUpload.addEventListener("click", () => driveKeyUpload.click());
+    driveKeyUpload.addEventListener("change", () => {
+      if (driveKeyUpload.files && driveKeyUpload.files[0]) {
+        document.getElementById("driveKeyPath").value = "[Uploaded: " + driveKeyUpload.files[0].name + "]";
+      }
+    });
+  }
+
+  const btnStartDriveWipe = document.getElementById("btnStartDriveWipe");
+  if (btnStartDriveWipe) btnStartDriveWipe.addEventListener("click", startDriveWipe);
+
+  const btnClearDriveLog = document.getElementById("btnClearDriveLog");
+  if (btnClearDriveLog) btnClearDriveLog.addEventListener("click", () => clearLog("driveLog"));
+
+  // Tab 2: File
+  const btnBrowseFiles = document.getElementById("btnBrowseFiles");
+  const fileBrowseInput = document.getElementById("fileBrowseInput");
+  if (btnBrowseFiles && fileBrowseInput) {
+    btnBrowseFiles.addEventListener("click", triggerFileBrowser);
+    fileBrowseInput.addEventListener("change", handleFileBrowseSelect);
+  }
+
+  const btnAddSampleFile = document.getElementById("btnAddSampleFile");
+  if (btnAddSampleFile) btnAddSampleFile.addEventListener("click", addSampleFileTarget);
+
+  const btnClearFileTargets = document.getElementById("btnClearFileTargets");
+  if (btnClearFileTargets) {
+    btnClearFileTargets.addEventListener("click", () => {
+      const area = document.getElementById("fileTargets");
+      if (area) area.value = "";
+    });
+  }
+
+  const btnFileKeyUpload = document.getElementById("btnFileKeyUpload");
+  const fileKeyUpload = document.getElementById("fileKeyUpload");
+  if (btnFileKeyUpload && fileKeyUpload) {
+    btnFileKeyUpload.addEventListener("click", () => fileKeyUpload.click());
+    fileKeyUpload.addEventListener("change", () => {
+      if (fileKeyUpload.files && fileKeyUpload.files[0]) {
+        document.getElementById("fileKeyPath").value = "[Uploaded: " + fileKeyUpload.files[0].name + "]";
+      }
+    });
+  }
+
+  const btnStartFileErase = document.getElementById("btnStartFileErase");
+  if (btnStartFileErase) btnStartFileErase.addEventListener("click", startFileErase);
+
+  const btnClearFileLog = document.getElementById("btnClearFileLog");
+  if (btnClearFileLog) btnClearFileLog.addEventListener("click", () => clearLog("fileLog"));
+
+  // Tab 3: Carve
+  document.querySelectorAll(".chip[data-carve-preset]").forEach(chip => {
+    chip.addEventListener("click", () => setCarvePreset(chip.dataset.carvePreset, chip));
+  });
+
+  const carveExts = document.getElementById("carveExts");
+  if (carveExts) carveExts.addEventListener("input", syncInputToExtCheckboxes);
+
+  const btnAddCustomSig = document.getElementById("btnAddCustomSig");
+  if (btnAddCustomSig) btnAddCustomSig.addEventListener("click", () => addCustomSigRow());
+
+  const carveMinConf = document.getElementById("carveMinConf");
+  if (carveMinConf) {
+    carveMinConf.addEventListener("input", () => {
+      const confVal = document.getElementById("confVal");
+      if (confVal) confVal.textContent = carveMinConf.value + "%";
+    });
+  }
+
+  const btnCarveKeyUpload = document.getElementById("btnCarveKeyUpload");
+  const carveKeyUpload = document.getElementById("carveKeyUpload");
+  if (btnCarveKeyUpload && carveKeyUpload) {
+    btnCarveKeyUpload.addEventListener("click", () => carveKeyUpload.click());
+    carveKeyUpload.addEventListener("change", () => {
+      if (carveKeyUpload.files && carveKeyUpload.files[0]) {
+        document.getElementById("carveKeyPath").value = "[Uploaded: " + carveKeyUpload.files[0].name + "]";
+      }
+    });
+  }
+
+  const btnStartCarve = document.getElementById("btnStartCarve");
+  if (btnStartCarve) btnStartCarve.addEventListener("click", startCarve);
+
+  const btnClearCarveLog = document.getElementById("btnClearCarveLog");
+  if (btnClearCarveLog) btnClearCarveLog.addEventListener("click", () => clearLog("carveLog"));
+
+  // Tab 4: Image
+  const imageDestInput = document.getElementById("imageDestInput");
+  if (imageDestInput) imageDestInput.addEventListener("input", updateClonePrompt);
+
+  const imageIsClone = document.getElementById("imageIsClone");
+  if (imageIsClone) imageIsClone.addEventListener("change", toggleCloneWarning);
+
+  const btnImageKeyUpload = document.getElementById("btnImageKeyUpload");
+  const imageKeyUpload = document.getElementById("imageKeyUpload");
+  if (btnImageKeyUpload && imageKeyUpload) {
+    btnImageKeyUpload.addEventListener("click", () => imageKeyUpload.click());
+    imageKeyUpload.addEventListener("change", () => {
+      if (imageKeyUpload.files && imageKeyUpload.files[0]) {
+        document.getElementById("imageKeyPath").value = "[Uploaded: " + imageKeyUpload.files[0].name + "]";
+      }
+    });
+  }
+
+  const btnStartImaging = document.getElementById("btnStartImaging");
+  if (btnStartImaging) btnStartImaging.addEventListener("click", startImaging);
+
+  const btnClearImageLog = document.getElementById("btnClearImageLog");
+  if (btnClearImageLog) btnClearImageLog.addEventListener("click", () => clearLog("imageLog"));
+
+  // Tab 5: Audit & Modal
+  const btnVerifyLedger = document.getElementById("btnVerifyLedger");
+  if (btnVerifyLedger) btnVerifyLedger.addEventListener("click", verifyLedger);
+
+  const btnRefreshAuditBlocks = document.getElementById("btnRefreshAuditBlocks");
+  if (btnRefreshAuditBlocks) btnRefreshAuditBlocks.addEventListener("click", loadAuditBlocks);
+
+  const auditFilterOp = document.getElementById("auditFilterOp");
+  if (auditFilterOp) auditFilterOp.addEventListener("change", applyAuditFilters);
+
+  const auditSearch = document.getElementById("auditSearch");
+  if (auditSearch) auditSearch.addEventListener("input", applyAuditFilters);
+
+  const btnCloseInspector = document.getElementById("btnCloseInspector");
+  if (btnCloseInspector) btnCloseInspector.addEventListener("click", closeInspector);
+
+  const inspectorModal = document.getElementById("inspectorModal");
+  if (inspectorModal) {
+    inspectorModal.addEventListener("click", (e) => {
+      if (e.target === inspectorModal) closeInspector();
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeInspector();
+  });
+}
+
 async function checkCapabilities() {
   try {
     const res = await authFetch("/api/capabilities");
@@ -1391,6 +1564,7 @@ async function checkCapabilities() {
 // Initialize on DOM ready
 window.addEventListener("DOMContentLoaded", async () => {
   initTheme();
+  bindEventHandlers();
   initCarverCheckboxes();
   await checkCapabilities();
   await loadAppConfig();

@@ -524,41 +524,21 @@ jobs:
               print("  ok: staged ISO tree excludes all private keys")
           PY
 
-      - name: site/install and tools/ do not drift apart
-        # tools/*.sh and tools/*.ps1 are symlinks or copies of site/install/*. If one is
-        # edited and the other is not, a Linux user and a Windows user get different
-        # installers from the same tag -- and the Windows one is the copy nobody reviews,
-        # which is how `$S0Ref` stayed undefined for so long.
+      - name: site/scripts installer files exist and are non-empty
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          # Installers only. site/install/ also holds web assets (index.html, favicons)
-          # that belong to the portal, not to an installer, and comparing those reported
-          # three phantom drifts on the first run of this check.
-          SUFFIXES = {".sh", ".ps1", ".cmd", ".bat"}
-          site, tools = Path("site/install"), Path("tools")
-          copied, links, problems = 0, 0, []
-          for f in sorted(site.iterdir()):
-              if not f.is_file() or f.suffix.lower() not in SUFFIXES:
-                  continue
-              twin = tools / f.name
-              if not twin.exists():
-                  problems.append(f"tools/{f.name} is missing")
-                  continue
-              if twin.is_symlink():
-                  links += 1
-                  if twin.resolve() != f.resolve():
-                      problems.append(f"tools/{f.name} symlinks somewhere else")
-                  continue
-              copied += 1
-              if twin.read_bytes() != f.read_bytes():
-                  problems.append(f"tools/{f.name} differs from site/install/{f.name}")
-          for problem in problems:
-              print(f"  DRIFT: {problem}")
-          print(f"{copied} copied pair(s) compared, {links} symlink(s), {len(problems)} problem(s)")
-          raise SystemExit(1 if problems else 0)
+          scripts = Path("site/scripts")
+          required = {"install.sh", "install.ps1", "install.cmd", "upgrade.sh", "upgrade.ps1", "upgrade.cmd", "uninstall.sh", "uninstall.ps1", "uninstall.cmd", "download_iso.sh", "download_iso.ps1"}
+          found = {f.name for f in scripts.iterdir() if f.is_file()}
+          missing = required - found
+          if missing:
+              raise SystemExit(f"Missing required installer scripts in site/scripts/: {missing}")
+          print(f"ok: all {len(required)} installer scripts present in site/scripts/")
           PY
+
+      - name: Design assets do not drift
+        run: python tools/sync_assets.py --check
 
       - name: Upload the built artefacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

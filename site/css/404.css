@@ -1,4 +1,4 @@
-@import url("tokens.css");
+@import url("../assets/tokens.css");
 
 /* 404 page. Values mirror shared/tokens.css so the error page reads as part of
    the same product rather than as a default server page. Kept in its own file

@@ -1,1 +1,0 @@
-../site/install/install.cmd
