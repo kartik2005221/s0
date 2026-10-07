@@ -30,12 +30,14 @@
   --info:        var(--status-info);
   --info-bg:     var(--status-info-bg);
   --info-border: var(--status-info-border);
-  --code-bg:     var(--surface-sunken);
-  --code-text:   var(--code-text);
-  --btn-bg:      var(--surface-inset);
-  --btn-bg-hover:var(--surface-hover);
-  --btn-border:  var(--border-strong);
-  --btn-text:    var(--text-primary);
+}
+
+.theme-icon-moon { display: none; }
+[data-theme="light"] .theme-icon-sun { display: none; }
+[data-theme="light"] .theme-icon-moon { display: inline-block !important; }
+@media (prefers-color-scheme: light) {
+  :where(:root:not([data-theme="dark"])) .theme-icon-sun { display: none; }
+  :where(:root:not([data-theme="dark"])) .theme-icon-moon { display: inline-block !important; }
 }
 
 *, *::before, *::after {
@@ -120,8 +122,8 @@ body {
   font-size: 0.7rem;
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgba(255, 101, 0, 0.12);
-  border: 1px solid rgba(255, 101, 0, 0.3);
+  background: var(--brand-glow);
+  border: 1px solid var(--border-focus);
   color: var(--primary);
   font-weight: 600;
 }
@@ -152,14 +154,20 @@ body {
 }
 .nav-btn-primary {
   background: var(--primary) !important;
-  color: #fff !important;
+  color: var(--brand-on) !important;
   border-color: var(--primary) !important;
   font-weight: 600 !important;
 }
 .nav-btn-primary:hover {
   background: var(--primary-hover) !important;
   border-color: var(--primary-hover) !important;
-  color: #fff !important;
+  color: var(--brand-on) !important;
+}
+.nav-btn-active {
+  color: var(--text-primary) !important;
+  border-color: var(--border-focus) !important;
+  background: var(--surface-hover) !important;
+  font-weight: 600;
 }
 .nav-github {
   font-family: var(--font-mono);
@@ -362,9 +370,10 @@ textarea:focus {
 }
 
 button, .btn {
-  background: var(--btn-bg);
-  color: var(--btn-text);
-  border: 1px solid var(--btn-border);
+  font-family: var(--font-sans);
+  background: var(--surface-inset);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 9px 16px;
   font-size: 0.88rem;
@@ -379,14 +388,14 @@ button, .btn {
 }
 
 button:hover, .btn:hover {
-  background: var(--btn-bg-hover);
-  border-color: var(--border-focus);
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
 }
 
 button.primary {
   background: var(--primary);
   border-color: var(--primary);
-  color: #0b1320;
+  color: var(--brand-on);
   font-weight: 700;
   box-shadow: 0 2px 10px var(--primary-glow);
 }
@@ -394,6 +403,7 @@ button.primary {
 button.primary:hover {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
+  color: var(--brand-on);
   transform: translateY(-1px);
 }
 
@@ -404,21 +414,25 @@ button.scenario-btn {
   font-size: 0.82rem;
   text-align: left;
   justify-content: flex-start;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
 }
 
 button.scenario-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
 }
 
 button.danger-outline {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #fca5a5;
+  border-color: var(--status-danger-border);
+  color: var(--status-danger);
+  background: transparent;
 }
 
 button.danger-outline:hover {
-  background: var(--danger-bg);
-  border-color: var(--danger);
+  background: var(--status-danger-bg);
+  border-color: var(--status-danger);
 }
 
 /* Pinned Keys List */

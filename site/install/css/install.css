@@ -40,6 +40,10 @@
     .theme-icon-moon { display: none; }
     [data-theme="light"] .theme-icon-sun { display: none; }
     [data-theme="light"] .theme-icon-moon { display: inline-block !important; }
+    @media (prefers-color-scheme: light) {
+      :where(:root:not([data-theme="dark"])) .theme-icon-sun { display: none; }
+      :where(:root:not([data-theme="dark"])) .theme-icon-moon { display: inline-block !important; }
+    }
 
     header.site-header {
       position: sticky;
@@ -84,12 +88,12 @@
     }
 
     .site-logo-badge {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: var(--font-mono);
       font-size: 0.7rem;
       padding: 2px 7px;
       border-radius: 4px;
-      background: rgba(255, 101, 0, 0.12);
-      border: 1px solid rgba(255, 101, 0, 0.3);
+      background: var(--brand-glow);
+      border: 1px solid var(--border-focus);
       color: var(--primary);
       font-weight: 600;
     }
@@ -123,6 +127,12 @@
       color: var(--text-primary);
       border-color: var(--border-focus);
       background: var(--bg-card-hover);
+    }
+    .nav-btn-active {
+      color: var(--text-primary) !important;
+      border-color: var(--border-focus) !important;
+      background: var(--surface-hover) !important;
+      font-weight: 600;
     }
 
     .nav-github {
@@ -290,9 +300,9 @@
     }
 
     .copy-btn {
-      background: var(--btn-bg);
-      border: 1px solid var(--btn-border);
-      color: var(--btn-text);
+      background: var(--surface-inset);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
       border-radius: 6px;
       padding: 5px 10px;
       font-size: 0.72rem;

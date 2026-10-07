@@ -1,60 +1,34 @@
+@import url("tokens.css");
+
 :root {
-  /* Color Palette: #FF6500, #1E3E62, #0B192C, #000000 */
-  --bg-canvas: #000000;
-  --bg-card: #0B192C;
-  --bg-card-hover: #10243E;
-  --bg-elevated: #152B47;
-  --border-subtle: #1E3E62;
-  --border-focus: #FF6500;
-  --text-primary: #FFFFFF;
-  --text-secondary: #CBD5E1;
-  --text-muted: #8496AC;
+  --bg-canvas:    var(--surface-canvas);
+  --bg-card:      var(--surface-raised);
+  --bg-card-hover:var(--surface-hover);
+  --bg-elevated:  var(--surface-overlay);
+  --border-subtle:var(--border-subtle);
+  --border-focus: var(--border-focus);
+  --text-primary: var(--text-primary);
+  --text-secondary:var(--text-secondary);
+  --text-muted:   var(--text-tertiary);
 
-  --primary: #FF6500;
-  --primary-hover: #FF8533;
-  --primary-glow: rgba(255, 101, 0, 0.25);
-  --primary-soft: rgba(255, 101, 0, 0.12);
+  --primary:      var(--brand);
+  --primary-hover:var(--brand-hover);
+  --primary-glow: var(--brand-glow);
+  --primary-soft: var(--brand-glow);
 
-  --success: #10B981;
-  --success-bg: rgba(16, 185, 129, 0.12);
-  --warning: #F59E0B;
+  --success:      var(--status-ok);
+  --success-bg:   var(--status-ok-bg);
+  --warning:      var(--status-warn);
 
-  --code-bg: #040810;
-  --header-bg: rgba(0, 0, 0, 0.88);
-  --btn-bg: #0F2238;
-  --btn-bg-hover: #173354;
-  --btn-border: #1E3E62;
-  --btn-text: #FFFFFF;
+  --code-bg:      var(--surface-sunken);
+  --header-bg:    var(--header-bg);
+  --btn-bg:       var(--surface-inset);
+  --btn-bg-hover: var(--surface-hover);
+  --btn-border:   var(--border-strong);
+  --btn-text:     var(--text-primary);
 
-  --font-sans: 'Rubik', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-[data-theme="light"] {
-  --bg-canvas: #F8FAFC;
-  --bg-card: #FFFFFF;
-  --bg-card-hover: #F1F5F9;
-  --bg-elevated: #E2E8F0;
-  --border-subtle: #CBD5E1;
-  --border-focus: #E65100;
-  --text-primary: #0B192C;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
-
-  --primary: #E65100;
-  --primary-hover: #FF6D00;
-  --primary-glow: rgba(230, 81, 0, 0.20);
-  --primary-soft: rgba(230, 81, 0, 0.10);
-
-  --success: #059669;
-  --success-bg: rgba(5, 150, 105, 0.10);
-
-  --code-bg: #F1F5F9;
-  --header-bg: rgba(248, 250, 252, 0.92);
-  --btn-bg: #E2E8F0;
-  --btn-bg-hover: #CBD5E1;
-  --btn-border: #CBD5E1;
-  --btn-text: #0B192C;
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-mono);
 }
 
 /* Reset & Base */
@@ -124,10 +98,10 @@ header.site-header {
 }
 
 .site-header-inner {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
-  height: 60px;
+  padding: 0 16px;
+  height: 52px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -444,10 +418,16 @@ header.site-header {
 }
 
 .platform-pill-btn.active {
-  background: var(--primary-soft);
-  color: var(--primary);
-  border-color: rgba(255, 101, 0, 0.35);
+  background: var(--brand);
+  color: var(--brand-on);
+  border-color: var(--brand);
   font-weight: 600;
+}
+
+.platform-pill-btn.active:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+  color: var(--brand-on);
 }
 
 .hero-installer .code-box {

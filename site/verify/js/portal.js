@@ -767,22 +767,6 @@ document.getElementById("btnVerifyCustomKey").addEventListener("click", function
   }
 })();
 
-// Optional config loader from /api/config when connected to an s0 host
-(function() {
-  try {
-    fetch("/api/config")
-      .then(function(res) { return res.ok ? res.json() : null; })
-      .then(function(cfg) {
-        if (!cfg) return;
-        var docLink = document.querySelector(".site-header-right a[href*='docs'], .site-header-nav a[href*='docs']");
-        if (docLink && cfg.documentation_url) docLink.href = cfg.documentation_url;
-        var ghLink = document.querySelector(".nav-github");
-        if (ghLink && cfg.github_url) ghLink.href = cfg.github_url;
-      })
-      .catch(function() {});
-  } catch (_) {}
-})();
-
 // Light / Dark Mode Theme Controller
 function initTheme() {
   var saved = "dark";
@@ -808,6 +792,10 @@ function applyTheme(theme) {
   var logo = document.getElementById("headerLogo");
   if (logo) {
     logo.src = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
+  }
+  var footerLogo = document.getElementById("footerLogo");
+  if (footerLogo) {
+    footerLogo.src = theme === "light" ? "assets/favicons/s0-light/favicon-32x32.png" : "assets/favicons/s0-dark/favicon-32x32.png";
   }
 }
 

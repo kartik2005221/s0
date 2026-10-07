@@ -18,6 +18,10 @@ function updateFavicon(theme) {
   if (headerLogo) {
     headerLogo.src = iconPath;
   }
+  const footerLogo = document.getElementById("footerLogo");
+  if (footerLogo) {
+    footerLogo.src = iconPath;
+  }
 }
 
 function applyTheme(theme) {

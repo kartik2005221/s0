@@ -31,11 +31,13 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 SHARED_TOKENS = REPO / "shared" / "tokens.css"
 TOKEN_COPIES = [
+    REPO / "site" / "css" / "tokens.css",
     REPO / "site/install" / "css" / "tokens.css",
     REPO / "site/verify" / "css" / "tokens.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "tokens.css",
 ]
 SURFACE_CSS = [
+    REPO / "site" / "css" / "home.css",
     REPO / "site/install" / "css" / "install.css",
     REPO / "site/verify" / "css" / "portal.css",
     REPO / "src" / "s0" / "web" / "static" / "css" / "dashboard.css",

@@ -129,7 +129,7 @@
    The inline resolver in each <head> sets data-theme before first paint;
    this is the no-JS / no-preference fallback. */
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
+  :where(:root:not([data-theme="dark"])) {
     color-scheme: light;
 
     --surface-canvas:  #F8FAFC;

@@ -20,6 +20,10 @@ function updateFavicon(theme) {
   if (logo) {
     logo.src = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
   }
+  const footerLogo = document.getElementById('footerLogo');
+  if (footerLogo) {
+    footerLogo.src = theme === 'dark' ? 'assets/favicons/s0-dark/favicon-32x32.png' : 'assets/favicons/s0-light/favicon-32x32.png';
+  }
 }
 
 function updateThemeBtn(theme) {

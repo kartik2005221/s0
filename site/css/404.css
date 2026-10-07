@@ -1,3 +1,5 @@
+@import url("tokens.css");
+
 /* 404 page. Values mirror shared/tokens.css so the error page reads as part of
    the same product rather than as a default server page. Kept in its own file
    because the page's meta CSP sets style-src 'self' with no 'unsafe-inline',
@@ -10,9 +12,9 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #000000;
-  color: #FFFFFF;
-  font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -24,11 +26,11 @@ body {
 
 .code {
   margin: 0;
-  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: clamp(3.5rem, 14vw, 6rem);
   font-weight: 700;
   line-height: 1;
-  color: #FF6500;
+  color: var(--brand);
   letter-spacing: -0.02em;
 }
 
@@ -41,7 +43,7 @@ h1 {
 
 .lede {
   margin: 0.875rem 0 0;
-  color: #CBD5E1;
+  color: var(--text-secondary);
   font-size: 0.9375rem;
   line-height: 1.6;
 }
@@ -59,10 +61,10 @@ h1 {
 .links a {
   display: inline-block;
   padding: 0.5rem 0.875rem;
-  border: 1px solid #23344C;
+  border: 1px solid var(--border-default);
   border-radius: 0.5rem;
-  background: #070D18;
-  color: #CBD5E1;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -70,13 +72,13 @@ h1 {
 }
 
 .links a:hover {
-  border-color: #FF6500;
-  background: #0F1F35;
-  color: #FFFFFF;
+  border-color: var(--brand);
+  background: var(--surface-hover);
+  color: var(--text-primary);
 }
 
 .links a:focus-visible {
-  outline: 2px solid #FF6500;
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
