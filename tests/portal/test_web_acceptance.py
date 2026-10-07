@@ -17,9 +17,7 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
 from s0.audit.db import compute_block_hash
-from s0.canonical import canonicalize_str
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -232,7 +230,9 @@ def test_ledger_demo_js_parity_via_node():
         capture_output=True,
         text=True,
     )
-    assert res.returncode == 0, f"Node ledger verification failed:\nSTDOUT: {res.stdout}\nSTDERR: {res.stderr}"
+    assert res.returncode == 0, (
+        f"Node ledger verification failed:\nSTDOUT: {res.stdout}\nSTDERR: {res.stderr}"
+    )
     assert "OK" in res.stdout
 
 
@@ -278,6 +278,5 @@ def test_no_crossorigin_on_same_origin_verifier_scripts():
         tag = match.group(0)
         assert "integrity=" in tag, f"vendor/{script_name} missing integrity"
         assert "crossorigin" not in tag, (
-            f"vendor/{script_name} must not carry crossorigin; "
-            f"Chromium blocks crossorigin on file:/// URLs."
+            f"vendor/{script_name} must not carry crossorigin; Chromium blocks crossorigin on file:/// URLs."
         )
