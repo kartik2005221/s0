@@ -11,9 +11,9 @@ is not a signature s0 has.
 
 ## 1. At a glance
 
-- **62 signatures** across **51 extensions**.
-- **38 extensions** have a structural boundary rule, so the exact end is derived from the format.
-- **13 extensions** have no such rule: they are sized from a declared field or footer where the format has one, and are otherwise carved to the signature's `max_size`.
+- **65 signatures** across **54 extensions**.
+- **40 extensions** have a structural boundary rule, so the exact end is derived from the format.
+- **14 extensions** have no such rule: they are sized from a declared field or footer where the format has one, and are otherwise carved to the signature's `max_size`.
 
 A boundary rule is what separates a derived length from a guessed one. Where one exists, the end comes from the structure; where one does not, the report says so rather than implying precision.
 
@@ -36,12 +36,14 @@ A boundary rule is what separates a derived length from a guessed one. Where one
 | `doc` | document | `D0 CF 11 E0 A1 B1 1A E1` | declared field / footer | OLE2/CFB; sized by walking the directory chain |
 | `docx` | archive | `50 4B 03 04` (`PK..`) | declared field / footer | ZIP container; sized by the end-of-central-directory |
 | `elf` | executable | `7F 45 4C 46` (`.ELF`) | structural |  |
+| `evtx` | system | `45 6C 66 46 69 6C 65 00` (`ElfFile.`) | structural |  |
 | `exe` | executable | `4D 5A` (`MZ`) | structural |  |
 | `flac` | audio | `66 4C 61 43` (`fLaC`) | structural |  |
 | `gif` | image | `47 49 46 38` (`GIF8`) | structural |  |
 | `gz` | archive | `1F 8B 08` | structural |  |
 | `heic` | image | `66 74 79 70 68 65 69 63` (`ftypheic`) | declared field / footer |  |
 | `ini` | system | `5B 44 65 73 6B 74 6F 70 5D` (`[Desktop]`) | declared field / footer |  |
+| `iso` | archive | `01 43 44 30 30 31` (`.CD001`) | structural |  |
 | `jp2` | image | `00 00 00 0C 6A 50 20 20 0D 0A 87 0A` (`....jP  ....`) | structural | box walk to EOC |
 | `jpg` | image | `FF D8 FF` | structural |  |
 | `lnk` | system | `4C 00 00 00 01 14 02 00` (`L.......`) | declared field / footer | `LinkSize` |
@@ -63,6 +65,7 @@ A boundary rule is what separates a derived length from a guessed one. Where one
 | `rar` | archive | `52 61 72 21 1A 07 01 00` (`Rar!....`) | structural | RAR5 block chain to end-of-archive |
 | `rtf` | document | `7B 5C 72 74 66` (`{.rtf`) | structural | group nesting must close |
 | `sqlite` | database | `53 51 4C 69 74 65 20 66 6F 72 6D 61` (`SQLite forma`) | structural |  |
+| `svg` | image | `3C 3F 78 6D 6C` (`<?xml`) | declared field / footer |  |
 | `tar` | archive | `75 73 74 61 72` (`ustar`) | structural |  |
 | `tiff` | image | `49 49 2A 00` (`II\*.`) | structural | IFD chain plus strip extents; compressed TIFF is refused |
 | `ts` | video | `47` (`G`) | structural |  |
@@ -88,6 +91,7 @@ A boundary rule is what separates a derived length from a guessed one. Where one
 - `mp3` — MP3 Audio (MPEG-1 Layer III sync frame). Sizing: declared field or footer; carve ceiling 256 MB.
 - `pf` — Windows Prefetch. Sizing: declared field or footer; carve ceiling 4 MB.
 - `pptx` — PowerPoint 2007+. Sizing: declared field or footer; carve ceiling 512 MB.
+- `svg` — SVG Vector Image. Sizing: declared field or footer; carve ceiling 16 MB.
 - `url` — Windows Shortcut (DOS/Windows shell link). Sizing: declared field or footer; carve ceiling 4 MB.
 - `xlsx` — Microsoft Excel 2007+. Sizing: declared field or footer; carve ceiling 512 MB.
 

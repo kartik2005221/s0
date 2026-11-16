@@ -24,6 +24,14 @@ _KB = 1024
 _MB = 1024 * 1024
 _GB = 1024 * 1024 * 1024
 
+#: An ISO 9660 image cannot be smaller than its system area plus the descriptor
+#: sequence: 16 empty sectors, the PVD at 0x8001, a terminator, and something to
+#: describe. Anything under ~20 KiB claiming to be an ISO is noise.
+_ISO_MIN_SIZE = 20 * _KB
+
+#: EVTX is a 4 KiB header page plus at least one 64 KiB chunk.
+_EVTX_MIN_SIZE = 4 * _KB + 64 * _KB
+
 
 @dataclass
 class FileSignature:
@@ -128,6 +136,17 @@ SIGNATURES: list[FileSignature] = [
         min_size=64,
         max_size=512 * _MB,
     ),
+    FileSignature(
+        "SVG Vector Image",
+        "svg",
+        "image",
+        header=b"<?xml",
+        footer=b"</svg>",
+        min_size=64,
+        max_size=16 * _MB,
+        inbuilt=b"<svg",
+        inbuilt_search_window=4096,
+    ),
     # ---------------- documents ----------------
     FileSignature(
         "PDF Document", "pdf", "document", header=b"%PDF-", footer=b"%%EOF", min_size=64, max_size=256 * _MB
@@ -231,6 +250,17 @@ SIGNATURES: list[FileSignature] = [
     ),
     FileSignature("tar Archive (ustar)", "tar", "archive", header=b"ustar", min_size=1024, max_size=2 * _GB),
     FileSignature("LZ4 Frame", "lz4", "archive", header=b"\x04\x22\x4d\x18", min_size=16, max_size=2 * _GB),
+    FileSignature(
+        "ISO 9660 Image",
+        "iso",
+        "archive",
+        # The Primary Volume Descriptor sits 16 sectors (2048 B each) in, past
+        # the system area; the header_offset says so.
+        header=b"\x01CD001",
+        header_offset=0x8001,
+        min_size=_ISO_MIN_SIZE,
+        max_size=8 * _GB,
+    ),
     # ---------------- databases ----------------
     FileSignature(
         "SQLite Database", "sqlite", "database", header=b"SQLite format 3\x00", min_size=512, max_size=4 * _GB
@@ -403,6 +433,14 @@ SIGNATURES: list[FileSignature] = [
         max_size=16 * _MB,
     ),
     FileSignature("Windows Prefetch", "pf", "system", header=b"SCCA", min_size=64, max_size=4 * _MB),
+    FileSignature(
+        "Windows Event Log",
+        "evtx",
+        "system",
+        header=b"ElfFile\x00",
+        min_size=_EVTX_MIN_SIZE,
+        max_size=512 * _MB,
+    ),
     FileSignature(
         "Windows Shortcut (DOS/Windows shell link)",
         "url",

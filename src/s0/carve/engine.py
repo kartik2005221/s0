@@ -325,6 +325,7 @@ def _recover_from_filesystem(
 
     for part_fs, part_offset in parts:
         journal = None
+        ext4_journal_rows: list[dict] = []
         try:
             if part_fs == "ntfs":
                 entries = scan_ntfs_deleted_records(
@@ -383,6 +384,11 @@ def _recover_from_filesystem(
                     )
                     for i in scan_ext4_deleted_inodes(target_p, partition_offset=part_offset)
                 ]
+                # Same role as the NTFS change journal: independent on-disk
+                # evidence naming files the inode scan may no longer see. The
+                # parser exists but was never wired in, so ext4 volumes had no
+                # journal evidence at all.
+                ext4_journal_rows = _read_ext4_journal_names(target_p, part_offset, warnings)
             elif part_fs == "fat32":
                 fat_boot = parse_fat32_boot_sector(target_p, partition_offset=part_offset)
                 found = [
@@ -390,7 +396,7 @@ def _recover_from_filesystem(
                         ff.first_cluster,
                         ff.filename,
                         ff.data,
-                        1,
+                        ff.fragment_count,
                         fat_cluster_to_byte_offset(fat_boot, ff.first_cluster)
                         if fat_boot
                         else (part_offset + ff.first_cluster * 4096),
@@ -399,6 +405,8 @@ def _recover_from_filesystem(
                     )
                     for ff in scan_fat32_deleted_files(target_p, partition_offset=part_offset)
                 ]
+                # fragment_count comes from the FAT chain walk now; it was
+                # hardcoded to 1, which called every fragmented file contiguous.
             elif part_fs == "exfat":
                 ex_boot = parse_exfat_boot_sector(target_p, partition_offset=part_offset)
                 found = [
@@ -434,6 +442,11 @@ def _recover_from_filesystem(
 
         if journal is not None:
             timeline += _merge_journal_evidence(journal, names_seen, warnings)
+        if ext4_journal_rows:
+            for row in ext4_journal_rows:
+                row["corroborated_by_mft"] = row["name"] in names_seen
+                names_seen.setdefault(row["name"], row["event_count"])
+            timeline += ext4_journal_rows
 
         for key, name, data, frag_count, offset, orig_path, deleted_at in found:
             orig_name = str(name)
@@ -1717,6 +1730,88 @@ def _read_journal_evidence(target_p: Path, part_offset: int, warnings: list[str]
     if not records:
         return None
     return build_timeline(records)
+
+
+def _read_ext4_journal_names(target_p: Path, part_offset: int, warnings: list[str]) -> list[dict]:
+    """Names recovered from the ext4 (jbd2) journal, if this volume has one.
+
+    The journal lives in the inode the superblock names (8 on almost every
+    volume); its extents are walked like any file's, and the log's blocks are
+    checksum-verified before use. Rows are shaped like the NTFS change-journal
+    merge output so the report treats both as what they are: names, not files.
+    """
+    try:
+        from . import jbd2 as jbd2_mod
+        from .ext4_carver import parse_ext4_superblock, parse_extent_header
+
+        sb = parse_ext4_superblock(target_p, partition_offset=part_offset)
+        if not sb or not sb.journal_inum:
+            return []
+        with open(target_p, "rb") as f:
+            group = (sb.journal_inum - 1) // sb.inodes_per_group
+            index_in_group = (sb.journal_inum - 1) % sb.inodes_per_group
+            desc_table_block = 2 if sb.block_size == 1024 else 1
+            f.seek(part_offset + desc_table_block * sb.block_size + group * sb.desc_size)
+            desc = f.read(sb.desc_size)
+            if len(desc) < sb.desc_size:
+                return []
+            inode_table_block = struct.unpack_from("<I", desc, 8)[0]
+            f.seek(part_offset + inode_table_block * sb.block_size + index_in_group * sb.inode_size)
+            raw_inode = f.read(sb.inode_size)
+            if len(raw_inode) < 0x64:
+                return []
+            # i_size_lo at 0x04 bounds the journal stream; the extent root is
+            # i_block at 0x28 (60 bytes).
+            stream_size = struct.unpack_from("<I", raw_inode, 0x04)[0]
+            extents = parse_extent_header(
+                raw_inode[0x28:0x64],
+                disk_file=f,
+                block_size=sb.block_size,
+                partition_offset=part_offset,
+            )
+            journal = bytearray()
+            for start_block, count in extents:
+                f.seek(part_offset + start_block * sb.block_size)
+                journal.extend(f.read(count * sb.block_size))
+        if stream_size:
+            journal = journal[:stream_size]
+        if len(journal) < 1024:
+            return []
+        superblock = jbd2_mod.parse_jbd2_superblock(bytes(journal[:1024]))
+        if not superblock:
+            return []
+        names, _stats = jbd2_mod.recover_names(bytes(journal), superblock)
+    except Exception as exc:
+        warnings.append(f"ext4 journal could not be read: {exc}")
+        return []
+
+    rows: list[dict] = []
+    for name in names:
+        if not name.name or name.name in (".", ".."):
+            continue
+        reasons = ["jbd2 journal"]
+        if name.corroborated:
+            reasons.append("corroborated by directory and inode blocks in the log")
+        rows.append(
+            {
+                "name": name.name,
+                "mft_entry": name.inode,
+                "parent_mft_entry": None,
+                "created_at": None,
+                "deleted_at": None,
+                # The journal records committed WRITES, not deletions: a name
+                # here is evidence a file existed, not that it was deleted.
+                "was_deleted": None,
+                "renamed_from": None,
+                "is_directory": name.file_type == jbd2_mod.EXT4_DIR_FT_DIR,
+                "event_count": 1,
+                "reasons": reasons,
+                "last_usn": None,
+                "corroborated_by_mft": False,
+                "content_recovered": False,
+            }
+        )
+    return rows
 
 
 def _merge_journal_evidence(timeline: list, names_seen: dict[str, int], warnings: list[str]) -> list[dict]:

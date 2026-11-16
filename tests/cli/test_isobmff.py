@@ -768,7 +768,7 @@ class TestSignatureModel:
         assert all(
             s.header_offset == 0
             for s in SIGNATURES
-            if s.extension != "mp4" and s.extension not in ("heic", "avif")
+            if s.extension not in ("mp4", "heic", "avif", "iso")
         )
 
     def test_isobmff_signatures_match_the_box_type_not_a_box_size(self):

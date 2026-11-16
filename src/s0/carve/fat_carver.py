@@ -46,6 +46,8 @@ class FatRecoveredFile:
     # structurally and labelled as such rather than claimed as verified.
     name_source: str = "8.3 name only"
     name_verification: str = "none"
+    # 1 for a contiguous read; the run count the FAT chain produced otherwise.
+    fragment_count: int = 1
 
 
 def parse_fat32_boot_sector(
@@ -105,6 +107,54 @@ def parse_fat32_boot_sector(
             )
     except Exception:
         return None
+
+
+def _read_cluster_chain(
+    f, boot: Fat32BootSector, partition_offset: int, start_cluster: int, file_size: int, image_size: int
+) -> tuple[bytes, int]:
+    """Read file_size bytes by following the FAT chain from start_cluster.
+
+    Reading contiguously from the first cluster was wrong for every fragmented
+    live file: FAT32 chains hop through the FAT, so a file's second cluster
+    sits wherever the allocator put it, not at the next cluster. Returns
+    (data, fragment_count), where data may be a shorter prefix than requested
+    if the chain ends early -- that is reported, never zero-filled.
+
+    A chain that loops is cut rather than spun on: a prefix of honest bytes
+    beats a hang.
+    """
+    bytes_per_sector = max(1, boot.cluster_size // boot.sectors_per_cluster)
+    fat_offset = partition_offset + boot.reserved_sectors * bytes_per_sector
+    chunks: list[bytes] = []
+    remaining = file_size
+    clus = start_cluster
+    seen: set[int] = set()
+    runs = 1
+    last_contiguous: int | None = None
+    while remaining > 0 and 2 <= clus < 0x0FFFFFF7:
+        if clus in seen:
+            break  # loop in the chain: better a prefix than a hang
+        seen.add(clus)
+        offset = cluster_to_byte_offset(boot, clus)
+        if offset + boot.cluster_size > image_size:
+            break
+        f.seek(offset)
+        chunks.append(f.read(min(boot.cluster_size, remaining)))
+        remaining -= boot.cluster_size
+        if remaining <= 0:
+            break
+        f.seek(fat_offset + clus * 4)
+        raw = f.read(4)
+        if len(raw) < 4:
+            break
+        nxt = struct.unpack_from("<I", raw, 0)[0] & 0x0FFFFFFF
+        if nxt < 2 or nxt >= 0x0FFFFFF7:
+            break  # end of chain before file_size was satisfied: prefix only
+        if last_contiguous is not None and nxt != last_contiguous + 1:
+            runs += 1
+        last_contiguous = nxt
+        clus = nxt
+    return b"".join(chunks), runs
 
 
 def cluster_to_byte_offset(boot: Fat32BootSector, cluster: int) -> int:
@@ -182,17 +232,32 @@ def scan_fat32_deleted_files(
                     data_offset = cluster_to_byte_offset(boot, start_cluster)
                     if data_offset + file_size > f_size:
                         continue
-                    f.seek(data_offset)
-                    file_data = f.read(file_size)
+                    if entry.is_free:
+                        # A deleted entry's FAT chain is normally zeroed with the
+                        # rest of the entry, so the chain itself cannot be
+                        # trusted: the contiguous prefix is the only honest read,
+                        # and it is labelled an assumption via fragment_count.
+                        f.seek(data_offset)
+                        file_data = f.read(file_size)
+                        fragments = 1
+                    else:
+                        # A live entry's chain is authoritative: follow it, so a
+                        # fragmented file's bytes come from the clusters the
+                        # allocator actually used, not from whatever happens to
+                        # sit behind the first cluster.
+                        file_data, fragments = _read_cluster_chain(
+                            f, boot, partition_offset, start_cluster, file_size, f_size
+                        )
                     recovered.append(
                         FatRecoveredFile(
                             first_cluster=start_cluster,
                             filename=named.name,
                             size_bytes=file_size,
                             is_deleted=entry.is_free,
-                            data=file_data,
+                            data=file_data if file_data else None,
                             name_source=named.recovered.name_source,
                             name_verification=named.recovered.verification,
+                            fragment_count=fragments,
                         )
                     )
 

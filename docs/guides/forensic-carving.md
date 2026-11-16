@@ -28,12 +28,14 @@ s0 recognizes the following file types by their binary signatures:
 | `doc` | document | 2 GB | declared field / footer |
 | `docx` | archive | 512 MB | declared field / footer |
 | `elf` | executable | 2 GB | structural |
+| `evtx` | system | 512 MB | structural |
 | `exe` | executable | 2 GB | structural |
 | `flac` | audio | 2 GB | structural |
 | `gif` | image | 32 MB | structural |
 | `gz` | archive | 2 GB | structural |
 | `heic` | image | 512 MB | declared field / footer |
 | `ini` | system | 1 GB | declared field / footer |
+| `iso` | archive | 8 GB | structural |
 | `jp2` | image | 512 MB | structural |
 | `jpg` | image | 64 MB | structural |
 | `lnk` | system | 16 MB | declared field / footer |
@@ -55,6 +57,7 @@ s0 recognizes the following file types by their binary signatures:
 | `rar` | archive | 2 GB | structural |
 | `rtf` | document | 256 MB | structural |
 | `sqlite` | database | 4 GB | structural |
+| `svg` | image | 16 MB | declared field / footer |
 | `tar` | archive | 2 GB | structural |
 | `tiff` | image | 512 MB | structural |
 | `ts` | video | 64 GB | structural |
@@ -574,7 +577,7 @@ Snapshot enumeration often yields complete, intact files faster than carving.
 
 ### Journaling Remnants
 
-ext4 and NTFS maintain journals for crash recovery. The journal may contain metadata (inode records, directory entries, MFT entries) for recently deleted files even after the filesystem has committed the deletion. s0 does not specifically parse journal structures — use dedicated journal forensics tools for this layer.
+ext4 and NTFS maintain journals for crash recovery. The journal may contain metadata (inode records, directory entries, MFT entries) for recently deleted files even after the filesystem has committed the deletion. s0 reads both: the NTFS change journal ($UsnJrnl) and the ext4 jbd2 journal, and reports recovered names alongside the MFT/inode findings, flagging which names the filesystem metadata corroborates. Names from a journal are evidence that a file existed — they are never written out as files.
 
 ### Network-Mounted Paths
 

@@ -1795,6 +1795,95 @@ def _macho_end(src: ByteSource, start: int, max_size: int) -> Boundary:
 # registry
 # --------------------------------------------------------------------------- #
 
+#: Windows EVTX event-log chunks are fixed-size records.
+_EVTX_CHUNK_MAGIC = b"ElfChnk\x00"
+_EVTX_CHUNK_SIZE = 0x10000
+#: The first chunk follows the file header, which occupies one range of pages.
+_EVTX_FIRST_CHUNK = 4096
+
+
+def _evtx_end(src: ByteSource, start: int, max_size: int) -> Boundary:
+    """Walk EVTX 64 KiB chunks until one is not a chunk header.
+
+    A Windows Event Log (.evtx) is a header page (4 KiB) followed by 64 KiB
+    chunks, each opening with ``ElfChnk\\x00``. The last chunk still carries the
+    magic -- empty space past the final chunk does not -- so the boundary is
+    where the chunk sequence stops. Chunks that fail checksum are still walked
+    past: a damaged tail chunk is common and the container rule is what sizes
+    the file.
+    """
+    if max_size < _EVTX_FIRST_CHUNK + _EVTX_CHUNK_SIZE:
+        return Boundary(None, UNDETERMINED, ["carve window too small for an EVTX chunk"])
+    head = src.read(start, 8)
+    if head[:8] != b"ElfFile\x00":
+        return Boundary(None, UNDETERMINED, ["EVTX file header magic missing"])
+
+    end = None
+    pos = start + _EVTX_FIRST_CHUNK
+    while pos + _EVTX_CHUNK_SIZE <= start + max_size:
+        chunk = src.read(pos, 8)
+        if chunk[:8] != _EVTX_CHUNK_MAGIC:
+            break
+        end = pos + _EVTX_CHUNK_SIZE
+        pos += _EVTX_CHUNK_SIZE
+    if end is None:
+        return Boundary(None, UNDETERMINED, ["no EVTX chunk headers found after the file header"])
+    return Boundary(
+        end,
+        CONTAINER_WALK,
+        [f"{(end - start - _EVTX_FIRST_CHUNK) // _EVTX_CHUNK_SIZE} chunk(s) of 64 KiB walked"],
+    )
+
+
+#: ISO 9660: the Primary Volume Descriptor sits at offset 0x8001 (16 sectors of
+#: 2048 bytes in, after the system area), and the descriptor sequence is where
+#: the volume structure declares its own length.
+_ISO_PVD_OFFSET = 0x8001
+_ISO_BLOCK_SIZE = 2048
+
+
+def _iso9660_end(src: ByteSource, start: int, max_size: int) -> Boundary:
+    """Resolve an ISO 9660 image from its Primary Volume Descriptor.
+
+    The PVD (type 1) carries the volume space size in logical blocks; the
+    descriptor sequence continues past it (type 2-3 supplementary/boot
+    descriptors, or the type 255 terminator). The end is the later of the
+    declared volume size and the descriptor sequence's end, so a Joliet
+    descriptor after the PVD is not cut off.
+    """
+    head = src.read(start + _ISO_PVD_OFFSET, _ISO_BLOCK_SIZE)
+    if len(head) < _ISO_BLOCK_SIZE or head[1:6] != b"CD001" or head[0] != 1:
+        return Boundary(None, UNDETERMINED, ["no ISO 9660 Primary Volume Descriptor at 0x8001"])
+    space_size = struct.unpack_from("<I", head, 80)[0]
+    block_size = struct.unpack_from("<H", head, 128)[0]
+    if block_size == 0 or space_size == 0:
+        return Boundary(None, UNDETERMINED, ["ISO PVD declares a zero-length volume"])
+
+    declared = start + space_size * block_size
+    # Walk the descriptor sequence for its terminator or last descriptor.
+    seq_end = None
+    pos = start + _ISO_PVD_OFFSET + _ISO_BLOCK_SIZE
+    limit = min(start + max_size, declared)
+    while pos + _ISO_BLOCK_SIZE <= limit:
+        d = src.read(pos, 8)
+        if len(d) < 8 or d[1:6] != b"CD001":
+            break
+        kind = d[0]
+        seq_end = pos + _ISO_BLOCK_SIZE
+        if kind == 255:
+            break
+        pos += _ISO_BLOCK_SIZE
+
+    end = max(declared, seq_end) if seq_end else declared
+    final = _sanity(end, start + _ISO_PVD_OFFSET, start + max_size)
+    if final is None:
+        return Boundary(None, UNDETERMINED, ["ISO volume declares a size beyond the carve window"])
+    return Boundary(
+        final,
+        DECLARED_SIZE,
+        [f"volume space {space_size} blocks of {block_size} bytes; descriptor sequence {'walked' if seq_end else 'unreadable'}"],
+    )
+
 _BOUNDARY_RULES: dict[str, SignatureRule] = {
     "bmp": _bm_end,
     "ico": _pe_end,
@@ -1837,11 +1926,15 @@ _BOUNDARY_RULES: dict[str, SignatureRule] = {
     "dll": _pe_end,
     "ts": _mpegts_end,
     "macho": _macho_end,
+    "evtx": _evtx_end,
+    "iso": _iso9660_end,
 }
 
 
 def has_boundary_rule(ext: str) -> bool:
     return ext.lower().lstrip(".") in _BOUNDARY_RULES
+
+
 
 
 def resolve_boundary(
@@ -1926,6 +2019,13 @@ def resolve_boundary(
 
 #: Extensions with a real structural validator in `validate_structure`. A candidate
 #: for one of these is judged by that validator alone.
+#:
+#: This set MUST track the dispatch chain at the bottom of `validate_structure`.
+#: It went stale -- eight entries while the dispatch chain grew to twenty-four
+#: formats -- so the block-entropy statistical gate ran *ahead of* the mp3, gz,
+#: sqlite, elf, 7z, ogg, mp4, avi, flac, pcap, pcapng, tar, ts and macho
+#: validators and vetoed compressed/encrypted candidates their own validator
+#: would have proven, contradicting this module's documented gate order.
 _STRUCTURALLY_VALIDATED = frozenset(
     {
         "jpg",
@@ -1936,6 +2036,22 @@ _STRUCTURALLY_VALIDATED = frozenset(
         "zip",
         "bmp",
         "wav",
+        "mp3",
+        "gz",
+        "sqlite",
+        "elf",
+        "7z",
+        "ogg",
+        "mp4",
+        "mov",
+        "m4v",
+        "avi",
+        "flac",
+        "pcap",
+        "pcapng",
+        "tar",
+        "ts",
+        "macho",
     }
 )
 
