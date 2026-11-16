@@ -23,6 +23,7 @@ env:
 
 jobs:
   test:
+    timeout-minutes: 45
     name: Test (Python 3.12, ubuntu-latest)
     runs-on: ubuntu-latest
     steps:
@@ -113,6 +114,7 @@ jobs:
           echo "wheel ok"
 
   lint:
+    timeout-minutes: 15
     name: Lint & Hygiene
     runs-on: ubuntu-latest
     steps:
@@ -140,6 +142,7 @@ jobs:
         run: ruff format --check --diff .
 
   site-integrity:
+    timeout-minutes: 15
     name: Site Links & Integrity
     runs-on: ubuntu-latest
     steps:

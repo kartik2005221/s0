@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   build-iso:
+    timeout-minutes: 60
     name: Build Bare-Metal Live ISO
     runs-on: ubuntu-latest
     steps:

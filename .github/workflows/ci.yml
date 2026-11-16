@@ -38,15 +38,19 @@ env:
 
 jobs:
   test:
+    timeout-minutes: 45
     name: Test (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     continue-on-error: false
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 is the floor declared by pyproject; 3.13 is new enough to catch
-        # use of a deprecated API before users do.
-        python-version: ["3.11", "3.12", "3.13"]
+        # 3.11 is the floor declared by pyproject; 3.14 is the ceiling it
+        # advertises in its classifiers, and an advertised version the suite
+        # never runs is a claim nobody can falsify -- pyproject says 3.14 is
+        # supported while the lockfile job resolves on it and the test matrix
+        # stopped at 3.13.
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest]
         include:
           # macOS is exercised only on the floor and the ceiling: the suite is
@@ -199,6 +203,7 @@ jobs:
   # pin that stopped resolving, or a hash that stopped matching, would have been found
   # by whoever tried it first. This job is that check, on every supported interpreter.
   lockfile:
+    timeout-minutes: 20
     name: Lock file resolves (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
@@ -263,6 +268,7 @@ jobs:
           PY
 
   lint:
+    timeout-minutes: 15
     name: Lint
     runs-on: ubuntu-latest
     steps:
@@ -328,6 +334,7 @@ jobs:
           extra_args: --all-files
 
   typecheck:
+    timeout-minutes: 20
     name: Type check
     runs-on: ubuntu-latest
     steps:
@@ -410,6 +417,7 @@ jobs:
           retention-days: 30
 
   packaging:
+    timeout-minutes: 30
     name: Packaging
     runs-on: ubuntu-latest
     steps:
@@ -547,6 +555,7 @@ jobs:
           path: dist/*
 
   site:
+    timeout-minutes: 15
     name: Site links
     runs-on: ubuntu-latest
     steps:
@@ -566,6 +575,7 @@ jobs:
         run: python tools/check_site_links.py --root .
 
   powershell:
+    timeout-minutes: 15
     name: PowerShell
     runs-on: windows-latest
     steps:
@@ -639,6 +649,7 @@ jobs:
           Write-Host "all scripts are ASCII and parse"
 
   security:
+    timeout-minutes: 25
     name: Security
     runs-on: ubuntu-latest
     steps:
@@ -695,6 +706,7 @@ jobs:
         run: python tools/scan_for_secrets.py --root .
 
   codeql:
+    timeout-minutes: 30
     name: CodeQL
     runs-on: ubuntu-latest
     permissions:
@@ -713,6 +725,7 @@ jobs:
           category: "/language:python"
 
   freshness:
+    timeout-minutes: 20
     if: >-
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
@@ -771,6 +784,7 @@ jobs:
           cp /tmp/lock.committed requirements.lock
 
   workflow-lint:
+    timeout-minutes: 10
     name: Lint workflows and scripts
     runs-on: ubuntu-latest
     steps:
@@ -813,6 +827,7 @@ jobs:
           failure-threshold: error
 
   sbom:
+    timeout-minutes: 10
     name: SBOM
     runs-on: ubuntu-latest
     needs: [test]
