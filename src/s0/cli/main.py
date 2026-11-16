@@ -325,6 +325,26 @@ _S0_ASCII = r"""
 """
 
 
+def _banner_suppressed_by_flags(raw_args: list[str]) -> bool:
+    """Whether the suppression flags make the pre-parse banner keep quiet.
+
+    Mirrors the post-parse policy rules for the only two invocations that show a
+    banner (bare `s0` and `--help`): ``--quiet`` and any structured output
+    format. ``--format`` carries its value as the next argv item.
+    """
+    for i, arg in enumerate(raw_args):
+        if arg in ("--quiet", "-q", "--json"):
+            return True
+        if arg == "--format":
+            value = raw_args[i + 1] if i + 1 < len(raw_args) else ""
+            if value != "text":
+                return True
+        if arg.startswith("--format="):
+            if arg.split("=", 1)[1] != "text":
+                return True
+    return False
+
+
 def _print_banner(policy=None) -> None:
     """Show the ASCII banner only on an interactive TTY, for bare `s0` or `--help`.
 
@@ -4182,6 +4202,15 @@ def main(argv=None) -> int:
       ``EX_USAGE`` (64) rather than a bare 2.
     """
     raw_args = sys.argv[1:] if argv is None else list(argv)
+    # The banner prints BEFORE parse_args, and that placement is load-bearing:
+    # subparsers are required, so bare `s0` exits inside parse_args with a usage
+    # error, and `--help` exits inside it after printing help. The banner call
+    # from 9c13675 sat after parse_args, where neither trigger could reach it --
+    # the ASCII art was unreachable for every invocation. Suppression flags are
+    # scanned from raw argv because the parsed policy does not exist yet.
+    if not raw_args or raw_args in (["--help"], ["-h"]):
+        if not _banner_suppressed_by_flags(raw_args):
+            _print_banner()
     try:
         parser = build_parser()
         args = parser.parse_args(_hoist_audit_action(raw_args))
@@ -4189,9 +4218,6 @@ def main(argv=None) -> int:
         policy = policy_from_args(args)
         args.ui = UI(policy, command=getattr(args, "command", "s0"), argv=raw_args[1:])
         args.policy = policy
-
-        if not raw_args or raw_args in (["--help"], ["-h"]):
-            _print_banner(policy)
 
         guard = _dry_run_guard(args)
         if guard is not None:
