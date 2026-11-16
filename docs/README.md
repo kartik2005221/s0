@@ -86,7 +86,7 @@ outbound connections, and all of them are explicit operator actions:
 | What | Contacts | When |
 |---|---|---|
 | `s0 live download` | `api.github.com`, then `github.com` for the release asset | Only when you run it, to fetch the Live ISO. The download is SHA-256 verified against the release checksum, and a missing or mismatched checksum fails closed. |
-| `site/install/install.sh` and the PowerShell/cmd installers | `github.com` (clone or fetch), PyPI (`pip install`), Debian mirrors and `deb.debian.org` (the Live ISO build, inside the buildroot only) | Only during installation or `s0 upgrade`. |
+| `site/scripts/install.sh` (served from the site/get portal) and the PowerShell/cmd installers | `github.com` (clone or fetch), PyPI (`pip install`), Debian mirrors and `deb.debian.org` (the Live ISO build, inside the buildroot only) | Only during installation or `s0 upgrade`. |
 | `s0 upgrade` | `github.com`, PyPI | Only when you run it. |
 
 `s0 list`, `s0 plan`, `s0 wipe`, `s0 image`, `s0 clone`, `s0 carve`, `s0 verify`,

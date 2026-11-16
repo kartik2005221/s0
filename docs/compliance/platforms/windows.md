@@ -9,7 +9,7 @@ verified on actual Windows hardware.
 
 | Capability | Evidence |
 |---|---|
-| Overwrite wipe of files / folders | `windows/cli/tests/test_win_cli.py` + `tests/cli/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
+| Overwrite wipe of files / folders | `tests/platform_windows/test_win_cli.py` + `tests/cli/test_cross_platform_eraser.py`; real bytes written, unlinked, read-back zero confirmation |
 | Secondary partition wiping (`D:`, `E:`) | `test_win_cli.py::test_win_cli_wipe_partition_success`; volume lock & dismount via Win32 `FSCTL_DISMOUNT_VOLUME`, raw sector overwrite, sampled readback |
 | USB / Pen drive raw wiping (`\\.\PhysicalDriveX`) | `test_win_cli.py::test_win_cli_wipe_drive_main`; MBR/GPT and raw sector destruction, 32-sample verification |
 | Operating system drive safety guardrails | `test_win_cli.py::test_win_cli_wipe_safety_refusal`; hard rejection of active Windows `C:` volume and Disk 0 without force |

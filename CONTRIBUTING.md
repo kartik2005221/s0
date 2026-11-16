@@ -77,7 +77,7 @@ s0/
 ├── docs/                 # GitBook documentation site (5 sections, 28 pages)
 ├── gitbook-docs.yaml             # GitBook site-wide Git Sync configuration
 ├── site/verify/          # Standalone client-side zero-trust verifier
-└── site/install/               # Cross-platform installation tools
+└── site/get/                   # Cross-platform installation portal (scripts in site/scripts/)
 ```
 
 ---
@@ -88,10 +88,10 @@ Every pull request must pass all tests across the 5-layer QA pyramid:
 
 ```bash
 # Run the complete automated test suite
-.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
+.venv/bin/pytest tests/core tests/cli tests/web tests/platform_macos tests/platform_windows tests/portal -v
 
 # Run with test coverage
-.venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
+.venv/bin/pytest --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Invariants to Preserve:
@@ -142,7 +142,7 @@ When contributing to documentation:
 Before submitting your pull request, please verify:
 
 - [ ] Code follows PEP 8 conventions, includes strict type annotations (`from __future__ import annotations`), and docstrings.
-- [ ] All 190+ automated unit and integration tests pass (`.venv/bin/pytest`).
+- [ ] All ~1,500 automated unit and integration tests pass (`.venv/bin/pytest`).
 - [ ] Any modifications to `src/s0/data/cert_schema.json` are reflected in `site/verify/verify.js` and `src/s0/`.
 - [ ] New CLI flags, methods, or limitations are documented in `docs/guides/cli-reference.md` and related guides.
 - [ ] Added documentation pages are registered in `docs/SUMMARY.md`.

@@ -30,7 +30,7 @@ All planned development phases are **100% complete, hardened, and validated**:
 | **Phase 0** | Project Initialization | **DONE** | Repository skeleton, MIT license, engineering standards, single source-of-truth config (`s0_config.json`) | Clean Git repository |
 | **Phase 1** | Cryptographic Foundation | **DONE** | Ed25519 signing/verifying (`s0.crypto`), s0 Canonical JSON v1 (`s0.canonical`), `src/s0/data/cert_schema.json`, ReportLab PDF generator with QR (`s0.pdfgen`) | `tests/core/test_canonical.py`<br>`tests/core/test_tamper.py` |
 | **Phase 2** | Media & File Sanitizer (Module 1) | **DONE** | NVMe Sanitize (`nvme.py`), ATA Secure Erase (`ata.py`), `BLKDISCARD` ioctl (`blkdiscard.py`), multi-pass zero/random overwriter (`overwrite.py`), 64-block post-wipe readback sampler | `tools/demo/e2e.sh`<br>`tests/cli/test_overwrite.py` |
-| **Phase 3** | File & Folder Erasure | **DONE** | Cross-platform cluster overwriting (`file_eraser.py`, unified into `s0 wipe`), `O_NOFOLLOW` atomic opening, POSIX `fsync()`, Windows Win32 `FlushFileBuffers` & multi-chunk ADS scrubbing, macOS `F_FULLFSYNC` & symlink-safe `xattr -s` stripping | `tests/cli/test_file_eraser.py`<br>`windows/cli/tests/`<br>`macos/cli/tests/` |
+| **Phase 3** | File & Folder Erasure | **DONE** | Cross-platform cluster overwriting (`file_eraser.py`, unified into `s0 wipe`), `O_NOFOLLOW` atomic opening, POSIX `fsync()`, Windows Win32 `FlushFileBuffers` & multi-chunk ADS scrubbing, macOS `F_FULLFSYNC` & symlink-safe `xattr -s` stripping | `tests/cli/test_file_eraser.py`<br>`tests/platform_windows/`<br>`tests/platform_macos/` |
 | **Phase 4** | Advanced File Carver (Module 2) | **DONE** | Multi-format sliding-window carver (`engine.py`), ext4 inode extent tree parser (`ext4_carver.py`), NTFS $MFT non-resident runlist carver (`ntfs_carver.py`), FAT32/exFAT carvers, 4-factor Shannon entropy scoring | `tests/cli/test_carver.py`<br>`tests/cli/test_ntfs_carver.py`<br>`tools/demo/e2e_ntfs.sh` |
 | **Phase 5** | Forensic Drive Imager (Module 3) | **DONE** | Fault-tolerant bit-stream acquisition & drive-to-drive cloning (`imager.py`), bad sector zero-fill recovery, dual SHA-256/MD5 hashing, signed acquisition manifest | `tests/cli/test_imager.py` |
 | **Phase 6** | Hash-Chained Audit Ledger | **DONE** | Local SQLite3 append-only ledger (`audit/db.py`), RFC 8785 Canonical JSON block hash chaining, genesis-to-tip integrity auditor (`audit/verify.py`) | `tests/cli/test_audit.py` |
@@ -44,21 +44,17 @@ All planned development phases are **100% complete, hardened, and validated**:
 
 ```
 s0/
-├── core/                               # Cryptographic engine & Canonical JSON v1
-│   ├── cert_schema.json                # JSON Schema v1.0.0
-│   ├── CANONICAL_JSON.md               # Deterministic canonicalization contract
-│   └── python/s0/                 # Reference Python library (crypto, canonical, pdf, config)
-├── src/s0/                   # Master cross-platform CLI suite
-│   ├── methods/                        # Module 1: NVMe, ATA, BLKDISCARD, Overwrite
-│   ├── file_eraser.py                  # Module 1: File & folder cluster sanitizer (s0 wipe)
-│   ├── carver/                         # Module 2: ext4, NTFS, FAT32, exFAT, Entropy
-│   ├── imager.py                       # Module 3: Bit-stream acquisition & disk cloning engine
-│   ├── audit/                          # Supporting: Append-only SQLite hash-chained ledger
-│   └── live_manager.py                 # Live ISO acquisition, safe USB inspection & flashing
-├── windows/                            # Windows native subsystem & launchers (s0.bat, s0.ps1)
-│   └── cli/s0_eraser.py                # Windows eraser with subcommand dispatch & Win32 API
-├── macos/                              # macOS native subsystem & launchers (s0.sh)
-│   └── cli/s0_eraser.py                # macOS eraser with subcommand dispatch & Darwin ioctls
+├── src/s0/                   # Master cross-platform CLI suite (one distribution under src/)
+│   ├── crypto.py / canonical.py       # Cryptographic engine & Canonical JSON v1
+│   ├── certificate.py                 # Certificate schema validation & issuance
+│   ├── wipe/                          # Module 1: NVMe, ATA, BLKDISCARD, Overwrite
+│   ├── cli/file_eraser.py             # Module 1: File & folder cluster sanitizer (s0 wipe)
+│   ├── carve/                         # Module 2: ext4, NTFS, FAT32, exFAT, Entropy
+│   ├── image/                         # Module 3: Bit-stream acquisition & disk cloning engine
+│   ├── audit/                         # Supporting: Append-only SQLite hash-chained ledger
+│   └── live/                          # Live ISO acquisition, safe USB inspection & flashing
+├── windows/                            # Windows launchers (s0.bat, s0.ps1) -> s0.platform.windows
+├── macos/                              # macOS launchers (s0.sh) -> s0.platform.macos
 ├── src/s0/web/                                # FastAPI 4-tab forensic console (127.0.0.1:8669)
 │   ├── app.py                          # REST API & WebSocket progress daemon
 │   └── static/                         # Self-contained zero-CDN frontend (HTML, CSS, JS, fonts)
@@ -66,7 +62,7 @@ s0/
 │   ├── config/                         # live-build chroot hooks, packages & systemd units
 │   └── auto/build.sh                   # ISO compilation script
 ├── site/verify/                # 100% client-side WebCrypto verifier (sector0.pages.dev/verify)
-├── site/install/                     # Resilient web installer portal (sector0.pages.dev)
+├── site/get/                         # Resilient web installer portal (sector0.pages.dev)
 ├── docs/                       # Production documentation suite (sector0.gitbook.io)
 ├── skills/s0-forensics/                # Agentic AI Skill specification & reference manuals
 └── tools/                            # Master build, test, install & release orchestrators

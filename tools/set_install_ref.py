@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Set the default git ref that every installer and `s0 upgrade` resolves to.
 
-The default ref was written out by hand in six places: `site/install/install.sh`,
-`site/install/upgrade.sh`, `site/install/upgrade.cmd`, `site/install/install.ps1`,
-`site/install/upgrade.ps1`, and twice in `src/s0/cli/main.py` (the two `s0 upgrade`
+The default ref was written out by hand in six places: `site/scripts/install.sh`,
+`site/scripts/upgrade.sh`, `site/scripts/upgrade.cmd`, `site/scripts/install.ps1`,
+`site/scripts/upgrade.ps1`, and twice in `src/s0/cli/main.py` (the two `s0 upgrade`
 fallbacks). Nothing kept them in step, so after this branch is merged and deleted,
 every install and every `s0 upgrade` on a machine without an explicit `S0_INSTALL_REF`
 would try to fetch a branch that no longer exists.

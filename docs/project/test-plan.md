@@ -1,6 +1,6 @@
 # Forensic Test Plan & Verification Strategy
 
-> **Continuous Integration Status:** 1,900+ Automated Tests Passing (100% Green)  
+> **Continuous Integration Status:** ~1,500 Automated Tests Passing (100% Green)  
 > **Frameworks:** pytest, pytest-cov, unittest, Headless Browser / Node Test Runners  
 > **Primary Orchestrator:** `bash tools/build_all.sh`
 
@@ -66,7 +66,7 @@ graph TD
 | `tests/cli/test_audit.py` | Audit Ledger (Supporting) | Tests genesis block initialization, append-only block insertion, SHA-256 hash chaining, and asserts that modifying a database row breaks verification. |
 | `tests/src/s0/web/test_gui.py` | Web Dashboard | Uses FastAPI's `TestClient` to execute end-to-end API calls across all four tabs without launching a live browser. |
 | `tests/portal/test_portal.py`| Verification Portal | Tests that the pure JavaScript verifier (`verify.js`) produces identical verification decisions to the Python reference engine across valid and tampered certificates. |
-| `windows/cli/tests/` | Windows Subsystem | Validates Win32 API interactions, Alternate Data Stream (`:Zone.Identifier`) enumeration, and ReFS CoW detection. |
+| `tests/platform_windows/` | Windows Subsystem | Validates Win32 API interactions, Alternate Data Stream (`:Zone.Identifier`) enumeration, and ReFS CoW detection. |
 | `macos/cli/tests/` | macOS Subsystem | Tests Apple Darwin `fcntl(F_FULLFSYNC)` flushes, `xattr -c` quarantine removal, and APFS snapshot warnings. |
 
 ---

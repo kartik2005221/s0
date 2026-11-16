@@ -112,7 +112,7 @@ s0/
 │   ├── core/  cli/  web/  portal/
 │   └── platform_windows/  platform_macos/
 │
-├── site/install/             #   Static installation portal
+├── site/get/                 #   Static installation portal
 ├── site/verify/              #   100% static Ed25519 verifier
 │   ├── verify.js
 │   ├── keys.json

@@ -18,11 +18,11 @@ bash tools/build_all.sh
 
 ## 2. Module-by-Module Verification
 
-### Comprehensive Test Suite (1,900+ Tests)
+### Comprehensive Test Suite (~1,500 Tests)
 Execute the complete cross-platform test suite spanning core cryptographic invariants, CLI interfaces, web controllers, Win32/macOS drivers, and verification portal:
 
 ```bash
-.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
+.venv/bin/pytest tests/core tests/cli tests/web tests/platform_macos tests/platform_windows tests/portal -v
 ```
 
 ### Module 1: End-to-End Drive Wipe Forensic Demo

@@ -84,7 +84,7 @@ bash tools/build_all.sh
 `build_all.sh` will:
 1. Automatically create and configure the `.venv` virtual environment.
 2. Install all core and CLI packages in editable development mode (`pip install -e`).
-3. Execute all 1,900+ unit and integration tests.
+3. Execute all ~1,500 unit and integration tests.
 4. Validate verification portal cryptographic assets and documentation deliverables.
 
 ---
@@ -157,9 +157,9 @@ Register your method in `s0/methods/__init__.py` and add its identifier to `src/
 Always ensure all test suites pass before submitting a pull request:
 
 ```bash
-.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
+.venv/bin/pytest tests/core tests/cli tests/web tests/platform_macos tests/platform_windows tests/portal -v
 
-.venv/bin/pytest --cov=s0 --cov=s0 --cov-report=term-missing
+.venv/bin/pytest --cov=s0 --cov-report=term-missing
 ```
 
 ### Critical Quality Invariants:
@@ -185,7 +185,7 @@ When contributing to documentation:
 
 Before submitting your PR:
 - [ ] Code is formatted cleanly and includes type hints (`from __future__ import annotations`).
-- [ ] All 1,900+ automated tests pass (`pytest` runs 100% green).
+- [ ] All ~1,500 automated tests pass (`pytest` runs 100% green).
 - [ ] Schema changes in `src/s0/data/cert_schema.json` are mirrored in `site/verify/verify.js` and `src/s0/`.
 - [ ] Documentation has been updated to reflect any new CLI flags, methods, or limitations.
 - [ ] Any added pages are linked in `SUMMARY.md`.
