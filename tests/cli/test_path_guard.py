@@ -147,6 +147,96 @@ def test_state_paths_are_discoverable():
     assert str(Path.home() / ".s0") in paths
 
 
+# --------------------------------------------------------------------------- #
+# Block devices are owned by the device tier, not the path guard (H1 fix)
+# --------------------------------------------------------------------------- #
+
+
+def test_block_devices_are_exempt_from_the_system_prefix_loop(monkeypatch):
+    """Regression (2daf95d): the block-device probe ran after the /dev prefix
+    check, so every real drive target was refused without --force -- every
+    documented wipe command, every web dashboard drive wipe, clone-to-disk.
+
+    The probe must run first; a /dev-shaped path that IS a block device must
+    pass the guard untouched (with no --force warning either), leaving the
+    mounted/root checks to the device tier.
+    """
+    from s0 import platform as s0_platform
+    from s0.safety import evaluate_path_safety
+
+    monkeypatch.setattr(s0_platform, "is_block_device", lambda p: True)
+    warnings, refusal = evaluate_path_safety("/dev/sdb", force=False)
+    assert refusal is None, f"a block device must not be refused by the path guard: {refusal}"
+    assert warnings == [], "no --force warning may be recorded for an ordinary device"
+
+
+def test_non_device_paths_under_dev_are_still_refused(monkeypatch):
+    """A /dev path that is NOT a block device still hits the prefix loop."""
+    from s0 import platform as s0_platform
+    from s0.safety import evaluate_path_safety
+
+    monkeypatch.setattr(s0_platform, "is_block_device", lambda p: False)
+    warnings, refusal = evaluate_path_safety("/dev/nullish", force=False)
+    assert refusal is not None and "system path" in refusal
+
+
+def test_check_safety_raises_path_guard_refusal_for_guard_refusals():
+    """The device tier must distinguish *which* guard refused, because the two
+    carry different documented output shapes (error:/77 vs REFUSED:/2)."""
+    from s0.cli.devices import PathGuardRefusal, SafetyError, Target, check_safety
+
+    target = Target(path="/etc/hostname", kind="block", capacity_bytes=1)
+    with pytest.raises(PathGuardRefusal) as exc:
+        check_safety(target, force=False)
+    assert isinstance(exc.value, SafetyError), (
+        "PathGuardRefusal must remain catchable as SafetyError for existing handlers"
+    )
+    assert "Refusing to target system path" in str(exc.value)
+
+
+def test_check_safety_keeps_plain_safety_error_for_device_tier_refusals(monkeypatch, tmp_path):
+    """Mounted-filesystem refusals come from the device tier, not the path guard."""
+    from s0.cli.devices import PathGuardRefusal, SafetyError, Target, check_safety
+
+    dev = tmp_path / "sdx"
+    dev.write_bytes(b"\x00" * 64)
+    target = Target(path=str(dev), kind="block", capacity_bytes=1)
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: {str(dev) + "1"})
+    with pytest.raises(SafetyError) as exc:
+        check_safety(target, force=False)
+    assert not isinstance(exc.value, PathGuardRefusal), (
+        "a device-tier refusal must not be misclassified as a path-guard refusal"
+    )
+    assert "mounted filesystems" in str(exc.value)
+
+
+# --------------------------------------------------------------------------- #
+# End to end through the CLI: --target route contracts (H1 fix)
+# --------------------------------------------------------------------------- #
+
+
+def test_cli_wipe_of_a_dev_target_never_hits_the_system_path_refusal():
+    """Regression (2daf95d): `s0 wipe --target /dev/sdb` printed
+    `REFUSED: Refusing to target system path: /dev/sdb` (exit 2) because the
+    block-device probe sat after the /dev prefix check. Whether or not this
+    machine has a second drive, the refusal must never name the path guard;
+    a missing device fails at target resolution, a present one goes to the
+    device tier's mounted/root checks."""
+    result = _s0("wipe", "--target", "/dev/sdb", "--yes", "--no-pdf", "--no-certificate")
+    combined = result.stdout + result.stderr
+    assert "Refusing to target system path" not in combined, combined[-400:]
+
+
+def test_cli_wipe_target_route_refuses_system_paths_with_error_77():
+    """The skill pins the path-guard refusal to `error:` + exit 77 for BOTH
+    --target and --targets; only --targets was ever tested. A regular file
+    under a system prefix takes the file-erase path of --target."""
+    result = _s0("wipe", "--target", "/etc/hostname", "--yes", "--no-pdf", "--no-certificate")
+    assert result.returncode == 77, f"expected EX_NOPERM, got {result.returncode}: {result.stderr[-400:]}"
+    assert "error:" in result.stderr
+    assert "Refusing to target system path" in result.stderr
+
+
 def test_boolean_helper_agrees():
     assert is_protected_path("/etc/hostname") is True
     assert is_protected_path("/tmp") is True

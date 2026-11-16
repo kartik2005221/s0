@@ -22,6 +22,17 @@ class SafetyError(RuntimeError):
     """Refusal to proceed — target looks system-critical or is mounted."""
 
 
+class PathGuardRefusal(SafetyError):
+    """The shared path guard refused — not the device tier.
+
+    The skill and docs pin this refusal to ``error:`` on stderr and exit 77 on
+    *every* route (``--target`` and ``--targets`` alike), while device-tier
+    refusals (mounted filesystems, running root) stay ``REFUSED:`` and exit 2 on
+    ``wipe``. Callers that print one shape for all SafetyErrors would misprint
+    this one, so the distinction is carried in the type.
+    """
+
+
 def _lsblk() -> list[dict]:
     if not shutil.which("lsblk"):
         return []
@@ -375,22 +386,25 @@ def _is_dev_or_subpartition(parent_path: str, candidate_mount: str) -> bool:
     return bool(re.match(pattern, cand_real))
 
 
-def evaluate_safety(
+def _evaluate_safety_full(
     target: Target, force: bool = False, *, force_honoured: bool = True
-) -> tuple[list[str], str | None]:
+) -> tuple[list[str], str | None, bool]:
     """Evaluate system-critical target safety without raising an exception.
 
-    Returns (warnings, refusal_reason).
+    Returns (warnings, refusal_reason, from_path_guard). `from_path_guard` says
+    whether the refusal came from the shared path guard in s0.safety rather than
+    the device-tier checks below, so callers can print the documented `error:` /
+    exit-77 shape for it.
     """
     warnings: list[str] = []
 
     warnings_path, refusal = evaluate_path_safety(target.path, force=force)
     warnings.extend(warnings_path)
     if refusal is not None:
-        return warnings, refusal
+        return warnings, refusal, True
 
     if target.kind == "image":
-        return warnings, None
+        return warnings, None, False
 
     mounted = _mounted_paths()
     hits = sorted(m for m in mounted if _is_dev_or_subpartition(target.path, m))
@@ -405,7 +419,7 @@ def evaluate_safety(
                     "choose a different destination."
                 )
             )
-            return warnings, f"{target.path} has mounted filesystems ({', '.join(hits)}). {hint}"
+            return warnings, f"{target.path} has mounted filesystems ({', '.join(hits)}). {hint}", False
         warnings.append(f"proceeding WITH MOUNTED FILESYSTEMS: {', '.join(hits)}")
 
     root_src = _get_root_mount_source()
@@ -416,7 +430,7 @@ def evaluate_safety(
                 return warnings, (
                     f"{target.path} hosts the running ROOT filesystem. The tool refuses "
                     f"this without --force; if you mean it, boot the s0 ISO instead."
-                )
+                ), False
             warnings.append(
                 "proceeding AGAINST THE RUNNING ROOT FILESYSTEM — this will destroy the running system"
             )
@@ -426,10 +440,21 @@ def evaluate_safety(
                 f"Cannot verify whether {target.path} hosts the running ROOT filesystem "
                 f"(findmnt unavailable and /proc/mounts could not be verified). "
                 f"Refusing to proceed without --force."
-            )
+            ), False
         warnings.append("WARNING: could not verify whether target hosts the root filesystem")
 
-    return warnings, None
+    return warnings, None, False
+
+
+def evaluate_safety(
+    target: Target, force: bool = False, *, force_honoured: bool = True
+) -> tuple[list[str], str | None]:
+    """Evaluate system-critical target safety without raising an exception.
+
+    Returns (warnings, refusal_reason).
+    """
+    warnings, refusal, _ = _evaluate_safety_full(target, force=force, force_honoured=force_honoured)
+    return warnings, refusal
 
 
 def check_safety(target: Target, force: bool = False, *, force_honoured: bool = True) -> list[str]:
@@ -440,8 +465,12 @@ def check_safety(target: Target, force: bool = False, *, force_honoured: bool = 
     image file" and nothing more. It only changes the wording of the refusal, never
     whether the refusal happens.
     """
-    warnings, refusal = evaluate_safety(target, force=force, force_honoured=force_honoured)
+    warnings, refusal, from_path_guard = _evaluate_safety_full(
+        target, force=force, force_honoured=force_honoured
+    )
     if refusal is not None:
+        if from_path_guard:
+            raise PathGuardRefusal(refusal)
         raise SafetyError(refusal)
     return warnings
 

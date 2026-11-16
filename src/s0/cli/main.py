@@ -72,6 +72,7 @@ from s0 import __version__, __version_str__, platform, resources
 from s0.audit import list_audit_blocks, record_audit_event, verify_audit_ledger
 from s0.carve import carve_image, signature_from_dict
 from s0.cli.devices import (
+    PathGuardRefusal,
     SafetyError,
     check_safety,
     get_block_device_size,
@@ -678,6 +679,13 @@ def cmd_plan(args) -> int:
     refused = False
     try:
         warnings = check_safety(target, force=args.force)
+    except PathGuardRefusal as exc:
+        # The path guard's refusal is documented as `error:` + 77 on every route,
+        # never as `REFUSED: Refusing to target system path` (a string that would
+        # exist nowhere in the docs or the skill).
+        ui.error(str(exc))
+        warnings = [str(exc)]
+        refused = True
     except SafetyError as exc:
         ui.error(f"REFUSED: {exc}")
         warnings = [str(exc)]
@@ -1258,6 +1266,11 @@ def cmd_wipe(args) -> int:
 
     try:
         warnings = check_safety(target, force=args.force)
+    except PathGuardRefusal as exc:
+        # The shared path guard refuses with `error:` + exit 77 on every route;
+        # only the device-tier refusals below keep the `REFUSED:` + 2 shape.
+        print(f"error: {exc}", file=sys.stderr)
+        return EX_NOPERM
     except SafetyError as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 2

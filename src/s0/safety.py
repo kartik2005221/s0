@@ -38,8 +38,6 @@ from pathlib import Path
 
 #: Critical system prefixes. Matched after resolution, so `/etc/../etc/passwd`
 #: and a symlink into `/etc` are both caught.
-#: Critical system prefixes. Matched after resolution, so `/etc/../etc/passwd`
-#: and a symlink into `/etc` are both caught.
 SYSTEM_PREFIXES: tuple[str, ...] = (
     "/etc",
     "/usr",
@@ -212,6 +210,27 @@ def evaluate_path_safety(
     except Exception:
         pass
 
+    # Block devices are handled by the device-tier safety check (mounts, root
+    # filesystem, HPA), so they are exempted here and must be exempted BEFORE the
+    # system-prefix loop: /dev is a system prefix, so a check placed after the
+    # loop is unreachable for every block device on Linux and macOS -- the
+    # 2daf95d regression that made `s0 wipe --target /dev/sdb` refuse without
+    # --force, broke clone-to-disk and every web dashboard drive wipe, and
+    # conditioned operators to reach for --force to make documented commands run.
+    # Inaccessible non-device paths (like /root/.bashrc for non-root) are still
+    # caught below without crashing - L5.
+    try:
+        from s0 import platform
+
+        if platform.is_block_device(resolved):
+            return warnings, None
+    except PermissionError:
+        if not force:
+            return warnings, f"Refusing to target protected or inaccessible path: {target}"
+        warnings.append(f"proceeding AGAINST INACCESSIBLE PATH: {target}")
+    except OSError:
+        pass
+
     for prefix in SYSTEM_PREFIXES:
         if prefix == "/System" and (
             str(resolved) == "/System/Volumes" or str(resolved).startswith("/System/Volumes/")
@@ -224,21 +243,6 @@ def evaluate_path_safety(
                 return warnings, f"Refusing to target system path: {target}"
             warnings.append(f"proceeding AGAINST A SYSTEM PATH: {target}")
             break
-
-    # Block devices are handled by the device-tier safety check (mounts, root
-    # filesystem, HPA). Checked after system prefixes so inaccessible files (like
-    # /root/.bashrc for non-root) are caught by the prefix check without crashing - L5.
-    try:
-        from s0 import platform
-
-        if platform.is_block_device(resolved):
-            return warnings, None
-    except PermissionError:
-        if not force:
-            return warnings, f"Refusing to target protected or inaccessible path: {target}"
-        warnings.append(f"proceeding AGAINST INACCESSIBLE PATH: {target}")
-    except OSError:
-        pass
 
     if not allow_state:
         for state in s0_state_paths():
