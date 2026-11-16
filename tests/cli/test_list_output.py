@@ -79,22 +79,33 @@ PARTTABLE = {
 }
 
 
+def _as_linux(monkeypatch):
+    """The heuristic's win32 guard fires before the table lookup; the logic
+    tests below are about the lookup, so they pin the platform explicitly
+    (mirroring test_windows_is_never_likely, which pins win32)."""
+    monkeypatch.setattr(devices_mod.sys, "platform", "linux")
+
+
 def test_likely_os_via_esp_on_whole_disk(monkeypatch):
+    _as_linux(monkeypatch)
     monkeypatch.setattr(devices_mod, "partition_type_map", lambda: dict(PARTTABLE))
     assert is_likely_os_device("/dev/sda") is True
 
 
 def test_likely_os_via_esp_partition_itself(monkeypatch):
+    _as_linux(monkeypatch)
     monkeypatch.setattr(devices_mod, "partition_type_map", lambda: dict(PARTTABLE))
     assert is_likely_os_device("/dev/sda1") is True
 
 
 def test_data_disk_without_esp_is_not_likely_os(monkeypatch):
+    _as_linux(monkeypatch)
     monkeypatch.setattr(devices_mod, "partition_type_map", lambda: dict(PARTTABLE))
     assert is_likely_os_device("/dev/sdb") is False
 
 
 def test_siblings_of_same_prefix_do_not_leak(monkeypatch):
+    _as_linux(monkeypatch)
     """/dev/sda1 being an ESP must not make /dev/sdb likely (name regex)."""
     table = dict(PARTTABLE)
     table["sdb"] = ""
@@ -106,12 +117,14 @@ def test_siblings_of_same_prefix_do_not_leak(monkeypatch):
 
 
 def test_nvme_p_separator_is_matched(monkeypatch):
+    _as_linux(monkeypatch)
     table = {"nvme0n1": "", "nvme0n1p1": EFI_SYSTEM_PARTITION_GUID}
     monkeypatch.setattr(devices_mod, "partition_type_map", lambda: table)
     assert is_likely_os_device("/dev/nvme0n1") is True
 
 
 def test_empty_table_is_not_likely(monkeypatch):
+    _as_linux(monkeypatch)
     monkeypatch.setattr(devices_mod, "partition_type_map", lambda: {})
     assert is_likely_os_device("/dev/sda") is False
 

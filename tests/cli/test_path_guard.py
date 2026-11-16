@@ -227,6 +227,7 @@ def test_cli_wipe_of_a_dev_target_never_hits_the_system_path_refusal():
     assert "Refusing to target system path" not in combined, combined[-400:]
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="/etc/hostname is a Linux system path")
 def test_cli_wipe_target_route_refuses_system_paths_with_error_77():
     """The skill pins the path-guard refusal to `error:` + exit 77 for BOTH
     --target and --targets; only --targets was ever tested. A regular file

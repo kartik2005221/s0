@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import s0.cli.devices as devices_mod
 import s0.wipe.planner as wipe_mod
 from s0.cli.devices import SafetyError, Target, check_safety, device_id_for
 from s0.terminal import EX_USAGE
@@ -168,6 +169,10 @@ def test_mount_check_sees_luks_volumes_through_mapper_aliases(block_dev, monkeyp
     never matched the sdaN name pattern, so wiping a disk that held a live
     non-root encrypted volume produced no mount warning. The mounted source's
     underlying dm slaves must be walked and matched, like the root check does."""
+    # The dm-slave walk and the root check are POSIX device resolution; on
+    # Windows is_os_device answers from the SystemDrive prefix instead, which
+    # would flag any C:\\Users\\... scratch fixture as the OS drive.
+    monkeypatch.setattr(devices_mod.sys, "platform", "linux")
     monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: {"/dev/mapper/secret-vol"})
     monkeypatch.setattr(
         "s0.cli.devices._get_underlying_devices",
