@@ -1013,3 +1013,235 @@ def test_cli_output_and_json_report_journal_names(tmp_path, capsys):
     assert row["was_deleted"] is True
     assert row["content_recovered"] is False
     assert row["deleted_at"] is not None
+
+
+# --------------------------------------------------------------------------- #
+# core-fix regressions: path depth, satellite VCN concat, record>cluster,
+# mid-scan errors, boot-sector signature
+# --------------------------------------------------------------------------- #
+
+
+def test_paths_walk_multiple_levels(tmp_path):
+    """Regression: the parent walk stopped after one level because it looked up
+    ("ref", pnum) in the name map -- always None -- so every path was at most
+    parent\\file and the grandparents were silently dropped."""
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True, attributes=[b._attribute(0x10, "", b.standard_information(1700000000))]
+    )
+    b.records[30] = b.record(
+        30,
+        is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000500))],
+        extra_names=[b._attribute(0x30, "", b.file_name("cases", (5, 1), 1700000500))],
+    )
+    b.records[31] = b.record(
+        31,
+        is_dir=True,
+        attributes=[b._attribute(0x10, "", b.standard_information(1700000600))],
+        extra_names=[b._attribute(0x30, "", b.file_name("2026", (30, 1), 1700000600))],
+    )
+    payload = b"DEEP PATH PAYLOAD" * 10
+    lcn = b.add_data(payload)
+    b.records[42] = b.record(
+        42,
+        allocated=False,
+        sequence=3,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1750000000, changed=1750003600)),
+            b._attribute(
+                0x30,
+                "",
+                b.file_name("report.xlsx", (31, 1), 1750000000, real_size=len(payload)),
+            ),
+            b._attribute(0x80, "", payload, runs=[(lcn, -(-len(payload) // CLUSTER))]),
+        ],
+    )
+    results = scan_ntfs_deleted_records(b.write(tmp_path / "deep.img"))
+    target = [e for e in results if e.name == "report.xlsx"]
+    assert target, [e.name for e in results]
+    assert target[0].path == "cases\\2026\\report.xlsx"
+
+
+def test_satellite_data_runs_are_concatenated_across_vcn(tmp_path):
+    """Regression: $DATA whose clusters continue in a satellite record was
+    reconstructed from the first attribute's runs only -- a truncated file with
+    no caveat. The satellite's runs must be concatenated in VCN order."""
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True, attributes=[b._attribute(0x10, "", b.standard_information(1700000000))]
+    )
+    # Real VCN geometry: chunk_a fills its two clusters exactly; chunk_b
+    # continues the stream at VCN 2 and stops mid-cluster (7808 = 16000-8192).
+    chunk_a = bytes((i * 11) % 256 for i in range(8192))
+    chunk_b = bytes((i * 23) % 256 for i in range(16000 - 8192))
+    payload = chunk_a + chunk_b
+    lcn_a = b.add_data(chunk_a)
+    lcn_b = b.add_data(chunk_b)
+
+    entry = bytearray(0x18)
+    struct.pack_into("<I", entry, 0x00, 0x80)
+    struct.pack_into("<H", entry, 0x04, REC)
+    struct.pack_into("<H", entry, 0x09, 0)  # starting VCN of the satellite extent
+    entry[0x0B:0x11] = (93).to_bytes(6, "little")
+    b.records[92] = b.record(
+        92,
+        allocated=False,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1750000000)),
+            b._attribute(0x30, "", b.file_name("split.bin", (5, 1), 1750000000, real_size=len(payload))),
+            # Base record holds the FIRST chunk of the stream:
+            b._attribute(0x80, "", chunk_a, runs=[(lcn_a, -(-len(chunk_a) // CLUSTER))]),
+            b._attribute(0x20, "", bytes(entry)),
+        ],
+    )
+    sat_attr = bytearray(b._attribute(0x80, "", chunk_b, runs=[(lcn_b, -(-len(chunk_b) // CLUSTER))]))
+    struct.pack_into("<Q", sat_attr, 0x10, -(-len(chunk_a) // CLUSTER))  # starting VCN
+    b.records[93] = b.record(93, allocated=False, attributes=[bytes(sat_attr)])
+    results = scan_ntfs_deleted_records(b.write(tmp_path / "split.img"))
+    target = [e for e in results if e.name == "split.bin"]
+    assert target, [e.name for e in results]
+    assert target[0].data == payload, (
+        "the stream must be reconstructed from both attributes in VCN order"
+    )
+
+
+def _write_small_cluster_volume(path: Path) -> Path:
+    """A legal volume whose MFT records (1024 B) span two 512 B clusters.
+
+    The old iterator computed `cluster // record_size` and returned on <= 0,
+    yielding zero records on such volumes.
+    """
+    sector, cluster, rec = 512, 512, 1024
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True, attributes=[b._attribute(0x10, "", b.standard_information(1700000000))]
+    )
+    payload = b"SMALL CLUSTER PAYLOAD" * 4
+    b.records[42] = b.record(
+        42,
+        allocated=False,
+        sequence=3,
+        attributes=[
+            b._attribute(0x10, "", b.standard_information(1750000000, changed=1750003600)),
+            b._attribute(0x30, "", b.file_name("tiny.bin", (5, 1), 1750000000, real_size=len(payload))),
+            b._attribute(0x80, "", payload),
+        ],
+    )
+    rec0 = b.record(
+        0,
+        attributes=[b._attribute(0x80, "", b"", runs=[(4, 6)])],  # 6 clusters = 3072 B = 3 records
+        extra_names=[b._attribute(0x30, "", b.file_name("$MFT", (5, 1), 1700000000))],
+    )
+
+    total_sectors = 128
+    img = bytearray(total_sectors * sector)
+    struct.pack_into("<H", img, 0x0B, sector)
+    img[0x0D] = 1  # one sector per cluster -> 512-byte clusters
+    img[3:11] = b"NTFS    "
+    struct.pack_into("<Q", img, 0x28, total_sectors)
+    struct.pack_into("<Q", img, 0x30, 4)
+    struct.pack_into("<b", img, 0x40, -10)
+    struct.pack_into("<H", img, 0x1FE, 0xAA55)
+    for i, r in enumerate([rec0, b.records[5], b.records[42]]):
+        off = 4 * cluster + i * rec
+        img[off : off + rec] = r
+    path.write_bytes(bytes(img))
+    return path
+
+
+def test_mft_records_larger_than_a_cluster_are_still_yielded(tmp_path):
+    """Regression: record size > cluster size silently produced zero records."""
+    img = _write_small_cluster_volume(tmp_path / "small-cluster.img")
+    boot = parse_ntfs_boot_sector(img)
+    assert boot is not None and boot.mft_record_size > boot.cluster_size
+    results = scan_ntfs_deleted_records(img)
+    target = [e for e in results if e.name == "tiny.bin"]
+    assert target, [e.name for e in results]
+    assert target[0].data == b"SMALL CLUSTER PAYLOAD" * 4
+    assert target[0].is_resident
+
+
+def test_mid_scan_error_is_reported_not_swallowed(tmp_path, monkeypatch):
+    """A mid-scan exception used to return whatever had been collected with no
+    word of why -- an incomplete result that looked like an ordinary volume."""
+    import s0.carve.ntfs_carver as carver
+
+    # A volume with two deleted files, so the failure can fire after the first
+    # entry has been appended and the partial result is observable.
+    b = MftBuilder()
+    b.records[5] = b.record(
+        5, is_dir=True, attributes=[b._attribute(0x10, "", b.standard_information(1700000000))]
+    )
+    payload = b"TWO FILE PAYLOAD" * 10
+    lcn = b.add_data(payload)
+    for num, name in ((42, "first.docx"), (43, "second.docx")):
+        b.records[num] = b.record(
+            num,
+            allocated=False,
+            sequence=3,
+            attributes=[
+                b._attribute(0x10, "", b.standard_information(1750000000, changed=1750003600 + num)),
+                b._attribute(
+                    0x30,
+                    "",
+                    b.file_name(name, (5, 1), 1750000000, real_size=len(payload)),
+                ),
+                b._attribute(0x80, "", payload, runs=[(lcn, -(-len(payload) // CLUSTER))]),
+            ],
+        )
+    img = b.write(tmp_path / "midscan.img")
+
+    real = carver._reconstruct
+    calls = {"n": 0}
+
+    def flaky(*a, **kw):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("synthetic mid-scan failure")
+        return real(*a, **kw)
+
+    monkeypatch.setattr(carver, "_reconstruct", flaky)
+    warnings: list[str] = []
+    out = scan_ntfs_deleted_records(img, warnings=warnings)
+    assert any("stopped early" in w for w in warnings)
+    assert calls["n"] == 2
+    assert [e.name for e in out] == ["first.docx"], (
+        "entries gathered before the failure are kept, the failed one is not"
+    )
+
+def test_boot_sector_without_signature_is_rejected(tmp_path):
+    """0x55AA is mandatory; a random buffer that happens to say NTFS must not
+    be treated as a volume."""
+    img = tmp_path / "no-sig.img"
+    data = bytearray(b"\x00" * 8192)
+    data[3:11] = b"NTFS    "
+    struct.pack_into("<H", data, 0x0B, SECTOR)
+    data[0x0D] = CLUSTER // SECTOR
+    struct.pack_into("<Q", data, 0x28, 16)
+    struct.pack_into("<Q", data, 0x30, 4)
+    struct.pack_into("<b", data, 0x40, -10)
+    struct.pack_into("<H", data, 0x1FE, 0x0000)  # signature wiped
+    img.write_bytes(bytes(data))
+    assert parse_ntfs_boot_sector(img) is None
+
+
+def test_backup_boot_sector_is_tried_when_the_primary_is_wiped(tmp_path):
+    """NTFS keeps a backup boot sector in the volume's final sector; a wiped
+    primary used to make the whole volume look empty."""
+    img = tmp_path / "backup.img"
+    data = bytearray(b"\x00" * 8192)
+    boot = bytearray(512)
+    boot[3:11] = b"NTFS    "
+    struct.pack_into("<H", boot, 0x0B, SECTOR)
+    boot[0x0D] = CLUSTER // SECTOR
+    struct.pack_into("<Q", boot, 0x28, 16)
+    struct.pack_into("<Q", boot, 0x30, 4)
+    struct.pack_into("<b", boot, 0x40, -10)
+    struct.pack_into("<H", boot, 0x1FE, 0xAA55)
+    data[7680:8192] = boot  # final sector of the image
+    img.write_bytes(bytes(data))
+    parsed = parse_ntfs_boot_sector(img)
+    assert parsed is not None
+    assert parsed.mft_start_cluster == 4
+    assert parsed.mft_record_size == REC

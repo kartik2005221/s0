@@ -47,54 +47,82 @@ class NtfsRecoveredFile:
     runs: list[tuple[int, int]] = field(default_factory=list)
 
 
+def _decode_boot_sector(boot_data: bytes) -> NtfsBootSector | None:
+    """Decode a 512-byte NTFS boot sector buffer, or None if it is not one."""
+    oem_id = boot_data[3:11]
+    if oem_id != NTFS_OEM_ID:
+        return None
+    if boot_data[510:512] != b"\x55\xaa":
+        # A valid NTFS boot sector always carries the 0x55AA boot signature;
+        # without it this is usually random data or a wiped volume start.
+        return None
+
+    bytes_per_sector = struct.unpack_from("<H", boot_data, 0x0B)[0]
+    if bytes_per_sector == 0 or (bytes_per_sector & (bytes_per_sector - 1)) != 0:
+        bytes_per_sector = 512
+
+    sectors_per_cluster = boot_data[0x0D]
+    if sectors_per_cluster == 0:
+        sectors_per_cluster = 8
+
+    cluster_size = bytes_per_sector * sectors_per_cluster
+    total_sectors = struct.unpack_from("<Q", boot_data, 0x28)[0]
+    mft_start_cluster = struct.unpack_from("<q", boot_data, 0x30)[0]
+
+    c_mft = struct.unpack_from("<b", boot_data, 0x40)[0]
+    if c_mft < 0:
+        mft_record_size = 1 << abs(c_mft)
+    else:
+        mft_record_size = c_mft * cluster_size
+
+    if mft_record_size <= 0 or mft_record_size > 65536:
+        mft_record_size = 1024
+
+    return NtfsBootSector(
+        oem_id=oem_id.decode("ascii", errors="ignore").strip(),
+        bytes_per_sector=bytes_per_sector,
+        sectors_per_cluster=sectors_per_cluster,
+        cluster_size=cluster_size,
+        total_sectors=total_sectors,
+        mft_start_cluster=mft_start_cluster,
+        mft_record_size=mft_record_size,
+    )
+
+
 def parse_ntfs_boot_sector(
     image_path: str | Path,
     partition_offset: int = 0,
 ) -> NtfsBootSector | None:
-    """Parse NTFS boot sector at partition_offset."""
+    """Parse the NTFS boot sector at partition_offset.
+
+    The boot signature (0x55AA) is mandatory. When the primary sector is
+    damaged, NTFS keeps a backup copy in the volume's final sector, so a
+    candidate there is tried before giving up -- a wiped-over primary no longer
+    makes the whole volume look empty.
+    """
     try:
         with open(image_path, "rb") as f:
             f.seek(partition_offset)
             boot_data = f.read(512)
-            if len(boot_data) < 512:
-                return None
+            if len(boot_data) >= 512:
+                boot = _decode_boot_sector(boot_data)
+                if boot is not None:
+                    return boot
 
-            oem_id = boot_data[3:11]
-            if oem_id != NTFS_OEM_ID:
-                return None
-
-            bytes_per_sector = struct.unpack_from("<H", boot_data, 0x0B)[0]
-            if bytes_per_sector == 0 or (bytes_per_sector & (bytes_per_sector - 1)) != 0:
-                bytes_per_sector = 512
-
-            sectors_per_cluster = boot_data[0x0D]
-            if sectors_per_cluster == 0:
-                sectors_per_cluster = 8
-
-            cluster_size = bytes_per_sector * sectors_per_cluster
-            total_sectors = struct.unpack_from("<Q", boot_data, 0x28)[0]
-            mft_start_cluster = struct.unpack_from("<q", boot_data, 0x30)[0]
-
-            c_mft = struct.unpack_from("<b", boot_data, 0x40)[0]
-            if c_mft < 0:
-                mft_record_size = 1 << abs(c_mft)
-            else:
-                mft_record_size = c_mft * cluster_size
-
-            if mft_record_size <= 0 or mft_record_size > 65536:
-                mft_record_size = 1024
-
-            return NtfsBootSector(
-                oem_id=oem_id.decode("ascii", errors="ignore").strip(),
-                bytes_per_sector=bytes_per_sector,
-                sectors_per_cluster=sectors_per_cluster,
-                cluster_size=cluster_size,
-                total_sectors=total_sectors,
-                mft_start_cluster=mft_start_cluster,
-                mft_record_size=mft_record_size,
-            )
+            # Backup boot sector: the last 512-byte sector of the image. The
+            # volume's own length is unreliable here (that is the field that
+            # may be damaged), so the image size bounds the search.
+            f.seek(0, 2)
+            image_size = f.tell()
+            last_sector = ((image_size - partition_offset) // 512) * 512 - 512 + partition_offset
+            if last_sector > partition_offset:
+                f.seek(last_sector)
+                backup = f.read(512)
+                if len(backup) >= 512:
+                    return _decode_boot_sector(backup)
     except Exception:
         return None
+    return None
 
 
 def parse_mft_record_bytes(
@@ -339,19 +367,34 @@ def _mft_extents(fh, boot: NtfsBootSector, partition_offset: int) -> list[tuple]
 
 
 def _iter_mft_records(fh, boot: NtfsBootSector, partition_offset: int, runs: list[tuple]) -> Iterator[bytes]:
-    """Yield MFT record buffers in order, following the $MFT's own extents."""
+    """Yield MFT record buffers in order, following the $MFT's own extents.
+
+    Handles both geometries: records packed several-to-a-cluster (the common
+    case, 1024-byte records in 4096-byte clusters) and records larger than a
+    cluster (e.g. 1024-byte records on 512-byte clusters), which the old
+    ``per_run <= 0: return`` guard silently turned into zero records on a legal
+    volume.
+    """
     rs = boot.mft_record_size
-    per_run = boot.cluster_size // rs if rs else 0
-    if per_run <= 0:
+    if rs <= 0:
         return
+    cs = max(1, boot.cluster_size)
     for lcn, length in runs:
         if lcn < 0:
             continue
-        for i in range(length):
-            offset = partition_offset + (lcn + i) * boot.cluster_size
+        base = partition_offset + lcn * cs
+        span_bytes = length * cs
+        if rs <= cs:
+            per_run = cs // rs
             for j in range(per_run):
-                fh.seek(offset + j * rs)
+                fh.seek(base + j * rs)
                 yield fh.read(rs)
+        else:
+            offset = 0
+            while offset + rs <= span_bytes:
+                fh.seek(base + offset)
+                yield fh.read(rs)
+                offset += rs
 
 
 def _iter_mft_records_contiguous(
@@ -382,39 +425,54 @@ def _reconstruct(rec, fh, boot: NtfsBootSector, partition_offset: int, max_bytes
     Returns (data, fragment_count, caveat, first_data_offset). `caveat` is set
     when the on-disk bytes are not the file's contents -- compressed, encrypted
     or sparse -- in which case nothing is returned rather than something wrong.
+
+    A stream whose $DATA is split across $ATTRIBUTE_LIST satellite records is
+    reconstructed from ALL of its non-resident attributes, concatenated in VCN
+    order -- the old code took only the first attribute's runs, so a file whose
+    clusters continued in a satellite record was silently truncated at the
+    base-record boundary.
     """
     caveat = rec.cannot_restore_reason
     if caveat:
         return None, 0, caveat, None
 
-    primary = None
-    for attr in rec.attributes:
-        if attr.type == mft_mod.ATTR_DATA and attr.is_primary_stream:
-            primary = attr
-            break
-    if primary is None:
+    data_attrs = [a for a in rec.attributes if a.type == mft_mod.ATTR_DATA and a.is_primary_stream]
+    if not data_attrs:
         return None, 0, None, None  # size may survive in $FILE_NAME, content does not
 
-    if not primary.non_resident:
-        return bytes(primary.resident_value), 1, None, None
+    resident = next((a for a in data_attrs if not a.non_resident), None)
+    if resident is not None:
+        return bytes(resident.resident_value), 1, None, None
 
-    runs = list(primary.runs)
+    non_resident = [a for a in data_attrs if a.non_resident]
+    if not non_resident:
+        return None, 0, None, None
+    attrs = sorted(non_resident, key=lambda a: getattr(a, "start_vcn", 0) or 0)
+    runs: list[tuple] = []
+    for a in attrs:
+        runs.extend(a.runs)
     if not runs:
         return None, 0, None, None
-    size = min(primary.real_size or max_bytes, max_bytes)
+    size = min(sum(a.real_size or 0 for a in attrs) or max_bytes, max_bytes)
     spans = mft_mod.runs_to_byte_spans(runs, boot.cluster_size, size)
     data = mft_mod.read_data(spans, fh, partition_offset, size)
     first = next((lcn * boot.cluster_size for lcn, _ in runs if lcn >= 0), None)
     return (data or None), len([r for r in runs if r[1] > 0]), None, first
 
 
-def _build_path(rec, names: dict[int, str], depth: int = 0) -> str:
+def _build_path(rec, names: dict[int, str], records: dict | None = None, depth: int = 0) -> str:
     """Reconstruct a full path by walking parent references.
 
     A deleted record's parent directory is usually still alive, so the path
     usually resolves. When the parent is gone too, the walk stops and the
     remaining component is reported with its record number rather than guessed
     at, because a plausible-looking wrong path is worse than an honest gap.
+
+    Deeper ancestors are followed through *records* (the record objects the scan
+    already parsed). The old code looked up ``("ref", pnum)`` in ``names`` -- a
+    dict of record number to name -- which always returned None, so the walk
+    silently stopped after one level and every path was at most
+    ``parent\\file``.
     """
     parts = [rec.name() or f"record_{rec.record_num}"]
     seen = {rec.record_num}
@@ -430,9 +488,8 @@ def _build_path(rec, names: dict[int, str], depth: int = 0) -> str:
             break
         parts.append(name)
         depth += 1
-        parent_rec = names.get(("ref", pnum))
-        if isinstance(parent_rec, tuple):
-            parent = parent_rec
+        parent_rec = records.get(pnum) if records else None
+        parent = parent_rec.parent() if parent_rec is not None else None
     return "\\".join(reversed(parts))
 
 
@@ -522,26 +579,22 @@ def scan_ntfs_deleted_records(
                 satellite = False
                 first_offset = None
                 if not caveat:
+                    # Merge $ATTRIBUTE_LIST satellite records BEFORE reconstructing.
+                    # The base record's own runs are only the stream's first chunk;
+                    # reconstructing from them and stopping whenever some bytes came
+                    # back silently truncated every file whose clusters continued
+                    # in a satellite record -- the split $DATA case.
+                    for sat_num in mft_mod.satellite_records(rec):
+                        sat = records.get(sat_num)
+                        if not sat:
+                            continue
+                        mft_mod.merge_satellite(rec, sat)
+                        satellite = True
                     data, fragments, caveat, first_offset = _reconstruct(
                         rec, fh, boot, partition_offset, max_bytes_per_file
                     )
-                    if data is None:
-                        # Follow $ATTRIBUTE_LIST: the real $DATA may live in a
-                        # satellite record, which is how large files are stored.
-                        for sat_num in mft_mod.satellite_records(rec):
-                            sat = records.get(sat_num)
-                            if not sat:
-                                continue
-                            mft_mod.merge_satellite(rec, sat)
-                            data, fragments, caveat, first_offset = _reconstruct(
-                                rec, fh, boot, partition_offset, max_bytes_per_file
-                            )
-                            satellite = True
-                            if data is not None:
-                                break
 
-                path = _build_path(rec, names)
-                rec.primary_name() or {}
+                path = _build_path(rec, names, records)
                 out.append(
                     NtfsDeletedEntry(
                         record_num=rec.record_num,
@@ -565,7 +618,11 @@ def scan_ntfs_deleted_records(
                         first_data_offset=(None if first_offset is None else partition_offset + first_offset),
                     )
                 )
-    except Exception:
+    except Exception as exc:
+        # A mid-scan error must not masquerade as an empty volume: the entries
+        # gathered so far are kept, and the reason is surfaced as a warning the
+        # engine reports alongside the results.
+        warnings.append(f"NTFS scan stopped early after an unexpected error: {exc}")
         return out
 
     # Newest deletion first, then by record number so the order is deterministic.
