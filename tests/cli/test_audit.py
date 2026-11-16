@@ -238,6 +238,60 @@ def test_tail_truncation_detected_via_checkpoint(test_audit_db, sample_cert):
     assert "truncation detected" in rep_after.reason.lower()
 
 
+def test_missing_checkpoint_sidecar_is_reported_not_silent(test_audit_db, sample_cert):
+    """A deleted sidecar used to skip the truncation pin entirely, with nothing
+    in the report. An attacker who can rewrite the ledger can simply unlink it;
+    the verifier must say that tail truncation could not be ruled out."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    cp_file = _Path(test_audit_db).parent / (_Path(test_audit_db).stem + ".checkpoint.json")
+    assert cp_file.is_file()
+    cp_data = _json.loads(cp_file.read_text(encoding="utf-8"))
+    assert cp_data.get("signature"), "fixture sanity: the sidecar is normally signed"
+
+    cp_file.unlink()
+    rep = verify_audit_ledger(test_audit_db)
+    assert rep.is_valid is True, "the chain itself is still continuous"
+    assert rep.checkpoint_warning is not None
+    assert "tail truncation" in rep.checkpoint_warning.lower()
+    assert cp_file.name in rep.checkpoint_warning
+
+
+def test_corrupt_checkpoint_sidecar_is_reported_not_silent(test_audit_db, sample_cert):
+    """An unreadable sidecar used to hit `except Exception: pass` and be
+    silently ignored -- the same outcome as deleting it."""
+    from pathlib import Path as _Path
+
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    cp_file = _Path(test_audit_db).parent / (_Path(test_audit_db).stem + ".checkpoint.json")
+    cp_file.write_text("{not json at all", encoding="utf-8")
+
+    rep = verify_audit_ledger(test_audit_db)
+    assert rep.is_valid is True
+    assert rep.checkpoint_warning is not None
+    assert "could not be used" in rep.checkpoint_warning
+    assert "tail truncation" in rep.checkpoint_warning.lower()
+
+
+def test_unsigned_checkpoint_sidecar_is_reported(test_audit_db, sample_cert):
+    """A sidecar with its signature field stripped pins nothing cryptographically."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    record_audit_event(sample_cert, operation_type="DRIVE_ERASE", db_path=test_audit_db)
+    cp_file = _Path(test_audit_db).parent / (_Path(test_audit_db).stem + ".checkpoint.json")
+    cp_data = _json.loads(cp_file.read_text(encoding="utf-8"))
+    cp_data.pop("signature", None)
+    cp_file.write_text(_json.dumps(cp_data), encoding="utf-8")
+
+    rep = verify_audit_ledger(test_audit_db)
+    assert rep.is_valid is True
+    assert rep.checkpoint_warning is not None
+    assert "no signature" in rep.checkpoint_warning.lower()
+
+
 def test_nonexistent_db_fails_verification(tmp_path):
     """Verifying a non-existent DB must report failure, NOT create a new genesis block."""
     missing = tmp_path / "does_not_exist.db"

@@ -52,6 +52,7 @@ class ChainAuditReport:
     details: list[str] = field(default_factory=list)
     is_demo_signed: bool = False
     demo_key_warning: str | None = None
+    checkpoint_warning: str | None = None
 
 
 def get_default_trusted_keys() -> list:
@@ -141,8 +142,20 @@ def verify_audit_ledger(
         )
 
     checkpoint_sig_error = None
+    # Tail-truncation detection degrades to nothing without the signed sidecar:
+    # the DB-internal chain_checkpoint row is unsigned, so a rewritten ledger
+    # carries a rewritten pin with it. A missing, corrupt, or unsigned sidecar
+    # must be reported as "could not be ruled out", never skipped silently.
+    checkpoint_warning = None
     cp_file = Path(db_path).parent / (Path(db_path).stem + ".checkpoint.json")
-    if cp_file.is_file():
+    if not cp_file.is_file():
+        checkpoint_warning = (
+            f"Checkpoint sidecar {cp_file.name} is absent — the signed pin that "
+            "rules out tail truncation could not be checked, and the checkpoint "
+            "row inside the database is unsigned. The chain verifies as "
+            "continuous, but its tail is unproven against a signed checkpoint."
+        )
+    else:
         try:
             cp_data = json.loads(cp_file.read_text(encoding="utf-8"))
             f_idx = cp_data.get("tip_index")
@@ -150,6 +163,11 @@ def verify_audit_ledger(
             f_updated = cp_data.get("updated_at")
             f_sig = cp_data.get("signature")
             cp_fp = cp_data.get("signer_fingerprint")
+            if not f_sig:
+                checkpoint_warning = (
+                    f"Checkpoint sidecar {cp_file.name} carries no signature — "
+                    "tail truncation could not be ruled out cryptographically."
+                )
             if f_sig and effective_keys and f_idx is not None and f_hash:
                 to_verify = f"{f_idx}:{f_hash}:{f_updated}".encode()
                 if cp_fp:
@@ -176,8 +194,11 @@ def verify_audit_ledger(
             if f_idx is not None and (checkpoint_tip_index is None or f_idx > checkpoint_tip_index):
                 checkpoint_tip_index = f_idx
                 checkpoint_tip_hash = f_hash
-        except Exception:
-            pass
+        except Exception as exc:
+            checkpoint_warning = (
+                f"Checkpoint sidecar {cp_file.name} exists but could not be used "
+                f"({exc}) — tail truncation could not be ruled out."
+            )
 
     if checkpoint_sig_error:
         return ChainAuditReport(
@@ -491,4 +512,5 @@ def verify_audit_ledger(
         details=details,
         is_demo_signed=is_demo_signed,
         demo_key_warning=demo_warning,
+        checkpoint_warning=checkpoint_warning,
     )

@@ -2555,6 +2555,7 @@ def cmd_audit(args) -> int:
                     "status_label": label,
                     "reason": reason,
                     "demo_key_warning": getattr(report, "demo_key_warning", None),
+                    "checkpoint_warning": getattr(report, "checkpoint_warning", None),
                 },
                 status=machine_status,
             )
@@ -2569,6 +2570,9 @@ def cmd_audit(args) -> int:
         if state == "warn" and getattr(report, "demo_key_warning", None):
             ui.note("")
             ui.warn(report.demo_key_warning)
+        if report.is_valid and getattr(report, "checkpoint_warning", None):
+            ui.note("")
+            ui.warn(report.checkpoint_warning)
         if report.is_valid and getattr(report, "is_demo_signed", False):
             return EX_TEMPFAIL
         return EX_OK if report.is_valid else EX_FAILURE
