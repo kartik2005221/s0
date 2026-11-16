@@ -501,6 +501,11 @@ def _get_root_mount_source() -> str | None:
         )
         src = res.stdout.strip()
         if src:
+            # btrfs mounts report as /dev/sda2[/@subvol]; the bracketed part is a
+            # subvolume name, not a device path, and realpath() of the literal
+            # string matches nothing -- Fedora/openSUSE roots then never flagged
+            # their own disk as the OS drive.
+            src = src.split("[", 1)[0]
             return os.path.realpath(src)
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
@@ -512,6 +517,8 @@ def _get_root_mount_source() -> str | None:
                 if len(parts) >= 2 and _unescape_mount_field(parts[1]) == "/":
                     src = _unescape_mount_field(parts[0])
                     if src.startswith("/"):
+                        # Same btrfs subvolume suffix as findmnt reports.
+                        src = src.split("[", 1)[0]
                         return os.path.realpath(src)
     except Exception:
         pass
@@ -613,3 +620,66 @@ def is_os_device(device_path: str) -> bool:
         return False
     except Exception:
         return False
+
+
+#: GPT partition type GUID of an EFI System Partition.
+EFI_SYSTEM_PARTITION_GUID = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+
+
+def partition_type_map() -> dict[str, str]:
+    """Block-device name -> partition type GUID, from one `lsblk` call.
+
+    Empty on Windows (no lsblk) or when lsblk predates the PARTTYPE column
+    (util-linux < 2.33): the map is a hint, never a safety input.
+    """
+    if shutil.which("lsblk") is None:
+        return {}
+    try:
+        res = subprocess.run(
+            ["lsblk", "-n", "-l", "-o", "NAME,PARTTYPE"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    table: dict[str, str] = {}
+    for line in res.stdout.splitlines():
+        parts = line.split(None, 1)
+        if len(parts) == 2:
+            table[parts[0]] = parts[1].strip()
+    return table
+
+
+def is_likely_os_device(device_path: str, parttypes: dict[str, str] | None = None) -> bool:
+    """Heuristic: does this disk or partition look like it hosts an installed OS?
+
+    `is_os_device` only answers "hosts the RUNNING root filesystem", which on
+    the s0 Live ISO -- the flagship wipe-station boot -- is never true of the
+    laptop's internal disk, so the OS DRIVE column read "-" for exactly the
+    device the operator most needs to double-check. This heuristic reads the
+    partition table: a disk carrying an EFI System Partition is very likely a
+    bootable OS disk.
+
+    It is a display hint only ("LIKELY" in `s0 list`); it never participates in
+    safety refusals, which are governed by is_os_device and the mount checks.
+    """
+    if sys.platform == "win32":
+        return False
+    if not device_path:
+        return False
+    table = parttypes if parttypes is not None else partition_type_map()
+    if not table:
+        return False
+    dev_name = Path(os.path.realpath(device_path)).name
+
+    ptype = table.get(dev_name, "")
+    if ptype.upper() == EFI_SYSTEM_PARTITION_GUID:
+        return True
+
+    # Whole disk: any partition of it being an ESP marks the disk.
+    pat = re.compile(rf"^{re.escape(dev_name)}(?:p)?[0-9]+$")
+    return any(
+        pat.match(name) and ptype.upper() == EFI_SYSTEM_PARTITION_GUID for name, ptype in table.items()
+    )

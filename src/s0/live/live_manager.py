@@ -260,7 +260,12 @@ def cmd_live_devices(args: argparse.Namespace) -> int:
     ui.note(f"  {'#':<3} {'Target Device':<24} {'Capacity':<14} {'Model / Description'}")
     ui.note(f"  {'-' * 3} {'-' * 24} {'-' * 14} {'-' * 22}")
     for idx, d in enumerate(devs):
-        ui.note(f"  [{idx}] {d['path']:<24} {d['size_human']:<14} {d['model']}")
+        # Truncate the model from the right (the vendor prefix is the meaningful
+        # part); sysfs model strings can carry trailing whitespace and, with the
+        # vendor prepended, run well past the column.
+        model = str(d["model"]).strip()
+        model = model[:21] + "…" if len(model) > 22 else model
+        ui.note(f"  [{idx}] {d['path']:<24} {d['size_human']:<14} {model}")
     ui.note("━" * 68)
     ui.note("  Use 's0 live flash --target <device>' to create bootable live media.")
     return 0

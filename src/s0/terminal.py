@@ -297,6 +297,18 @@ def render_table(
                 longest = min(longest, col.max_width)
         widths.append(max(col.min_width, longest))
 
+    # Total-width budget: the table must fit the terminal. Long drive names used
+    # to widen their columns to the caps and push the right-hand columns
+    # (MOUNTED, OS DRIVE) off a 100-column terminal entirely, wrapping the
+    # inventory into unreadable fragments. Columns shrink from the widest down,
+    # never below their caption, and the per-column ellipsis rules still apply.
+    budget = max(policy.width - 2 - 2 * (len(columns) - 1), 4 * len(columns))
+    while sum(widths) > budget:
+        widest = max(range(len(widths)), key=lambda i: widths[i] - len(columns[i].title))
+        if widths[widest] <= len(columns[widest].title):
+            break  # every column is already at its caption; nothing left to give
+        widths[widest] -= 1
+
     header = "  ".join(
         c.title.ljust(w) if c.align == "l" else c.title.rjust(w)
         for c, w in zip(columns, widths, strict=False)

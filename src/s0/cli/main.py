@@ -77,6 +77,7 @@ from s0.cli.devices import (
     check_safety,
     get_block_device_size,
     image_target,
+    is_likely_os_device,
     is_os_device,
     list_block_targets,
 )
@@ -575,6 +576,10 @@ def cmd_list(args) -> int:
     except OSError:
         pass
 
+    from s0.cli.devices import partition_type_map
+
+    parttypes = partition_type_map()
+
     rows = [
         {
             "path": t.path,
@@ -585,6 +590,7 @@ def cmd_list(args) -> int:
             "serial": t.serial,
             "mounted": any(m.startswith(t.path) for m in mounted),
             "os_drive": is_os_device(t.path),
+            "likely_os_drive": is_likely_os_device(t.path, parttypes),
         }
         for t in targets
     ]
@@ -599,7 +605,7 @@ def cmd_list(args) -> int:
         )
         return EX_OK
     if ui.policy.fmt == "csv":
-        ui.line("path,kind,storage_type,capacity_bytes,model,serial,mounted,os_drive")
+        ui.line("path,kind,storage_type,capacity_bytes,model,serial,mounted,os_drive,likely_os_drive")
         for r in rows:
             ui.line(
                 ",".join(
@@ -612,6 +618,7 @@ def cmd_list(args) -> int:
                         r["serial"] or "",
                         "yes" if r["mounted"] else "no",
                         "yes" if r["os_drive"] else "no",
+                        "yes" if r["likely_os_drive"] else "no",
                     ]
                 )
             )
@@ -629,7 +636,7 @@ def cmd_list(args) -> int:
             Column("TYPE"),
             Column("STORAGE"),
             Column("CAPACITY", align="r"),
-            Column("MODEL", max_width=24),
+            Column("MODEL", max_width=24, tail=False),
             Column("SERIAL", max_width=18),
             Column("MOUNTED", align="r"),
             Column("OS DRIVE", align="r"),
@@ -643,7 +650,7 @@ def cmd_list(args) -> int:
                 r["model"] or "—",
                 r["serial"] or "—",
                 "YES" if r["mounted"] else "-",
-                "YES [OS]" if r["os_drive"] else "-",
+                ("YES [OS]" if r["os_drive"] else "LIKELY" if r["likely_os_drive"] else "-"),
             ]
             for r in rows
         ],
@@ -651,6 +658,10 @@ def cmd_list(args) -> int:
     ui.note("")
     ui.key("Targets", human_int(len(rows)))
     ui.key("Operating system", human_int(sum(1 for r in rows if r["os_drive"])))
+    ui.key(
+        "Likely OS drives",
+        human_int(sum(1 for r in rows if r["likely_os_drive"] and not r["os_drive"])),
+    )
     ui.key("Currently mounted", human_int(sum(1 for r in rows if r["mounted"])))
     ui.note("")
     ui.note("Image-file targets work too (no root needed): use --target /path/to/file.img")
