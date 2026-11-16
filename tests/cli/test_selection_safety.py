@@ -163,6 +163,29 @@ def test_force_downgrades_mount_refusal_to_warning(block_dev, monkeypatch):
     assert any("WITH MOUNTED FILESYSTEMS" in w for w in warnings)
 
 
+def test_mount_check_sees_luks_volumes_through_mapper_aliases(block_dev, monkeypatch):
+    """Regression (M1): a LUKS container partition mounted via /dev/mapper/xxx
+    never matched the sdaN name pattern, so wiping a disk that held a live
+    non-root encrypted volume produced no mount warning. The mounted source's
+    underlying dm slaves must be walked and matched, like the root check does."""
+    monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: {"/dev/mapper/secret-vol"})
+    monkeypatch.setattr(
+        "s0.cli.devices._get_underlying_devices",
+        lambda src: {src, str(block_dev.path) + "3"},
+    )
+    with pytest.raises(SafetyError, match="mounted filesystems"):
+        check_safety(block_dev, force=False)
+
+    # And a mapper volume backed by a DIFFERENT disk must not trip the guard.
+    monkeypatch.setattr(
+        "s0.cli.devices._get_underlying_devices",
+        lambda src: {src, "/dev/sdb1"},
+    )
+    monkeypatch.setattr("s0.cli.devices._get_root_mount_source", lambda: "/dev/sdz9")
+    warnings = check_safety(block_dev, force=False)
+    assert not any("MOUNTED" in w for w in warnings)
+
+
 def test_refuses_running_root_filesystem(block_dev, monkeypatch):
     monkeypatch.setattr("s0.cli.devices._mounted_paths", lambda: set())
 

@@ -408,6 +408,22 @@ def _evaluate_safety_full(
 
     mounted = _mounted_paths()
     hits = sorted(m for m in mounted if _is_dev_or_subpartition(target.path, m))
+    if not hits and target.kind == "block":
+        # A mounted source can also be reached through a mapper alias: a LUKS
+        # container partition on the target (sda3 -> /dev/mapper/secret) never
+        # matches the sdaN name pattern, so wiping a disk that holds a live
+        # non-root LUKS volume used to produce no mount warning at all. Walk
+        # each mounted source down through dm slaves and match the leaves --
+        # the same resolution the root-disk check already applies.
+        for m in mounted:
+            try:
+                leaves = _get_underlying_devices(m)
+            except Exception as exc:  # noqa: BLE001 -- a source we cannot resolve is just not a hit
+                logger.debug("cannot resolve underlying devices for mounted %s: %s", m, exc)
+                continue
+            if any(_is_dev_or_subpartition(target.path, u) for u in leaves):
+                hits.append(m)
+        hits = sorted(hits)
     if hits:
         if not force:
             hint = (
