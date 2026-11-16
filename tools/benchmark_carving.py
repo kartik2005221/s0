@@ -54,12 +54,9 @@ def _png() -> bytes:
         return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
 
     ihdr = struct.pack(">IIBBBBB", 16, 16, 8, 2, 0, 0, 0)
-    raw = b"".join(b"\x00" + b"\x41\x62\xC3\x21" * 16 for _ in range(16))
+    raw = b"".join(b"\x00" + b"\x41\x62\xc3\x21" * 16 for _ in range(16))
     return (
-        b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", ihdr)
-        + chunk(b"IDAT", zlib.compress(raw))
-        + chunk(b"IEND", b"")
+        b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
     )
 
 
@@ -100,9 +97,7 @@ def _pdf() -> bytes:
     out += b"0000000000 65535 f \n"
     for off in offsets:
         out += f"{off:010d} 00000 n \n".encode()
-    out += (
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_at}\n%%EOF\n".encode()
-    )
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_at}\n%%EOF\n".encode()
     return bytes(out)
 
 
@@ -292,11 +287,15 @@ def main() -> int:
         return {"exact": exact, "present_with_noise": present, "exact_files": sorted(names)}
 
     s0_grade = grade(s0_dir)
-    print(f"\n== s0      : {s0_grade['exact']}/{total} planted files recovered byte-exact: {s0_grade['exact_files']}")
+    print(
+        f"\n== s0      : {s0_grade['exact']}/{total} planted files recovered byte-exact: {s0_grade['exact_files']}"
+    )
     if "error" not in results["photorec"] and "skipped" not in results["photorec"]:
         pr_dir = out / f"photorec-{stamp}"
         pr_grade = grade(pr_dir)
-        print(f"== photorec: {pr_grade['exact']}/{total} planted files recovered byte-exact: {pr_grade['exact_files']}")
+        print(
+            f"== photorec: {pr_grade['exact']}/{total} planted files recovered byte-exact: {pr_grade['exact_files']}"
+        )
     else:
         print(f"== photorec: {results['photorec'].get('skipped', results['photorec'].get('error'))}")
 

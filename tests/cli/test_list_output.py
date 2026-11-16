@@ -154,13 +154,22 @@ def test_model_is_truncated_from_the_right_keeping_the_vendor(capsys):
     policy = OutputPolicy()
     _render(
         policy,
-        [["/dev/sda", "disk", "SSD", "1 TB", "KIOXIA-EXCERIA_PLUS_G3_SSD_2TB_SUPER_LONG_MODEL_XYZ", "SER123", "-", "-"]],
+        [
+            [
+                "/dev/sda",
+                "disk",
+                "SSD",
+                "1 TB",
+                "KIOXIA-EXCERIA_PLUS_G3_SSD_2TB_SUPER_LONG_MODEL_XYZ",
+                "SER123",
+                "-",
+                "-",
+            ]
+        ],
     )
     err = capsys.readouterr().err
     assert "KIOXIA-EXCERIA_PLUS_G" in err, "the vendor prefix must survive: " + err
-    assert "R_LONG" not in err, (
-        "the tail (right-hand characters) must be what gets cut from a model: " + err
-    )
+    assert "R_LONG" not in err, "the tail (right-hand characters) must be what gets cut from a model: " + err
 
 
 def test_table_never_exceeds_the_terminal_width(capsys, monkeypatch):
@@ -190,6 +199,8 @@ def test_columns_never_shrink_below_their_caption(capsys, monkeypatch):
 
     monkeypatch.setattr(OutputPolicy, "width", property(lambda self: 60))
     policy = OutputPolicy()
-    _render(policy, [["/dev/sda", "disk", "SSD", "1 TB", "LONG_MODEL_NAME_HERE_XYZ", "SER12345678", "-", "-"]])
+    _render(
+        policy, [["/dev/sda", "disk", "SSD", "1 TB", "LONG_MODEL_NAME_HERE_XYZ", "SER12345678", "-", "-"]]
+    )
     err = capsys.readouterr().err
     assert "MODEL" in err and "OS DRIVE" in err, "captions must survive the shrink: " + err

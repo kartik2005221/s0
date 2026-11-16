@@ -766,9 +766,7 @@ class TestSignatureModel:
         from s0.carve.signatures import SIGNATURES
 
         assert all(
-            s.header_offset == 0
-            for s in SIGNATURES
-            if s.extension not in ("mp4", "heic", "avif", "iso")
+            s.header_offset == 0 for s in SIGNATURES if s.extension not in ("mp4", "heic", "avif", "iso")
         )
 
     def test_isobmff_signatures_match_the_box_type_not_a_box_size(self):

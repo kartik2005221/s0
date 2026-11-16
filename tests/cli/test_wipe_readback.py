@@ -14,7 +14,9 @@ from s0.wipe.planner import _read_samples, verify_wipe
 
 
 def _target(path, capacity):
-    return Target(path=str(path), kind="image", capacity_bytes=capacity, sector_size=512, storage_type="UNKNOWN")
+    return Target(
+        path=str(path), kind="image", capacity_bytes=capacity, sector_size=512, storage_type="UNKNOWN"
+    )
 
 
 def test_a_failed_read_inside_the_medium_is_reported_not_certified(tmp_path):
@@ -115,5 +117,3 @@ def test_certificate_platform_matches_the_host(monkeypatch):
     for sysname, expected in (("linux", "linux"), ("darwin", "macos"), ("win32", "windows")):
         monkeypatch.setattr(planner.sys, "platform", sysname)
         assert planner._platform_name() == expected
-
-

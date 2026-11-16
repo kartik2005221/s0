@@ -210,9 +210,7 @@ def test_the_live_image_has_a_serial_console_for_qemu_test():
     captured log and the smoke test could never pass."""
     build = _text(AUTO_BUILD)
     bootappend = re.search(r"--bootappend-live \"([^\"]+)\"", build).group(1)
-    assert "console=ttyS0" in bootappend, (
-        "the live boot must put systemd markers on ttyS0 for qemu-test.sh"
-    )
+    assert "console=ttyS0" in bootappend, "the live boot must put systemd markers on ttyS0 for qemu-test.sh"
 
 
 # --------------------------------------------------------------------------- #

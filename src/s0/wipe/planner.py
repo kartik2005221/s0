@@ -270,9 +270,7 @@ def verify_wipe(
     offs = (
         offsets if offsets is not None else sample_offsets(target.capacity_bytes, target.sector_size, samples)
     )
-    post, read_errors = _read_samples(
-        target.path, offs, sample_bytes, capacity=target.capacity_bytes
-    )
+    post, read_errors = _read_samples(target.path, offs, sample_bytes, capacity=target.capacity_bytes)
     readable = [b for b in post if b is not None]
 
     verif: dict = {
@@ -300,7 +298,9 @@ def verify_wipe(
         elif pre_samples is not None and len(pre_samples) == len(post):
             # Pre and post samples are both aligned with `offs`; compare only
             # the offsets that read successfully on both sides.
-            pairs = [(a, b) for a, b in zip(pre_samples, post, strict=False) if a is not None and b is not None]
+            pairs = [
+                (a, b) for a, b in zip(pre_samples, post, strict=False) if a is not None and b is not None
+            ]
             changed = [a != b for a, b in pairs]
             pct_changed = sum(changed) / len(changed) if changed else 1.0
             verif["all_samples_match_wipe_pattern"] = pct_changed >= 0.90
@@ -320,7 +320,9 @@ def verify_wipe(
 
             verif["average_entropy"] = round(avg_entropy, 3)
             verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
-            verif["all_samples_match_wipe_pattern"] = pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy
+            verif["all_samples_match_wipe_pattern"] = (
+                pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy
+            )
             verif["note_only_pattern_check_possible_with_pre_samples"] = True
 
     # An incomplete readback can never pass, whatever the readable samples show:

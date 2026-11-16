@@ -443,20 +443,28 @@ def _evaluate_safety_full(
         target_real = os.path.realpath(target.path)
         if is_os_device(target_real):
             if not force:
-                return warnings, (
-                    f"{target.path} hosts the running ROOT filesystem. The tool refuses "
-                    f"this without --force; if you mean it, boot the s0 ISO instead."
-                ), False
+                return (
+                    warnings,
+                    (
+                        f"{target.path} hosts the running ROOT filesystem. The tool refuses "
+                        f"this without --force; if you mean it, boot the s0 ISO instead."
+                    ),
+                    False,
+                )
             warnings.append(
                 "proceeding AGAINST THE RUNNING ROOT FILESYSTEM — this will destroy the running system"
             )
     else:
         if not force:
-            return warnings, (
-                f"Cannot verify whether {target.path} hosts the running ROOT filesystem "
-                f"(findmnt unavailable and /proc/mounts could not be verified). "
-                f"Refusing to proceed without --force."
-            ), False
+            return (
+                warnings,
+                (
+                    f"Cannot verify whether {target.path} hosts the running ROOT filesystem "
+                    f"(findmnt unavailable and /proc/mounts could not be verified). "
+                    f"Refusing to proceed without --force."
+                ),
+                False,
+            )
         warnings.append("WARNING: could not verify whether target hosts the root filesystem")
 
     return warnings, None, False

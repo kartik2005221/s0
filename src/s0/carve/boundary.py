@@ -1881,8 +1881,11 @@ def _iso9660_end(src: ByteSource, start: int, max_size: int) -> Boundary:
     return Boundary(
         final,
         DECLARED_SIZE,
-        [f"volume space {space_size} blocks of {block_size} bytes; descriptor sequence {'walked' if seq_end else 'unreadable'}"],
+        [
+            f"volume space {space_size} blocks of {block_size} bytes; descriptor sequence {'walked' if seq_end else 'unreadable'}"
+        ],
     )
+
 
 _BOUNDARY_RULES: dict[str, SignatureRule] = {
     "bmp": _bm_end,
@@ -1933,8 +1936,6 @@ _BOUNDARY_RULES: dict[str, SignatureRule] = {
 
 def has_boundary_rule(ext: str) -> bool:
     return ext.lower().lstrip(".") in _BOUNDARY_RULES
-
-
 
 
 def resolve_boundary(

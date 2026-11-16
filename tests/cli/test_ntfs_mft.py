@@ -1101,9 +1101,7 @@ def test_satellite_data_runs_are_concatenated_across_vcn(tmp_path):
     results = scan_ntfs_deleted_records(b.write(tmp_path / "split.img"))
     target = [e for e in results if e.name == "split.bin"]
     assert target, [e.name for e in results]
-    assert target[0].data == payload, (
-        "the stream must be reconstructed from both attributes in VCN order"
-    )
+    assert target[0].data == payload, "the stream must be reconstructed from both attributes in VCN order"
 
 
 def _write_small_cluster_volume(path: Path) -> Path:
@@ -1209,6 +1207,7 @@ def test_mid_scan_error_is_reported_not_swallowed(tmp_path, monkeypatch):
     assert [e.name for e in out] == ["first.docx"], (
         "entries gathered before the failure are kept, the failed one is not"
     )
+
 
 def test_boot_sector_without_signature_is_rejected(tmp_path):
     """0x55AA is mandatory; a random buffer that happens to say NTFS must not

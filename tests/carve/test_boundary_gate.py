@@ -27,10 +27,12 @@ def _validated_extensions_from_dispatch() -> set[str]:
     body = BOUNDARY_SOURCE[BOUNDARY_SOURCE.index("def validate_structure") :]
     body = body[: body.index("\ndef _validate_jpeg")]
     exts: set[str] = set()
-    for match in re.finditer(r'if ext == "([a-z0-9]+)"((?: or ext == "[a-z0-9]+")*):\s*\n\s*return _validate_', body):
+    for match in re.finditer(
+        r'if ext == "([a-z0-9]+)"((?: or ext == "[a-z0-9]+")*):\s*\n\s*return _validate_', body
+    ):
         for ext in re.findall(r'ext == "([a-z0-9]+)"', match.group(0)):
             exts.add(ext)
-    for match in re.finditer(r'if ext in \(([^)]+)\):\s*\n\s*return _validate_', body):
+    for match in re.finditer(r"if ext in \(([^)]+)\):\s*\n\s*return _validate_", body):
         exts.update(re.findall(r'"([a-z0-9]+)"', match.group(1)))
     return exts
 
