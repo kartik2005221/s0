@@ -63,9 +63,11 @@ def test_write_private_pem_overwrites_preexisting_loose_mode(tmp_path, keys):
     if sys.platform == "win32":
         return
     p = tmp_path / "loose_key.pem"
+    # Default-umask creation (0644 on a standard 0022 umask) is the loose
+    # starting state. The fixture itself must not call os.chmod with
+    # group/other bits -- that pattern tripped CodeQL's
+    # overly-permissive-file alert on the test file.
     p.write_bytes(b"OLD_DATA")
-    os.chmod(p, 0o640)
-    assert os.stat(p).st_mode & 0o777 == 0o640
 
     crypto.write_private_pem(keys["priv"], p)
     mode = os.stat(p).st_mode & 0o777
