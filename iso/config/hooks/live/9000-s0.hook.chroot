@@ -27,9 +27,16 @@ if [ -f /root/repo-snapshot/s0_config.json ]; then
 fi
 if [ -d /root/repo-snapshot/vendor ]; then
     cp -r /root/repo-snapshot/vendor /opt/s0/
-    echo "==> installing vendored pydantic v2 wheels"
-    pip3 install --break-system-packages --no-deps /opt/s0/vendor/*.whl 2>/dev/null || \
-    python3 -m pip install --break-system-packages --no-deps /opt/s0/vendor/*.whl 2>/dev/null || true
+    echo "==> installing vendored pydantic v2 wheels (bookworm ships pydantic v1)"
+    # s0.web.app imports pydantic v2 names (field_validator, ConfigDict). If this
+    # install fails, uvicorn crash-loops at boot, s0-wait-web times out, and the
+    # kiosk sits in a Restart=always loop with nothing on screen -- a failure
+    # that must stop the image build here, not black-screen the appliance. The
+    # former `2>/dev/null || true` did exactly that, because python3-pip was
+    # missing from the package list and every invocation failed silently.
+    pip3 install --break-system-packages --no-deps /opt/s0/vendor/*.whl
+    python3 -c "import pydantic; assert pydantic.VERSION.startswith('2.'), \
+        'pydantic v2 is not importable: got ' + pydantic.VERSION"
 fi
 chmod -R go-w /opt/s0
 

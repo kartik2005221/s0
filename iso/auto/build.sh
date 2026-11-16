@@ -58,7 +58,7 @@ fi
   $SUDO lb config noauto \
     --architecture amd64 \
     --distribution bookworm \
-    --archive-areas "main contrib security" \
+    --archive-areas "main contrib non-free non-free-firmware" \
     --mode debian \
     --mirror-bootstrap "http://deb.debian.org/debian" \
     --mirror-chroot "http://deb.debian.org/debian" \
@@ -68,7 +68,7 @@ fi
     --mirror-binary-security "http://security.debian.org/debian-security" \
     --apt-indices false \
     --binary-images iso-hybrid \
-    --bootappend-live "boot=live components quiet splash hostname=s0" \
+    --bootappend-live "boot=live components quiet splash hostname=s0 console=tty0 console=ttyS0,115200n8" \
     --debian-installer false \
     --iso-volume "S0" \
     "${@}"

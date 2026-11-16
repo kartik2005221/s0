@@ -20,6 +20,11 @@ python3-qrcode
 python3-pil
 python3-fastapi
 python3-uvicorn
+# pip is needed at build time only: bookworm's python3-pydantic is v1, and
+# s0.web.app imports pydantic v2 names, so 9000-s0.hook.chroot installs the
+# vendored pydantic v2 wheels from vendor/ (offline, --no-deps). Without it the
+# wheel install silently failed and the kiosk booted to a black screen.
+python3-pip
 
 # kiosk UI
 chromium

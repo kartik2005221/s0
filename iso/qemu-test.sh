@@ -20,6 +20,9 @@ command -v qemu-system-x86_64 >/dev/null || {
 
 mkdir -p "$OUT"
 echo "==> booting $ISO headless (serial log -> $OUT/serial.log)"
+# The monitor socket powers the screendump below; the ISO's bootappend-live
+# carries console=ttyS0 (see auto/build.sh), which is what makes serial.log
+# contain the systemd markers this script greps for.
 qemu-system-x86_64 \
     -m 2048 -smp 2 \
     -cdrom "$ISO" \
@@ -27,6 +30,7 @@ qemu-system-x86_64 \
     -display none \
     -vnc 127.0.0.1:5977 \
     -serial "file:$OUT/serial.log" \
+    -monitor unix:"$OUT/monitor.sock",server,nowait \
     -daemonize -pidfile "$OUT/qemu.pid"
 
 trap 'kill "$(cat "$OUT/qemu.pid")" 2>/dev/null || true' EXIT
@@ -43,9 +47,11 @@ else
     exit 1
 fi
 
-# Screenshot via QEMU monitor if socat available (optional visual check).
+# Screenshot via the QEMU monitor if socat is available (optional visual check
+# for the human; a VNC viewer can also attach to :5977 during the run).
 if command -v socat >/dev/null; then
-    echo "monitor0" | socat - TCP:127.0.0.1:4444 >/dev/null 2>&1 || true
-    echo "==> (attach a VNC viewer to :5977 during the run for a live look)"
+    echo "screendump $OUT/screen.ppm" | socat - UNIX-CONNECT:"$OUT/monitor.sock" >/dev/null 2>&1 || true
+    sleep 2
+    [ -s "$OUT/screen.ppm" ] && echo "==> screen capture: $OUT/screen.ppm"
 fi
 echo "==> artifacts in $OUT/"

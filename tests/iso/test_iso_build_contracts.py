@@ -151,6 +151,11 @@ def test_iso_enables_the_debian_security_archive():
     debian-security is where the security-updated builds of chromium, python3,
     systemd-sysv, util-linux and linux-image-amd64 live -- every entry in the
     package list. `--security false` meant all of them came from main only.
+
+    Security UPDATES come from the security *suite* (--security true + the
+    security mirror). `security` is not a valid archive *area* -- apt warned
+    "doesn't have the component 'security'" on every build and silently dropped
+    it, so the areas must name real components only.
     """
     build = _text(AUTO_BUILD)
     assert "--security false" not in build, (
@@ -159,8 +164,54 @@ def test_iso_enables_the_debian_security_archive():
     )
     assert "--security true" in build
     assert "debian-security" in build, "a security mirror must be configured"
-    assert "security" in re.search(r"--archive-areas \"([^\"]+)\"", build).group(1), (
-        "the security component must be in --archive-areas"
+    areas = re.search(r"--archive-areas \"([^\"]+)\"", build).group(1).split()
+    assert "main" in areas, "main must be an archive area"
+    for invalid in ("security", "unstable", "experimental"):
+        assert invalid not in areas, (
+            f"{invalid!r} is not a Debian archive area (it is a suite, or not a "
+            f"component at all); apt silently drops it: got {areas}"
+        )
+
+
+def test_the_kiosk_pydantic_chain_is_installable_offline():
+    """Regression: the hook's vendored pydantic v2 wheel install was silenced
+    with `2>/dev/null || true`, and python3-pip was not in the package list --
+    so every invocation failed, s0.web.app (pydantic v2 imports) crash-looped
+    uvicorn, and the kiosk booted to a black screen that qemu-test.sh could not
+    diagnose because no serial console was configured either.
+
+    The chain: python3-pip in the package list -> the hook installs the vendored
+    wheels -> and it must FAIL THE BUILD if that install does not stick.
+    """
+    packages = _text(PKG_LIST)
+    assert "python3-pip" in packages, (
+        "bookworm's python3-pydantic is v1; the hook needs pip to install the "
+        "vendored pydantic v2 wheels, without which s0.web.app cannot import"
+    )
+    hook = _text(HOOK)
+    lines = hook.splitlines()
+    start = next(i for i, l in enumerate(lines) if "repo-snapshot/vendor ]" in l)
+    end = next(i for i, l in enumerate(lines[start:], start) if l.strip() == "fi")
+    # Check code, not prose: the comment explains the old silent failure, so
+    # only executable lines are subject to the no-masking rule.
+    wheel_code = [l for l in lines[start:end] if not l.strip().startswith("#")]
+    assert not any("|| true" in l or "2>/dev/null" in l for l in wheel_code), (
+        "the wheel install must not mask failures -- a silent failure here is a "
+        "black screen at boot; fail the image build instead"
+    )
+    assert any("import pydantic" in l for l in wheel_code), (
+        "the hook must verify pydantic v2 is actually importable after installing"
+    )
+
+
+def test_the_live_image_has_a_serial_console_for_qemu_test():
+    """qemu-test.sh greps serial.log for systemd markers, but the bootappend-live
+    configured no serial console -- a perfectly booting ISO wrote nothing to the
+    captured log and the smoke test could never pass."""
+    build = _text(AUTO_BUILD)
+    bootappend = re.search(r"--bootappend-live \"([^\"]+)\"", build).group(1)
+    assert "console=ttyS0" in bootappend, (
+        "the live boot must put systemd markers on ttyS0 for qemu-test.sh"
     )
 
 
