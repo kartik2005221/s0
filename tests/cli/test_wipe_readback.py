@@ -99,3 +99,21 @@ def test_random_pattern_with_partially_failed_pre_samples_still_compares_pairs(t
     assert verif["samples_checked"] == 3
     assert post[1] is not None  # the post read itself succeeded
     assert verif["all_samples_match_wipe_pattern"] is True
+
+
+# --------------------------------------------------------------------------- #
+# the certificate names the platform it actually ran on
+# --------------------------------------------------------------------------- #
+
+
+def test_certificate_platform_matches_the_host(monkeypatch):
+    """Regression: both certificate builders asserted platform='linux'
+    unconditionally, so a file erase on macOS or Windows produced a compliance
+    document claiming Linux."""
+    from s0.wipe import planner
+
+    for sysname, expected in (("linux", "linux"), ("darwin", "macos"), ("win32", "windows")):
+        monkeypatch.setattr(planner.sys, "platform", sysname)
+        assert planner._platform_name() == expected
+
+

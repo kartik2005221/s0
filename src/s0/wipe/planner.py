@@ -18,6 +18,7 @@ import collections
 import math
 import secrets
 import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -392,6 +393,16 @@ def take_pre_samples(target: T, *, samples: int = 64, sample_bytes: int = 4096):
 # --------------------------------------------------------------------------- #
 
 
+def _platform_name() -> str:
+    """The running platform, in the certificate schema's vocabulary.
+
+    The certificate asserted ``platform="linux"`` unconditionally, so a file
+    erase performed on macOS or Windows produced a compliance document claiming
+    Linux. The schema (certificate.PLATFORMS) allows linux/windows/macos.
+    """
+    return {"win32": "windows", "darwin": "macos"}.get(sys.platform, "linux")
+
+
 def default_issuer_key(explicit: str | None) -> Path | None:
     if explicit:
         p = Path(explicit)
@@ -449,7 +460,7 @@ def make_certificate(
         operator_id=operator_id,
         tool_name="s0-wipe",
         tool_version=tool_version,
-        platform="linux",
+        platform=_platform_name(),
         device_id=device_id_for(target),
         device_type=cert_device_type(target),
         storage_type=target.storage_type,

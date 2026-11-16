@@ -28,6 +28,7 @@ from s0 import resources
 from s0.cli.devices import SafetyError
 from s0.config import CONFIG
 from s0.safety import ProtectedPathError, check_path_is_destructive
+from s0.wipe.planner import _platform_name
 
 
 @dataclass
@@ -952,7 +953,7 @@ def erase_batch(
                 operator_id=operator_id,
                 tool_name="s0-erase",
                 tool_version=CONFIG.get("version", "3.1.0"),
-                platform="linux",
+                platform=_platform_name(),
                 device_id=device_id,
                 device_type=kind,
                 storage_type=storage_type,
