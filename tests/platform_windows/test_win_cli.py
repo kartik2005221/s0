@@ -85,6 +85,8 @@ def test_win_cli_main_entrypoint(monkeypatch, tmp_path: Path):
             "zero",
             "--cert-out",
             str(cert_file),
+            "--out-dir",
+            str(tmp_path),
         ],
     )
 
@@ -173,6 +175,8 @@ def test_win_cli_wipe_drive_main(monkeypatch, tmp_path: Path):
             "zero",
             "--cert-out",
             str(cert_file),
+            "--out-dir",
+            str(tmp_path),
         ],
     )
 

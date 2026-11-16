@@ -285,6 +285,8 @@ def test_windows_cli_main(monkeypatch, tmp_path: Path):
             "zero",
             "--cert-out",
             str(cert_file),
+            "--out-dir",
+            str(tmp_path),
         ],
     )
 
@@ -319,6 +321,8 @@ def test_macos_cli_main(monkeypatch, tmp_path: Path):
             "zero",
             "--cert-out",
             str(cert_file),
+            "--out-dir",
+            str(tmp_path),
         ],
     )
 
