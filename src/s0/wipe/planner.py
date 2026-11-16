@@ -201,19 +201,47 @@ def _shannon_entropy(data: bytes) -> float:
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
-def _read_samples(path: str, offsets: list[int], length: int) -> list[bytes]:
+def _read_samples(
+    path: str, offsets: list[int], length: int, *, capacity: int | None = None
+) -> tuple[list[bytes | None], list[str]]:
+    """Read the sector at each offset. Returns (samples, errors).
+
+    The two lists are positionally aligned with *offsets*: a sample that could
+    not be read is ``None`` with an error entry, never zero-filled fiction.
+    The old shape padded every short read with ``b"\\x00"`` and swallowed all
+    exceptions, so a device whose readback partially failed was certified as
+    "all samples match the wipe pattern" -- the unreadable space got credited
+    as wiped space on the signed certificate.
+
+    A short read at the capacity edge (offset + length past the end) is EOF and
+    is zero-padded to its expected length; a short read inside the medium is a
+    failed sector and is reported, not padded.
+    """
+    samples: list[bytes | None] = [None] * len(offsets)
+    errors: list[str] = []
     if not offsets:
-        return []
-    blobs = []
+        return samples, errors
     try:
-        with open(path, "rb") as f:
-            for off in offsets:
+        f = open(path, "rb")
+    except OSError as exc:
+        return samples, [f"offset {offsets[0]}: cannot open {path}: {exc}"]
+    with f:
+        for i, off in enumerate(offsets):
+            expected = length if capacity is None else max(0, min(length, capacity - off))
+            try:
                 f.seek(off)
-                blob = f.read(length)
-                blobs.append(blob.ljust(length, b"\x00"))
-    except Exception:
-        pass
-    return blobs
+                blob = f.read(expected)
+            except OSError as exc:
+                errors.append(f"offset {off}: read failed: {exc}")
+                continue
+            if len(blob) < expected:
+                if expected < length:
+                    blob = blob.ljust(expected, b"\x00")  # legitimate EOF at the edge
+                else:
+                    errors.append(f"offset {off}: short read ({len(blob)} of {expected} bytes)")
+                    continue
+            samples[i] = blob
+    return samples, errors
 
 
 def verify_wipe(
@@ -241,40 +269,65 @@ def verify_wipe(
     offs = (
         offsets if offsets is not None else sample_offsets(target.capacity_bytes, target.sector_size, samples)
     )
-    post = _read_samples(target.path, offs, sample_bytes)
+    post, read_errors = _read_samples(
+        target.path, offs, sample_bytes, capacity=target.capacity_bytes
+    )
+    readable = [b for b in post if b is not None]
 
     verif: dict = {
         "method": "sampled_readback",
-        "samples_checked": len(post),
+        "samples_checked": len(readable),
         "sample_bytes_each": sample_bytes,
     }
-    if len(post) == 0:
+    if read_errors:
+        # An incomplete readback can never pass: unreadable space must not be
+        # certified as wiped space. The failure is recorded on the certificate.
+        verif["samples_failed"] = len(read_errors)
+        verif["verification_error"] = (
+            f"{len(read_errors)} of {len(offs)} readback sample(s) could not be read; "
+            f"unreadable space cannot be certified as wiped. First error: {read_errors[0]}"
+        )
+    if len(readable) == 0:
         verif["all_samples_match_wipe_pattern"] = False
-        verif["verification_error"] = "Zero readback samples obtained (empty or unreadable target)"
-    elif pattern == "zero":
-        verif["all_samples_match_wipe_pattern"] = all(b == b"\x00" * len(b) for b in post)
-    elif pre_samples is not None and len(pre_samples) == len(post):
-        changed = [a != b for a, b in zip(pre_samples, post, strict=False)]
-        pct_changed = sum(changed) / len(changed) if changed else 1.0
-        verif["all_samples_match_wipe_pattern"] = pct_changed >= 0.90
-        verif["method"] = "sampled_readback_changed_vs_pre"
-    elif pattern in ("firmware", "key_destruction"):
-        all_zeros = all(b == b"\x00" * len(b) for b in post)
-        all_ones = all(b == b"\xff" * len(b) for b in post)
-        verif["all_samples_match_wipe_pattern"] = all_zeros or all_ones
+        verif.setdefault(
+            "verification_error",
+            "Zero readback samples obtained (empty or unreadable target)",
+        )
     else:
-        # Random pattern without pre-samples: check non-zero ratio and Shannon entropy
-        non_zeros = [b != b"\x00" * len(b) for b in post]
-        pct_non_zero = sum(non_zeros) / len(non_zeros) if non_zeros else 0.0
-        entropies = [_shannon_entropy(b) for b in post if len(b) > 0]
-        avg_entropy = sum(entropies) / len(entropies) if entropies else 0.0
+        if pattern == "zero":
+            verif["all_samples_match_wipe_pattern"] = all(b == b"\x00" * len(b) for b in readable)
+        elif pre_samples is not None and len(pre_samples) == len(post):
+            # Pre and post samples are both aligned with `offs`; compare only
+            # the offsets that read successfully on both sides.
+            pairs = [(a, b) for a, b in zip(pre_samples, post, strict=False) if a is not None and b is not None]
+            changed = [a != b for a, b in pairs]
+            pct_changed = sum(changed) / len(changed) if changed else 1.0
+            verif["all_samples_match_wipe_pattern"] = pct_changed >= 0.90
+            verif["method"] = "sampled_readback_changed_vs_pre"
+        elif pattern in ("firmware", "key_destruction"):
+            all_zeros = all(b == b"\x00" * len(b) for b in readable)
+            all_ones = all(b == b"\xff" * len(b) for b in readable)
+            verif["all_samples_match_wipe_pattern"] = all_zeros or all_ones
+        else:
+            # Random pattern without pre-samples: check non-zero ratio and Shannon entropy
+            non_zeros = [b != b"\x00" * len(b) for b in readable]
+            pct_non_zero = sum(non_zeros) / len(non_zeros) if non_zeros else 0.0
+            entropies = [_shannon_entropy(b) for b in readable if len(b) > 0]
+            avg_entropy = sum(entropies) / len(entropies) if entropies else 0.0
 
-        min_expected_entropy = min(7.0, (math.log2(sample_bytes) * 0.85) if sample_bytes > 1 else 0.0)
+            min_expected_entropy = min(7.0, (math.log2(sample_bytes) * 0.85) if sample_bytes > 1 else 0.0)
 
-        verif["average_entropy"] = round(avg_entropy, 3)
-        verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
-        verif["all_samples_match_wipe_pattern"] = pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy
-        verif["note_only_pattern_check_possible_with_pre_samples"] = True
+            verif["average_entropy"] = round(avg_entropy, 3)
+            verif["pct_non_zero_samples"] = round(pct_non_zero, 3)
+            verif["all_samples_match_wipe_pattern"] = pct_non_zero >= 0.90 and avg_entropy >= min_expected_entropy
+            verif["note_only_pattern_check_possible_with_pre_samples"] = True
+
+    # An incomplete readback can never pass, whatever the readable samples show:
+    # the offsets that could not be read are exactly the ones an operator most
+    # needs to know about, and padding them as zeros certified dead sectors as
+    # wiped. If any read failed, the verdict is failure.
+    if read_errors:
+        verif["all_samples_match_wipe_pattern"] = False
 
     # Record what the sample is worth, not just how many were taken.
     #
@@ -293,9 +346,9 @@ def verify_wipe(
     from .attest import build_sampling_proof
 
     sector = max(1, target.sector_size)
-    population = max(len(post), target.capacity_bytes // sector)
+    population = max(len(readable), target.capacity_bytes // sector)
     proof = build_sampling_proof(
-        blocks_sampled=len(post),
+        blocks_sampled=len(readable),
         blocks_total=population,
         blocks_matching=0 if verif.get("all_samples_match_wipe_pattern") else 1,
         pattern_description=f"{sample_bytes}-byte readback against the {pattern} wipe pattern",
@@ -324,9 +377,14 @@ def verify_wipe(
 
 
 def take_pre_samples(target: T, *, samples: int = 64, sample_bytes: int = 4096):
-    """Sample BEFORE wiping so random-pattern wipes have something to diff against."""
+    """Sample BEFORE wiping so random-pattern wipes have something to diff against.
+
+    Returns (offsets, samples), the samples positionally aligned with the
+    offsets; an unreadable offset is ``None``, never zero-padded fiction.
+    """
     offs = sample_offsets(target.capacity_bytes, target.sector_size, samples)
-    return offs, _read_samples(target.path, offs, sample_bytes)
+    pre, _errors = _read_samples(target.path, offs, sample_bytes, capacity=target.capacity_bytes)
+    return offs, pre
 
 
 # --------------------------------------------------------------------------- #
