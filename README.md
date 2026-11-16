@@ -82,9 +82,10 @@ irm https://sector0.pages.dev/ps1 | iex
 curl -fsSL https://sector0.pages.dev/cmd -o s0-install.cmd && s0-install.cmd && del s0-install.cmd
 ```
 
-After installation, `s0` is immediately registered on your system `PATH`:
+After installation, `s0` is registered on your user `PATH` (`~/.local/bin/s0`), and — if you accepted the prompt — a system-wide launcher is installed at `/usr/local/bin/s0` so `sudo s0 ...` also works (sudo's `secure_path` never includes `~/.local/bin`). Decline with `S0_NO_SYSTEM_SHIM=1` or later remove the launcher with `s0 uninstall`:
 ```bash
 s0 --version
+sudo s0 --version   # privileged commands need the launcher or an explicit path
 ```
 
 <details>

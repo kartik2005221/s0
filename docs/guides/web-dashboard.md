@@ -42,13 +42,16 @@ sudo s0 web --port 8669 --no-browser
 
 {% tabs %}
 {% tab title="Script Runner (Linux/MacOS)" %}
+The `s0 web` command is the supported launcher; the `src/s0/web/run.sh`
+convenience script is for source checkouts only:
+
 ```bash
-sudo bash src/s0/web/run.sh
+bash src/s0/web/run.sh
 ```
 {% endtab %}
 {% tab title="Script Runner (Windows)" %}
 ```powershell
-.\web\run.ps1
+.\src\s0\web\run.ps1
 ```
 {% endtab %}
 {% endtabs %}
