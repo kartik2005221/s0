@@ -67,7 +67,7 @@ graph TD
 | `tests/src/s0/web/test_gui.py` | Web Dashboard | Uses FastAPI's `TestClient` to execute end-to-end API calls across all four tabs without launching a live browser. |
 | `tests/portal/test_portal.py`| Verification Portal | Tests that the pure JavaScript verifier (`verify.js`) produces identical verification decisions to the Python reference engine across valid and tampered certificates. |
 | `tests/platform_windows/` | Windows Subsystem | Validates Win32 API interactions, Alternate Data Stream (`:Zone.Identifier`) enumeration, and ReFS CoW detection. |
-| `macos/cli/tests/` | macOS Subsystem | Tests Apple Darwin `fcntl(F_FULLFSYNC)` flushes, `xattr -c` quarantine removal, and APFS snapshot warnings. |
+| `tests/platform_macos/` | macOS Subsystem | Tests Apple Darwin `fcntl(F_FULLFSYNC)` flushes, `xattr -c` quarantine removal, and APFS snapshot warnings. |
 
 ---
 
@@ -82,7 +82,7 @@ bash tools/build_all.sh
 
 ### Targeted Pytest Execution
 ```bash
-.venv/bin/pytest tests/core tests/cli tests/web windows/cli/tests macos/cli/tests tests/portal -v
+.venv/bin/pytest tests/core tests/cli tests/web tests/platform_macos tests/platform_windows tests/portal -v
 
 .venv/bin/pytest tests/core -v
 
