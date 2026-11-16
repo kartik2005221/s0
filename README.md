@@ -1,6 +1,14 @@
 <div align="center">
 
 <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="design/logo/s0-logo-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="design/logo/s0-logo-light.svg">
+  <img alt="s0 logo mark" src="design/logo/s0-logo-dark.svg" width="96">
+</picture>
+
+<br>
+
+<picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/banner-light.svg">
   <img alt="s0 — Sector Zero" src="docs/assets/banner-dark.svg" width="100%">
