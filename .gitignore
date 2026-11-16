@@ -1,6 +1,8 @@
-# --- PRIVATE SIGNING KEYS NEVER ENTER THIS REPO ---
+# --- PRIVATE SIGNING KEYS NEVER ENTER THIS REPO, WITH ONE DOCUMENTED EXCEPTION ---
 # Policy: src/s0/data/keys/README.md. The issuing authority's private key is generated
-# out-of-band and stays out-of-band. Only public keys are committed.
+# out-of-band and stays out-of-band. Only public keys are committed, plus the
+# deliberately-shipped demo signing key (allowlisted below) whose forgery-kit
+# trade-offs that README documents in full.
 **/*private*.pem
 !src/s0/data/keys/demo_issuer_private.pem
 **/*private*.key
@@ -46,8 +48,10 @@ skills-lock.json
 # Local test artifacts produced by portal PDF verification runs
 site/verify/tests/x*.pdf
 
-# Stray package downloads
+# Stray package downloads -- except the vendored pydantic v2 wheels that the
+# Debian 12 (bookworm) live-build chroot installs offline (bookworm ships pydantic v1).
 *.whl
+!vendor/*.whl
 
 # Working plan: kept local and untracked by request
 docs/project/industry-plan.md
