@@ -364,3 +364,21 @@ def test_shell_script_is_executable_and_parses(script: str) -> None:
     if shutil.which("sh"):
         result = subprocess.run(["sh", "-n", str(path)], capture_output=True, text=True)
         assert result.returncode == 0, f"{script} has a shell syntax error:\n{result.stderr}"
+
+
+# --------------------------------------------------------------------------- #
+# 9. The smoke test's monitor plumbing must be real, not the dead form.
+# --------------------------------------------------------------------------- #
+
+
+def test_qemu_test_uses_a_monitor_socket_for_screendumps():
+    """Regression: qemu-test.sh piped the literal string "monitor0" through
+    socat to TCP port 4444 -- QEMU ran with no -monitor option, so nothing was
+    listening and the "optional visual check" could never produce anything.
+    The script now exposes a unix monitor socket and screendumps through it."""
+    script = _text(ISO / "qemu-test.sh")
+    assert "-monitor unix:" in script, "QEMU must expose a monitor socket"
+    assert "UNIX-CONNECT" in script, "screendumps must go through that socket"
+    assert "screendump" in script, "the visual check must actually capture a frame"
+    assert "monitor0" not in script, "the dead TCP monitor call is back"
+    assert "4444" not in script, "the dead TCP monitor port is back"
