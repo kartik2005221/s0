@@ -190,16 +190,16 @@ def test_the_kiosk_pydantic_chain_is_installable_offline():
     )
     hook = _text(HOOK)
     lines = hook.splitlines()
-    start = next(i for i, l in enumerate(lines) if "repo-snapshot/vendor ]" in l)
-    end = next(i for i, l in enumerate(lines[start:], start) if l.strip() == "fi")
+    start = next(i for i, line in enumerate(lines) if "repo-snapshot/vendor ]" in line)
+    end = next(i for i, line in enumerate(lines[start:], start) if line.strip() == "fi")
     # Check code, not prose: the comment explains the old silent failure, so
     # only executable lines are subject to the no-masking rule.
-    wheel_code = [l for l in lines[start:end] if not l.strip().startswith("#")]
-    assert not any("|| true" in l or "2>/dev/null" in l for l in wheel_code), (
+    wheel_code = [ln for ln in lines[start:end] if not ln.strip().startswith("#")]
+    assert not any("|| true" in ln or "2>/dev/null" in ln for ln in wheel_code), (
         "the wheel install must not mask failures -- a silent failure here is a "
         "black screen at boot; fail the image build instead"
     )
-    assert any("import pydantic" in l for l in wheel_code), (
+    assert any("import pydantic" in ln for ln in wheel_code), (
         "the hook must verify pydantic v2 is actually importable after installing"
     )
 

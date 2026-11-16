@@ -254,7 +254,7 @@ def verify_wipe(
     planted_needles: list[bytes] | None = None,
     pre_samples: list[bytes] | None = None,
     offsets: list[int] | None = None,
-) -> tuple[dict, list[bytes]]:
+) -> tuple[dict, list[bytes | None]]:
     """Post-wipe verification. Returns (verification_dict_for_cert, post_samples).
 
     Honest scope: this is SAMPLING through the OS's view of the device — strong

@@ -1,7 +1,7 @@
 <!-- GENERATED FILE - DO NOT EDIT.
 
      Mirrored from /CHANGELOG.md at the repository root by
-     `python tools/sync_changelog.py --write`, which is run by the docs check in CI.
+     `python tools/sync_changelog.py --write`; the sync test (tests/cli/test_skill_reference_sync.py) fails when the mirror drifts, so run it before committing a CHANGELOG change.
 
      Edit the root file. Changes made here are overwritten.
 -->

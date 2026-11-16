@@ -1074,11 +1074,28 @@ class TestUniformRandomGate:
         for size in (16, 512, 4096, 8191):
             assert scoring.uniform_random_complaint(os.urandom(size)) is None
 
-    def test_the_gate_is_applied_before_the_format_specific_check(self):
-        """A bare magic byte plus noise must not reach the format validator."""
+    def test_the_gate_applies_where_no_validator_exists(self):
+        """A bare magic byte plus noise must not pass on header alone.
+
+        This test used to assert the statistical gate ran *ahead of* the .avi
+        validator -- which only held while _STRUCTURALLY_VALIDATED was stale at
+        eight entries, and contradicted validate_structure's own documented
+        order: a format's validator decides, and the statistical gate applies
+        only where no validator exists. .avi's validator rejects noise-shaped
+        RIFF (wrong list type); a validator-less extension falls to the gate.
+        """
         from s0.carve import boundary
 
+        # .avi has a structural validator: noise is rejected by it, not the gate.
         ok, reason = boundary.validate_structure(b"RIFF" + os.urandom(32 * 1024), "avi")
+        assert not ok
+        assert "maximum entropy" not in reason, (
+            "a validator-gated format must be judged by its validator, not the entropy gate"
+        )
+        assert "not 'AVI '" in reason or "RIFF" in reason
+
+        # .tiff has no structural validator: the gate is what stands there.
+        ok, reason = boundary.validate_structure(b"II*\x00" + os.urandom(32 * 1024), "tiff")
         assert not ok
         assert "maximum entropy" in reason
 
