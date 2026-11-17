@@ -73,3 +73,6 @@ acquisition_manifest_*
 *.qr.png
 demo-out/
 .wrangler/
+
+# benchmark harness outputs (tools/benchmark_carving.py default --out)
+benchmark-out/
