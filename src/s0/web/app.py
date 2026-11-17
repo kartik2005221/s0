@@ -1253,15 +1253,6 @@ ALLOWED_BROWSE_ROOTS = [
     Path("/mnt").resolve(),
     Path(tempfile.gettempdir()).resolve(),
     Path("/tmp").resolve(),  # nosec B108  # noqa: S108
-    *(
-        [Path("/").resolve()]
-        if _sys.platform != "win32"
-        else [
-            Path("C:\\"),
-            Path(REPO.resolve().anchor),
-            Path(Path(tempfile.gettempdir()).resolve().anchor),
-        ]
-    ),
 ]
 
 
