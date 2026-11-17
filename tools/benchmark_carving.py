@@ -133,7 +133,15 @@ PLANTED = [
 
 
 def build_image(path: Path, size_bytes: int) -> list[dict]:
-    """Plant every fixture in otherwise empty space; return the manifest."""
+    """Plant every fixture in otherwise empty space; return the manifest.
+
+    Files are placed at 4 KiB cluster boundaries. That is not cosmetics: real
+    deleted files occupy whole clusters, and PhotoRec 7.2's sector-granular
+    header scan misses signatures at unaligned offsets outright (measured on
+    this fixture: 1/6 recovered unaligned, 6/6 aligned). An unaligned fixture
+    would grade PhotoRec's recovery of files that cannot occur in a real
+    filesystem, and flatter s0 by comparison for the wrong reason.
+    """
     image = bytearray(size_bytes)
     slot = 2 * 1024 * 1024  # leave the first 2 MiB empty
     manifest = []
@@ -149,7 +157,10 @@ def build_image(path: Path, size_bytes: int) -> list[dict]:
                 "category": category,
             }
         )
-        slot += len(blob) + 512 * 1024  # a healthy gap between files
+        # A healthy gap between files, rounded so the next file sits on a
+        # 4 KiB cluster boundary.
+        slot += len(blob) + 512 * 1024
+        slot = -(-slot // 4096) * 4096
     path.write_bytes(bytes(image))
     return manifest
 
@@ -201,23 +212,35 @@ def run_photorec(image: Path, out_dir: Path) -> dict:
         return {"skipped": "photorec not installed (sudo apt install testdisk)"}
     rec_dir = out_dir / "photorec"
     rec_dir.mkdir(parents=True, exist_ok=True)
-    # Headless invocation: enable every file family, search the whole image.
+    # Everything handed to photorec must be absolute: the subprocess cwd is
+    # pinned below, so relative paths would silently re-resolve under it and
+    # photorec would open nothing (exit 1, zero files carved).
+    # Headless invocation. PhotoRec's /cmd grammar takes ONE comma-separated
+    # command token -- separate arguments made PhotoRec stop after the first
+    # word and exit 1 without carving anything. The image has no partition
+    # table, so the sequence starts with partition_none. Default file families
+    # are used deliberately: they already cover every planted category, and
+    # `fileopt,everything,enable` measurably degrades the scan -- the dovecot
+    # heuristic then claims the whole image as sequential 80 KB raw chunks.
+    # /d is a name PREFIX: PhotoRec appends .1, .2, ... so artifacts land in
+    # rec_dir/recup.1/... and the count must walk rec_dir, not a single dir.
+    # cwd is pinned so photorec.log lands in the run directory instead of
+    # polluting whatever directory the harness was started from.
     r = subprocess.run(
         [
             "photorec",
+            "/log",
             "/d",
-            str(rec_dir),
+            str((rec_dir / "recup").resolve()),
             "/cmd",
-            str(image),
-            "fileopt",
-            "everything",
-            "enable",
-            "search",
+            str(image.resolve()),
+            "partition_none,search",
         ],
         capture_output=True,
         text=True,
         timeout=1800,
         input="\n",
+        cwd=str(out_dir),
     )
     recovered = 0
     bytes_recovered = 0
@@ -243,7 +266,7 @@ def main() -> int:
     ap.add_argument("--size-mb", type=int, default=64, help="image size in MiB")
     args = ap.parse_args()
 
-    out = Path(args.out)
+    out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
@@ -299,10 +322,11 @@ def main() -> int:
     else:
         print(f"== photorec: {results['photorec'].get('skipped', results['photorec'].get('error'))}")
 
-    print(
-        "\nRe-run after `sudo apt install testdisk` to fill in the PhotoRec column;"
-        " the s0 numbers stand on their own."
-    )
+    if "skipped" in results["photorec"]:
+        print(
+            "\nRe-run after `sudo apt install testdisk` to fill in the PhotoRec column;"
+            " the s0 numbers stand on their own."
+        )
     image.unlink(missing_ok=True)
     return 0
 
