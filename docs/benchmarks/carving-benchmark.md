@@ -23,10 +23,43 @@ something at that offset" is not credit; only the exact original bytes are.
 
 ## Measured results
 
-| Tool | Planted | Recovered byte-exact | Notes |
-|---|---|---|---|
-| **s0 carve** | 6 | **6 / 6** | jpg, png, gif, pdf, zip, wav — all SHA-256 exact; signed recovery index emitted |
-| photorec | 6 | *pending tool install* | run the harness after `sudo apt install testdisk` |
+PhotoRec 7.2 (TestDisk, Ubuntu `testdisk` 7.2-0.1build1), measured 2026-11-17:
+
+| Tool | Planted | Recovered byte-exact | Artifacts emitted | Notes |
+|---|---|---|---|---|
+| **s0 carve** | 6 | **6 / 6** | exactly 6 (10,710 bytes) | jpg, png, gif, pdf, zip, wav — all SHA-256 exact; signed recovery index emitted |
+| **photorec** | 6 | **6 / 6** | 7 (13,340 bytes) | same six files byte-exact, plus its own `report.xml` |
+
+On realistic geometry the two tools tie on recall and on byte-exactness. The
+differences that remain:
+
+- **Output hygiene**: s0 emits exactly the recovered set; PhotoRec adds its
+  report file. For evidence handling, a carver whose artifact list is the
+  recovery list is easier to ledger and verify.
+- **Aligned vs unaligned debris.** On the same fixture with files planted at
+  *unaligned* offsets, PhotoRec 7.2 recovered **1 / 6** (only the file whose
+  signature happened to sit on a sector boundary) while s0 still recovered
+  **6 / 6**. Real deleted files sit at cluster boundaries, so the aligned
+  numbers above are the fair headline — but the unaligned run is why s0's
+  byte-wise scan is kept: zeroed or overwriting debris does not re-align
+  itself for the investigator.
+
+### Getting a fair PhotoRec column (measured pitfalls)
+
+Two harness bugs had to be fixed before PhotoRec's numbers meant anything,
+both worth knowing if the benchmark is re-run elsewhere:
+
+1. **Headless `/cmd` grammar.** PhotoRec's command sequence is ONE
+   comma-separated token (`partition_none,search`). Space-separated tokens
+   stop parsing after the first word and exit 1 having carved nothing, and
+   `fileopt,everything,enable` measurably degrades the scan: the `dovecot`
+   heuristic then claims the whole image as sequential 80 KB raw chunks and
+   zero signatures are reported. The default family set already covers every
+   planted category.
+2. **Fixture geometry.** PhotoRec's sector-granular header scan misses
+   signatures at unaligned offsets; files are therefore planted on 4 KiB
+   cluster boundaries, matching how real deleted files occupy clusters.
+   Grading is unchanged: byte-exact SHA-256 or no credit.
 
 Raw JSON results are written to `benchmark-out/carving-benchmark-<timestamp>.json`
 alongside each run.
@@ -71,3 +104,6 @@ properties, and each one was acted on:
 - The PhotoRec column is populated only on a machine with testdisk installed;
   the CI environment does not carry it. The harness skips with a notice
   instead of pretending to a number.
+- One synthetic image per run: six files, no fragmentation, no interleaving
+  deletion, single filesystem-free surface. It measures recall and byte
+  fidelity, not end-to-end recovery quality on real media.
