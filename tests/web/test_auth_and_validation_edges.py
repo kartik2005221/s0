@@ -301,9 +301,24 @@ class TestBrowseDoesNotLieAboutWhatItListed:
         assert r.json()["items"] == [], "a refused path still returned a listing"
 
     def test_a_missing_path_is_a_404_not_a_redirect(self, client):
+        """A missing path under an allowed root is a 404, never a redirect or a lie."""
+        client.cookies.set(gui.AUTH_COOKIE, _token())
+        r = client.get(f"/api/browse?path={gui.REPO / 'definitely-not-here-s0'}")
+        assert r.status_code == 404
+
+    def test_a_path_outside_the_browse_roots_is_refused_before_lookup(self, client):
+        """The browse roots are a real allowlist: outside it is 403, before any exists() look.
+
+        ALLOWED_BROWSE_ROOTS used to include `/` on POSIX (and the drive anchors on
+        Windows), which made the allowlist match every path and left only the
+        SYSTEM_PREFIXES denylist. A request for any non-system, non-listed path —
+        say another user's home directory — listed its contents. CodeQL flagged the
+        flow as path injection because the containment claim did not hold.
+        """
         client.cookies.set(gui.AUTH_COOKIE, _token())
         r = client.get("/api/browse?path=/definitely-not-here-s0")
-        assert r.status_code == 404
+        assert r.status_code == 403, f"expected an explicit refusal, got {r.status_code}: {r.json()}"
+        assert r.json()["items"] == [], "a refused path still returned a listing"
 
     def test_a_refusal_never_names_the_repository_as_the_listing(self, client):
         client.cookies.set(gui.AUTH_COOKIE, _token())

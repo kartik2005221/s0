@@ -503,9 +503,17 @@ def test_browse_endpoint_traversal_restricted(client):
 
 
 def test_browse_missing_path_is_a_404(client):
-    r = client.get("/api/browse?path=/nonexistent-directory-for-s0")
+    # A path outside the browse roots is refused (403) before any exists() look,
+    # so the 404 case must be exercised under an allowed root.
+    r = client.get(f"/api/browse?path={gui_app.REPO / 'nonexistent-directory-for-s0'}")
     assert r.status_code == 404
     assert r.json()["error"] == "no such directory"
+
+
+def test_browse_path_outside_the_roots_is_a_403(client):
+    r = client.get("/api/browse?path=/nonexistent-directory-for-s0")
+    assert r.status_code == 403
+    assert r.json()["error"] == "path is outside the permitted roots"
 
 
 def test_browse_a_file_is_a_400(client, tmp_path):
