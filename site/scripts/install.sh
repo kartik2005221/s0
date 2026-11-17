@@ -12,8 +12,8 @@ INSTALL_DIR="${S0_INSTALL_DIR:-$HOME/.s0}"
 # branch means "the installer" is not a fixed artefact you can reason about.
 #
 # Override with S0_INSTALL_REF. Pin a release tag for a reproducible install:
-#   S0_INSTALL_REF=v3.1.0 sh
-S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-v3.1.0}}"
+#   S0_INSTALL_REF=v3.2.0 sh
+S0_REF="${S0_INSTALL_REF:-${S0_BRANCH:-v3.2.0}}"
 TOTAL_STEPS=7
 STEP=0
 
@@ -188,7 +188,7 @@ cd "$INSTALL_DIR" || die "could not enter ${INSTALL_DIR}"
 if [ ! -f "pyproject.toml" ] && [ ! -f "setup.py" ]; then
     die "'${S0_REF}' has no pyproject.toml or setup.py, so it cannot be pip-installed.
     This checkout predates the src/ package layout. Set S0_INSTALL_REF to a
-    release tag, e.g. S0_INSTALL_REF=v3.1.0 sh"
+    release tag, e.g. S0_INSTALL_REF=v3.2.0 sh"
 fi
 
 # ── step 3: virtual environment ────────────────────────────────────────────
@@ -315,7 +315,7 @@ INSTALLED_VERSION=$(./.venv/bin/s0 --version 2>/dev/null | awk '{print $NF}')
 [ -n "$INSTALLED_VERSION" ] || INSTALLED_VERSION="unknown"
 printf "${_bold}${_green}✅ S0 ${INSTALLED_VERSION} installed successfully!${_reset}\n"
 printf "   Executable : %s/s0\n" "${BIN_DIR}"
-printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "3.1.0")"
+printf "   Version    : %s\n" "$("${BIN_DIR}/s0" --version 2>/dev/null || echo "3.2.0")"
 printf "   Web Console: s0 web  (run \`sudo s0 web\` for full drive operations)\n"
 echo ""
 
