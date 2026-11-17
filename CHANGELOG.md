@@ -5,6 +5,52 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-11-17
+
+Sector Zero 3.2.0 is a correctness-and-hardening release: the result of a full external handoff audit of every surface — sanitization safety, forensic carving, the dashboard, packaging, and CI — plus a PhotoRec-graded carving benchmark and a complete disposition of the CodeQL code-scanning inventory.
+
+### Safety & Sanitization
+
+- **Block-device targets restored**: the system-path guard probed system prefixes before the device check, so every `/dev/...` wipe was refused. Block devices are now recognized before the prefix loop, restoring all device targets while keeping every documented exit-code contract (`error:` + exit 77 from path guards, `REFUSED:` + exit 2 from device-tier refusals).
+- **Mounted-volume detection through device-mapper**: a LUKS container partition mounted via `/dev/mapper/...` never matched the partition-name pattern, so wiping a disk holding a live encrypted volume produced no mount warning. Mounted sources are now walked down to their underlying dm slaves on the target side too.
+- **Honest wipe verification**: failed readback samples are reported (`samples_failed`, `verification_error`) instead of being zero-padded into false passes, and a wipe verdict is forced to fail when sample reads fail.
+- **Btrfs root resolution and ESP heuristics**: `s0 list` resolves the OS drive through btrfs subvolume mounts and flags the drive hosting an EFI System Partition as `LIKELY` — display-only hints, never wipe refusals.
+- **Banner before argument parsing**: the ASCII banner now prints before `parse_args`, so plain `s0` and `s0 --help` can ever display it.
+- **Table width budget**: `s0 list` no longer breaks under long drive-model names; identifiers truncate from the left, prose from the right.
+
+### Forensic Carving
+
+- **Five NTFS recovery defects fixed**: multi-level path reconstruction through grandparent records, `$ATTRIBUTE_LIST` split-stream reassembly with correct VCN geometry, MFT record-size geometries where the record size exceeds the cluster size, scan errors surfaced instead of silently truncating results, and boot-sector validation with backup-sector fallback.
+- **Structural-validation gate synced with the dispatch chain** (a drift-guard test pins the set mechanically), ext4 journal recovery wired into carving, FAT32 cluster chains followed for live entries, and the signature table extended with Windows Event Log (EVTX), ISO 9660, and SVG — each with an honest boundary resolver.
+- **PhotoRec-graded carving benchmark** (`tools/benchmark_carving.py`): plants known files and grades recovery byte-exact by SHA-256. On the cluster-aligned fixture both s0 and PhotoRec 7.2 recover 6/6 byte-exact; on unaligned debris s0 retains 6/6 while PhotoRec scores 1/6. Study and measured pitfalls recorded in `docs/benchmarks/carving-benchmark.md`.
+
+### Audit Ledger & Certificates
+
+- Missing, corrupt, or unsigned checkpoint sidecars are reported via `checkpoint_warning` by `s0 audit verify` instead of being silently skipped — closing the tail-truncation blind spot the sidecars exist to catch.
+- Certificates record the platform they were actually issued on rather than the platform of the machine that happened to render them.
+
+### Web Dashboard & Security Posture
+
+- **Browse allowlist made real**: `ALLOWED_BROWSE_ROOTS` contained `/` on POSIX (and drive anchors on Windows), making its containment allowlist vacuous; browse is now pinned to the repository, home, `/media`, `/mnt`, and temp directories, mirroring the wipe-target roots.
+- **Full CodeQL triage**: all 29 open code-scanning alerts dispositioned — one real (trivial) finding fixed in code, the browse gap fixed in code, and 28 validated/by-design flows dismissed with per-alert justifications; the rationale is committed at `docs/project/codeql-triage.md`.
+- Web launchers (`run.sh` / `run.ps1` / `run.bat`) resolve the repo root correctly and target `s0.web.app:app`, with an installed-package fallback.
+
+### Live ISO
+
+- The kiosk boot chain is buildable and smoke-testable again; the qemu-test monitor-socket and screendump plumbing is pinned by contract tests.
+- Branch protection on `master` now requires all 19 Full CI checks (admin-enforced) and forbids force-pushes, deletions, and non-linear history.
+
+### Site & Documentation
+
+- Ground-up redesign of the Home, Get (installer), Verifier, and Dashboard surfaces on a unified design-token system; offline `file://` certificate verification restored; live audit-ledger demo with signature verification.
+- Glossary terminology aligned across surfaces; README carries the logo mark with dark/light palette switching; every reference that drifted from the tree was reconciled.
+
+### Packaging, CI & Dependencies
+
+- `requirements.lock` regenerated, clearing the pip-audit advisories.
+- Every CI job has a `timeout-minutes`; the release workflow gained a working `release_tag` dispatch input and a Python 3.14 test leg.
+- The system-wide launcher: the installer offers a `/usr/local/bin/s0` shim so `sudo s0 ...` resolves to the user install (opt-out via `S0_NO_SYSTEM_SHIM=1`).
+
 ## [3.1.0] - 2026-10-07
 
 Sector Zero 3.1.0 is a major security remediation and forensic accuracy release following a comprehensive adversarial security audit across acquisition, carving, sanitization, cryptographic ledgers, and web operations, coupled with complete cross-surface design system unification.
